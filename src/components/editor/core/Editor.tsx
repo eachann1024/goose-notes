@@ -35,6 +35,7 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { markUserInteraction } from "@/lib/editor-interaction-signal";
 import { normalizeExternalUrl } from "@/lib/openExternalUrl";
+import { isPlatformPrimaryModifierEvent } from "@/lib/shortcut-platform";
 import {
   completePageTitleFocus,
   isPageTitleFocusRequested,
@@ -72,7 +73,10 @@ import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAl
 import { gooseTableCellSelectionExtension } from "@/components/editor/extensions/tableCellSelectionExtension";
 import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
 import { gooseMoveBlockExtension } from "@/components/editor/extensions/moveBlockExtension";
-import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
+import {
+  createGooseLinkKeyboardExtension,
+  shouldArmLinkOpenHint,
+} from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
@@ -94,15 +98,22 @@ import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extension
 import { gooseInlineCodeCaretExtension } from "@/components/editor/extensions/inlineCodeCaretExtension";
 import { gooseTrailingBlankClickExtension } from "@/components/editor/extensions/trailingBlankClickExtension";
 import { createInlineCodePathTagExtension } from "@/components/editor/extensions/inlineCodePathTagExtension";
+import { createPageMentionClickExtension } from "@/components/editor/extensions/pageMentionClickExtension";
+import { gooseWikiLinkInputExtension } from "@/components/editor/extensions/wikiLinkInputExtension";
+import { setPageMentionOpenHandler } from "@/components/editor/inline/pageMentionBridge";
 import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseActiveHeadingCaretExtension } from "@/components/editor/extensions/activeHeadingCaretExtension";
+import { gooseActiveLineExtension } from "@/components/editor/extensions/activeLineExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
 import { createGooseSlashMenuReconcileExtension } from "@/components/editor/extensions/gooseSlashMenuReconcileExtension";
-import { reconcileSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
+import {
+  reconcilePageMentionSuggestionMenu,
+  reconcileSlashSuggestionMenu,
+} from "@/components/editor/utils/slashMenuPolicy";
 import {
   EditorComposer,
   editorSchema,
@@ -136,6 +147,11 @@ export interface EditorRef {
 
 interface EditorProps {
   editable?: boolean;
+  /**
+   * 分屏时只有聚焦叶为 true。AI / 查找 / 大纲 / 全局 focus 事件走聚焦实例。
+   * 未传时视为 true（速记小窗、单编辑器宿主）。
+   */
+  isActiveEditor?: boolean;
   /** 是否启用当前运行环境提供的拼写检查。 */
   spellCheck?: boolean;
   /**
@@ -153,6 +169,7 @@ interface EditorProps {
 export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   {
     editable = true,
+    isActiveEditor = true,
     spellCheck = false,
     hiddenSlashItemTitles,
     showSideMenu = true,
@@ -172,6 +189,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     contentMode,
     isEditorFullWidth,
     onContentChange,
+    onOpenPage,
     getActivePageLocalFilePath,
     getActivePageLocalFolderRoot,
     onOpenAttachment,
@@ -201,6 +219,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   aiSettingsRef.current = aiSettings;
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
+  const onOpenPageRef = useRef(onOpenPage);
+  onOpenPageRef.current = onOpenPage;
   const getActivePageLocalFilePathRef = useRef(getActivePageLocalFilePath);
   getActivePageLocalFilePathRef.current = getActivePageLocalFilePath;
   const getActivePageLocalFolderRootRef = useRef(getActivePageLocalFolderRoot);
@@ -296,6 +316,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     [],
   );
 
+  const pageMentionClickExtension = useMemo(
+    () =>
+      createPageMentionClickExtension({
+        openPage: (pageId, wikiTarget, options) =>
+          onOpenPageRef.current(pageId, wikiTarget, options),
+      }),
+    [],
+  );
+
   const initialContentRef = useRef(
     createEditorSafeContent(normalizeContent(page?.content), editorSchema),
   );
@@ -323,12 +352,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         createGooseBodyParagraphGuardExtension(usesRawEditorContentRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
+        pageMentionClickExtension,
+        gooseWikiLinkInputExtension,
         inlineCodePathTagExtension,
         gooseTrailingBlankClickExtension,
         gooseInlineCodeCaretExtension,
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
         gooseActiveHeadingCaretExtension,
+        gooseActiveLineExtension,
         gooseTabBehaviorExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
@@ -389,7 +421,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           ...zh.placeholders,
           // 速记小窗打开即可输入，不用长提示抢占空白草稿的视觉焦点。
           // 常规笔记本仍保留菜单入口提示。
-          default: __GOOSE_LITE__ ? "" : "输入 / 或 、来展开菜单...",
+          default: __GOOSE_LITE__ ? "" : "输入 / 、或随时 @ 提及笔记...",
           toggleListItem: "",
         },
         // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
@@ -430,10 +462,29 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       },
       links: {
         onClick: (event) => {
-          if (!event.metaKey && !event.ctrlKey) {
+          const target = event.target as HTMLElement | null;
+          const mention = target?.closest<HTMLElement>(
+            '[data-inline-content-type="pageMention"]',
+          );
+          const mentionPageId =
+            mention?.getAttribute("data-page-id") ?? mention?.dataset.pageId ?? "";
+          const mentionWikiTarget =
+            mention?.getAttribute("data-wiki-target") ??
+            mention?.dataset.wikiTarget ??
+            "";
+          if (mention && (mentionPageId || mentionWikiTarget)) {
+            const newTab = isPlatformPrimaryModifierEvent(event);
+            const handled = onOpenPageRef.current(
+              mentionPageId,
+              mentionWikiTarget,
+              newTab ? { newTab: true } : { splitOnly: true },
+            );
+            if (!newTab && handled === false) return false;
+            return true;
+          }
+          if (!shouldArmLinkOpenHint(event)) {
             return false;
           }
-          const target = event.target as HTMLElement | null;
           const link = target?.closest<HTMLAnchorElement>(
             'a[data-inline-content-type="link"]',
           );
@@ -718,6 +769,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       if (container.contains(target)) return; // 已由 onMouseDown 处理
       const scrollContainer = target.closest(".page-scroll-container");
       if (!scrollContainer) return;
+      // 分屏时多个编辑器都在听 document：只处理落在本实例滚动容器内的点击。
+      if (!scrollContainer.contains(container)) return;
 
       // 检查 Y 坐标是否在末尾块之下（与 isBottomEditorBlankClick 逻辑一致）
       const blocks = container.querySelectorAll<HTMLElement>(".bn-block-outer");
@@ -839,11 +892,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     const container = editorContainerRef.current;
     if (!container) return;
     const onCompositionEnd = () =>
-      queueMicrotask(() =>
+      queueMicrotask(() => {
         reconcileSlashSuggestionMenu(editor, {
           allowSlashMenuOnFirstBlock: usesRawEditorContentRef.current,
-        }),
-      );
+        });
+        reconcilePageMentionSuggestionMenu(editor);
+      });
     container.addEventListener("compositionend", onCompositionEnd);
     return () =>
       container.removeEventListener("compositionend", onCompositionEnd);
@@ -890,6 +944,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     };
 
     const handleFocusStart = () => {
+      if (!isActiveEditor) return;
       const pageId = pageRef.current?.id;
       // 本地文件标题由 LocalFileTitle 承担；新建页标题聚焦请求未完成时不抢焦到正文。
       if (
@@ -923,6 +978,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     };
 
     const handleFocusBody = () => {
+      if (!isActiveEditor) return;
       const focusBody = () => {
         const blocks = editor.document;
         if (blocks.length === 0) return false;
@@ -950,6 +1006,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     };
 
     const handlePluginEnter = () => {
+      if (!isActiveEditor) return;
       window.setTimeout(() => {
         focusEditorSafely();
       }, 0);
@@ -1052,7 +1109,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         handleReloadActiveEditor,
       );
     };
-  }, [commitEditorContent, debouncedUpdate, editor, getLatestPage]);
+  }, [
+    commitEditorContent,
+    debouncedUpdate,
+    editor,
+    getLatestPage,
+    isActiveEditor,
+  ]);
 
   useImperativeHandle(
     ref,
@@ -1063,7 +1126,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   );
 
   useEffect(() => {
+    if (!isActiveEditor) return;
     (window as any).__gooseNoteEditor = editor;
+    setPageMentionOpenHandler((pageId, wikiTarget, options) =>
+      onOpenPageRef.current(pageId, wikiTarget, options),
+    );
     const rememberLiveSelection = () => {
       rememberEditorSelectedBlocks(editor);
     };
@@ -1091,9 +1158,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       if ((window as any).__gooseNoteEditor === editor) {
         (window as any).__gooseNoteEditor = null;
       }
+      setPageMentionOpenHandler(null);
       clearEditorSelectedBlocksCache(editor);
     };
-  }, [editor]);
+  }, [editor, isActiveEditor]);
 
   const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">(
     "light",

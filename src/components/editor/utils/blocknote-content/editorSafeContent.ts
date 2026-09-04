@@ -2,6 +2,7 @@ import type { PartialBlock } from "@blocknote/core";
 import type { BlockNoteContent } from "./emptyContent";
 import { createEmptyLocalPageContent } from "./emptyContent";
 import { hasStructuredBlocks, simpleExtractText } from "./normalize";
+import { sanitizePageMentionProps } from "@/components/editor/inline/pageMention";
 
 type BlockSpecLike = {
   config?: {
@@ -119,6 +120,17 @@ function sanitizeInlineArray(
           type: "link",
           href,
           content: linkContent,
+        });
+      }
+      continue;
+    }
+
+    if (item.type === "pageMention") {
+      const mention = sanitizePageMentionProps(item);
+      if (mention) {
+        nodes.push({
+          type: "pageMention",
+          props: mention,
         });
       }
       continue;

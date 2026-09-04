@@ -14,6 +14,10 @@ import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { isElectronRuntime } from "@/lib/electron/runtime";
+import { createDesktopWindow } from "@/lib/electron/windowContext";
+import { detachTabFromThisWindow } from "@/lib/electron/detachTab";
+import { useTabs } from "@/stores/useTabs";
 
 function captureEditorSelectedBlocks(): BlockNoteContent {
   return getEditorSelectedBlocksForExport(getActiveGooseNoteEditor());
@@ -36,6 +40,9 @@ export function PageMenu() {
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const isLocalItem = Boolean(page?.localFilePath);
+  const { openTabs, activeTabId } = useTabs();
+  const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+  const canOpenInNewWindow = isElectronRuntime();
 
   const captureSelectedBlocks = () => {
     const blocks = captureEditorSelectedBlocks();
@@ -204,6 +211,32 @@ export function PageMenu() {
 
           <div className="mx-1 my-1 h-px bg-border" />
 
+          {canOpenInNewWindow && activeTab ? (
+            <DropdownMenuItem
+              className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
+              onSelect={() => {
+                void (async () => {
+                  const created = await createDesktopWindow({
+                    mode: "currentTab",
+                    tab: {
+                      id: activeTab.id,
+                      pageId: activeTab.pageId,
+                      type: activeTab.type,
+                      pinned: activeTab.pinned,
+                      workspaceId: activeTab.workspaceId,
+                    },
+                  });
+                  if (created?.windowId) {
+                    detachTabFromThisWindow(activeTab.id, created.windowId);
+                  }
+                })();
+              }}
+            >
+              <LucideIcons.AppWindow className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
+              <span className="min-w-0 truncate">在新窗口打开</span>
+            </DropdownMenuItem>
+          ) : null}
+
           <section aria-label="页面状态">
             <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
               页面状态
@@ -355,13 +388,6 @@ export function PageMenu() {
               >
                 <DropdownMenuItem
                   className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => runExport("JSON", () => exportToJSON(page))}
-                >
-                  <LucideIcons.FileJson className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">JSON</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
                   onSelect={() =>
                     runExport("Markdown", () => exportToMarkdown(page))
                   }
@@ -375,6 +401,13 @@ export function PageMenu() {
                 >
                   <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
                   <span className="min-w-0 truncate">HTML</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+                  onSelect={() => runExport("Word", () => exportToWord(page))}
+                >
+                  <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
+                  <span className="min-w-0 truncate">Word</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"

@@ -26,6 +26,7 @@ import { getCachedAvailableOpenApps, shell } from "@/lib/utools/shell";
 import { fs } from "@/lib/utools/fs";
 import {
   scanUnreferencedLocalAssets,
+  restoreMissingReferencedLocalAssets,
   type UnreferencedLocalAsset,
 } from "@/lib/local-folder-asset-maintenance";
 import { DialogShell } from "@/components/ui/dialog-shell";
@@ -253,7 +254,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
     JSON.stringify(folders) === JSON.stringify(DEFAULT_HIDDEN_FOLDERS);
 
   return (
-    <div className="space-y-3 p-4">
+    <div className={`space-y-3 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
       <div>
         <div className="flex items-center gap-3">
           <LucideIcons.EyeOff
@@ -492,14 +493,14 @@ function LocalAssetMaintenanceDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="清理未引用静态资源"
-      description="删除后无法恢复。"
+      description="将移入系统废纸篓，可从废纸篓找回。"
       contentClassName="grid h-[min(80vh,52rem)] w-[min(96vw,56rem)] max-w-[56rem] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden !p-0 sm:rounded-[18px]"
       bodyClassName="flex min-h-0 flex-col overflow-hidden px-0 py-0"
       footer={
         confirming ? (
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 text-sm text-[var(--goose-color-danger-focus)]">
-              将永久删除 {selectedPaths.length} 个文件，释放{" "}
+              将把 {selectedPaths.length} 个文件移入系统废纸篓，释放{" "}
               {formatFileSize(selectedSize)}
             </div>
             <div className="flex shrink-0 items-center justify-end gap-2">
@@ -826,13 +827,22 @@ export function SettingsLocalFolder({
       const pages = Object.values(usePages.getState().pages).filter(
         (page) => page.workspaceId === activeNotebook.id,
       );
-      setUnreferencedAssets(
-        await scanUnreferencedLocalAssets({
-          basePath: activeNotebook.localPath,
-          pages,
-          gooseFs: window.gooseFs,
-        }),
-      );
+      const scanOptions = {
+        basePath: activeNotebook.localPath,
+        pages,
+        gooseFs: window.gooseFs,
+      };
+      const recovered =
+        await restoreMissingReferencedLocalAssets(scanOptions);
+      if (recovered.restored.length > 0) {
+        toast.success(`已从废纸篓找回 ${recovered.restored.length} 个仍被引用的文件`);
+      }
+      if (recovered.missing.length > 0) {
+        toast.warning(
+          `仍有 ${recovered.missing.length} 个被引用文件缺失，请到系统废纸篓手动找回`,
+        );
+      }
+      setUnreferencedAssets(await scanUnreferencedLocalAssets(scanOptions));
     } catch (error) {
       console.error("[settings] 扫描未引用静态资源失败", error);
       toast.error("扫描未引用静态资源失败");
@@ -1023,7 +1033,9 @@ export function SettingsLocalFolder({
       </SettingsSectionCard>
 
       <SettingsSectionCard title="存储维护">
-        <div className="flex items-center justify-between gap-4 p-4">
+        <div
+          className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
+        >
           <div>
             <div className="flex items-center gap-3">
               <LucideIcons.Trash2
@@ -1033,7 +1045,8 @@ export function SettingsLocalFolder({
               <Label>清理未引用静态资源</Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              扫描页面同级 assets 目录及根 assets 兼容目录。
+              扫描页面同级 assets 目录及根 assets 兼容目录。会读取全部
+              Markdown（含隐藏目录中的笔记），避免把仍在使用的图片标成未引用。
             </p>
           </div>
           <Button

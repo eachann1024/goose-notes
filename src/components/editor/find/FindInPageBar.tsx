@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/components/editor/utils/cn";
 import { formatShortcut } from "@/lib/utils";
@@ -15,6 +15,8 @@ import {
 type FindInPageBarProps = {
   editor: BlockNoteEditor<any, any, any> | null;
   open: boolean;
+  seedQuery?: string;
+  openNonce?: number;
   navigationRequest?: { id: number; direction: "next" | "previous" } | null;
   onClose: () => void;
 };
@@ -22,6 +24,8 @@ type FindInPageBarProps = {
 export function FindInPageBar({
   editor,
   open,
+  seedQuery = "",
+  openNonce = 0,
   navigationRequest = null,
   onClose,
 }: FindInPageBarProps) {
@@ -30,6 +34,20 @@ export function FindInPageBar({
   const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [tick, setTick] = useState(0);
+  const appliedNonceRef = useRef<number | null>(null);
+
+  if (open && openNonce !== appliedNonceRef.current) {
+    appliedNonceRef.current = openNonce;
+    if (seedQuery && seedQuery !== query) {
+      setQuery(seedQuery);
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [open, query, openNonce]);
 
   useEffect(() => {
     if (!open || !editor) return;
@@ -38,10 +56,7 @@ export function FindInPageBar({
   }, [editor, open, query, caseSensitive]);
 
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    } else if (editor) {
+    if (!open && editor) {
       clearFind(editor);
     }
   }, [open, editor]);

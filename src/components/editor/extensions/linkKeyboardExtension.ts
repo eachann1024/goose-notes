@@ -1,4 +1,6 @@
 import { createExtension } from "@blocknote/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { getEditorPlatform } from "@/components/editor/platform/context";
 import type { EditorSettings } from "@/components/editor/platform/hostContext";
 import type { MutableRefObject } from "react";
@@ -9,6 +11,15 @@ import {
 } from "@/lib/shortcut-platform";
 import { getPlatformKind, type PlatformKind } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
+
+/** 按住 Cmd/Ctrl 时编辑器进入可打开链接的提示态，与 links.onClick 判定一致。 */
+export const LINK_ARMED_CLASS = "goose-link-armed";
+
+export function shouldArmLinkOpenHint(
+  event: Pick<KeyboardEvent | MouseEvent, "metaKey" | "ctrlKey">,
+): boolean {
+  return Boolean(event.metaKey || event.ctrlKey);
+}
 
 type LinkShortcutEvent = Pick<
   KeyboardEvent,
@@ -61,11 +72,44 @@ function normalizeExternalUrl(url: string): string {
   return trimmed;
 }
 
+const linkArmedPluginKey = new PluginKey("goose-link-armed");
+
+function createLinkArmedPlugin() {
+  return new Plugin({
+    key: linkArmedPluginKey,
+    view(view: EditorView) {
+      const syncArmed = (event: KeyboardEvent | MouseEvent) => {
+        view.dom.classList.toggle(LINK_ARMED_CLASS, shouldArmLinkOpenHint(event));
+      };
+      const disarm = () => view.dom.classList.remove(LINK_ARMED_CLASS);
+      const onVisibility = () => {
+        if (document.hidden) disarm();
+      };
+      window.addEventListener("keydown", syncArmed);
+      window.addEventListener("keyup", syncArmed);
+      window.addEventListener("mousemove", syncArmed);
+      window.addEventListener("blur", disarm);
+      document.addEventListener("visibilitychange", onVisibility);
+      return {
+        destroy() {
+          window.removeEventListener("keydown", syncArmed);
+          window.removeEventListener("keyup", syncArmed);
+          window.removeEventListener("mousemove", syncArmed);
+          window.removeEventListener("blur", disarm);
+          document.removeEventListener("visibilitychange", onVisibility);
+          disarm();
+        },
+      };
+    },
+  });
+}
+
 export const createGooseLinkKeyboardExtension = (
   settingsRef: MutableRefObject<EditorSettings>,
 ) =>
   createExtension({
     key: "goose-link-keyboard",
+    prosemirrorPlugins: [createLinkArmedPlugin()],
     keyboardShortcuts: {
       "Mod-k": ({ editor }) => {
         const settings = useSettings.getState();

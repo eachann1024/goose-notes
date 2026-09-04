@@ -10,6 +10,7 @@
 import type { Page } from "@/types";
 import type { CustomFonts } from "@/stores/useSettings";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { createElement } from "react";
 import { prepareExportBlocks } from "@/lib/export/prepareExportBlocks";
 import { registerPdfFonts } from "./fontConfig";
 import { createPdfBlockMappings } from "./blockMappings";
@@ -48,7 +49,17 @@ async function exportViaReactPdf(
   });
   const mergedMappings = {
     blockMapping: blockMapping as unknown as typeof pdfDefaultSchemaMappings.blockMapping,
-    inlineContentMapping: pdfDefaultSchemaMappings.inlineContentMapping,
+    inlineContentMapping: {
+      ...pdfDefaultSchemaMappings.inlineContentMapping,
+      pageMention: (ic: { props?: { title?: string } }) => {
+        const title =
+          typeof ic?.props?.title === "string" && ic.props.title.trim()
+            ? ic.props.title.trim()
+            : "未命名";
+        const label = title.startsWith("@") ? title : `@${title}`;
+        return createElement(ReactPDF.Text, { key: `pageMention-${label}` }, label);
+      },
+    },
     styleMapping: pdfDefaultSchemaMappings.styleMapping,
   };
 

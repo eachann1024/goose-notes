@@ -448,7 +448,7 @@ export function SettingsAI({
             AI 开关
           </span>
         }
-        description="开启后页头出现 AI 入口；空白段落按空格可唤起 AI。"
+        description="开启后页头出现 AI 入口；空白段落按回车可唤起行内 AI。"
       >
         <div
           className={cn(
@@ -458,7 +458,7 @@ export function SettingsAI({
         >
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <AiGradientIcon className="h-4 w-4" />
+              <AiGradientIcon className="h-4 w-4 text-foreground" />
               <Label
                 htmlFor="ai-enabled"
                 className="cursor-pointer text-sm font-medium text-foreground"

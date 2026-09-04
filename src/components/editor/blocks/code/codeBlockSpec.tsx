@@ -35,6 +35,8 @@ import {
   type PreviewContent,
 } from "@/lib/preview/previewAction";
 import { indentCodeSelection } from "./codeBlockIndent";
+import { gooseCodeBlockActiveLineExtension } from "./codeBlockActiveLine";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
 
 // 所有宿主均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
 // 把语法包从 ~1MB（all 全量）降到 ~300KB（vendor-markdown 1257KB→530KB）。
@@ -340,29 +342,6 @@ const LATEX_SNIPPETS = [
 ];
 
 type CodePreviewMode = "code" | "preview";
-
-function downloadTextFile(content: string, filename: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function isDarkTheme(theme: string | undefined): boolean {
   if (theme === "dark") return true;
@@ -821,46 +800,24 @@ function CodeBlockComponent({
           language === "math"
             ? `formula-${Date.now()}.png`
             : `mermaid-${Date.now()}.png`;
-
-        const targetPath = await platform.dialog.showSaveDialog({
-          title: "保存图片",
-          defaultPath: filename,
-          buttonLabel: "保存",
-          filters: [{ name: "PNG 图片", extensions: ["png"] }],
-        });
-
-        if (targetPath) {
-          const base64 = await blobToBase64(pngBlob);
-          const payload = base64.replace(/^data:.*;base64,/, "");
-          const saved = await platform.fs.writeFileAsync(
-            targetPath,
-            payload,
-            "base64",
-          );
-          if (saved) {
-            await platform.shell.showItemInFolder(targetPath);
-            toast.success("图片已保存");
-            return;
-          }
-          toast.error("保存失败");
-          return;
-        }
-
-        // 用户取消对话框时不提示；非 uTools 环境回退浏览器下载
-        if (targetPath === null) {
-          downloadBlob(pngBlob, filename);
-          toast.success("已开始下载");
-        }
+        const saved = await saveBlobAndReveal(pngBlob, filename);
+        if (saved) toast.success("图片已保存到下载文件夹");
+        else toast.error("保存失败");
         return;
       }
 
-      downloadTextFile(text, "code.txt", "text/plain;charset=utf-8");
+      const saved = await saveBlobAndReveal(
+        new Blob([text], { type: "text/plain;charset=utf-8" }),
+        "code.txt",
+      );
+      if (saved) toast.success("已保存到下载文件夹");
+      else toast.error("保存失败");
     } catch (err) {
       toast.error(
         `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
       );
     }
-  }, [getCodeContent, language, platform, resolvePreviewPngBlob]);
+  }, [getCodeContent, language, resolvePreviewPngBlob]);
 
   const handleCopyPreview = useCallback(async () => {
     try {
@@ -1267,5 +1224,9 @@ export const codeBlockSpec = createReactBlockSpec(
       );
     },
   },
-  [codeBlockHighlightExtension, codeBlockTabIndentExtension],
+  [
+    codeBlockHighlightExtension,
+    codeBlockTabIndentExtension,
+    gooseCodeBlockActiveLineExtension,
+  ],
 )();

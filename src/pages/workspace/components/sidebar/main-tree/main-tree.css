@@ -47,7 +47,7 @@
   background-color: var(--sidebar-dnd-overlay-bg);
   border: 1px solid var(--sidebar-dnd-overlay-border);
   color: hsl(var(--foreground));
-  font-size: 13px;
+  font-size: var(--sidebar-font-size, 13px);
   font-weight: 500;
   line-height: 1.4;
   white-space: nowrap;
@@ -76,6 +76,17 @@
   font-size: 17px;
   line-height: 1;
   opacity: 0.64;
+}
+
+.rct-main-tree .main-tree-row {
+  height: var(--main-tree-row-height, 32px);
+  min-height: var(--main-tree-row-height, 32px);
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
+.rct-main-tree {
+  min-height: 100%;
 }
 
 .rct-main-tree .main-tree-row--selected,
@@ -117,7 +128,8 @@
   opacity: 0.66;
 }
 
-.main-tree-row--drop-target {
+.main-tree-row--drop-target,
+.main-tree-row--drop-target-local {
   color: hsl(var(--foreground)) !important;
   background: var(--sidebar-dnd-accent-soft) !important;
   box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset !important;
@@ -161,7 +173,8 @@
  * 之后重新声明 background-color，否则部分 hover / dragging-over 组合只剩
  * 蓝色描边，浅蓝填充会退回透明或中性灰。 */
 .rct-main-tree .main-tree-row.main-tree-row--dragging,
-.rct-main-tree .main-tree-row.main-tree-row--drop-target {
+.rct-main-tree .main-tree-row.main-tree-row--drop-target,
+.rct-main-tree .main-tree-row.main-tree-row--drop-target-local {
   background-color: var(--sidebar-dnd-accent-soft) !important;
   /* 原生 dragover 会持续触发树重渲染；保留 transition-colors 会让每次重渲染
      都从透明色重新起步，实际观感就只剩描边。拖拽反馈应即时出现。 */

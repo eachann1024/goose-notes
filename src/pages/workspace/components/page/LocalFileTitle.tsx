@@ -9,6 +9,7 @@
  *   letter-spacing 不显式设置，与 h1 一样继承 body 的 0.01em。
  *
  * 点击进入行内编辑：Enter/失焦提交，Esc 取消。
+ * 仅在同时打开多个文档标签时渲染；单个文档标签改在标签 pill 上改名。
  * 新建页会通过 requestPageTitleFocus 自动进入编辑，光标落在文件名末尾。
  * 提交后调用 usePages.renameLocalPageFile(pageId, newBaseName)。
  * 空名保存为「未命名」；重名/非法字符 → sonner toast 提示，标题回退原值。

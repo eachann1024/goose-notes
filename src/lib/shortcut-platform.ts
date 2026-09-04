@@ -44,14 +44,14 @@ export function formatShortcutToken(
   if (ALT_ALIASES.has(part)) return isMac ? "⌥" : "Alt";
   if (part === "shift") return isMac ? "⇧" : "Shift";
   if (part === "plus") return "+";
-  if (part === "enter") return "↵";
+  if (part === "enter" || part === "return") return "↵";
   if (part === "backspace") return "⌫";
   if (part === "tab") return "⇥";
   if (part === "esc" || part === "escape") return isMac ? "⎋" : "Esc";
-  if (part === "up") return "↑";
-  if (part === "down") return "↓";
-  if (part === "left") return "←";
-  if (part === "right") return "→";
+  if (part === "up" || part === "arrowup") return "↑";
+  if (part === "down" || part === "arrowdown") return "↓";
+  if (part === "left" || part === "arrowleft") return "←";
+  if (part === "right" || part === "arrowright") return "→";
   if (part === "mouseback") return "鼠标后退键";
   if (part === "mouseforward") return "鼠标前进键";
   return token.trim();
@@ -71,6 +71,11 @@ export function normalizeShortcutToken(
   if (token === "escape" || token === "esc") return "esc";
   if (token === "+" || token === "plus") return "plus";
   if (token === " ") return "space";
+  if (token === "arrowleft" || token === "left") return "left";
+  if (token === "arrowright" || token === "right") return "right";
+  if (token === "arrowup" || token === "up") return "up";
+  if (token === "arrowdown" || token === "down") return "down";
+  if (token === "enter" || token === "return") return "enter";
   return token;
 }
 

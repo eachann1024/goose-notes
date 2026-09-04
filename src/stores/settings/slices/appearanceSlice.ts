@@ -7,10 +7,11 @@ import type {
 } from "../types";
 import {
   DEFAULT_ACCENT_COLOR,
-  EDITOR_FONT_SIZE_MIN,
-  EDITOR_FONT_SIZE_MAX,
   EDITOR_FONT_SIZE_DEFAULT,
   DEFAULT_UI_FONT_SIZE,
+  SIDEBAR_FONT_SIZE_DEFAULT,
+  normalizeEditorFontSize,
+  normalizeSidebarFontSize,
 } from "../types";
 import type { CardThemeId } from "@/lib/imageExport/themes";
 import type { WatermarkConfig } from "@/lib/imageExport/watermark";
@@ -27,6 +28,8 @@ export interface AppearanceSliceState {
   customFonts: CustomFonts;
   uiFontSize: UIFontSize;
   editorFontSize: number;
+  /** 左侧栏树/分区标题字号（px），与编辑器字号独立。 */
+  sidebarFontSize: number;
   /** AI 聊天界面字号缩放比。可选值：0.8 / 0.9 / 1.0 / 1.1 / 1.2。副作用：影响 AI 聊天面板所有文字大小。 */
   aiChatScale: number;
   /** 导出图片的水印/生成选项，跨会话记忆用户选择 */
@@ -62,6 +65,9 @@ export interface AppearanceSliceActions {
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
   resetEditorFontSize: () => void;
+  setSidebarFontSize: (size: number) => void;
+  increaseSidebarFontSize: () => void;
+  decreaseSidebarFontSize: () => void;
   setAiChatScale: (scale: number) => void;
   increaseAiChatScale: () => void;
   decreaseAiChatScale: () => void;
@@ -87,6 +93,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   },
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
+  sidebarFontSize: SIDEBAR_FONT_SIZE_DEFAULT,
   aiChatScale: 1.0,
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
   imageExportThemeId: "notebook",
@@ -164,27 +171,30 @@ export function createAppearanceSlice(
     setUIFontSize: (uiFontSize) => set({ uiFontSize }),
     setEditorFontSize: (size) =>
       set({
-        editorFontSize: Math.max(
-          EDITOR_FONT_SIZE_MIN,
-          Math.min(EDITOR_FONT_SIZE_MAX, size),
-        ),
+        editorFontSize: normalizeEditorFontSize(size),
       }),
     increaseEditorFontSize: () =>
       set((state) => ({
-        editorFontSize: Math.min(
-          EDITOR_FONT_SIZE_MAX,
-          state.editorFontSize + 1,
-        ),
+        editorFontSize: normalizeEditorFontSize(state.editorFontSize + 1),
       })),
     decreaseEditorFontSize: () =>
       set((state) => ({
-        editorFontSize: Math.max(
-          EDITOR_FONT_SIZE_MIN,
-          state.editorFontSize - 1,
-        ),
+        editorFontSize: normalizeEditorFontSize(state.editorFontSize - 1),
       })),
     resetEditorFontSize: () =>
       set({ editorFontSize: EDITOR_FONT_SIZE_DEFAULT }),
+    setSidebarFontSize: (size) =>
+      set({
+        sidebarFontSize: normalizeSidebarFontSize(size),
+      }),
+    increaseSidebarFontSize: () =>
+      set((state) => ({
+        sidebarFontSize: normalizeSidebarFontSize(state.sidebarFontSize + 1),
+      })),
+    decreaseSidebarFontSize: () =>
+      set((state) => ({
+        sidebarFontSize: normalizeSidebarFontSize(state.sidebarFontSize - 1),
+      })),
     setAiChatScale: (scale) =>
       set({ aiChatScale: Math.max(0.7, Math.min(1.5, scale)) }),
     increaseAiChatScale: () =>

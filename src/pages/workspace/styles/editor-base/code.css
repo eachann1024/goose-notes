@@ -228,8 +228,10 @@
 }
 
 .goose-code-content-wrapper {
+  --goose-code-font-size: 0.85em;
+  --goose-code-line-box: calc(var(--goose-code-font-size) * 1.7);
   position: relative;
-  padding-top: 36px;
+  padding-top: var(--editor-code-toolbar-row-height, 36px);
 }
 
 .goose-code-block-node[data-visual-preview="true"] .goose-code-content-wrapper {
@@ -244,7 +246,8 @@
   border-radius: 0;
   background: transparent;
   color: inherit;
-  padding: 12px 16px;
+  padding: var(--editor-code-block-padding-y, 12px)
+    var(--editor-code-block-padding-x, 16px);
   font-family: var(
     --font-mono,
     "DM Mono",
@@ -256,7 +259,7 @@
     "Courier New",
     monospace
   );
-  font-size: 0.85em;
+  font-size: var(--goose-code-font-size, 0.85em);
   line-height: 1.7;
   overflow-x: auto;
 }
@@ -273,6 +276,24 @@
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+}
+
+/* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。 */
+.bn-block-outer[data-goose-code-active-line]
+  .goose-code-content-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  height: var(--goose-code-line-box);
+  top: calc(
+    var(--editor-code-toolbar-row-height, 36px) +
+      var(--editor-code-block-padding-y, 12px) +
+      (var(--goose-code-active-line, 1) - 1) * var(--goose-code-line-box)
+  );
+  background: var(--code-active-line-bg, var(--goose-active-line-bg));
 }
 
 /* 行号 */

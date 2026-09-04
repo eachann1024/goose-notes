@@ -694,8 +694,8 @@ export function QuickNoteApp() {
         toastOptions={{
           classNames: {
             toast: "!min-w-0 !pr-10",
-            // 不再覆盖 top：保留 sonner.tsx 默认的 !top-1/2 !-translate-y-1/2 垂直居中。
-            closeButton: "!right-2.5",
+            // 速记小窗单行 toast：关闭按钮保持垂直居中。
+            closeButton: "!right-2.5 !top-1/2 !-translate-y-1/2",
           },
         }}
       />

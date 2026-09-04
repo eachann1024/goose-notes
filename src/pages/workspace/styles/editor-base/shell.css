@@ -17,6 +17,13 @@
   overflow-anchor: none;
   font-size: var(--editor-font-size);
   line-height: 1.7;
+  caret-color: hsl(var(--foreground));
+  caret-width: var(--goose-editor-caret-width, 2px);
+}
+
+.goose-blocknote-editor .bn-inline-content,
+.bn-editor .bn-inline-content {
+  caret-width: var(--goose-editor-caret-width, 2px);
 }
 
 /* 空块占位（BlockNote 用 ::after content 渲染）默认跟随段落换行，窄窗时会折到第二行。

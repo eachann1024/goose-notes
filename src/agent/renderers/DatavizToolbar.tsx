@@ -11,8 +11,7 @@ import {
   type PreviewContent,
 } from "@/lib/preview/previewAction";
 import { getEditorPlatform } from "@/components/editor/platform/context";
-import { dialogs } from "@/lib/utools/dialogs";
-import { fs } from "@/lib/utools/fs";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
 
 export interface DatavizToolbarProps {
   targetRef?: React.RefObject<HTMLDivElement | null>;
@@ -83,31 +82,13 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
       setDownloadLoading(true);
       try {
         const dataUrl = await capture();
-        const savePath = await dialogs.showSaveDialog({
-          title: "保存图片",
-          defaultPath: `chart-${Date.now()}.png`,
-          filters: [{ name: "PNG 图片", extensions: ["png"] }],
-        });
-        if (savePath !== null) {
-          // uTools 环境：通过对话框保存
-          if (savePath) {
-            const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
-            const ok = fs.writeFile(savePath, base64, "base64");
-            if (ok) {
-              toast.success("已保存");
-            } else {
-              toast.error("保存失败");
-            }
-          }
-          // savePath 为空字符串表示用户取消，不提示
-        } else {
-          // 非 uTools 环境：浏览器下载
-          const link = document.createElement("a");
-          link.download = `chart-${Date.now()}.png`;
-          link.href = dataUrl;
-          link.click();
-          toast.success("已开始下载");
-        }
+        const blob = await (await fetch(dataUrl)).blob();
+        const saved = await saveBlobAndReveal(
+          blob,
+          `chart-${Date.now()}.png`,
+        );
+        if (saved) toast.success("已保存到下载文件夹");
+        else toast.error("保存失败");
       } catch (err) {
         toast.error(
           `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,

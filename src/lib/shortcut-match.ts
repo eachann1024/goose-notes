@@ -26,6 +26,11 @@ function normalizeShortcutToken(raw: string) {
   if (token === "shift") return "shift";
   if (token === "escape" || token === "esc") return "escape";
   if (token === "+" || token === "plus") return "plus";
+  if (token === "arrowleft" || token === "left") return "left";
+  if (token === "arrowright" || token === "right") return "right";
+  if (token === "arrowup" || token === "up") return "up";
+  if (token === "arrowdown" || token === "down") return "down";
+  if (token === "enter" || token === "return") return "enter";
   if (token.length === 1) return token;
   return token;
 }
@@ -139,5 +144,10 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   else if (code === "BracketLeft") codeKey = "[";
   else if (code === "BracketRight") codeKey = "]";
   else if (code === "Comma") codeKey = ",";
+  else if (code === "ArrowLeft") codeKey = "left";
+  else if (code === "ArrowRight") codeKey = "right";
+  else if (code === "ArrowUp") codeKey = "up";
+  else if (code === "ArrowDown") codeKey = "down";
+  else if (code === "Enter" || code === "NumpadEnter") codeKey = "enter";
   return !!codeKey && codeKey === keyToken;
 }

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { dialogs } from "@/lib/utools/dialogs";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { isElectronHost, pickVaultParentDirectory } from "@/lib/local-vault";
 import { CreateVaultDialog } from "@/pages/workspace/components/sidebar/CreateVaultDialog";
 
@@ -203,7 +204,7 @@ export function PageEmptyState() {
     if (existingBlankPage) {
       openInCurrentTab(existingBlankPage.id);
       requestPageTitleFocus(existingBlankPage.id);
-      if (!useSettings.getState().singleTabMode) {
+      if (!effectiveSingleTabMode()) {
         window.setTimeout(() => {
           window.dispatchEvent(
             new CustomEvent("goose-note:focus-editor-start"),

@@ -106,6 +106,13 @@ export interface EditorSettings {
   ) => void;
 }
 
+/** Cmd-click 开新 Tab；普通点击在已分屏时写入聚焦格。 */
+export type OpenPageOptions = {
+  newTab?: boolean;
+  /** 仅当当前 tab 已分屏时打开；未分屏则交给调用方（提及左键保持放光标）。 */
+  splitOnly?: boolean;
+};
+
 /** 宿主透传给编辑器的「当前页 + 跨页能力」（替换对 usePages/useNotebooks/useTabs 的直读）。 */
 export interface EditorPageContext {
   /** 替换 activePageId + getPage（宿主决定哪页激活） */
@@ -119,8 +126,12 @@ export interface EditorPageContext {
     content: BlockNoteContent,
     options?: { silent?: boolean },
   ) => void;
-  /** 替换 useTabs.openTab（chip 点击导航） */
-  onOpenPage: (pageId: string) => void;
+  /** 打开提及的笔记；pageId 缺失时用 wikiTarget 按标题/路径解析（Obsidian 双链）。 */
+  onOpenPage: (
+    pageId: string,
+    wikiTarget?: string,
+    options?: OpenPageOptions,
+  ) => boolean | void;
   /** 图片相对路径解析：返回当前激活页的本地文件路径 */
   getActivePageLocalFilePath: () => string | null;
   /** 本地文件夹笔记本根目录；非本地文件夹笔记本返回 null */
@@ -139,6 +150,11 @@ export interface EditorPageContext {
   getLatestPage?: (pageId: string) => Page | null;
   /** 编辑后把预览标签提升为正式标签；无标签宿主可不提供。 */
   onPromotePreview?: () => void;
+  /**
+   * 是否在正文上方渲染本地文件名大标题。
+   * 单标签 / 仅一个文档标签时为 false：标题改在标签 pill 或页头上编辑。
+   */
+  showLocalFileTitle?: boolean;
 }
 
 /** 编辑器对外 props（宿主接线在 Step 6 完成）。 */

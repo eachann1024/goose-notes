@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 import { convertImageBlobToPng } from "@/lib/imageProcessor";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   useEditorPageContext,
@@ -283,35 +284,12 @@ export function ImageLightbox({
         // 存储多为 WebP；下载统一转 PNG，兼容更多工具
         const blob = await convertImageBlobToPng(sourceBlob);
         const filename = `image-${Date.now()}.png`;
-
-        const targetPath = await platform.dialog.showSaveDialog({
-          title: "保存文件",
-          defaultPath: filename,
-          buttonLabel: "保存",
-        });
-
-        if (targetPath) {
-          const base64 = await blobToBase64(blob);
-          const payload = base64.replace(/^data:.*;base64,/, "");
-          const saved = await platform.fs.writeFileAsync(
-            targetPath,
-            payload,
-            "base64",
-          );
-          if (saved) {
-            await platform.shell.showItemInFolder(targetPath);
-            toast.success("图片已保存");
-            return;
-          }
+        const saved = await saveBlobAndReveal(blob, filename);
+        if (saved) {
+          toast.success("图片已保存到下载文件夹");
+          return;
         }
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.success("已开始下载");
+        toast.error("保存失败");
       } catch (err) {
         toast.error(
           `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,

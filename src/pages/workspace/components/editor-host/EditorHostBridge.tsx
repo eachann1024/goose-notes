@@ -15,12 +15,17 @@ import type { Page } from "@/types";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useTabs } from "@/stores/useTabs";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import {
   getPageTitle,
   withInternalPageTitle,
 } from "@/components/editor/utils/page-title";
+import {
+  listVisibleWorkspaceTabs,
+  shouldEditTitleInTabPill,
+} from "@/pages/workspace/components/page/visibleTabs";
 import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
 import {
@@ -37,6 +42,9 @@ import { editorPlatform } from "@/lib/editor-platform/resolve";
 import { UToolsAdapter } from "@/lib/utools";
 import { fileStorage } from "@/lib/fileStorage";
 import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
+import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
+import { resolvePageMentionNavigation } from "@/lib/pageMentionNavigation";
+import { toast } from "@/components/ui/sonner";
 
 interface EditorHostBridgeProps {
   /** 当前被编辑的页（替换编辑器内核对 usePages.activePageId/getPage 的直读）。 */
@@ -72,6 +80,15 @@ export function EditorHostBridge({
   const searchProviders = useSettings((s) => s.searchProviders);
   const utools = useSettings((s) => s.utools);
   const customActions = useSettings((s) => s.customActions);
+  const singleTabModeSetting = useSettings((s) => s.singleTabMode);
+  const openTabs = useTabs((s) => s.openTabs);
+  const getPage = usePages((s) => s.getPage);
+  const activeNotebookId = useNotebooks((s) => s.activeNotebookId);
+  const showLocalFileTitle =
+    !effectiveSingleTabMode(singleTabModeSetting) &&
+    !shouldEditTitleInTabPill(
+      listVisibleWorkspaceTabs(openTabs, getPage, activeNotebookId),
+    );
 
   const settings = useMemo<EditorSettings>(
     () => {
@@ -135,7 +152,7 @@ export function EditorHostBridge({
         const pagesStore = usePages.getState();
         const livePage = pagesStore.pages[page.id] ?? page;
         const contentToSave =
-          contentMode === "normalized" && useSettings.getState().singleTabMode
+          contentMode === "normalized" && effectiveSingleTabMode()
             ? withInternalPageTitle(content, getPageTitle(livePage))
             : content;
         pagesStore.updatePage(
@@ -144,38 +161,52 @@ export function EditorHostBridge({
           options?.silent ? { silent: true } : undefined,
         );
       },
-      onOpenPage: (pageId: string) => {
+      onOpenPage: (pageId, wikiTarget, options) => {
+        const pagesStore = usePages.getState();
+        const resolved = resolvePageMentionNavigation(
+          pageId,
+          pagesStore.pages,
+          useNotebooks.getState().activeNotebookId,
+          wikiTarget,
+        );
+        if (!resolved.ok) {
+          toast.error(
+            resolved.reason === "trashed" ? "这篇笔记已在回收站" : "找不到这篇笔记",
+          );
+          return false;
+        }
         closeNotebookAiIfFullscreen();
-        useTabs.getState().openTab(pageId);
+        if (resolved.switchNotebook) {
+          pagesStore.setPendingNavigatePageId(resolved.page.id);
+          useNotebooks.getState().setActiveNotebook(resolved.page.workspaceId);
+        }
+        if (!options?.newTab && tryShowPageInFocusedSplit(resolved.page.id)) {
+          pagesStore.setExpandPageId(resolved.page.id);
+          return true;
+        }
+        if (options?.splitOnly) return false;
+        useTabs.getState().openTab(resolved.page.id);
+        pagesStore.setExpandPageId(resolved.page.id);
+        return true;
       },
       getActivePageLocalFilePath: () => {
-        const activeId = usePages.getState().activePageId;
-        const activePage = activeId
-          ? usePages.getState().pages[activeId]
-          : null;
-        return activePage?.localFilePath ?? null;
+        const livePage = usePages.getState().pages[page.id] ?? page;
+        return livePage.localFilePath ?? null;
       },
       getActivePageLocalFolderRoot: () => {
-        const activeId = usePages.getState().activePageId;
-        const activePage = activeId
-          ? usePages.getState().pages[activeId]
-          : null;
-        if (!activePage) return null;
-        const notebook = useNotebooks.getState().notebooks[activePage.workspaceId];
+        const livePage = usePages.getState().pages[page.id] ?? page;
+        const notebook = useNotebooks.getState().notebooks[livePage.workspaceId];
         return notebook?.source === "local-folder"
           ? (notebook.localPath ?? null)
           : null;
       },
       onOpenAttachment: async (source, fileName) => {
-        const activeId = usePages.getState().activePageId;
-        const activePage = activeId
-          ? usePages.getState().pages[activeId]
-          : null;
+        const livePage = usePages.getState().pages[page.id] ?? page;
         return openResourceExternally({
           source,
           fileName,
           mimeType: /\.html?$/i.test(fileName) ? "text/html" : undefined,
-          pageLocalFilePath: activePage?.localFilePath ?? null,
+          pageLocalFilePath: livePage.localFilePath ?? null,
           platform: editorPlatform,
           loadInternalResource: async (ref) => {
             if (ref.startsWith("att-file:")) return fileStorage.load(ref);
@@ -207,8 +238,9 @@ export function EditorHostBridge({
       getLatestPage: (pageId: string) =>
         usePages.getState().pages[pageId] ?? null,
       onPromotePreview: () => useTabs.getState().promotePreviewTab(),
+      showLocalFileTitle,
     }),
-    [page, contentMode, isEditorFullWidth, onContentChangeOverride],
+    [page, contentMode, isEditorFullWidth, onContentChangeOverride, showLocalFileTitle],
   );
 
   return (

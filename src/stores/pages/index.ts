@@ -19,6 +19,7 @@ import {
 } from "@/lib/local-frontmatter";
 import { queueLocalPageSave } from "./folderSync";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
+import { localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
 import {
   acknowledgeRecoveryEntry,
   recordRecoveryEntry,
@@ -37,6 +38,9 @@ import {
   createLocalPageAction,
   createLocalPageRecordAction,
   createLocalFolderRecordAction,
+  createUnsavedLocalPageAction,
+  discardUnsavedLocalPageAction,
+  materializeUnsavedLocalPageAction,
   duplicatePageAction,
 } from "./actions/pageCreate";
 import {
@@ -108,6 +112,15 @@ export const usePages = create<PagesState>()((set, get) => ({
 
   createLocalFolderRecord: (options) =>
     createLocalFolderRecordAction(set, get, options),
+
+  createUnsavedLocalPage: (workspaceId, parentId) =>
+    createUnsavedLocalPageAction(set, get, workspaceId, parentId),
+
+  discardUnsavedLocalPage: (pageId) =>
+    discardUnsavedLocalPageAction(set, get, pageId),
+
+  materializeUnsavedLocalPage: (pageId, options) =>
+    materializeUnsavedLocalPageAction(set, get, pageId, options),
 
   updatePage: (id, updates, options) => {
     const page = get().pages[id];
@@ -220,7 +233,11 @@ export const usePages = create<PagesState>()((set, get) => ({
         !silent &&
         useNotebooks.getState().notebooks[page.workspaceId]?.source ===
           "local-folder" &&
-        page.localReadState !== "error";
+        page.localReadState !== "error" &&
+        !(
+          page.localUnsaved &&
+          !localPageHasPersistableContent(updates.content)
+        );
 
       // 内容编辑 或 仅改 frontmatter 设置：标脏并入防抖写盘队列
       if (shouldQueueContentSave || shouldQueueLocalSettingsSave) {
@@ -250,7 +267,7 @@ export const usePages = create<PagesState>()((set, get) => ({
     if (!updatedPage) return;
 
     if (isLocalFolderPage(updatedPage)) {
-      if (shouldPersistLocalMeta) {
+      if (shouldPersistLocalMeta && !updatedPage.localUnsaved) {
         persistPageSnapshot(updatedPage);
       }
       return;

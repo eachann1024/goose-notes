@@ -1,4 +1,4 @@
-import { type ComponentProps, type RefObject, useEffect, useRef } from "react";
+import { type ComponentProps, type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 import * as LucideIcons from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "@/lib/utils";
@@ -15,9 +15,17 @@ import { useDesktopWindowTitleSync } from "@/hooks/useDesktopWindowTitle";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { LocalFolderTargetPicker } from "./components/sidebar/LocalFolderTargetPicker";
 import { AIFeatureNotice } from "./components/AIFeatureNotice";
-import { Editor, type EditorRef } from "@/components/editor/core/Editor";
+import { type EditorRef } from "@/components/editor/core/Editor";
 import { locateAndHighlight } from "@/components/editor/find/searchHighlightLocate";
-import { EditorHostBridge } from "./components/editor-host/EditorHostBridge";
+import { EditorSplitSurface } from "./components/editor-split/EditorSplitSurface";
+import { SplitEditorPane } from "./components/editor-split/SplitEditorPane";
+import { useOptionalEditorPaneRegistry } from "./components/editor-split/editorPaneRegistry";
+import {
+  countLeaves,
+  focusedPageIdOf,
+  isSplitState,
+} from "@/lib/editor-split/tree";
+import { useEditorSplit, useEditorSplitSelector } from "@/stores/useEditorSplit";
 import {
   HistoryToolbar,
   HistoryReader,
@@ -37,6 +45,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { subscribePageTitleFocus } from "@/lib/page-title-focus";
 import { isElectronRuntime } from "@/lib/electron/runtime";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 
 // Electron 桌面端 chrome：全宽 overlay 顶栏挂在 .workspace-shell 顶部（覆盖侧栏+主区），
 // 主区内不再重复渲染 PageHeader/HistoryToolbar。uTools 构建保持现状，一行不挪。
@@ -99,17 +108,17 @@ export function WorkspaceLayout({
       };
     }),
   );
-  const { openTabs, activeTabId, openWelcomeTab } = useTabs(
+  const { openTabs, activeTabId, openNewTab } = useTabs(
     useShallow((s) => ({
       openTabs: s.openTabs,
       activeTabId: s.activeTabId,
-      openWelcomeTab: s.openWelcomeTab,
+      openNewTab: s.openNewTab,
     })),
   );
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isWelcomeTab = activeTab?.type === "welcome";
-  const openWelcomeTabHandler = () => {
-    openWelcomeTab();
+  const openNewTabHandler = () => {
+    openNewTab();
   };
   const aiEnabled = useSettings((s) => s.ai.enabled);
   const {
@@ -142,7 +151,8 @@ export function WorkspaceLayout({
       notebooks: s.notebooks,
     })),
   );
-  const singleTabMode = useSettings((s) => s.singleTabMode);
+  const singleTabModeSetting = useSettings((s) => s.singleTabMode);
+  const singleTabMode = effectiveSingleTabMode(singleTabModeSetting);
   const historyActivePageId = useHistoryView((s) => s.active);
   const inHistoryMode =
     !!historyActivePageId && historyActivePageId === activePageId;
@@ -209,12 +219,18 @@ export function WorkspaceLayout({
     const onOpen = (event: Event) => {
       if (!aiAvailableForNotebook) return;
       const detail = (event as CustomEvent<unknown>).detail;
+      const record =
+        detail && typeof detail === "object"
+          ? (detail as Record<string, unknown>)
+          : null;
+      if (record?.layout === "side-panel") {
+        setAiLayoutMode("side-panel");
+      }
       const capture =
-        detail &&
-        typeof detail === "object" &&
-        (detail as Record<string, unknown>).version === 1 &&
-        typeof (detail as Record<string, unknown>).pageId === "string" &&
-        Boolean((detail as Record<string, unknown>).selection)
+        record &&
+        record.version === 1 &&
+        typeof record.pageId === "string" &&
+        Boolean(record.selection)
           ? (detail as Parameters<typeof openAiPanel>[0])
           : null;
       openAiPanel(capture);
@@ -224,32 +240,51 @@ export function WorkspaceLayout({
     };
     window.addEventListener("goose-note:open-ai-panel", onOpen);
     return () => window.removeEventListener("goose-note:open-ai-panel", onOpen);
-  }, [aiAvailableForNotebook, openAiPanel]);
+  }, [aiAvailableForNotebook, openAiPanel, setAiLayoutMode]);
 
   // AI 功能不可用时强制收起侧栏面板，避免 localStorage 仍为 true 导致下次误展开
   useEffect(() => {
     if (!aiAvailableForNotebook) closeAiPanel();
   }, [aiAvailableForNotebook, closeAiPanel]);
 
+  const paneRegistry = useOptionalEditorPaneRegistry();
+  const splitLeafCount = useEditorSplitSelector(
+    (state) => {
+      if (!activeTabId) return 0;
+      const split = state.byTabId[activeTabId];
+      return split ? countLeaves(split.root) : 0;
+    },
+    Object.is,
+  );
+
   // 全屏打开后再给编辑区打 inert，避开点击帧对 BlockNote 大树做无障碍更新
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
+    const fromPanes = paneRegistry?.getScrollElements() ?? [];
+    const fallback = scrollContainerRef.current;
+    const targets =
+      fromPanes.length > 0 ? fromPanes : fallback ? [fallback] : [];
+    if (targets.length === 0) return;
     if (!showFullscreenAi) {
-      el.inert = false;
-      el.classList.remove("invisible");
+      for (const el of targets) {
+        el.inert = false;
+        el.classList.remove("invisible");
+      }
       return;
     }
     const frame = window.requestAnimationFrame(() => {
-      el.inert = true;
-      el.classList.add("invisible");
+      for (const el of targets) {
+        el.inert = true;
+        el.classList.add("invisible");
+      }
     });
     return () => {
       window.cancelAnimationFrame(frame);
-      el.inert = false;
-      el.classList.remove("invisible");
+      for (const el of targets) {
+        el.inert = false;
+        el.classList.remove("invisible");
+      }
     };
-  }, [showFullscreenAi, scrollContainerRef]);
+  }, [showFullscreenAi, scrollContainerRef, paneRegistry, splitLeafCount]);
 
   useEffect(() => {
     if (locateRetryRef.current) {
@@ -309,6 +344,13 @@ export function WorkspaceLayout({
             page={page}
             isWelcomeTab={isWelcomeTab}
             inHistoryMode={inHistoryMode}
+            onOpenSearch={() => {
+              if (showFullscreenAi) closeAiPanel();
+              openNewTab();
+            }}
+            onBeforeActivateTab={
+              showFullscreenAi ? closeAiPanel : undefined
+            }
             onRestore={
               activePageId ? () => restorePageWithToast(activePageId) : undefined
             }
@@ -384,7 +426,7 @@ export function WorkspaceLayout({
                   aiNotebookId={aiNotebookId}
                   aiAvailableForNotebook={aiAvailableForNotebook}
                   isWelcomeTab={isWelcomeTab}
-                  openWelcomeTabHandler={openWelcomeTabHandler}
+                  openNewTabHandler={openNewTabHandler}
                   aiPanelOpen={aiPanelOpen}
                   aiLayoutMode={aiLayoutMode}
                   toggleAiPanel={toggleAiPanel}
@@ -411,7 +453,7 @@ export function WorkspaceLayout({
                 aiNotebookId={null}
                 aiAvailableForNotebook={false}
                 isWelcomeTab={isWelcomeTab}
-                openWelcomeTabHandler={openWelcomeTabHandler}
+                openNewTabHandler={openNewTabHandler}
                 aiPanelOpen={false}
                 aiLayoutMode={aiLayoutMode}
                 toggleAiPanel={toggleAiPanel}
@@ -439,13 +481,132 @@ export function WorkspaceLayout({
   );
 }
 
+function NotebookEditorSplitColumn({
+  page,
+  activePageId,
+  isLocalFolderPage,
+  handleOpenSearch,
+  handleBeforeActivateTab,
+  aiAvailableForNotebook,
+  aiPanelOpen,
+  aiLayoutMode,
+  toggleAiPanel,
+  showSideAiPanel,
+  aiNotebookId,
+  editorRef,
+  aiPanelCapturedSelection,
+  consumeAiPanelCapturedSelection,
+  setAiLayoutMode,
+  closeAiPanel,
+}: {
+  page: NonNullable<ReturnType<typeof usePages.getState>["pages"][string]>;
+  activePageId: string;
+  isLocalFolderPage: boolean;
+  handleOpenSearch: () => void;
+  handleBeforeActivateTab?: () => void;
+  aiAvailableForNotebook: boolean;
+  aiPanelOpen: boolean;
+  aiLayoutMode: ReturnType<typeof useNotebookAiPanel>["layoutMode"];
+  toggleAiPanel: () => void;
+  showSideAiPanel: boolean;
+  aiNotebookId: string | null;
+  editorRef: RefObject<EditorRef | null>;
+  aiPanelCapturedSelection: ReturnType<
+    typeof useNotebookAiPanel
+  >["capturedSelection"];
+  consumeAiPanelCapturedSelection: () => void;
+  setAiLayoutMode: ReturnType<typeof useNotebookAiPanel>["setLayoutMode"];
+  closeAiPanel: () => void;
+}) {
+  const { activeTabId } = useTabs(
+    useShallow((s) => ({ activeTabId: s.activeTabId })),
+  );
+  const splitState = useEditorSplitSelector(
+    (state) => (activeTabId ? (state.byTabId[activeTabId] ?? null) : null),
+    Object.is,
+  );
+  const isSplit = splitState ? isSplitState(splitState) : false;
+  const focusedPageId = splitState ? focusedPageIdOf(splitState) : null;
+
+  useLayoutEffect(() => {
+    if (!activeTabId || !activePageId) return;
+    useEditorSplit.getState().ensureTab(activeTabId, activePageId);
+  }, [activeTabId, activePageId]);
+
+  useLayoutEffect(() => {
+    if (!activeTabId || !focusedPageId) return;
+    if (focusedPageId !== usePages.getState().activePageId) {
+      void usePages.getState().setActivePage(focusedPageId);
+    }
+    useTabs.getState().syncTabPageId(activeTabId, focusedPageId);
+  }, [activeTabId, focusedPageId]);
+
+  if (!activeTabId) return null;
+
+  return (
+    <div
+      className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
+      data-font-family={page.fontFamily ?? "default"}
+      data-local-file-page={isLocalFolderPage ? "true" : undefined}
+    >
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]"
+        data-editor-split-column=""
+      >
+        {!isElectronChrome && (
+          <PageHeader
+            page={page}
+            onOpenSearch={handleOpenSearch}
+            onBeforeActivateTab={handleBeforeActivateTab}
+            onRestore={() => restorePageWithToast(activePageId)}
+            onDelete={() => void permanentlyDeletePageWithCleanup(activePageId)}
+            aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+            aiLayoutMode={aiLayoutMode}
+            onToggleAiPanel={
+              aiAvailableForNotebook ? toggleAiPanel : undefined
+            }
+            hideDocumentTitle={isSplit}
+          />
+        )}
+        <div className="min-h-0 flex-1">
+          <EditorSplitSurface
+            tabId={activeTabId}
+            renderPane={(leaf, { focused }) => (
+              <SplitEditorPane
+                leaf={leaf}
+                focused={focused}
+                showChrome={isSplit}
+              />
+            )}
+          />
+        </div>
+      </div>
+      {showSideAiPanel && aiNotebookId ? (
+        <NotebookAiHostScope notebookId={aiNotebookId}>
+          <GuardedNotebookAiPanel
+            key={aiNotebookId}
+            notebookId={aiNotebookId}
+            onClose={closeAiPanel}
+            editorRef={editorRef}
+            capturedSelection={aiPanelCapturedSelection}
+            onConsumeCapturedSelection={consumeAiPanelCapturedSelection}
+            layoutMode={aiLayoutMode}
+            onLayoutModeChange={setAiLayoutMode}
+            variant="side-panel"
+          />
+        </NotebookAiHostScope>
+      ) : null}
+    </div>
+  );
+}
+
 /** 主内容区 + 条件挂载的 AI 面板 UI（运行时在外层 Provider）。 */
 function NotebookAiWorkspaceBody({
   showFullscreenAi,
   aiNotebookId,
   aiAvailableForNotebook,
   isWelcomeTab,
-  openWelcomeTabHandler,
+  openNewTabHandler,
   aiPanelOpen,
   aiLayoutMode,
   toggleAiPanel,
@@ -459,15 +620,15 @@ function NotebookAiWorkspaceBody({
   page,
   inHistoryMode,
   isLocalFolderPage,
-  isLocked,
-  isTrashed,
-  scrollContainerRef,
+  isLocked: _isLocked,
+  isTrashed: _isTrashed,
+  scrollContainerRef: _scrollContainerRef,
 }: {
   showFullscreenAi: boolean;
   aiNotebookId: string | null;
   aiAvailableForNotebook: boolean;
   isWelcomeTab: boolean;
-  openWelcomeTabHandler: () => void;
+  openNewTabHandler: () => void;
   aiPanelOpen: boolean;
   aiLayoutMode: ReturnType<typeof useNotebookAiPanel>["layoutMode"];
   toggleAiPanel: () => void;
@@ -490,9 +651,9 @@ function NotebookAiWorkspaceBody({
   const handleOpenSearch = showFullscreenAi
     ? () => {
         closeAiPanel();
-        openWelcomeTabHandler();
+        openNewTabHandler();
       }
-    : openWelcomeTabHandler;
+    : openNewTabHandler;
   const handleBeforeActivateTab = showFullscreenAi ? closeAiPanel : undefined;
   const hideFolderHome =
     isElectronChrome && Boolean(page?.isFolder) && isLocalFolderPage;
@@ -603,84 +764,26 @@ function NotebookAiWorkspaceBody({
                     </div>
                   </>
                 ) : (
-                <>
-                  <EditorHostBridge page={page} isEditorFullWidth>
-                    <div
-                      className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
-                      data-font-family={page.fontFamily ?? "default"}
-                      data-local-file-page={
-                        isLocalFolderPage ? "true" : undefined
-                      }
-                    >
-                      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
-                        {!isElectronChrome && (
-                          <PageHeader
-                            page={page}
-                            onOpenSearch={handleOpenSearch}
-                            onBeforeActivateTab={handleBeforeActivateTab}
-                            onRestore={() => restorePageWithToast(activePageId)}
-                            onDelete={() =>
-                              void permanentlyDeletePageWithCleanup(activePageId)
-                            }
-                            aiPanelOpen={
-                              aiAvailableForNotebook && aiPanelOpen
-                            }
-                            aiLayoutMode={aiLayoutMode}
-                            onToggleAiPanel={
-                              aiAvailableForNotebook ? toggleAiPanel : undefined
-                            }
-                          />
-                        )}
-                        <div
-                          ref={scrollContainerRef}
-                          className={cn(
-                            "h-full flex-1 min-w-0 overflow-y-auto page-scroll-container bg-[hsl(var(--goose-editor-bg))]",
-                          )}
-                        >
-                          <div className="flex min-h-full flex-col px-14 pt-1">
-                            <ErrorBoundary
-                              key={activePageId}
-                              resetKey={activePageId}
-                              fallback={(_, reset) => (
-                                <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
-                                  <p>当前页面渲染失败，已阻止整窗白屏。</p>
-                                  <button
-                                    type="button"
-                                    onClick={reset}
-                                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
-                                  >
-                                    重试
-                                  </button>
-                                </div>
-                              )}
-                            >
-                              <Editor
-                                ref={editorRef}
-                                editable={!isLocked && !isTrashed}
-                              />
-                            </ErrorBoundary>
-                          </div>
-                        </div>
-                      </div>
-                      {/* 侧栏并排 AI 面板 */}
-                      {showSideAiPanel && aiNotebookId ? (
-                        <GuardedNotebookAiPanel
-                          key={aiNotebookId}
-                          notebookId={aiNotebookId}
-                          onClose={closeAiPanel}
-                          editorRef={editorRef}
-                          capturedSelection={aiPanelCapturedSelection}
-                          onConsumeCapturedSelection={
-                            consumeAiPanelCapturedSelection
-                          }
-                          layoutMode={aiLayoutMode}
-                          onLayoutModeChange={setAiLayoutMode}
-                          variant="side-panel"
-                        />
-                      ) : null}
-                    </div>
-                  </EditorHostBridge>
-                </>
+                  <NotebookEditorSplitColumn
+                    page={page}
+                    activePageId={activePageId}
+                    isLocalFolderPage={isLocalFolderPage}
+                    handleOpenSearch={handleOpenSearch}
+                    handleBeforeActivateTab={handleBeforeActivateTab}
+                    aiAvailableForNotebook={aiAvailableForNotebook}
+                    aiPanelOpen={aiPanelOpen}
+                    aiLayoutMode={aiLayoutMode}
+                    toggleAiPanel={toggleAiPanel}
+                    showSideAiPanel={showSideAiPanel}
+                    aiNotebookId={aiNotebookId}
+                    editorRef={editorRef}
+                    aiPanelCapturedSelection={aiPanelCapturedSelection}
+                    consumeAiPanelCapturedSelection={
+                      consumeAiPanelCapturedSelection
+                    }
+                    setAiLayoutMode={setAiLayoutMode}
+                    closeAiPanel={closeAiPanel}
+                  />
                 )
               ) : (
                 <PageEmptyState />
@@ -688,7 +791,7 @@ function NotebookAiWorkspaceBody({
             </div>
 
             {showFullscreenAi && aiNotebookId && aiAvailableForNotebook ? (
-              <div className="absolute inset-x-0 bottom-0 top-12 z-20 flex flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+              <div className="notebook-ai-fullscreen-host absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden bg-[hsl(var(--goose-shell-bg))]">
                 <NotebookAiHostScope notebookId={aiNotebookId}>
                   <GuardedNotebookAiPanel
                     key={`fullscreen-${aiNotebookId}`}

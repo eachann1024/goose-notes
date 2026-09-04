@@ -397,7 +397,7 @@ export function NotebookSwitcher() {
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
+                "sidebar-notebook-trigger w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
                 isOpen && "bg-[var(--goose-interactive-hover)]",
               )}
             >
@@ -411,7 +411,7 @@ export function NotebookSwitcher() {
                   </span>
                 )}
                 {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
-                <span className="truncate text-[13px] tracking-[0.01em] leading-snug">
+                <span className="truncate tracking-[0.01em] leading-snug">
                   {activeNotebook?.name ||
                     (isElectronHost ? "打开文件夹" : "选择记事本")}
                 </span>

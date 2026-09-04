@@ -188,6 +188,14 @@ const loadLocalFolderPagesOnce = async (
           ([, page]) => page.workspaceId !== notebookId,
         ),
       );
+      const unsavedInNotebook = Object.fromEntries(
+        Object.entries(state.pages).filter(
+          ([, page]) =>
+            page.workspaceId === notebookId &&
+            page.localUnsaved &&
+            !page.localFilePath,
+        ),
+      );
       const updated = {
         ...pagesOutsideNotebook,
         ...localPages.reduce(
@@ -218,6 +226,7 @@ const loadLocalFolderPagesOnce = async (
           },
           {} as Record<string, Page>,
         ),
+        ...unsavedInNotebook,
       };
 
       const { pendingNavigatePageId } = state;

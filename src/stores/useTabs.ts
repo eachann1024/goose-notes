@@ -4,9 +4,27 @@ import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 import { useSettings } from "./useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
+import { isElectronRuntime } from "@/lib/electron/runtime";
+import {
+  isUnsavedLocalPage,
+  localPageHasPersistableContent,
+} from "@/lib/unsavedLocalPage";
+import {
+  FALLBACK_WINDOW_ID,
+  getWindowId,
+  readWindowContextFromArgv,
+  resolveWindowContext,
+  tabsPersistKey,
+  type GooseWindowInitPayload,
+  type GooseWindowTabSnapshot,
+} from "@/lib/electron/windowContext";
+import { findLoneVisibleWorkspaceTab } from "@/pages/workspace/components/page/visibleTabs";
+import { walkLeaves } from "@/lib/editor-split/tree";
 import { normalizeAutoCloseInactiveTabsHours } from "./settings/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useSidebarView } from "./useSidebarView";
+import { applyPersistedTabSplit, useEditorSplit } from "./useEditorSplit";
 import {
   FILE_NAV_WELCOME,
   fileNavKeyForTab,
@@ -54,6 +72,7 @@ interface TabsState {
   syncActiveTabForPage: (pageId: string | null) => void;
   openTab: (pageId: string) => void;
   openWelcomeTab: () => void;
+  openNewTab: () => void;
   openNotebookAiTab: (notebookId: string) => void;
   closeNotebookAiTab: (notebookId: string) => void;
   findNotebookAiTab: (notebookId: string) => TabItem | undefined;
@@ -61,6 +80,8 @@ interface TabsState {
   openPermanentTab: (pageId: string, options?: { pin?: boolean }) => void;
   promotePreviewTab: (tabId?: string) => void;
   openInCurrentTab: (pageId: string) => void;
+  /** 分屏聚焦叶变化时只改 pageId，不拆 split、不开新 Tab。 */
+  syncTabPageId: (tabId: string, pageId: string) => void;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;
   closeTabsToLeft: (tabId: string) => void;
@@ -72,6 +93,8 @@ interface TabsState {
   canGoBackTabHistory: () => boolean;
   canGoForwardTabHistory: () => boolean;
   reorderTabs: (from: number, to: number) => void;
+  adoptTab: (tab: TabItem, insertIndex?: number) => void;
+  releaseTab: (tabId: string) => { emptied: boolean };
   removeDeletedPage: (pageId: string) => void;
   reopenLastClosedTab: () => void;
   reconcileTabs: () => void;
@@ -83,7 +106,12 @@ interface TabsState {
 const createTabId = (pageId: string) =>
   `tab-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${pageId.slice(0, 6)}`;
 
-const TABS_PERSIST_KEY = "goose-note:open-tabs:v1";
+const LEGACY_TABS_PERSIST_KEY = "goose-note:open-tabs:v1";
+
+const argvWindowContext = readWindowContextFromArgv();
+let tabsWindowId = argvWindowContext?.windowId ?? getWindowId();
+/** Electron 在 IPC 给出真实 windowId 前不要读写无后缀 / `:main` 键，避免多窗抢同一份 persist。 */
+let persistReady = Boolean(argvWindowContext) || !isElectronRuntime();
 
 const getWorkspaceIdForPage = (pageId: string): string | undefined =>
   usePages.getState().getPage(pageId)?.workspaceId;
@@ -98,11 +126,52 @@ const orderTabs = (tabs: TabItem[]): TabItem[] => {
 
 const applyPinnedOrder = orderTabs;
 
+function tabShowsPageId(tab: TabItem, pageId: string): boolean {
+  if (tab.type === "welcome" || tab.type === "notebook-ai") return false;
+  if (tab.pageId === pageId) return true;
+  const split = useEditorSplit.getState().getStateForTab(tab.id);
+  if (!split) return false;
+  return walkLeaves(split.root).some((leaf) => leaf.pageId === pageId);
+}
+
 const findTabByPageId = (tabs: TabItem[], pageId: string) =>
-  tabs.find(
-    (tab) =>
-      tab.pageId === pageId && tab.type !== "welcome" && tab.type !== "notebook-ai",
-  );
+  tabs.find((tab) => tabShowsPageId(tab, pageId));
+
+/** 关 Tab 时把聚焦页和所有分屏叶一起落盘，避免只 flush tab.pageId。 */
+function collectTabPageIds(tab: TabItem): string[] {
+  const ids = new Set<string>();
+  if (tab.pageId) ids.add(tab.pageId);
+  const split = useEditorSplit.getState().getStateForTab(tab.id);
+  if (split) {
+    for (const leaf of walkLeaves(split.root)) {
+      if (leaf.pageId) ids.add(leaf.pageId);
+    }
+  }
+  return [...ids];
+}
+
+function collectTabsPageIds(tabs: TabItem[]): string[] {
+  const ids = new Set<string>();
+  for (const tab of tabs) {
+    if (isSpecialTab(tab)) continue;
+    for (const pageId of collectTabPageIds(tab)) ids.add(pageId);
+  }
+  return [...ids];
+}
+
+function focusTabLeafForPage(tabId: string, pageId: string): void {
+  const split = useEditorSplit.getState();
+  const state = split.getStateForTab(tabId);
+  if (!state) return;
+  const leaf = walkLeaves(state.root).find((item) => item.pageId === pageId);
+  if (leaf) split.focusPane(tabId, leaf.id);
+}
+
+/** 打开/激活工作区 tab 时立刻种 split，避免 EditorSplitSurface 第一帧空白。 */
+function ensureSplitForWorkspaceTab(tab: TabItem | null | undefined): void {
+  if (!tab || isSpecialTab(tab) || !tab.pageId) return;
+  useEditorSplit.getState().ensureTab(tab.id, tab.pageId);
+}
 
 const findNotebookAiTabInList = (tabs: TabItem[], notebookId: string) =>
   tabs.find(
@@ -116,6 +185,24 @@ const stampTabAccess = (tab: TabItem, now = Date.now()): TabItem => ({
   ...tab,
   lastAccessedAt: now,
 });
+
+/** 分屏 tab 以聚焦叶的 pageId 为准，避免切回标签时侧栏高亮停在旧页。 */
+function workspaceTabPageId(tab: TabItem): string {
+  return useEditorSplit.getState().focusedPageId(tab.id) ?? tab.pageId;
+}
+
+function syncEditorSplitsToOpenTabs(
+  openTabs: TabItem[],
+  activeTabId: string | null,
+) {
+  const split = useEditorSplit.getState();
+  const openIds = new Set(openTabs.map((tab) => tab.id));
+  for (const tabId of Object.keys(split.byTabId)) {
+    if (!openIds.has(tabId)) split.clearTab(tabId);
+  }
+  const active = openTabs.find((tab) => tab.id === activeTabId);
+  ensureSplitForWorkspaceTab(active);
+}
 
 // 提交当前编辑器内容（切换/关闭标签前调用），确保未防抖落盘的编辑不丢。
 const commitActiveEditor = () => {
@@ -163,11 +250,11 @@ interface PersistedTabs {
   recentlyClosedPageIds: string[];
 }
 
-const loadPersistedTabs = (): PersistedTabs | null => {
+const readPersistedTabsRaw = (key: string): PersistedTabs | null => {
   if (typeof window === "undefined") return null;
   try {
     const now = Date.now();
-    const raw = window.localStorage.getItem(TABS_PERSIST_KEY);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PersistedTabs>;
     if (!Array.isArray(parsed.openTabs)) return null;
@@ -195,10 +282,30 @@ const loadPersistedTabs = (): PersistedTabs | null => {
   }
 };
 
+const loadPersistedTabs = (): PersistedTabs | null => {
+  if (!persistReady) return null;
+  const keyed = readPersistedTabsRaw(tabsPersistKey(tabsWindowId));
+  if (keyed) return keyed;
+  if (tabsWindowId !== FALLBACK_WINDOW_ID) return null;
+  const legacy = readPersistedTabsRaw(LEGACY_TABS_PERSIST_KEY);
+  if (!legacy || typeof window === "undefined") return legacy;
+  try {
+    window.localStorage.setItem(
+      tabsPersistKey(FALLBACK_WINDOW_ID),
+      JSON.stringify(legacy),
+    );
+    window.localStorage.removeItem(LEGACY_TABS_PERSIST_KEY);
+  } catch {
+    // 忽略存储异常（隐私模式 / 配额）
+  }
+  return legacy;
+};
+
 let persistScheduled = false;
 let pendingPersistState: TabsState | null = null;
 const persistTabs = (state: TabsState) => {
   if (typeof window === "undefined") return;
+  if (!persistReady) return;
   pendingPersistState = state;
   if (persistScheduled) return;
   persistScheduled = true;
@@ -221,7 +328,10 @@ const persistTabs = (state: TabsState) => {
           : (persistableTabs[persistableTabs.length - 1]?.id ?? null),
         recentlyClosedPageIds: latestState.recentlyClosedPageIds.slice(0, 10),
       };
-      window.localStorage.setItem(TABS_PERSIST_KEY, JSON.stringify(payload));
+      window.localStorage.setItem(
+        tabsPersistKey(tabsWindowId),
+        JSON.stringify(payload),
+      );
     } catch {
       // 忽略存储异常（隐私模式 / 配额）
     }
@@ -402,6 +512,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       tabHistoryIndex: 0,
       isHistoryNavigating: false,
     });
+    ensureSplitForWorkspaceTab(newTab);
     useFileNavHistory.getState().push(pageFileNavKey(pageId));
     get().syncNotebookForPage(pageId);
     await scheduleSetActivePage(pageId);
@@ -475,7 +586,7 @@ export const useTabs = create<TabsState>()((set, get) => {
 
     syncActiveTabForPage: (pageId: string | null) => {
       if (!pageId) return;
-      if (useSettings.getState().singleTabMode) {
+      if (effectiveSingleTabMode()) {
         void replaceWithSinglePage(pageId);
         return;
       }
@@ -496,7 +607,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openPermanentTab: (pageId: string, options?: { pin?: boolean }) => {
-      if (useSettings.getState().singleTabMode) {
+      if (effectiveSingleTabMode()) {
         void replaceWithSinglePage(pageId);
         return;
       }
@@ -510,6 +621,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         if (options?.pin && !existingTab.pinned) {
           get().togglePinTab(existingTab.id);
         }
+        focusTabLeafForPage(existingTab.id, pageId);
         get().setActiveTab(existingTab.id);
         return;
       }
@@ -534,13 +646,14 @@ export const useTabs = create<TabsState>()((set, get) => {
         openTabs: nextOpenTabs,
         activeTabId: newTab.id,
       });
+      ensureSplitForWorkspaceTab(newTab);
       pushTabHistory(newTab.id);
       get().syncNotebookForPage(pageId);
       void scheduleSetActivePage(pageId);
     },
 
     openPreviewTab: (pageId: string) => {
-      if (useSettings.getState().singleTabMode) {
+      if (effectiveSingleTabMode()) {
         void replaceWithSinglePage(pageId);
         return;
       }
@@ -549,7 +662,38 @@ export const useTabs = create<TabsState>()((set, get) => {
       const existingTab = findTabByPageId(openTabs, pageId);
       if (existingTab) {
         if (existingTab.id !== activeTabId) commitActiveEditor();
+        focusTabLeafForPage(existingTab.id, pageId);
         get().setActiveTab(existingTab.id);
+        return;
+      }
+
+      const targetPage = usePages.getState().getPage(pageId);
+      const loneTab = findLoneVisibleWorkspaceTab(
+        openTabs,
+        (id) => usePages.getState().getPage(id),
+        targetPage?.workspaceId ?? useNotebooks.getState().activeNotebookId,
+      );
+      if (loneTab) {
+        commitActiveEditor();
+        const now = Date.now();
+        const nextTab: TabItem = {
+          id: loneTab.id,
+          pageId,
+          workspaceId: getWorkspaceIdForPage(pageId),
+          pinned: loneTab.pinned,
+          preview: false,
+          lastAccessedAt: now,
+        };
+        set({
+          openTabs: openTabs.map((tab) =>
+            tab.id === loneTab.id ? nextTab : tab,
+          ),
+          activeTabId: nextTab.id,
+        });
+        ensureSplitForWorkspaceTab(nextTab);
+        useFileNavHistory.getState().push(pageFileNavKey(pageId));
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
         return;
       }
 
@@ -580,6 +724,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...syncHistoryWithOpenTabs(nextOpenTabs),
         activeTabId: newTab.id,
       });
+      ensureSplitForWorkspaceTab(newTab);
       pushTabHistory(newTab.id);
       get().syncNotebookForPage(pageId);
       void scheduleSetActivePage(pageId);
@@ -600,7 +745,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openWelcomeTab: () => {
-      if (useSettings.getState().singleTabMode) {
+      if (effectiveSingleTabMode()) {
         void replaceWithSingleWelcome();
         return;
       }
@@ -634,12 +779,45 @@ export const useTabs = create<TabsState>()((set, get) => {
       // 欢迎 tab 不关联真实页面，不调用 syncNotebookForPage / scheduleSetActivePage
     },
 
+    openNewTab: () => {
+      if (!isElectronRuntime()) {
+        get().openWelcomeTab();
+        return;
+      }
+      const notebooksStore = useNotebooks.getState();
+      const workspaceId = notebooksStore.activeNotebookId;
+      const notebook = workspaceId
+        ? notebooksStore.notebooks[workspaceId]
+        : undefined;
+      if (!workspaceId || notebook?.source !== "local-folder") {
+        get().openWelcomeTab();
+        return;
+      }
+      const pages = usePages.getState().pages;
+      const existingEmpty = Object.values(pages).find(
+        (page) =>
+          page.workspaceId === workspaceId &&
+          isUnsavedLocalPage(page) &&
+          !localPageHasPersistableContent(page.content),
+      );
+      if (existingEmpty) {
+        get().openTab(existingEmpty.id);
+        return;
+      }
+      const pageId = usePages.getState().createUnsavedLocalPage(workspaceId);
+      if (!pageId) {
+        get().openWelcomeTab();
+        return;
+      }
+      get().openTab(pageId);
+    },
+
     findNotebookAiTab: (notebookId: string) =>
       findNotebookAiTabInList(get().openTabs, notebookId),
 
     openNotebookAiTab: (notebookId: string) => {
       if (!notebookId) return;
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs, activeTabId } = get();
       const existing = findNotebookAiTabInList(openTabs, notebookId);
       if (existing) {
@@ -694,24 +872,53 @@ export const useTabs = create<TabsState>()((set, get) => {
       get().openPreviewTab(pageId);
     },
 
+    syncTabPageId: (tabId: string, pageId: string) => {
+      const { openTabs } = get();
+      const tab = openTabs.find((item) => item.id === tabId);
+      if (!tab || isSpecialTab(tab) || tab.pageId === pageId) return;
+      const page = usePages.getState().getPage(pageId);
+      if (!page || page.isFolder || page.trashedAt) return;
+      set({
+        openTabs: openTabs.map((item) =>
+          item.id === tabId
+            ? { ...item, pageId, workspaceId: page.workspaceId }
+            : item,
+        ),
+      });
+    },
+
     closeTab: (tabId: string) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs, activeTabId, recentlyClosedPageIds } = get();
       const index = openTabs.findIndex((tab) => tab.id === tabId);
       if (index === -1) return;
 
       const closedTab = openTabs[index];
-      const closedPageId = closedTab.pageId;
       const special = isSpecialTab(closedTab);
       // 关闭前确保该页的编辑已落盘（本地文件夹页面采用自动保存队列）。
       if (tabId === activeTabId) commitActiveEditor();
       if (!special) {
-        flushClosedPageSaves([closedPageId]);
-        const nextClosed = [
-          closedPageId,
-          ...recentlyClosedPageIds.filter((id) => id !== closedPageId),
-        ].slice(0, 10);
-        set({ recentlyClosedPageIds: nextClosed });
+        const closedPageIds = collectTabPageIds(closedTab);
+        const toFlush: string[] = [];
+        for (const pageId of closedPageIds) {
+          const closedPage = usePages.getState().getPage(pageId);
+          if (
+            isUnsavedLocalPage(closedPage) &&
+            !localPageHasPersistableContent(closedPage.content)
+          ) {
+            usePages.getState().discardUnsavedLocalPage(pageId);
+          } else {
+            toFlush.push(pageId);
+          }
+        }
+        flushClosedPageSaves(toFlush);
+        if (toFlush.length > 0) {
+          const nextClosed = [
+            ...toFlush,
+            ...recentlyClosedPageIds.filter((id) => !toFlush.includes(id)),
+          ].slice(0, 10);
+          set({ recentlyClosedPageIds: nextClosed });
+        }
       }
 
       const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
@@ -745,8 +952,9 @@ export const useTabs = create<TabsState>()((set, get) => {
       });
       const nextActiveTab = nextTabs.find((tab) => tab.id === fallbackActiveId);
       if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
-        get().syncNotebookForPage(nextActiveTab.pageId);
-        void scheduleSetActivePage(nextActiveTab.pageId);
+        const pageId = workspaceTabPageId(nextActiveTab);
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
       } else if (nextActiveTab?.type === "notebook-ai" && nextActiveTab.workspaceId) {
         const notebookStore = useNotebooks.getState();
         if (notebookStore.activeNotebookId !== nextActiveTab.workspaceId) {
@@ -756,7 +964,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     closeOtherTabs: (tabId: string) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs, activeTabId } = get();
       const currentTab = openTabs.find((tab) => tab.id === tabId);
       if (!currentTab) return;
@@ -771,10 +979,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextTabIds = new Set(nextTabs.map((t) => t.id));
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
-      const closedPageIds = closedTabs
-        .filter((t) => !isSpecialTab(t))
-        .map((t) => t.pageId);
-      flushClosedPageSaves(closedPageIds);
+      flushClosedPageSaves(collectTabsPageIds(closedTabs));
 
       const historyState = syncHistoryWithOpenTabs(nextTabs);
       set({
@@ -782,12 +987,12 @@ export const useTabs = create<TabsState>()((set, get) => {
         activeTabId: currentTab.id,
         ...historyState,
       });
-      get().syncNotebookForPage(currentTab.pageId);
-      void scheduleSetActivePage(currentTab.pageId);
+      get().syncNotebookForPage(workspaceTabPageId(currentTab));
+      void scheduleSetActivePage(workspaceTabPageId(currentTab));
     },
 
     closeTabsToLeft: (tabId: string) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs, activeTabId } = get();
       const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
       if (currentIndex <= 0) return;
@@ -806,10 +1011,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextTabIds = new Set(nextTabs.map((t) => t.id));
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
-      const closedPageIds = closedTabs
-        .filter((t) => !isSpecialTab(t))
-        .map((t) => t.pageId);
-      flushClosedPageSaves(closedPageIds);
+      flushClosedPageSaves(collectTabsPageIds(closedTabs));
 
       const historyState = syncHistoryWithOpenTabs(nextTabs);
 
@@ -819,12 +1021,17 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...historyState,
       });
       const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-      get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-      void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+      const nextPageId = nextActiveTab
+        ? isSpecialTab(nextActiveTab)
+          ? null
+          : workspaceTabPageId(nextActiveTab)
+        : null;
+      get().syncNotebookForPage(nextPageId);
+      void scheduleSetActivePage(nextPageId);
     },
 
     closeTabsToRight: (tabId: string) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs, activeTabId } = get();
       const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
       if (currentIndex === -1 || currentIndex >= openTabs.length - 1) return;
@@ -843,10 +1050,7 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextTabIds = new Set(nextTabs.map((t) => t.id));
       const closedTabs = openTabs.filter((t) => !nextTabIds.has(t.id));
       if (closedTabs.some((t) => t.id === activeTabId)) commitActiveEditor();
-      const closedPageIds = closedTabs
-        .filter((t) => !isSpecialTab(t))
-        .map((t) => t.pageId);
-      flushClosedPageSaves(closedPageIds);
+      flushClosedPageSaves(collectTabsPageIds(closedTabs));
 
       const historyState = syncHistoryWithOpenTabs(nextTabs);
 
@@ -856,15 +1060,20 @@ export const useTabs = create<TabsState>()((set, get) => {
         ...historyState,
       });
       const nextActiveTab = nextTabs.find((tab) => tab.id === nextActiveId);
-      get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-      void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+      const nextPageId = nextActiveTab
+        ? isSpecialTab(nextActiveTab)
+          ? null
+          : workspaceTabPageId(nextActiveTab)
+        : null;
+      get().syncNotebookForPage(nextPageId);
+      void scheduleSetActivePage(nextPageId);
     },
 
     setActiveTab: (tabId: string) => {
       const { openTabs, activeTabId } = get();
       const tab = openTabs.find((item) => item.id === tabId);
       if (!tab) return;
-      if (useSettings.getState().singleTabMode) {
+      if (effectiveSingleTabMode()) {
         if (tab.type === "welcome") {
           void replaceWithSingleWelcome();
         } else if (!isSpecialTab(tab)) {
@@ -883,6 +1092,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         ),
         activeTabId: tab.id,
       });
+      ensureSplitForWorkspaceTab(tab);
       pushTabHistory(tab.id);
       // 欢迎 / AI 标签不关联真实页面，不同步活动页。
       if (tab.type === "welcome") return;
@@ -896,8 +1106,8 @@ export const useTabs = create<TabsState>()((set, get) => {
         }
         return;
       }
-      get().syncNotebookForPage(tab.pageId);
-      void scheduleSetActivePage(tab.pageId);
+      get().syncNotebookForPage(workspaceTabPageId(tab));
+      void scheduleSetActivePage(workspaceTabPageId(tab));
     },
 
     goBackTabHistory: () => {
@@ -923,7 +1133,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     canGoForwardTabHistory: () => useFileNavHistory.getState().canForward(),
 
     reorderTabs: (from: number, to: number) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs } = get();
       if (from < 0 || from >= openTabs.length) return;
       if (to < 0 || to >= openTabs.length) return;
@@ -935,8 +1145,143 @@ export const useTabs = create<TabsState>()((set, get) => {
       set({ openTabs: applyPinnedOrder(nextTabs) });
     },
 
+    adoptTab: (incoming, insertIndex) => {
+      if (effectiveSingleTabMode()) return;
+      if (!incoming?.id || !incoming.pageId) return;
+      const { openTabs, activeTabId } = get();
+      const existingById = openTabs.find((tab) => tab.id === incoming.id);
+      if (existingById) {
+        get().setActiveTab(existingById.id);
+        return;
+      }
+      if (incoming.type !== "welcome" && incoming.type !== "notebook-ai") {
+        const existingByPage = findTabByPageId(openTabs, incoming.pageId);
+        if (existingByPage) {
+          get().setActiveTab(existingByPage.id);
+          return;
+        }
+      }
+
+      const adopted: TabItem = stampTabAccess({
+        id: incoming.id,
+        pageId: incoming.pageId,
+        type: incoming.type,
+        pinned: incoming.pinned,
+        preview: incoming.preview,
+        workspaceId: incoming.workspaceId,
+      });
+
+      const onlyWelcome =
+        openTabs.length === 1 && openTabs[0]?.type === "welcome";
+      if (onlyWelcome && adopted.type !== "welcome") {
+        const historyState = syncHistoryWithOpenTabs([adopted]);
+        if (activeTabId) commitActiveEditor();
+        set({
+          openTabs: [adopted],
+          activeTabId: adopted.id,
+          ...historyState,
+        });
+        ensureSplitForWorkspaceTab(adopted);
+        pushTabHistory(adopted.id);
+        get().syncNotebookForPage(adopted.pageId);
+        void scheduleSetActivePage(adopted.pageId);
+        return;
+      }
+
+      const nextTabs = [...openTabs];
+      const maxIndex = nextTabs.length;
+      const index =
+        typeof insertIndex === "number" && Number.isFinite(insertIndex)
+          ? Math.min(Math.max(0, Math.floor(insertIndex)), maxIndex)
+          : maxIndex;
+      nextTabs.splice(index, 0, adopted);
+      const ordered = applyPinnedOrder(nextTabs);
+      const orderedHistory = syncHistoryWithOpenTabs(ordered);
+      if (activeTabId) commitActiveEditor();
+      set({
+        openTabs: ordered,
+        activeTabId: adopted.id,
+        ...orderedHistory,
+      });
+      ensureSplitForWorkspaceTab(adopted);
+      pushTabHistory(adopted.id);
+      if (adopted.type === "welcome") return;
+      if (adopted.type === "notebook-ai") {
+        if (adopted.workspaceId) {
+          const notebookStore = useNotebooks.getState();
+          if (notebookStore.activeNotebookId !== adopted.workspaceId) {
+            notebookStore.setActiveNotebook(adopted.workspaceId);
+          }
+        }
+        return;
+      }
+      get().syncNotebookForPage(adopted.pageId);
+      void scheduleSetActivePage(adopted.pageId);
+    },
+
+    releaseTab: (tabId) => {
+      if (effectiveSingleTabMode()) return { emptied: false };
+      const { openTabs, activeTabId } = get();
+      const index = openTabs.findIndex((tab) => tab.id === tabId);
+      if (index === -1) return { emptied: false };
+
+      const closedTab = openTabs[index];
+      if (tabId === activeTabId) commitActiveEditor();
+      if (!isSpecialTab(closedTab)) {
+        flushClosedPageSaves(collectTabPageIds(closedTab));
+      }
+
+      const nextTabs = openTabs.filter((tab) => tab.id !== tabId);
+      if (nextTabs.length === 0) {
+        set({
+          openTabs: [],
+          activeTabId: null,
+          ...syncHistoryWithOpenTabs([]),
+        });
+        useEditorSplit.getState().clearTab(tabId);
+        return { emptied: true };
+      }
+
+      let nextActiveId: string | null = null;
+      if (activeTabId === tabId) {
+        nextActiveId =
+          nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;
+      } else {
+        nextActiveId = resolveTabIdInHistory(activeTabId, nextTabs);
+      }
+
+      const historyState = syncHistoryWithOpenTabs(nextTabs);
+      const fallbackActiveId =
+        resolveTabIdInHistory(nextActiveId, nextTabs) ??
+        (historyState.tabHistoryIndex >= 0
+          ? historyState.tabHistory[historyState.tabHistoryIndex]
+          : null);
+
+      set({
+        openTabs: nextTabs,
+        activeTabId: fallbackActiveId,
+        ...historyState,
+      });
+      useEditorSplit.getState().clearTab(tabId);
+      const nextActiveTab = nextTabs.find((tab) => tab.id === fallbackActiveId);
+      if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
+        const pageId = workspaceTabPageId(nextActiveTab);
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
+      } else if (
+        nextActiveTab?.type === "notebook-ai" &&
+        nextActiveTab.workspaceId
+      ) {
+        const notebookStore = useNotebooks.getState();
+        if (notebookStore.activeNotebookId !== nextActiveTab.workspaceId) {
+          notebookStore.setActiveNotebook(nextActiveTab.workspaceId);
+        }
+      }
+      return { emptied: false };
+    },
+
     togglePinTab: (tabId: string) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { openTabs } = get();
       const exists = openTabs.some((tab) => tab.id === tabId);
       if (!exists) return;
@@ -984,7 +1329,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         return false;
       });
 
-      if (useSettings.getState().singleTabMode && nextTabs.length > 1) {
+      if (effectiveSingleTabMode() && nextTabs.length > 1) {
         const active = nextTabs.find((tab) => tab.id === activeTabId);
         nextTabs = active ? [active] : [nextTabs[nextTabs.length - 1]];
       }
@@ -1002,7 +1347,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     closeExpiredTabs: (now = Date.now()) => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { privacy } = useSettings.getState();
       if (!privacy.autoCloseInactiveTabs) return;
 
@@ -1070,10 +1415,9 @@ export const useTabs = create<TabsState>()((set, get) => {
         }
       }
 
-      const closedPageIds = openTabs
-        .filter((tab) => tab.id !== activeTab.id && !isSpecialTab(tab))
-        .map((tab) => tab.pageId)
-        .filter(Boolean);
+      const closedPageIds = collectTabsPageIds(
+        openTabs.filter((tab) => tab.id !== activeTab.id),
+      );
 
       commitActiveEditor();
       flushClosedPageSaves(closedPageIds);
@@ -1088,13 +1432,14 @@ export const useTabs = create<TabsState>()((set, get) => {
       if (isSpecialTab(activeTab)) {
         void scheduleSetActivePage(null);
       } else {
-        get().syncNotebookForPage(activeTab.pageId);
-        void scheduleSetActivePage(activeTab.pageId);
+        const pageId = workspaceTabPageId(activeTab);
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
       }
     },
 
     reopenLastClosedTab: () => {
-      if (useSettings.getState().singleTabMode) return;
+      if (effectiveSingleTabMode()) return;
       const { recentlyClosedPageIds, openTabs } = get();
       const openPageIds = new Set(openTabs.map((tab) => tab.pageId));
       const candidate = recentlyClosedPageIds.find((id) => {
@@ -1154,7 +1499,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         }
       }
 
-      if (useSettings.getState().singleTabMode && finalTabs.length > 1) {
+      if (effectiveSingleTabMode() && finalTabs.length > 1) {
         const preferred = finalTabs.find((tab) => tab.id === nextActiveId);
         const onlyTab = preferred ?? finalTabs[finalTabs.length - 1];
         finalTabs = onlyTab ? [onlyTab] : [];
@@ -1178,20 +1523,128 @@ export const useTabs = create<TabsState>()((set, get) => {
         (tab) => tab.id === fallbackActiveId,
       );
       if (deletedPage?.trashedAt) {
-        if (nextActiveTab?.pageId && nextActiveTab.pageId !== preferredPageId) {
-          get().syncNotebookForPage(nextActiveTab.pageId);
-          void scheduleSetActivePage(nextActiveTab.pageId);
+        if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
+          const pageId = workspaceTabPageId(nextActiveTab);
+          if (pageId !== preferredPageId) {
+            get().syncNotebookForPage(pageId);
+            void scheduleSetActivePage(pageId);
+          }
         }
         return;
       }
 
-      get().syncNotebookForPage(nextActiveTab?.pageId ?? null);
-      void scheduleSetActivePage(nextActiveTab?.pageId ?? null);
+      if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
+        const pageId = workspaceTabPageId(nextActiveTab);
+        get().syncNotebookForPage(pageId);
+        void scheduleSetActivePage(pageId);
+      } else {
+        get().syncNotebookForPage(null);
+        void scheduleSetActivePage(null);
+      }
     },
   };
 });
 
 // 标签状态变化时持久化（跨会话恢复上次打开的标签）。
 if (typeof window !== "undefined") {
+  const applyTabSnapshots = (
+    tabs: GooseWindowTabSnapshot[],
+    activeId?: string,
+  ) => {
+    const now = Date.now();
+    const openTabs: TabItem[] = tabs.map((tab) => ({
+      id: tab.id,
+      pageId: tab.pageId,
+      type: tab.type as TabItem["type"],
+      pinned: tab.pinned,
+      workspaceId: tab.workspaceId,
+      lastAccessedAt: now,
+    }));
+    const activeTabId = activeId ?? openTabs[0]?.id ?? null;
+    useTabs.setState({ openTabs, activeTabId });
+    const active = openTabs.find((tab) => tab.id === activeTabId) ?? openTabs[0];
+    if (!active) return;
+    ensureSplitForWorkspaceTab(active);
+    if (active.type === "welcome") {
+      void usePages.getState().setActivePage(null);
+      return;
+    }
+    useTabs.getState().syncNotebookForPage(active.pageId);
+    void usePages.getState().setActivePage(active.pageId);
+  };
+
+  let appliedTakeTab = false;
+  let pendingRestoredTabs: GooseWindowTabSnapshot[] | null = null;
+
+  const applyWindowInit = (payload: GooseWindowInitPayload) => {
+    if (payload.takeTab) {
+      appliedTakeTab = true;
+      pendingRestoredTabs = null;
+      applyTabSnapshots([payload.takeTab], payload.takeTab.id);
+      applyPersistedTabSplit(payload.takeTab.id, tabsWindowId);
+      persistTabs(useTabs.getState());
+      return;
+    }
+    if (payload.restoredTabs && payload.restoredTabs.length > 0) {
+      if (appliedTakeTab) return;
+      if (!persistReady) {
+        pendingRestoredTabs = payload.restoredTabs;
+        return;
+      }
+      const dest = readPersistedTabsRaw(tabsPersistKey(tabsWindowId));
+      if (dest?.openTabs.length) return;
+      applyTabSnapshots(payload.restoredTabs);
+      persistTabs(useTabs.getState());
+    }
+  };
+
+  window.gooseDesktop?.onWindowInit?.(applyWindowInit);
+
   useTabs.subscribe((state) => persistTabs(state));
+  useTabs.subscribe((state, prev) => {
+    if (
+      state.openTabs === prev.openTabs &&
+      state.activeTabId === prev.activeTabId
+    ) {
+      return;
+    }
+    syncEditorSplitsToOpenTabs(state.openTabs, state.activeTabId);
+  });
+  syncEditorSplitsToOpenTabs(
+    useTabs.getState().openTabs,
+    useTabs.getState().activeTabId,
+  );
+  void resolveWindowContext().then((ctx) => {
+    persistReady = true;
+    const prevId = tabsWindowId;
+    tabsWindowId = ctx.windowId;
+    if (appliedTakeTab) {
+      persistTabs(useTabs.getState());
+      const takeId = useTabs.getState().activeTabId;
+      if (takeId) applyPersistedTabSplit(takeId, ctx.windowId);
+      return;
+    }
+    const dest = readPersistedTabsRaw(tabsPersistKey(ctx.windowId));
+    if (dest) {
+      useTabs.setState({
+        openTabs: dest.openTabs,
+        activeTabId: dest.activeTabId,
+        recentlyClosedPageIds: dest.recentlyClosedPageIds,
+      });
+      pendingRestoredTabs = null;
+      return;
+    }
+    if (pendingRestoredTabs && pendingRestoredTabs.length > 0) {
+      applyTabSnapshots(pendingRestoredTabs);
+      pendingRestoredTabs = null;
+    }
+    persistTabs(useTabs.getState());
+    if (prevId === FALLBACK_WINDOW_ID && ctx.windowId !== FALLBACK_WINDOW_ID) {
+      try {
+        window.localStorage.removeItem(tabsPersistKey(prevId));
+      } catch {
+        // 忽略存储异常
+      }
+    }
+  });
 }

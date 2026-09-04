@@ -8,7 +8,7 @@ import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebo
 /**
  * 页面删除/恢复的唯一入口。
  * 所有调用点（侧栏右键菜单、页面菜单、快捷键、垃圾箱视图）共用这三个函数，
- * toast 统一走全局 Toaster 的 bottom-right 位置。
+ * toast 统一走全局 Toaster 的 top-right 位置。
  */
 
 /** 恢复页面并弹统一的成功 toast；reopenTab 用于撤回删除后重新打开标签页 */

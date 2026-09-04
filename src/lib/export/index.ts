@@ -27,7 +27,7 @@ export {
   importNotebooksFromZip,
   type ExportOptions,
 } from "./zipBundle";
-export { saveBlobAndReveal, saveBlobWithPrompt } from "./fileSave";
+export { saveBlobAndReveal } from "./fileSave";
 export {
   buildSinglePageExport,
   pageHasLocalSidecarAttachments,

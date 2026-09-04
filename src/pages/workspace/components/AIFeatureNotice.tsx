@@ -37,7 +37,7 @@ function createNoticeContent(handleClose: () => void) {
         },
       ]}
     >
-      <p>· 输入框内按空格 → 唤起 AI</p>
+      <p>· 空白段落按回车 → 唤起行内 AI</p>
       <p>· 选中文字 → 一键润色改写</p>
       <p>支持 DeepSeek、GLM、MiniMax 等供应商一键接入，前往设置填写 API Key 即可。</p>
     </FeatureToastCard>

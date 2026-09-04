@@ -1,15 +1,22 @@
 import { createExtension } from "@blocknote/core";
 import {
+  NodeSelection,
   Plugin,
   PluginKey,
   TextSelection,
   type EditorState,
+  type Transaction,
 } from "prosemirror-state";
 import type { ResolvedPos } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import { CellSelection } from "prosemirror-tables";
+import {
+  CellSelection,
+  inSameTable,
+  tableEditingKey,
+} from "prosemirror-tables";
 
 const GRID_CLASS = "goose-table-cell-grid";
+const SPAN_CLASS = "goose-table-span-select";
 
 export function cellPosFromResolved($pos: ResolvedPos): number | null {
   for (let d = $pos.depth; d > 0; d -= 1) {
@@ -19,9 +26,117 @@ export function cellPosFromResolved($pos: ResolvedPos): number | null {
   return null;
 }
 
+function findTableDepth($pos: ResolvedPos): number {
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type.spec?.tableRole === "table") return d;
+  }
+  return -1;
+}
+
+function tablePosFromResolved($pos: ResolvedPos): number | null {
+  const depth = findTableDepth($pos);
+  return depth >= 0 ? $pos.before(depth) : null;
+}
+
+function blockContainerRangeAroundTable(
+  $pos: ResolvedPos,
+): { from: number; to: number } | null {
+  const tableDepth = findTableDepth($pos);
+  if (tableDepth < 0) return null;
+  for (let d = tableDepth; d > 0; d -= 1) {
+    if ($pos.node(d).type.name === "blockContainer") {
+      return { from: $pos.before(d), to: $pos.after(d) };
+    }
+  }
+  const tablePos = $pos.before(tableDepth);
+  return {
+    from: tablePos,
+    to: tablePos + $pos.node(tableDepth).nodeSize,
+  };
+}
+
+function textSelectionAt(doc: ResolvedPos["doc"], a: number, b: number) {
+  const from = Math.min(a, b);
+  const to = Math.max(a, b);
+  try {
+    return TextSelection.create(doc, from, to);
+  } catch {
+    return TextSelection.between(doc.resolve(from), doc.resolve(to));
+  }
+}
+
+/** 一端在表格内、另一端在表外（或另一张表）时，选区已经跨出表格。 */
+export function selectionCrossesTableBoundary(
+  $a: ResolvedPos,
+  $b: ResolvedPos,
+): boolean {
+  const aTable = tablePosFromResolved($a);
+  const bTable = tablePosFromResolved($b);
+  if (aTable == null && bTable == null) return false;
+  return aTable !== bTable;
+}
+
+export function isSpanningTableSelection(
+  sel: { empty?: boolean; $anchor: ResolvedPos; $head: ResolvedPos },
+): boolean {
+  if (sel.empty) return false;
+  return selectionCrossesTableBoundary(sel.$anchor, sel.$head);
+}
+
+export function createSelectionLeavingTable(
+  $inTable: ResolvedPos,
+  $outside: ResolvedPos,
+) {
+  const range = blockContainerRangeAroundTable($inTable);
+  if (!range) return TextSelection.between($inTable, $outside);
+  const doc = $inTable.doc;
+  if ($outside.pos <= range.from) {
+    const tableEnd = TextSelection.near(doc.resolve(range.to), -1).head;
+    return textSelectionAt(doc, $outside.pos, tableEnd);
+  }
+  if ($outside.pos >= range.to) {
+    const tableStart = TextSelection.near(doc.resolve(range.from), 1).head;
+    return textSelectionAt(doc, tableStart, $outside.pos);
+  }
+  return null;
+}
+
+export function createTableAwareSelection(
+  $anchor: ResolvedPos,
+  $head: ResolvedPos,
+) {
+  const anchorCell = cellPosFromResolved($anchor);
+  const headCell = cellPosFromResolved($head);
+  if (
+    anchorCell != null &&
+    headCell != null &&
+    anchorCell !== headCell &&
+    sameTableCells($anchor.doc, anchorCell, headCell)
+  ) {
+    return CellSelection.create($anchor.doc, anchorCell, headCell);
+  }
+  if (!selectionCrossesTableBoundary($anchor, $head)) return null;
+  const inTable = tablePosFromResolved($anchor) != null ? $anchor : $head;
+  const outside = inTable === $anchor ? $head : $anchor;
+  return createSelectionLeavingTable(inTable, outside);
+}
+
+function sameTableCells(
+  doc: ResolvedPos["doc"],
+  aPos: number,
+  bPos: number,
+): boolean {
+  try {
+    return inSameTable(doc.resolve(aPos), doc.resolve(bPos));
+  } catch {
+    return false;
+  }
+}
+
 export function promoteCrossCellTextSelection(state: EditorState) {
   const sel = state.selection;
   if (!(sel instanceof TextSelection) || sel.empty) return null;
+  if (isSpanningTableSelection(sel)) return null;
   const anchorCell = cellPosFromResolved(sel.$anchor);
   const headCell = cellPosFromResolved(sel.$head);
   if (anchorCell == null || headCell == null || anchorCell === headCell) {
@@ -30,6 +145,35 @@ export function promoteCrossCellTextSelection(state: EditorState) {
   return state.tr.setSelection(
     CellSelection.create(state.doc, anchorCell, headCell),
   );
+}
+
+function restoreSpanningSelection(
+  trs: readonly Transaction[],
+  newState: EditorState,
+) {
+  for (let i = trs.length - 1; i >= 0; i -= 1) {
+    const sel = trs[i].selection;
+    if (!isSpanningTableSelection(sel)) continue;
+    if (newState.selection.eq(sel)) return null;
+    return newState.tr.setSelection(sel);
+  }
+  return null;
+}
+
+function keepSpanningSelection(tr: Transaction, state: EditorState) {
+  if (!tr.selectionSet || !isSpanningTableSelection(state.selection)) {
+    return true;
+  }
+  const next = tr.selection;
+  if (isSpanningTableSelection(next) || next.empty) return true;
+  if (next instanceof CellSelection) return false;
+  if (
+    next instanceof NodeSelection &&
+    next.node.type.spec?.tableRole === "table"
+  ) {
+    return false;
+  }
+  return !(next instanceof TextSelection);
 }
 
 type DomNodeLike = {
@@ -56,6 +200,10 @@ function tableCellFromTarget(
     node = node.parentNode ?? null;
   }
   return null;
+}
+
+function closestTable(cell: HTMLTableCellElement | null): HTMLTableElement | null {
+  return cell?.closest("table") ?? null;
 }
 
 /** True when two pointer targets sit in different TD/TH cells. */
@@ -118,98 +266,198 @@ function tryDispatchCellSelection(
   }
 }
 
-function promoteFromPointerOrSelection(
+function tryDispatchDocSelection(
   view: EditorView,
-  startCell: HTMLTableCellElement | null,
-  currentTarget: EventTarget | null,
+  inTablePos: number,
+  outsidePos: number,
 ): boolean {
-  if (view.state.selection instanceof CellSelection) return true;
-  const promoteTr = promoteCrossCellTextSelection(view.state);
-  if (promoteTr) {
-    view.dispatch(promoteTr);
+  try {
+    const $inTable = view.state.doc.resolve(inTablePos);
+    const $outside = view.state.doc.resolve(outsidePos);
+    const selection =
+      createSelectionLeavingTable($inTable, $outside) ??
+      TextSelection.between($inTable, $outside);
+    if (view.state.selection.eq(selection)) return true;
+    const tr = view.state.tr.setSelection(selection);
+    tr.setMeta(tableEditingKey, -1);
+    view.dispatch(tr);
     return true;
+  } catch {
+    return false;
   }
-  const currentCell = tableCellFromTarget(currentTarget, view.dom);
-  if (!startCell || !currentCell || startCell === currentCell) return false;
-  const startPos = cellPosFromDom(view, startCell);
-  const currentPos = cellPosFromDom(view, currentCell);
-  if (startPos == null || currentPos == null) return false;
-  return tryDispatchCellSelection(view, startPos, currentPos);
 }
 
-function cellFromPoint(
-  view: EditorView,
-  event: MouseEvent,
-): HTMLTableCellElement | null {
+function getHitDocument(view: EditorView): Document | ShadowRoot {
   const root = view.root as Document | ShadowRoot | null;
-  const doc = root && "elementFromPoint" in root ? root : document;
-  const el = doc.elementFromPoint(event.clientX, event.clientY);
-  return tableCellFromTarget(el, view.dom);
+  return root && "elementFromPoint" in root ? root : document;
 }
 
-function syncGridClass(view: EditorView, draggingCells = false) {
+function cellsFromPoint(
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+  startTable: HTMLTableElement | null,
+): HTMLTableCellElement | null {
+  const doc = getHitDocument(view);
+  const stack =
+    "elementsFromPoint" in doc
+      ? doc.elementsFromPoint(clientX, clientY)
+      : [doc.elementFromPoint(clientX, clientY)];
+  for (const el of stack) {
+    if (!el) continue;
+    const cell = tableCellFromTarget(el, view.dom);
+    if (cell && (!startTable || closestTable(cell) === startTable)) return cell;
+  }
+  return null;
+}
+
+function coordsPos(view: EditorView, event: MouseEvent): number | null {
+  const coords = view.posAtCoords({
+    left: event.clientX,
+    top: event.clientY,
+  });
+  return coords?.pos ?? null;
+}
+
+function isDocPosInTable(
+  view: EditorView,
+  docPos: number,
+  tablePos: number | null,
+): boolean {
+  if (tablePos == null) return false;
+  try {
+    return tablePosFromResolved(view.state.doc.resolve(docPos)) === tablePos;
+  } catch {
+    return false;
+  }
+}
+
+function syncSelectionClasses(
+  view: EditorView,
+  draggingCells = false,
+  draggingDoc = false,
+) {
+  const spanning =
+    draggingDoc || isSpanningTableSelection(view.state.selection);
   view.dom.classList.toggle(
     GRID_CLASS,
-    draggingCells || view.state.selection instanceof CellSelection,
+    !spanning &&
+      (draggingCells || view.state.selection instanceof CellSelection),
   );
+  view.dom.classList.toggle(SPAN_CLASS, spanning);
 }
 
 const PLUGIN_KEY = new PluginKey("goose-table-cell-selection");
 
 const tableCellSelectionPlugin = new Plugin({
   key: PLUGIN_KEY,
+  filterTransaction(tr, state) {
+    return keepSpanningSelection(tr, state);
+  },
   props: {
     createSelectionBetween(_view, $anchor, $head) {
-      const anchorCell = cellPosFromResolved($anchor);
-      const headCell = cellPosFromResolved($head);
-      if (anchorCell == null || headCell == null || anchorCell === headCell) {
-        return null;
-      }
-      return CellSelection.create(_view.state.doc, anchorCell, headCell);
+      return createTableAwareSelection($anchor, $head);
     },
   },
-  appendTransaction(_trs, _oldState, newState) {
-    return promoteCrossCellTextSelection(newState);
+  appendTransaction(trs, _oldState, newState) {
+    return (
+      restoreSpanningSelection(trs, newState) ??
+      promoteCrossCellTextSelection(newState)
+    );
   },
   view(view) {
     let startCell: HTMLTableCellElement | null = null;
+    let startDocPos: number | null = null;
+    let startTablePos: number | null = null;
+    let lastOutsidePos: number | null = null;
     let draggingCells = false;
+    let draggingDoc = false;
     let mouseDown = false;
 
     const eventRoot: EventTarget =
       (view.root as Document | ShadowRoot | null) ?? window;
 
-    const markDragging = () => {
+    const markCellDragging = () => {
       draggingCells = true;
-      syncGridClass(view, true);
+      draggingDoc = false;
+      syncSelectionClasses(view, true, false);
     };
 
-    const handlePointerMove = (event: Event) => {
-      if (!mouseDown || !startCell) return;
+    const markDocDragging = () => {
+      draggingCells = false;
+      draggingDoc = true;
+      syncSelectionClasses(view, false, true);
+    };
+
+    const takeOverCellDrag = (
+      event: Event,
+      currentCell: HTMLTableCellElement,
+    ) => {
+      if (!startCell) return;
       const mouse = event as MouseEvent;
-      const currentCell =
-        cellFromPoint(view, mouse) ||
-        tableCellFromTarget(mouse.target, view.dom);
-      const crossed = currentCell != null && currentCell !== startCell;
-      const nativeCross = nativeSelectionSpansCells(view);
-      if (!crossed && !nativeCross) return;
       mouse.preventDefault();
       mouse.stopPropagation();
       clearNativeSelection(view);
-      markDragging();
-      if (crossed && currentCell) {
-        const startPos = cellPosFromDom(view, startCell);
-        const currentPos = cellPosFromDom(view, currentCell);
-        if (startPos != null && currentPos != null) {
-          tryDispatchCellSelection(view, startPos, currentPos);
-        }
-      } else {
-        promoteFromPointerOrSelection(
-          view,
-          startCell,
-          currentCell || mouse.target,
-        );
+      markCellDragging();
+      const startPos = cellPosFromDom(view, startCell);
+      const currentPos = cellPosFromDom(view, currentCell);
+      if (startPos != null && currentPos != null) {
+        tryDispatchCellSelection(view, startPos, currentPos);
       }
+    };
+
+    const takeOverDocDrag = (event: Event, headDocPos: number) => {
+      if (startDocPos == null) return;
+      const mouse = event as MouseEvent;
+      mouse.preventDefault();
+      mouse.stopPropagation();
+      const switching = !draggingDoc;
+      if (switching) clearNativeSelection(view);
+      markDocDragging();
+      tryDispatchDocSelection(view, startDocPos, headDocPos);
+    };
+
+    const handlePointerMove = (event: Event) => {
+      if (!mouseDown || !startCell || startDocPos == null) return;
+      const mouse = event as MouseEvent;
+      const headDocPos = coordsPos(view, mouse);
+
+      if (draggingDoc) {
+        let outsidePos = headDocPos;
+        if (
+          outsidePos != null &&
+          isDocPosInTable(view, outsidePos, startTablePos)
+        ) {
+          outsidePos = lastOutsidePos;
+        } else if (outsidePos != null) {
+          lastOutsidePos = outsidePos;
+        }
+        if (outsidePos != null) takeOverDocDrag(event, outsidePos);
+        return;
+      }
+
+      const stillInTable =
+        headDocPos != null && isDocPosInTable(view, headDocPos, startTablePos);
+      const currentCell = stillInTable
+        ? cellsFromPoint(
+            view,
+            mouse.clientX,
+            mouse.clientY,
+            closestTable(startCell),
+          ) || tableCellFromTarget(mouse.target, view.dom)
+        : null;
+
+      if (!stillInTable && headDocPos != null) {
+        lastOutsidePos = headDocPos;
+        takeOverDocDrag(event, headDocPos);
+        return;
+      }
+
+      const crossed = currentCell != null && currentCell !== startCell;
+      if (!crossed && !nativeSelectionSpansCells(view) && !draggingCells) {
+        return;
+      }
+      if (currentCell) takeOverCellDrag(event, currentCell);
     };
 
     const onMouseDown = (event: Event) => {
@@ -218,61 +466,75 @@ const tableCellSelectionPlugin = new Plugin({
       const cell = tableCellFromTarget(mouse.target, view.dom);
       if (!cell || !view.dom.contains(cell)) {
         startCell = null;
+        startDocPos = null;
+        startTablePos = null;
+        lastOutsidePos = null;
         mouseDown = false;
         draggingCells = false;
+        draggingDoc = false;
         return;
       }
       startCell = cell;
+      startDocPos = coordsPos(view, mouse) ?? cellPosFromDom(view, cell);
+      startTablePos =
+        startDocPos != null
+          ? tablePosFromResolved(view.state.doc.resolve(startDocPos))
+          : null;
+      lastOutsidePos = null;
       mouseDown = true;
       draggingCells = false;
+      draggingDoc = false;
     };
 
     const onDragStart = (event: Event) => {
       if (!startCell || !mouseDown) return;
-      if (!eventInsideEditor(view, event)) return;
-      const mouse = event as MouseEvent;
-      const currentCell =
-        cellFromPoint(view, mouse) ||
-        tableCellFromTarget(mouse.target, view.dom);
-      const shouldBlock =
-        draggingCells ||
-        (currentCell != null && currentCell !== startCell) ||
-        nativeSelectionSpansCells(view);
-      if (!shouldBlock) return;
+      if (!eventInsideEditor(view, event) && !draggingDoc) return;
+      if (draggingCells || draggingDoc) {
+        event.preventDefault();
+        handlePointerMove(event);
+      }
+    };
+
+    const onSelectStart = (event: Event) => {
+      if (!draggingCells && !draggingDoc) return;
       event.preventDefault();
-      clearNativeSelection(view);
-      handlePointerMove(event);
     };
 
     const onMouseUp = () => {
       mouseDown = false;
       startCell = null;
+      startDocPos = null;
+      startTablePos = null;
+      lastOutsidePos = null;
       draggingCells = false;
-      syncGridClass(view, false);
+      draggingDoc = false;
+      syncSelectionClasses(view, false, false);
     };
 
     view.dom.addEventListener("mousedown", onMouseDown, true);
     view.dom.addEventListener("dragstart", onDragStart, true);
+    view.dom.addEventListener("selectstart", onSelectStart, true);
     eventRoot.addEventListener("mousemove", handlePointerMove, true);
     eventRoot.addEventListener("dragover", handlePointerMove, true);
     eventRoot.addEventListener("dragstart", onDragStart, true);
     eventRoot.addEventListener("mouseup", onMouseUp, true);
     window.addEventListener("mouseup", onMouseUp, true);
-    syncGridClass(view, draggingCells);
+    syncSelectionClasses(view, draggingCells, draggingDoc);
 
     return {
       update() {
-        syncGridClass(view, draggingCells);
+        syncSelectionClasses(view, draggingCells, draggingDoc);
       },
       destroy() {
         view.dom.removeEventListener("mousedown", onMouseDown, true);
         view.dom.removeEventListener("dragstart", onDragStart, true);
+        view.dom.removeEventListener("selectstart", onSelectStart, true);
         eventRoot.removeEventListener("mousemove", handlePointerMove, true);
         eventRoot.removeEventListener("dragover", handlePointerMove, true);
         eventRoot.removeEventListener("dragstart", onDragStart, true);
         eventRoot.removeEventListener("mouseup", onMouseUp, true);
         window.removeEventListener("mouseup", onMouseUp, true);
-        view.dom.classList.remove(GRID_CLASS);
+        view.dom.classList.remove(GRID_CLASS, SPAN_CLASS);
       },
     };
   },

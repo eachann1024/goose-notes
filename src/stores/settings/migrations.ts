@@ -1,3 +1,5 @@
+import { SIDEBAR_FONT_SIZE_DEFAULT } from "./types";
+
 export function migrateSettingsPersistedState(
   persistedState: unknown,
 ): Record<string, unknown> {
@@ -5,6 +7,15 @@ export function migrateSettingsPersistedState(
     persistedState && typeof persistedState === "object"
       ? { ...(persistedState as Record<string, unknown>) }
       : {};
+
+  // 旧版只有「界面字号」两档，且侧栏树写死 13px。缺省时从界面档位推断侧栏字号。
+  if (
+    typeof state.sidebarFontSize !== "number" ||
+    !Number.isFinite(state.sidebarFontSize)
+  ) {
+    state.sidebarFontSize =
+      state.uiFontSize === "normal" || state.uiFontSize === "large" ? 15 : SIDEBAR_FONT_SIZE_DEFAULT;
+  }
 
   // 极简工作区已成为固定交互，不再保留可切换设置。
   state.singleTabMode = true;

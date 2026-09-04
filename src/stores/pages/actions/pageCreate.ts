@@ -21,6 +21,7 @@ import {
 import { savePagesMeta } from "@/lib/storage/pageRepository";
 import { buildLocalPageId } from "@/lib/local-folder-scanner";
 import {
+  assignExistingStableId,
   readLocalPageIdMap,
   resolveOrCreateStableId,
   toRelativePath,
@@ -51,21 +52,23 @@ import type { StoreSet, StoreGet } from "./hydrate";
 import { flushEditorContent } from "./flushEditor";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 import { pickRandomPageIcon } from "@/lib/randomPageIcon";
+import { isUnsavedLocalPage } from "@/lib/unsavedLocalPage";
 
 const initialContent: JSONContent =
   createEmptyBlockNoteContent(UNTITLED_PAGE_TITLE);
 
 /**
  * 新建页聚焦策略：
- * - 单标签：页头 SingleTabTitle 响应 requestPageTitleFocus
- * - 多标签 + 本地文件：正文上方 LocalFileTitle 响应 requestPageTitleFocus
- * - 多标签 + 内部页：focus-editor-start 把光标放到首块 H1 标题末尾
+ * - 单标签 / 仅一个文档标签：页头或标签 pill 上的 SingleTabTitle 响应 requestPageTitleFocus
+ * - 多个文档标签 + 本地文件：正文上方 LocalFileTitle 响应 requestPageTitleFocus
+ * - 多个文档标签 + 内部页：focus-editor-start 把光标放到首块 H1 标题末尾
  */
 function focusNewPage(pageId: string) {
   requestPageTitleFocus(pageId);
-  if (useSettings.getState().singleTabMode) {
+  if (effectiveSingleTabMode()) {
     return;
   }
   if (typeof window !== "undefined") {
@@ -294,6 +297,250 @@ export const createPageRecordAction = (
   return finalId;
 };
 
+export const createUnsavedLocalPageAction = (
+  set: StoreSet,
+  get: StoreGet,
+  workspaceId: string,
+  parentId?: string,
+): string => {
+  if (isElectronHostTarget()) {
+    const target = useNotebooks.getState().notebooks[workspaceId];
+    if (target?.source !== "local-folder") return "";
+  } else {
+    return "";
+  }
+  flushEditorContent();
+
+  const icon = useSettings.getState().randomIconOnCreate
+    ? pickRandomPageIcon()
+    : undefined;
+  const finalId = uuidv4();
+  const now = Date.now();
+  const newPage: Page = {
+    id: finalId,
+    workspaceId,
+    parentId,
+    content: cloneLocalPageContent(),
+    isFolder: false,
+    isLocked: false,
+    fontSize: "default",
+    fontFamily: "default",
+    localUnsaved: true,
+    createdAt: now,
+    updatedAt: now,
+    order: now,
+    ...(icon ? { icon } : {}),
+  };
+
+  set((state) => ({
+    pages: { ...state.pages, [finalId]: newPage },
+    activePageId: finalId,
+  }));
+  useNotebooks.getState().setLastActivePage(workspaceId, finalId);
+  focusNewPage(finalId);
+  return finalId;
+};
+
+export const discardUnsavedLocalPageAction = (
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+): void => {
+  const page = get().pages[pageId];
+  if (!isUnsavedLocalPage(page)) return;
+  set((state) => {
+    const nextPages = { ...state.pages };
+    delete nextPages[pageId];
+    const nextDirty = { ...state.dirtyLocalPageIds };
+    delete nextDirty[pageId];
+    return {
+      pages: nextPages,
+      dirtyLocalPageIds: nextDirty,
+      activePageId: state.activePageId === pageId ? null : state.activePageId,
+    };
+  });
+};
+
+async function allocateLocalMarkdownFilePath(
+  get: StoreGet,
+  workspaceId: string,
+  parentId: string | undefined,
+  title: string | undefined,
+  requestedFilePath?: string,
+): Promise<string | null> {
+  const notebook = useNotebooks.getState().notebooks[workspaceId];
+  if (
+    !notebook?.localPath ||
+    typeof window === "undefined" ||
+    !window.gooseFs
+  ) {
+    return null;
+  }
+
+  const resolveParentPath = () => {
+    if (!parentId) return null;
+    const parentPage = get().pages[parentId];
+    if (parentPage?.localFilePath) return parentPage.localFilePath;
+    const prefix = `local-${workspaceId}-`;
+    if (!parentId.startsWith(prefix)) return null;
+    const encoded = parentId.slice(prefix.length);
+    try {
+      const relativePath = decodeURIComponent(encoded);
+      return `${notebook.localPath}/${relativePath}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const normalizedTitle = (
+    (title || UNTITLED_PAGE_TITLE).trim() || UNTITLED_PAGE_TITLE
+  ).replace(/[\\/:*?"<>|]/g, "_");
+  const parentPath = resolveParentPath();
+  const parentPage = parentId ? get().pages[parentId] : undefined;
+  const baseDir = parentPath
+    ? parentPage?.isFolder
+      ? parentPath
+      : parentPath.replace(/[^\/\\]+$/, "")
+    : notebook.localPath;
+  const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
+
+  const checkExists = async (path: string) => {
+    if (window.gooseFs?.existsAsync) {
+      return await window.gooseFs.existsAsync(path);
+    }
+    return window.gooseFs?.exists(path) ?? false;
+  };
+
+  const isPathInsideNotebookRoot = (candidate: string) => {
+    const root = notebook.localPath.replace(/\\/g, "/").replace(/\/$/, "");
+    const normalized = candidate.replace(/\\/g, "/");
+    return normalized === root || normalized.startsWith(`${root}/`);
+  };
+
+  if (requestedFilePath) {
+    if (!isPathInsideNotebookRoot(requestedFilePath)) return null;
+    if (await checkExists(requestedFilePath)) return null;
+    return requestedFilePath;
+  }
+
+  let filePath = `${normalizedBaseDir}/${normalizedTitle}.md`;
+  if (await checkExists(filePath)) {
+    let suffix = 1;
+    while (
+      await checkExists(`${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`)
+    ) {
+      suffix++;
+    }
+    filePath = `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`;
+  }
+  return filePath;
+}
+
+export const assignUnsavedLocalFilePathAction = async (
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+  options?: { title?: string },
+): Promise<string | null> => {
+  const page = get().pages[pageId];
+  if (page?.localFilePath) return page.localFilePath;
+  if (!isUnsavedLocalPage(page)) return null;
+  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+  if (!notebook?.localPath) return null;
+
+  const filePath = await allocateLocalMarkdownFilePath(
+    get,
+    page.workspaceId,
+    page.parentId,
+    options?.title,
+  );
+  if (!filePath) return null;
+
+  const idMap = readLocalPageIdMap(page.workspaceId);
+  const relativePath = toRelativePath(notebook.localPath, filePath);
+  const assigned = assignExistingStableId(
+    page.workspaceId,
+    relativePath,
+    pageId,
+    idMap,
+  );
+  if (assigned.dirty) {
+    writeLocalPageIdMap(page.workspaceId, idMap);
+  }
+
+  set((state) => {
+    const current = state.pages[pageId];
+    if (!current) return state;
+    return {
+      pages: {
+        ...state.pages,
+        [pageId]: {
+          ...current,
+          localFilePath: filePath,
+          localUnsaved: undefined,
+        },
+      },
+    };
+  });
+
+  const latest = get().pages[pageId];
+  if (latest) {
+    syncLocalPageMetadataCache(pageId, latest);
+    persistPageSnapshot(latest);
+  }
+  return filePath;
+};
+
+export const materializeUnsavedLocalPageAction = async (
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+  options?: { title?: string },
+): Promise<boolean> => {
+  const filePath = await assignUnsavedLocalFilePathAction(
+    set,
+    get,
+    pageId,
+    options,
+  );
+  if (!filePath) return Boolean(get().pages[pageId]?.localFilePath);
+
+  markSelfWrite(filePath);
+  const latest = get().pages[pageId];
+  if (!latest) return false;
+
+  let saved: boolean;
+  try {
+    saved = await get().saveLocalPageContent(
+      pageId,
+      cloneLocalPageContent(latest.content),
+      { force: true },
+    );
+  } catch {
+    saved = false;
+  }
+  if (!saved) {
+    set((state) => {
+      const current = state.pages[pageId];
+      if (!current) return state;
+      return {
+        pages: {
+          ...state.pages,
+          [pageId]: {
+            ...current,
+            localFilePath: undefined,
+            localUnsaved: true,
+          },
+        },
+      };
+    });
+    return false;
+  }
+
+  persistPageSnapshot(get().pages[pageId]);
+  return true;
+};
+
 export const createLocalPageAction = async (
   set: StoreSet,
   get: StoreGet,
@@ -323,11 +570,13 @@ export const createLocalPageRecordAction = async (
     parentId,
     title,
     content,
+    filePath: requestedFilePath,
   }: {
     workspaceId: string;
     parentId?: string;
     title?: string;
     content?: JSONContent;
+    filePath?: string;
   },
 ): Promise<string | null> => {
   const notebook = useNotebooks.getState().notebooks[workspaceId];
@@ -376,7 +625,6 @@ export const createLocalPageRecordAction = async (
       : parentPath.replace(/[^\/\\]+$/, "")
     : notebook.localPath;
   const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
-  let filePath = `${normalizedBaseDir}/${normalizedTitle}.md`;
 
   const checkExists = async (path: string) => {
     if (window.gooseFs?.existsAsync) {
@@ -385,27 +633,34 @@ export const createLocalPageRecordAction = async (
     return window.gooseFs?.exists(path) ?? false;
   };
 
-  if (await checkExists(filePath)) {
-    let suffix = 1;
-    while (
-      await checkExists(
-        `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`,
-      )
-    ) {
-      suffix++;
-    }
-    filePath = `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`;
-  }
+  const isPathInsideNotebookRoot = (candidate: string) => {
+    const root = notebook.localPath.replace(/\\/g, "/").replace(/\/$/, "");
+    const normalized = candidate.replace(/\\/g, "/");
+    return normalized === root || normalized.startsWith(`${root}/`);
+  };
 
-  if (window.gooseFs.writeFileAsync) {
-    const ok = await window.gooseFs.writeFileAsync(filePath, ``);
-    if (!ok) return null;
+  let filePath: string;
+  if (requestedFilePath) {
+    if (!isPathInsideNotebookRoot(requestedFilePath)) return null;
+    if (await checkExists(requestedFilePath)) return null;
+    filePath = requestedFilePath;
   } else {
-    if (!window.gooseFs.writeFile(filePath, ``)) {
-      return null;
+    filePath = `${normalizedBaseDir}/${normalizedTitle}.md`;
+    if (await checkExists(filePath)) {
+      let suffix = 1;
+      while (
+        await checkExists(
+          `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`,
+        )
+      ) {
+        suffix++;
+      }
+      filePath = `${normalizedBaseDir}/${normalizedTitle} (${suffix}).md`;
     }
   }
 
+  // 不要先写空文件再保存：空文件没有快照/自写标记，写盘前冲突检查会把
+  // 「磁盘空文件 ≠ 陈旧快照」误判成外部修改，AI 新建会失败并弹出冲突 toast。
   const id = generateLocalPageId(workspaceId, filePath);
   const newPage: Page = {
     id,
@@ -428,11 +683,13 @@ export const createLocalPageRecordAction = async (
   }));
 
   syncLocalPageMetadataCache(id, newPage);
+  markSelfWrite(filePath);
   let saved: boolean;
   try {
     saved = await get().saveLocalPageContent(
       id,
       cloneLocalPageContent(newPage.content),
+      { force: true },
     );
   } catch {
     saved = false;

@@ -18,6 +18,14 @@ export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     navBack: 'Mod+[',
     navForward: 'Mod+]',
     newTab: 'Mod+T',
+    splitRight: 'Mod+D',
+    splitDown: 'Mod+Shift+D',
+    splitFocusLeft: 'Mod+Alt+ArrowLeft',
+    splitFocusRight: 'Mod+Alt+ArrowRight',
+    splitFocusUp: 'Mod+Alt+ArrowUp',
+    splitFocusDown: 'Mod+Alt+ArrowDown',
+    splitZoom: 'Mod+Shift+Enter',
+    closeSplitPane: '',
 }
 
 export interface ShortcutsSliceState {

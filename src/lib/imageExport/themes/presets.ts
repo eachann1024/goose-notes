@@ -26,7 +26,6 @@ const CARD_THEME_IDS = [
   "medium",
   "kenya-hara",
   "typewriter",
-  "neon",
   "stationery",
   "poster",
   "github-dark",
@@ -50,6 +49,7 @@ const REMOVED_THEME_REPLACEMENTS: Record<string, CardThemeId> = {
   academic: "medium",
   linear: "github-light",
   "solarized-light": "typewriter",
+  neon: "risograph",
 };
 
 export function normalizeCardThemeId(themeId: unknown): CardThemeId {

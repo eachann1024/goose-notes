@@ -19,6 +19,7 @@ body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-code-floa
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-ai-menu-floating,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-side-menu,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-link-toolbar,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-link-toolbar],
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-panel,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-suggestion-menu,
 body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-grid-suggestion-menu,

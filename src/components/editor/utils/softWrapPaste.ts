@@ -10,7 +10,8 @@ export type SoftWrapInlineItem =
   | string
   | { type: "hardBreak" }
   | { type: "text"; text: string; styles?: Record<string, unknown> }
-  | { type: "link"; href: string; content: SoftWrapInlineItem[] };
+  | { type: "link"; href: string; content: SoftWrapInlineItem[] }
+  | { type: "pageMention"; props?: Record<string, unknown> };
 
 type SoftWrapEditor = {
   insertInlineContent?: (content: unknown) => void;
@@ -61,6 +62,16 @@ function appendInlineContent(
       const inner: SoftWrapInlineItem[] = [];
       appendInlineContent(inner, rec.content);
       result.push({ type: "link", href, content: inner });
+      continue;
+    }
+    if (rec.type === "pageMention") {
+      result.push({
+        type: "pageMention",
+        props:
+          rec.props && typeof rec.props === "object"
+            ? (rec.props as Record<string, unknown>)
+            : rec,
+      });
       continue;
     }
     if (typeof rec.text === "string") {
@@ -121,6 +132,7 @@ export function hasStyledSoftWrapItems(items: SoftWrapInlineItem[]): boolean {
     if (typeof item === "string") return false;
     if (item.type === "hardBreak") return false;
     if (item.type === "link") return true;
+    if (item.type === "pageMention") return true;
     const styles = item.styles ?? {};
     return Object.values(styles).some((value) => value != null && value !== false);
   });
@@ -183,6 +195,13 @@ function inlineItemsToPmNodes(
       }
       continue;
     }
+    if (item.type === "pageMention") {
+      const mentionType = schema.nodes.pageMention;
+      if (mentionType) {
+        nodes.push(mentionType.create(item.props ?? {}));
+      }
+      continue;
+    }
     if (!item.text) continue;
     const marks = marksFromStyles(schema, item.styles);
     nodes.push(schema.text(item.text, marks));
@@ -217,6 +236,13 @@ export function toInsertableInlineContent(
         type: "link",
         href: item.href,
         content: toInsertableInlineContent(item.content),
+      });
+      continue;
+    }
+    if (item.type === "pageMention") {
+      result.push({
+        type: "pageMention",
+        props: item.props ?? {},
       });
       continue;
     }

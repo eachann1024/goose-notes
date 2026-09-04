@@ -18,6 +18,7 @@ import {
 import { Kbd } from "@/components/editor/ui/kbd";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
 import { isSlashMenuDivider } from "./blocknoteSlashItems";
+import { isSuggestionMenuAcceptKey } from "@/components/editor/utils/slashMenuPolicy";
 
 interface CustomSlashMenuProps {
   items: SlashMenuItem[];
@@ -233,6 +234,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
           '.bn-editor, [data-content-type="blockNote"]',
         );
         if (!inEditorScope) return;
+        if (e.isComposing) return;
         if (!selectableIndexes.length) return;
         if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -254,13 +256,14 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
           } else {
             setSelectedIndex(selectableIndexes[pos + 1]);
           }
-        } else if (e.key === "Enter") {
+        } else if (isSuggestionMenuAcceptKey(e)) {
           e.preventDefault();
           e.stopPropagation();
           const validIndex = selectableIndexes.includes(selectedIndex)
             ? selectedIndex
             : selectableIndexes[0];
           selectItem(validIndex);
+          suggestionMenu?.closeMenu();
         }
       };
       window.addEventListener("keydown", handler, true);

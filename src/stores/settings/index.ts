@@ -16,6 +16,8 @@ import {
   normalizeAccentColor,
   resolveCodeTheme,
   normalizeUIFontSize,
+  normalizeEditorFontSize,
+  normalizeSidebarFontSize,
   normalizeAutoCloseInactiveTabsHours,
   normalizeAISettings,
   mergeDesktopSettings,
@@ -177,6 +179,18 @@ export const useSettings = create<SettingsState>()(
         );
         if (state && state.uiFontSize !== normalizedUIFontSize) {
           useSettings.setState({ uiFontSize: normalizedUIFontSize });
+        }
+        const normalizedEditorFontSize = normalizeEditorFontSize(
+          state?.editorFontSize,
+        );
+        if (state && state.editorFontSize !== normalizedEditorFontSize) {
+          useSettings.setState({ editorFontSize: normalizedEditorFontSize });
+        }
+        const normalizedSidebarFontSize = normalizeSidebarFontSize(
+          state?.sidebarFontSize,
+        );
+        if (state && state.sidebarFontSize !== normalizedSidebarFontSize) {
+          useSettings.setState({ sidebarFontSize: normalizedSidebarFontSize });
         }
 
         const normalizedWindowHeight = Math.min(
@@ -465,6 +479,9 @@ export {
   EDITOR_FONT_SIZE_MIN,
   EDITOR_FONT_SIZE_MAX,
   EDITOR_FONT_SIZE_DEFAULT,
+  SIDEBAR_FONT_SIZE_MIN,
+  SIDEBAR_FONT_SIZE_MAX,
+  SIDEBAR_FONT_SIZE_DEFAULT,
   DEFAULT_WAKE_HOTKEY,
   DEFAULT_SEARCH_HOTKEY,
   DEFAULT_QUICKNOTE_HOTKEY,

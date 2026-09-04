@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   ControlledTreeEnvironment,
   InteractionMode,
@@ -37,6 +37,11 @@ import {
 import { isPageTitleAutoFocusProtected } from "@/lib/page-title-focus";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
+import { MAIN_TREE_INDENT } from "./mainTreeDragGeometry";
+import {
+  clearLocalFolderDropParent,
+  takeLocalFolderDropParent,
+} from "./mainTreeLocalDrop";
 import "./main-tree.css";
 
 interface SidebarMainTreeProps {
@@ -64,6 +69,7 @@ export function SidebarMainTree({
   selectedPageId,
   width,
   viewportHeight,
+  itemHeight,
 }: SidebarMainTreeProps) {
   const pages = useStoreWithEqualityFn(
     usePages,
@@ -259,6 +265,7 @@ export function SidebarMainTree({
   const handleItemDragEnd = useCallback(() => {
     draggingItemIdRef.current = null;
     setDraggingItemId(null);
+    clearLocalFolderDropParent();
   }, []);
 
   const scopedPages = useMemo(() => {
@@ -529,7 +536,24 @@ export function SidebarMainTree({
 
     let newParentId: string | undefined;
     let insertIndex: number;
-    if (target.targetType === "between-items") {
+    if (isLocalFolder) {
+      const captured = takeLocalFolderDropParent();
+      if (captured !== null) {
+        newParentId = captured;
+        insertIndex = -1;
+      } else if (target.targetType === "item") {
+        const pid = String(target.targetItem);
+        newParentId = pid === "root" ? undefined : pid;
+        insertIndex = -1;
+      } else if (target.targetType === "between-items") {
+        const pid = String(target.parentItem);
+        newParentId = pid === "root" ? undefined : pid;
+        insertIndex = -1;
+      } else {
+        newParentId = undefined;
+        insertIndex = -1;
+      }
+    } else if (target.targetType === "between-items") {
       const pid = String(target.parentItem);
       newParentId = pid === "root" ? undefined : pid;
       insertIndex = target.childIndex;
@@ -634,7 +658,13 @@ export function SidebarMainTree({
         <ContextMenuTrigger asChild>
           <div
             className="flex-1 min-h-0 overflow-auto"
-            style={{ width, height: viewportHeight || undefined }}
+            style={
+              {
+                width,
+                height: viewportHeight || undefined,
+                "--main-tree-row-height": `${itemHeight}px`,
+              } as CSSProperties
+            }
             onKeyDownCapture={(event) => {
               const target = event.target as HTMLElement;
               if (
@@ -690,6 +720,7 @@ export function SidebarMainTree({
               canReorderItems={true}
               canDropOnFolder={true}
               canDropOnNonFolder={false}
+              renderDepthOffset={MAIN_TREE_INDENT}
               canRename={false}
               canSearch={false}
               canSearchByStartingTyping={false}

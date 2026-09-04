@@ -124,6 +124,28 @@ export function resolveOrCreateStableId(
 }
 
 /**
+ * 把已有 pageId（未落盘标签）绑定到即将写出的相对路径，避免写盘后 id 被公式重算。
+ */
+export function assignExistingStableId(
+  _notebookId: string,
+  relativePath: string,
+  existingId: string,
+  map: LocalPageIdMap,
+): { dirty: boolean } {
+  if (!existingId) return { dirty: false };
+  if (map[relativePath] === existingId) return { dirty: false };
+  if (map[relativePath] && map[relativePath] !== existingId) {
+    console.warn(
+      "[local-page-idmap] assignExistingStableId: path already mapped to different id",
+      { relativePath, existing: map[relativePath], existingId },
+    );
+    return { dirty: false };
+  }
+  map[relativePath] = existingId;
+  return { dirty: true };
+}
+
+/**
  * 应用内改名：将旧 relativePath 的 id 迁移到新 relativePath。
  * - 删除旧条目
  * - 写入新条目（指向同一 stableId）

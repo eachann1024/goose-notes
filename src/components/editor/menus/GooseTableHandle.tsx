@@ -482,7 +482,7 @@ export function GooseTableHandle({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="goose-editor-position-safe-trigger goose-table-handle-btn"
+          className="bn-table-handle goose-editor-position-safe-trigger goose-table-handle-btn"
           aria-label={isRow ? "行操作" : "列操作"}
           draggable
           onDragStart={handleDragStart}

@@ -1,4 +1,7 @@
-import { normalizeClipboardLineEndings } from "./clipboard";
+import {
+  htmlHasNonDefaultGooseBlockAttrs,
+  normalizeClipboardLineEndings,
+} from "./clipboard";
 
 export const LIST_PASTE_BLOCK_TYPES = [
   "bulletListItem",
@@ -146,6 +149,7 @@ export function shouldSplitMultilinePaste(input: {
     return false;
   }
   if (htmlHasNonTextPasteBlocks(input.htmlText)) return false;
+  if (htmlHasNonDefaultGooseBlockAttrs(input.htmlText)) return false;
   return true;
 }
 

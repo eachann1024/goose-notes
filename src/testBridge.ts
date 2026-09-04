@@ -166,6 +166,8 @@ export function installTestBridge() {
         useTabs.getState().openPreviewTab(pageId),
       openPermanentTab: (pageId: string, pin?: boolean) =>
         useTabs.getState().openPermanentTab(pageId, { pin }),
+      openNewTab: () => useTabs.getState().openNewTab(),
+      openWelcomeTab: () => useTabs.getState().openWelcomeTab(),
       togglePinTab: (tabId: string) => useTabs.getState().togglePinTab(tabId),
       setActiveTab: (tabId: string) => useTabs.getState().setActiveTab(tabId),
       createPage: (parentId?: string, workspaceId?: string) =>

@@ -108,6 +108,8 @@ export function getAllConfiguredShortcuts(
     if (id === excludeId || !s) continue
     // 单标签模式下这些动作不注册热键，也不应占用可配置位。
     if (singleTabMode && TAB_ONLY_APP_SHORTCUT_IDS.has(id)) continue
+    // 应用内搜索与桌面「唤出搜索面板」是同一动作，允许共用 ⌘K / Ctrl+K。
+    if (excludeId === "search-hotkey" && id === "openSearch") continue
     shortcuts.push(normalizeShortcutForConflict(s, isMac))
   }
   // 单标签模式隐藏「关闭标签」配置，其值不参与冲突。
@@ -126,7 +128,11 @@ export function getAllConfiguredShortcuts(
       normalizeShortcutForConflict(desktopHotkeys.quicknoteHotkey, isMac),
     )
   }
-  if (excludeId !== "search-hotkey" && desktopHotkeys?.searchHotkey) {
+  if (
+    excludeId !== "search-hotkey" &&
+    excludeId !== "openSearch" &&
+    desktopHotkeys?.searchHotkey
+  ) {
     shortcuts.push(
       normalizeShortcutForConflict(desktopHotkeys.searchHotkey, isMac),
     )
@@ -658,11 +664,92 @@ export function SettingsShortcuts({
         </>}
       </SettingsSectionCard>
 
+      <SettingsSectionCard title="分屏">
+        <ShortcutField
+          id="shortcut-split-right"
+          title="向右分屏"
+          description="在当前格右侧打开新格。编辑区较窄时会改为向下分。"
+          value={appShortcuts.splitRight ?? DEFAULT_APP_SHORTCUTS.splitRight}
+          onChange={safeSetAppShortcut("splitRight")}
+          resetValue={DEFAULT_APP_SHORTCUTS.splitRight}
+        />
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-down"
+            title="向下分屏"
+            description="在当前格下方打开新格。"
+            value={appShortcuts.splitDown ?? DEFAULT_APP_SHORTCUTS.splitDown}
+            onChange={safeSetAppShortcut("splitDown")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitDown}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-focus-left"
+            title="焦点移到左格"
+            description="把键盘焦点移到几何相邻的左侧格子。"
+            value={appShortcuts.splitFocusLeft ?? DEFAULT_APP_SHORTCUTS.splitFocusLeft}
+            onChange={safeSetAppShortcut("splitFocusLeft")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusLeft}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-focus-right"
+            title="焦点移到右格"
+            description="把键盘焦点移到几何相邻的右侧格子。"
+            value={appShortcuts.splitFocusRight ?? DEFAULT_APP_SHORTCUTS.splitFocusRight}
+            onChange={safeSetAppShortcut("splitFocusRight")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusRight}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-focus-up"
+            title="焦点移到上格"
+            description="把键盘焦点移到几何相邻的上方格子。"
+            value={appShortcuts.splitFocusUp ?? DEFAULT_APP_SHORTCUTS.splitFocusUp}
+            onChange={safeSetAppShortcut("splitFocusUp")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusUp}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-focus-down"
+            title="焦点移到下格"
+            description="把键盘焦点移到几何相邻的下方格子。"
+            value={appShortcuts.splitFocusDown ?? DEFAULT_APP_SHORTCUTS.splitFocusDown}
+            onChange={safeSetAppShortcut("splitFocusDown")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusDown}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-zoom"
+            title="最大化分屏格"
+            description="让当前格占满编辑区，再按一次恢复。"
+            value={appShortcuts.splitZoom ?? DEFAULT_APP_SHORTCUTS.splitZoom}
+            onChange={safeSetAppShortcut("splitZoom")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitZoom}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-close-split-pane"
+            title="关闭分屏格"
+            description="可选。仅在已分屏时关闭当前格，不会关闭标签页。默认留空，避免和关闭标签抢同一个键。"
+            value={appShortcuts.closeSplitPane ?? DEFAULT_APP_SHORTCUTS.closeSplitPane}
+            onChange={safeSetAppShortcut("closeSplitPane")}
+            resetValue={DEFAULT_APP_SHORTCUTS.closeSplitPane}
+          />
+        </div>
+      </SettingsSectionCard>
+
       <SettingsSectionCard title={singleTabMode ? "面板关闭" : "关闭行为"}>
         {!singleTabMode && <ShortcutField
           id="close-tab-shortcut"
           title="关闭快捷键"
-          description="默认留空。设置后，按一次依次关闭：通知 → 弹窗 → 搜索框 → 当前标签页。"
+          description="默认留空。设置后，按一次依次关闭：通知 → 弹窗 → 当前分屏格（如有）→ 当前标签页。桌面端 ⌘W / Ctrl+W 同样按此顺序。"
           value={closeTabShortcut}
           onChange={safeSetCloseTab}
           resetValue={DEFAULT_CLOSE_TAB_SHORTCUT}

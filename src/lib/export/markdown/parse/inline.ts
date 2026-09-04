@@ -1,4 +1,8 @@
 import { sanitizeCssColor } from "../blockPropsMarker";
+import {
+  pageMentionFromMarkdownLink,
+  pageMentionFromWikiLink,
+} from "@/components/editor/inline/pageMention";
 
 /**
  * 给一组 inline 节点统一附加样式（用于 <u>…</u> / <span style> 内部嵌套解析后合并样式）。
@@ -57,10 +61,9 @@ export function parseInlineMarkdown(text: string): any[] {
   if (!text) return result;
 
   // 优先级：$math$ > <u>underline</u> > <span style>…</span> > ==highlight== >
-  //         **bold** > *italic* > ~~strike~~ > `code` > [link](url)
-  // <u> 与 <span> 内部递归解析，支持下划线/颜色与其他标记的嵌套组合
+  //         **bold** > *italic* > ~~strike~~ > `code` > [[wiki]] > [link](url)
   const regex =
-    /(\$((?:\\\$|[^\$])+?)\$|<u>(.+?)<\/u>|<span\b([^>]*)>(.+?)<\/span>|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[([^\]]+)\]\(([^)]+)\))/gi;
+    /(\$((?:\\\$|[^\$])+?)\$|<u>(.+?)<\/u>|<span\b([^>]*)>(.+?)<\/span>|==(.+?)==|\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[\[([^\]\n]+?)\]\]|\[([^\]]+)\]\(([^)]+)\))/gi;
   let lastIndex = 0;
   let match;
 
@@ -109,12 +112,30 @@ export function parseInlineMarkdown(text: string): any[] {
       result.push({ type: "text", text: match[9], styles: { strike: true } });
     } else if (match[10] !== undefined) {
       result.push({ type: "text", text: match[10], styles: { code: true } });
-    } else if (match[11] !== undefined && match[12] !== undefined) {
-      result.push({
-        type: "link",
-        href: match[12],
-        content: toLinkContent(parseInlineMarkdown(match[11])),
-      });
+    } else if (match[11] !== undefined) {
+      const mention = pageMentionFromWikiLink(match[11]);
+      if (mention) {
+        result.push({
+          type: "pageMention",
+          props: mention,
+        });
+      } else {
+        pushPlain(match[0]);
+      }
+    } else if (match[12] !== undefined && match[13] !== undefined) {
+      const mention = pageMentionFromMarkdownLink(match[12], match[13]);
+      if (mention) {
+        result.push({
+          type: "pageMention",
+          props: mention,
+        });
+      } else {
+        result.push({
+          type: "link",
+          href: match[13],
+          content: toLinkContent(parseInlineMarkdown(match[12])),
+        });
+      }
     }
 
     lastIndex = match.index + match[0].length;

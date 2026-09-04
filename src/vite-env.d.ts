@@ -59,6 +59,7 @@ declare global {
     printHtmlToPdf?: (html: string) => Promise<string | null>;
     selectDirectory?: () => Promise<string | null>;
     restoreLastDirectory?: () => Promise<string | null>;
+    restoreFromTrash?: (path: string) => Promise<boolean>;
     revealItemInFolder?: (path: string) => boolean | Promise<boolean>;
     listAvailableOpenApps?: <T extends { appName: string }>(candidates: T[]) => Promise<T[]>;
     openWithApp?: (path: string, app: string) => Promise<boolean>;
@@ -80,11 +81,13 @@ declare global {
     fsStat: (p: string) => Promise<{ size: number; isDirectory: boolean; mtimeMs: number }>
     fsRename: (from: string, to: string) => Promise<void>
     fsRemove: (p: string) => Promise<void>
+    restoreFromTrash: (p: string) => Promise<boolean>
     fsWatch: (p: string) => Promise<string>
     fsUnwatch: (id: string) => Promise<void>
     onFsChange: (cb: (e: { path: string; type: string }) => void) => () => void
     getUserDataPath: () => Promise<string>
     getDownloadsPath: () => Promise<string>
+    saveToDownloads: (filename: string, data: Uint8Array) => Promise<string>
     joinPath: (...parts: string[]) => Promise<string>
     openUrl: (url: string) => Promise<void>
     openPath: (p: string) => Promise<void>
@@ -110,9 +113,40 @@ declare global {
     getAccessibilityStatus: () => Promise<{ platform: string; trusted: boolean }>
     requestAccessibility: () => Promise<boolean>
     onOpenSearch: (cb: () => void) => () => void
+    onCloseActiveTab: (cb: () => void) => () => void
     takePendingOpenMarkdownFiles: () => Promise<string[]>
     onOpenMarkdownFiles: (cb: (files: string[]) => void) => () => void
     notify: (n: { title: string; body: string }) => Promise<void>
+    getWindowContext: () => Promise<{ windowId: string; kind: "workspace" | "quicknote" }>
+    createWindow: (opts: {
+      mode: "blank" | "currentTab"
+      tab?: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }
+      bounds?: { x: number; y: number; width: number; height: number }
+    }) => Promise<{ windowId: string }>
+    closeWindow: (windowId?: string) => Promise<void>
+    finishTabDrag: (opts: {
+      tab: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }
+      cursor: { x: number; y: number }
+      sourceTabCount: number
+      grabOffsetX?: number
+    }) => Promise<
+      | { action: "none" }
+      | { action: "tearOff"; windowId: string }
+      | { action: "docked"; windowId: string }
+    >
+    tabDragMove: (cursor: { x: number; y: number }) => Promise<void>
+    tabDragCancel: () => Promise<void>
+    onAcceptTab: (
+      cb: (payload: {
+        tab: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }
+        contentX: number
+      }) => void,
+    ) => () => void
+    onTabDockPreview: (cb: (payload: { contentX: number | null }) => void) => () => void
+    onWindowInit: (cb: (payload: {
+      takeTab?: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }
+      restoredTabs?: Array<{ id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }>
+    }) => void) => () => void
   }
 
   interface Window {

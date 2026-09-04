@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useAppHotkeys } from "./hooks/useAppHotkeys";
 import { useDesktopHotkeys } from "./hooks/useDesktopHotkeys";
 import { usePluginEvents } from "./hooks/usePluginEvents";
@@ -19,9 +20,10 @@ function App() {
   const {
     uiFontSize,
     editorFontSize,
+    sidebarFontSize,
     customFonts,
     privacy,
-    singleTabMode,
+    singleTabMode: singleTabModeSetting,
   } = useSettings();
   const hydrated = usePages((s) => s.hydrated);
   const onboardingCompleted = usePages((s) => s.onboardingCompleted);
@@ -117,13 +119,13 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (!hydrated || !singleTabMode) return;
+    if (!hydrated || !effectiveSingleTabMode(singleTabModeSetting)) return;
     useTabs.getState().collapseToActiveTab();
-  }, [hydrated, singleTabMode]);
+  }, [hydrated, singleTabModeSetting]);
 
   useEffect(() => {
-    applyAppearanceScaleVariables({ uiFontSize, editorFontSize });
-  }, [uiFontSize, editorFontSize]);
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, sidebarFontSize });
+  }, [uiFontSize, editorFontSize, sidebarFontSize]);
 
   useEffect(() => {
     applyFontVariables(customFonts);

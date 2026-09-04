@@ -182,12 +182,12 @@ export function ImageExportThemeSelector({
       >
         <div
           className={cn(
-            "px-6 pt-6 pb-4 shrink-0",
-            showOptionsCorner && "flex items-start justify-between gap-6 pr-12",
+            "px-6 pt-6 pb-3 shrink-0",
+            showOptionsCorner && "flex items-center justify-between gap-4 pr-12",
           )}
         >
-          <DialogHeader className={cn("space-y-1.5", showOptionsCorner && "min-w-0 flex-1")}>
-            <DialogTitle className="text-[15px] font-semibold tracking-tight">
+          <DialogHeader className={cn("space-y-1", showOptionsCorner && "min-w-0 flex-1")}>
+            <DialogTitle className="text-sm font-semibold tracking-tight">
               选择卡片主题
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -198,7 +198,7 @@ export function ImageExportThemeSelector({
             <GenerationOptionsPanel
               wm={wm}
               onToggle={toggleConfig}
-              variant="corner"
+              variant="toolbar"
             />
           )}
         </div>
@@ -331,42 +331,64 @@ function GenerationOptionsPanel({
 }: {
   wm: WatermarkConfig;
   onToggle: (key: keyof WatermarkConfig) => void;
-  variant: "corner" | "drawer";
+  variant: "toolbar" | "drawer";
 }) {
   const rows: Array<{
     key: keyof WatermarkConfig;
     label: string;
+    shortLabel?: string;
     disabled?: boolean;
     indent?: boolean;
   }> = [
-    { key: "showTitle", label: "显示标题" },
-    { key: "showWatermark", label: "显示底部信息栏" },
-    { key: "showBrand", label: "显示品牌名", disabled: !wm.showWatermark, indent: true },
-    { key: "showDate", label: "显示日期", disabled: !wm.showWatermark, indent: true },
+    { key: "showTitle", label: "显示标题", shortLabel: "标题" },
+    { key: "showWatermark", label: "显示底部信息栏", shortLabel: "底部栏" },
+    { key: "showBrand", label: "显示品牌名", shortLabel: "品牌", disabled: !wm.showWatermark, indent: true },
+    { key: "showDate", label: "显示日期", shortLabel: "日期", disabled: !wm.showWatermark, indent: true },
     {
       key: "showTime",
       label: "追加时分秒",
+      shortLabel: "时分秒",
       disabled: !wm.showWatermark || !wm.showDate,
       indent: true,
     },
   ];
 
-  return (
-    <section
-      aria-label="生成选项"
-      className={
-        variant === "corner"
-          ? "w-[220px] shrink-0 rounded-[10px] border bg-muted/20 px-3 py-2.5"
-          : "mt-3"
-      }
-    >
-      {variant === "corner" && (
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+  if (variant === "toolbar") {
+    return (
+      <section
+        aria-label="生成选项"
+        className="flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0 rounded-lg border bg-muted/20 px-3 py-2"
+      >
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <LucideIcons.Settings className="h-3 w-3" />
           生成选项
-        </div>
-      )}
-      <div className={variant === "corner" ? "space-y-2" : "space-y-2.5"}>
+        </span>
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={cn(
+              "flex items-center gap-2",
+              row.disabled && "opacity-50",
+            )}
+          >
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {row.shortLabel ?? row.label}
+            </span>
+            <Switch
+              checked={wm[row.key]}
+              onCheckedChange={() => onToggle(row.key)}
+              disabled={row.disabled}
+              className="scale-75 origin-center"
+            />
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="生成选项" className="mt-3">
+      <div className="space-y-2">
         {rows.map((row) => (
           <div
             key={row.key}

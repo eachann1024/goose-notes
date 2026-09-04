@@ -1,42 +1,36 @@
-import { useEffect, useRef } from "react";
-import { usePages } from "@/stores/usePages";
+import { useEffect, useRef, type RefObject } from "react";
 
-export function useScrollRestoration(activePageId: string | null | undefined) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pageScrollPositionsRef = useRef<Record<string, number>>({});
-  const lastActivePageRef = useRef<string | null>(null);
+/** 按 page 记住滚动位置，跨 pane 实例共享，避免切格时用错容器。 */
+const pageScrollPositions: Record<string, number> = {};
 
-  // Track scroll position while scrolling
+export function useScrollRestoration(
+  pageId: string | null | undefined,
+  externalRef?: RefObject<HTMLDivElement | null>,
+) {
+  const internalRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = externalRef ?? internalRef;
+
+  // 每个容器自己上报：滚动中、卸监听（blur / 换页 / unmount）时写入对应 pageId。
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || !pageId) return;
 
     const handleScroll = () => {
-      const currentPageId = usePages.getState().activePageId;
-      if (!currentPageId) return;
-      pageScrollPositionsRef.current[currentPageId] = container.scrollTop;
+      pageScrollPositions[pageId] = container.scrollTop;
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
+      pageScrollPositions[pageId] = container.scrollTop;
       container.removeEventListener("scroll", handleScroll);
     };
-  }, [activePageId]);
+  }, [pageId, scrollContainerRef]);
 
-  // Restore scroll position on page change
   useEffect(() => {
     const container = scrollContainerRef.current;
-    const previousPageId = lastActivePageRef.current;
+    if (!pageId || !container) return;
 
-    if (previousPageId && container) {
-      pageScrollPositionsRef.current[previousPageId] = container.scrollTop;
-    }
-
-    lastActivePageRef.current = activePageId ?? null;
-
-    if (!activePageId || !container) return;
-
-    const savedTop = pageScrollPositionsRef.current[activePageId];
+    const savedTop = pageScrollPositions[pageId];
     const targetTop = typeof savedTop === "number" ? savedTop : 0;
 
     const restoreScroll = () => {
@@ -51,7 +45,7 @@ export function useScrollRestoration(activePageId: string | null | undefined) {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [activePageId]);
+  }, [pageId, scrollContainerRef]);
 
   return scrollContainerRef;
 }

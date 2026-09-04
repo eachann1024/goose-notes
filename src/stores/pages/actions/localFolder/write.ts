@@ -24,7 +24,8 @@ import {
   flushAllPendingLocalSavesInternal,
 } from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
-import { clonePageContent, cloneLocalPageContent } from "../pageCreate";
+import { clonePageContent, cloneLocalPageContent, assignUnsavedLocalFilePathAction } from "../pageCreate";
+import { localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
 import { findDuplicateLocalFileOwner } from "./pathGuards";
 import {
   consumeDiskWriteFailure,
@@ -265,8 +266,15 @@ const saveLocalPageContentUnlocked = async (
   const page = get().pages[pageId];
   if (!page) return false;
 
-  const filePath = get().getLocalFilePath(pageId);
-  if (!filePath) return false;
+  let filePath = get().getLocalFilePath(pageId);
+  if (!filePath) {
+    if (!page.localUnsaved) return false;
+    if (!localPageHasPersistableContent(content) && !options?.force) {
+      return true;
+    }
+    filePath = await assignUnsavedLocalFilePathAction(set, get, pageId);
+    if (!filePath) return false;
+  }
 
   const duplicatePage = findDuplicateLocalFileOwner(
     get().pages,

@@ -9,6 +9,7 @@ import { formatShortcut } from "@/lib/utils";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { shell } from "@/lib/utools/shell";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
 import { toast } from "@/components/ui/sonner";
@@ -135,7 +136,9 @@ export function SidebarContextMenu({
     (s) => s.localFolderExternalEditor,
   );
   const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
-  const singleTabMode = useSettings((s) => s.singleTabMode);
+  const singleTabMode = effectiveSingleTabMode(
+    useSettings((s) => s.singleTabMode),
+  );
   const hasParent = !!page.parentId;
   const createParentId = page.isFolder ? page.id : page.parentId;
 

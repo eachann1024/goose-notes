@@ -65,7 +65,7 @@ export function composerDraftHasContent(
     for (const node of nodes) {
       if (!node || typeof node !== "object") continue;
       const type = (node as { type?: string }).type;
-      if (type === "aiFileReference" || type === "aiSkillCommand") return true;
+      if (type === "aiFileReference" || type === "aiSkillCommand" || type === "aiSelectionQuote") return true;
       if (type === "text") {
         const text = (node as { text?: unknown }).text;
         if (typeof text === "string" && text.trim().length > 0) return true;

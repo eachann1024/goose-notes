@@ -319,7 +319,7 @@ export function Sidebar({
                       />
                     </div>
                   ) : (
-                    <div className="pl-0 pr-[9px] flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-hidden pl-0 pr-2">
                       <SidebarOutline
                         editorRef={editorRef}
                         scrollContainerRef={scrollContainerRef}

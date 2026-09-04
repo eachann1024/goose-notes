@@ -41,7 +41,7 @@ export const LEGACY_BLOCK_TYPES = new Set([
   "horizontalRule",
 ]);
 
-const INLINE_CONTENT_TYPES = new Set(["text", "link"]);
+const INLINE_CONTENT_TYPES = new Set(["text", "link", "pageMention"]);
 
 /** 写在 props 里、用户能看见也会拿来搜的字段。url / language / title 不进索引。 */
 const SEARCHABLE_PROP_KEYS = ["caption", "name", "summary", "alt"] as const;
@@ -117,6 +117,11 @@ function extractInlinePiece(inline: any): string {
   if (inline.type === "hardBreak") return "\n";
   if (inline.type === "link") {
     return simpleExtractText(inline.content ?? "");
+  }
+  if (inline.type === "pageMention") {
+    const title =
+      typeof inline.props?.title === "string" ? inline.props.title.trim() : "";
+    return title ? (title.startsWith("@") ? title : `@${title}`) : "";
   }
   if (inline.type === "paragraph" || inline.type === "tableCell") {
     return simpleExtractText(inline);

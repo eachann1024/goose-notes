@@ -101,13 +101,49 @@
 /*
  * 空块提示是 .bn-block-content::after，在 flex 容器里是独立一项。
  * 行内内容 flex-grow 后会把它顶到行尾（新 Chromium / Electron 尤其明显）。
- * 空块只有一个光标位，不需要吃宽度；收回 grow，让「输入 / 或 、来展开菜单」贴在光标旁。
+ * 空块只有一个光标位，不需要吃宽度；收回 grow，让空块提示贴在光标旁。
  */
 .bn-block-content:has(.ProseMirror-trailingBreak:only-child)
   > .bn-inline-content,
 .bn-block-content:has(.ProseMirror-trailingBreak:only-child)
   > :is(h1, h2, h3, h4, h5, h6, blockquote) {
   flex-grow: 0;
+}
+
+/* 光标所在文本行：Zed 式浅底，只盖当前块内容、不含子块。
+ * 左右外扩与标题色条对齐，再用等量 padding 把文字/光标放回原基线。
+ * 标题本身已外扩 8px，不再叠一次。 */
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content {
+  background-color: var(--goose-active-line-bg);
+}
+
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content:not([data-content-type="heading"]) {
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--goose-active-line-outset, 8px));
+  margin-left: calc(-1 * var(--goose-active-line-outset, 8px));
+  margin-right: calc(-1 * var(--goose-active-line-outset, 8px));
+  padding-left: var(--goose-active-line-outset, 8px);
+  padding-right: var(--goose-active-line-outset, 8px);
+  border-radius: 4px;
+}
+
+/* 标题默认 18px padding-top 是块间距，底色会把这块空白一起涂上。
+ * 与色条标题相同：15px 挪到透明 margin，浅底只包文字行。 */
+.bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content[data-content-type="heading"]:not(
+    [data-background-color]
+  ) {
+  margin-top: 15px;
+  padding-top: 3px;
+  border-radius: 4px;
 }
 
 /* BlockNote 块间距全局优化 */

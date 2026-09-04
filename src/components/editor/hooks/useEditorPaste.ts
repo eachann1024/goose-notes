@@ -2,7 +2,11 @@ import { useCallback, type MutableRefObject } from "react";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { CellSelection } from "prosemirror-tables";
 import { useCreateBlockNote } from "@blocknote/react";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { restoreBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
 import {
+  htmlHasNonDefaultGooseBlockAttrs,
   isValidUrl,
   looksLikeBlockStructure,
   looksLikeMermaidDiagram,
@@ -23,10 +27,99 @@ import {
   insertSoftWrappedLines,
 } from "../utils/softWrapPaste";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
+import {
+  focusPastedBlock,
+  isEmptyInlineBlock,
+  pasteBlocksAtCursor,
+} from "../utils/pasteAtCursor";
 import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "../extensions/copyCurrentBlockExtension";
 import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
 
 type Editor = ReturnType<typeof useCreateBlockNote>;
+
+export type CachedPasteTarget = {
+  id: string;
+  type?: string;
+  content?: unknown;
+};
+
+/** HTML 含非默认 Goose 块级属性或自定义 MIME 时走块级粘贴，行内 strong/span 不算。 */
+export function shouldPasteHtmlAsBlocks(
+  htmlText: string,
+  hasGooseBlockCopyMime = false,
+): boolean {
+  if (hasGooseBlockCopyMime) return true;
+  return htmlHasNonDefaultGooseBlockAttrs(htmlText);
+}
+
+export function shouldPasteClipboardAsBlocks(
+  clipboard: DataTransfer,
+  htmlText: string,
+): boolean {
+  if (clipboard.getData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) return true;
+  return shouldPasteHtmlAsBlocks(htmlText);
+}
+
+/** plain 含 Goose 块属性标记或 style 颜色 span 时优先 importMarkdownFragment。 */
+export function plainHasGooseMarkdownMarkers(plain: string): boolean {
+  return (
+    /goose-note:block-props|data-goose-note-block-props/i.test(plain) ||
+    /<span[^>]*style\s*=/i.test(plain)
+  );
+}
+
+export function cachePasteTarget(editor: Editor): CachedPasteTarget | null {
+  try {
+    const block = editor.getTextCursorPosition().block;
+    return { id: block.id, type: block.type, content: block.content };
+  } catch {
+    return null;
+  }
+}
+
+export function resolvePasteAnchor(
+  editor: { getBlock: (id: string) => unknown },
+  target: CachedPasteTarget,
+): CachedPasteTarget {
+  return (editor.getBlock(target.id) as CachedPasteTarget | undefined) ?? target;
+}
+
+export function finishPasteAtAnchor(
+  editor: Editor,
+  blocks: unknown[],
+  target: CachedPasteTarget,
+): boolean {
+  const anchor = resolvePasteAnchor(editor, target);
+  const last = pasteBlocksAtCursor(editor, blocks, anchor);
+  if (last) focusPastedBlock(editor, last);
+  return last !== null;
+}
+
+export async function pasteClipboardHtmlAsBlocks(
+  editor: Editor,
+  htmlText: string,
+  target: CachedPasteTarget,
+): Promise<boolean> {
+  let blocks: unknown[];
+  try {
+    blocks = await editor.tryParseHTMLToBlocks(htmlText);
+  } catch {
+    blocks = [];
+  }
+  if (!blocks || blocks.length === 0) return false;
+  return finishPasteAtAnchor(editor, blocks, target);
+}
+
+export function tryPasteGooseMarkdownFragment(
+  editor: Editor,
+  plainText: string,
+  target: CachedPasteTarget,
+): boolean {
+  const fragment = importMarkdownFragment(plainText);
+  if (!fragment || fragment.length === 0) return false;
+  const restored = restoreBlockPropsMarkers(fragment as BlockNoteContent);
+  return finishPasteAtAnchor(editor, restored, target);
+}
 
 type UseEditorPasteOptions = {
   editor: Editor;
@@ -79,6 +172,19 @@ export function pasteLinesAsBlocks(
   currentBlockType: string | null,
 ) {
   const { firstLine, restBlocks } = planMultilinePaste(lines, currentBlockType);
+  const current = editor.getTextCursorPosition().block;
+
+  // 空行粘贴：当前块为空且首行为空时，直接替换/插入后续块，不留空段落。
+  if (
+    isEmptyInlineBlock(current) &&
+    firstLine === "" &&
+    restBlocks.length > 0
+  ) {
+    const last = pasteBlocksAtCursor(editor, restBlocks, current);
+    if (last) focusPastedBlock(editor, last);
+    return;
+  }
+
   const pmState = editor.prosemirrorState;
   if (firstLine) {
     editor.prosemirrorView.dispatch(
@@ -90,10 +196,10 @@ export function pasteLinesAsBlocks(
     );
   }
   if (restBlocks.length === 0) return;
-  const current = editor.getTextCursorPosition().block;
-  const inserted = editor.insertBlocks(restBlocks, current, "after");
-  const last = inserted[inserted.length - 1];
-  if (last) editor.setTextCursorPosition(last, "end");
+
+  const anchor = editor.getTextCursorPosition().block;
+  const last = pasteBlocksAtCursor(editor, restBlocks, anchor);
+  if (last) focusPastedBlock(editor, last);
 }
 
 export function useEditorPaste({
@@ -155,36 +261,23 @@ export function useEditorPaste({
             // 直接插到标题之后；原有正文顺移，不覆盖标题。
             const inserted = editor.insertBlocks(blocks, titleBlock, "after");
             const last = inserted[inserted.length - 1];
-            if (last) editor.setTextCursorPosition(last, "end");
+            if (last) focusPastedBlock(editor, last);
           })();
           return;
         }
       }
 
-      if (!plainText) return;
-
-      // BlockNote 内部「折叠光标整体复制当前块」会写入 GOOSE_BLOCKNOTE_BLOCK_COPY_MIME
-      // 标记，其 text/html 是块级结构。走块级粘贴：解析回块后整块插到当前块之后，
-      // 完整保留内联格式与块类型。绝不能交给默认 HTML 粘贴（会把内容 merge 进当前
-      // 段落，标题/列表降级），更不能走下方「多行拆块/纯文本」逻辑（全变纯文本）。
-      if (clipboard.getData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) {
+      // GOOSE MIME 或 HTML 含块级属性：块级粘贴（async 前同步缓存锚点）。
+      if (shouldPasteClipboardAsBlocks(clipboard, htmlText)) {
+        const target = cachePasteTarget(editor);
+        if (!target) return;
         event.preventDefault();
         event.stopPropagation();
-        void (async () => {
-          let blocks: any[];
-          try {
-            blocks = await editor.tryParseHTMLToBlocks(htmlText);
-          } catch {
-            blocks = [];
-          }
-          if (!blocks || blocks.length === 0) return;
-          const current = editor.getTextCursorPosition().block;
-          const inserted = editor.insertBlocks(blocks, current, "after");
-          const last = inserted[inserted.length - 1];
-          if (last) editor.setTextCursorPosition(last, "end");
-        })();
+        void pasteClipboardHtmlAsBlocks(editor, htmlText, target);
         return;
       }
+
+      if (!plainText) return;
 
       const trimmedText = plainText.trim();
 
@@ -324,6 +417,14 @@ export function useEditorPaste({
 
       event.preventDefault();
       event.stopPropagation();
+
+      if (plainHasGooseMarkdownMarkers(plainText)) {
+        const target = cachePasteTarget(editor);
+        if (target && tryPasteGooseMarkdownFragment(editor, plainText, target)) {
+          return;
+        }
+      }
+
       editor.pasteMarkdown(plainText);
     },
     [editable, editor],

@@ -61,6 +61,8 @@ export interface Page {
 
   // Local file system (for local-folder mode)
   localFilePath?: string;
+  /** Electron 新标签：先在内存编辑，输入内容后再写盘。 */
+  localUnsaved?: boolean;
   localPendingCreate?: "folder" | "file";
   localReadState?: LocalFileReadState;
   localReadError?: string;

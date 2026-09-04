@@ -19,6 +19,7 @@ import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
 import { closeNotebookAiIfFullscreen } from "../../notebook-ai/useNotebookAiPanel";
@@ -75,7 +76,7 @@ export function PlaceholderRow({
       <div className="flex items-center h-full pl-1 pr-2 rounded-md">
         <div
           style={{ paddingLeft: depth * TREE_INDENT + 24 }}
-          className="text-[13px] text-muted-foreground/45 dark:text-muted-foreground/35 italic truncate"
+          className="text-muted-foreground/45 italic truncate"
         >
           {name}
         </div>
@@ -225,7 +226,7 @@ export function SortablePageRow({
       }
       openInCurrentTab(existingBlankChild.id);
       requestPageTitleFocus(existingBlankChild.id);
-      if (!useSettings.getState().singleTabMode) {
+      if (!effectiveSingleTabMode()) {
         window.setTimeout(() => {
           window.dispatchEvent(
             new CustomEvent("goose-note:focus-editor-start"),
@@ -316,11 +317,10 @@ export function SortablePageRow({
         <div
           {...sortableHandlers}
           className={cn(
-            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-1.5 rounded-[8px] overflow-hidden cursor-pointer transition-colors text-[13px] font-medium leading-none",
+            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-2 rounded-lg overflow-hidden cursor-pointer transition-colors font-medium leading-snug",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
-            !isActive &&
-              "text-foreground/80 dark:text-foreground/80",
+            !isActive && "text-foreground",
             isActive && "sidebar-tree-row--selected",
             !isActive &&
               !isDragging &&
@@ -447,7 +447,7 @@ export function SortablePageRow({
             )}
 
             <InlineOverflowRevealText
-              className="text-[13px] leading-snug"
+              className="leading-snug"
               text={titleText}
               expandedText={expandedTitleText}
               active={isActive || rowHovered}
@@ -534,7 +534,7 @@ export function TreeDragOverlay({
           isExpanded={item.isOpen}
         />
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug">
+      <span className="min-w-0 flex-1 truncate font-medium leading-snug">
         {title}
       </span>
       <LucideIcons.GripVertical className="sidebar-tree-drag-overlay-grip h-4 w-4 shrink-0" />

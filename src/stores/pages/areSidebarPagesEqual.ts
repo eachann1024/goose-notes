@@ -11,6 +11,7 @@ function treeSignature(page: Page): string {
     String(page.order ?? ""),
     String(page.createdAt),
     page.localFilePath ?? "",
+    page.localUnsaved ? "1" : "0",
     page.localPendingCreate ?? "",
     page.localReadState ?? "",
     page.isPinned ? "1" : "0",

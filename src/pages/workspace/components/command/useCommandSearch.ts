@@ -2,13 +2,14 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "rea
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
-import { DEFAULT_NOTEBOOK, useNotebooks } from "@/stores/useNotebooks";
+import { useNotebooks } from "@/stores/useNotebooks";
 import { pinyinMatchIndices } from "@/lib/pinyin-search";
-import { syncIndex, searchIndex } from "./pageSearchIndex";
+import { searchIndex } from "./pageSearchIndex";
 import {
-  isCommandSearchablePage,
-  shouldIncludePageInCommandScope,
-} from "./searchPageFilter";
+  filterCatalogByScope,
+  getSearchCatalog,
+  syncSearchCatalog,
+} from "./pageSearchCatalog";
 
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
@@ -84,19 +85,6 @@ function getContentSnippet(
   return { snippet, matchIndex: start > 0 ? matchIndex - start + 3 : matchIndex };
 }
 
-/** 全库可搜页面（与 Tab 笔记本范围无关），供 MiniSearch 单例索引 */
-function buildSearchablePagesRecord(
-  pages: Record<string, Page>,
-  notebooks: ReturnType<typeof useNotebooks.getState>["notebooks"],
-): Record<string, Page> {
-  const record: Record<string, Page> = {};
-  for (const page of Object.values(pages)) {
-    if (!isCommandSearchablePage(page, notebooks)) continue;
-    record[page.id] = page;
-  }
-  return record;
-}
-
 interface CommandSearchState {
   pages: Record<string, Page>;
   activeNotebookId: string | null;
@@ -136,25 +124,23 @@ export function useCommandSearch({
     localStorage.setItem("goose-recent-excludes", JSON.stringify(newIds));
   }, [removedRecentIds]);
 
-  const filteredPages = useMemo(() => {
-    const allPagesArray = Object.values(pages).filter((page) =>
-      isCommandSearchablePage(page, notebooks) &&
-      shouldIncludePageInCommandScope(page, notebooks, searchAllNotebooks),
-    );
-    if (searchAllNotebooks) {
-      return allPagesArray;
-    }
-    const currentNotebookId =
-      activeNotebookId ||
-      (__HOST_TARGET__ === "electron" ? "__no-notebook__" : DEFAULT_NOTEBOOK);
-    return allPagesArray.filter((p) => p.workspaceId === currentNotebookId);
-  }, [pages, notebooks, searchAllNotebooks, activeNotebookId]);
-
-  // 索引始终覆盖 store 内全部可搜页；笔记本范围仅在 searchResults 的 filteredSet 过滤。
-  // 若按 filteredPages sync，单本模式会 discard 其它本，Tab 切回「所有记事本」当轮搜不到。
-  useEffect(() => {
-    syncIndex(buildSearchablePagesRecord(pages, notebooks));
+  const catalog = useMemo(() => {
+    if (Object.keys(pages).length === 0) return getSearchCatalog();
+    return syncSearchCatalog(pages, notebooks);
   }, [pages, notebooks]);
+
+  const filteredPages = useMemo(
+    () =>
+      Object.keys(pages).length === 0
+        ? []
+        : filterCatalogByScope(
+            catalog.sortedByTitle,
+            notebooks,
+            searchAllNotebooks,
+            activeNotebookId,
+          ),
+    [pages, catalog, notebooks, searchAllNotebooks, activeNotebookId],
+  );
 
   const getPageBreadcrumb = useCallback(
     (page: Page): string[] => {
@@ -185,19 +171,15 @@ export function useCommandSearch({
 
   const searchResults: SearchResults = useMemo(() => {
     const query = deferredQuery.trim().toLowerCase();
+    const excludedRecent = new Set(removedRecentIds);
 
     if (!query) {
-      const recent = filteredPages
-        .filter((p) => !removedRecentIds.includes(p.id))
+      const recent = [...filteredPages]
+        .filter((p) => !excludedRecent.has(p.id))
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 5) as SearchResultPage[];
 
-      const all = filteredPages.sort((a, b) => {
-        const titleA = getPageTitle(a);
-        const titleB = getPageTitle(b);
-        return titleA.localeCompare(titleB, "zh-CN");
-      }) as SearchResultPage[];
-
+      const all = filteredPages as SearchResultPage[];
       const allDisplay = all.slice(0, displayLimit);
       return {
         recent,
@@ -253,7 +235,7 @@ export function useCommandSearch({
     }
 
     const recent = matched
-      .filter((p) => !removedRecentIds.includes(p.id))
+      .filter((p) => !excludedRecent.has(p.id))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5);
 
@@ -276,6 +258,7 @@ export function useCommandSearch({
   return {
     filteredPages,
     searchResults,
+    pageIdsWithChildren: catalog.pageIdsWithChildren,
     getPageBreadcrumb,
     searchQuery,
     setSearchQuery,

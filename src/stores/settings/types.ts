@@ -129,10 +129,43 @@ export interface CustomAction {
 // 界面字体大小选项：small 对应"标准"，normal 对应"放大"
 export type UIFontSize = "small" | "normal";
 
+function clampFontSize(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
 // 编辑器字体大小边界
 export const EDITOR_FONT_SIZE_MIN = 12;
 export const EDITOR_FONT_SIZE_MAX = 24;
 export const EDITOR_FONT_SIZE_DEFAULT = 16;
+
+// 侧栏字体大小边界（与编辑器字号独立持久化）
+export const SIDEBAR_FONT_SIZE_MIN = 12;
+export const SIDEBAR_FONT_SIZE_MAX = 18;
+export const SIDEBAR_FONT_SIZE_DEFAULT = 13;
+
+export function normalizeEditorFontSize(value: unknown): number {
+  return clampFontSize(
+    value,
+    EDITOR_FONT_SIZE_MIN,
+    EDITOR_FONT_SIZE_MAX,
+    EDITOR_FONT_SIZE_DEFAULT,
+  );
+}
+
+export function normalizeSidebarFontSize(value: unknown): number {
+  return clampFontSize(
+    value,
+    SIDEBAR_FONT_SIZE_MIN,
+    SIDEBAR_FONT_SIZE_MAX,
+    SIDEBAR_FONT_SIZE_DEFAULT,
+  );
+}
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N";
 export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+K";
 export const DEFAULT_QUICKNOTE_HOTKEY = "CmdOrCtrl+Alt+Q";

@@ -1,4 +1,12 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useId,
+  useCallback,
+} from "react";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +35,10 @@ import {
   LANGUAGE_DISPLAY_NAMES,
   POPULAR_LANGUAGES,
 } from "@/components/editor/blocks/code/codeBlockLanguages";
+import {
+  defaultLanguageHighlightIndex,
+  moveLanguageHighlightIndex,
+} from "@/components/editor/blocks/code/codeBlockLanguageNav";
 
 interface CodeBlockToolbarProps {
   language: string;
@@ -66,7 +78,10 @@ export function CodeBlockToolbar({
   const [copyingImage, setCopyingImage] = useState(false);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const highlightedItemRef = useRef<HTMLDivElement | null>(null);
+  const languageListId = useId();
   const { format, isLoading } = useFormatCode();
   const platform = useEditorPlatform();
 
@@ -145,10 +160,67 @@ export function CodeBlockToolbar({
     });
   }, [search]);
 
+  const safeHighlightedIndex =
+    filteredLanguages.length === 0
+      ? 0
+      : Math.min(highlightedIndex, filteredLanguages.length - 1);
+
+  const selectLanguage = useCallback(
+    (lang: string) => {
+      onLanguageChange(lang);
+      setIsOpen(false);
+    },
+    [onLanguageChange],
+  );
+
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      event.stopPropagation();
+      if (event.nativeEvent.isComposing) return;
+
+      const count = filteredLanguages.length;
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        if (count === 0) return;
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setHighlightedIndex((current) =>
+          moveLanguageHighlightIndex(current, count, delta),
+        );
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const lang = filteredLanguages[safeHighlightedIndex];
+        if (lang) selectLanguage(lang);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsOpen(false);
+      }
+    },
+    [filteredLanguages, safeHighlightedIndex, selectLanguage],
+  );
+
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 50);
-    else setSearch("");
+    if (isOpen) {
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
+      return () => window.clearTimeout(timer);
+    }
+    setSearch("");
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setHighlightedIndex(
+      defaultLanguageHighlightIndex(filteredLanguages, search, language),
+    );
+  }, [isOpen, search, language, filteredLanguages]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    highlightedItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isOpen, safeHighlightedIndex]);
 
   const canFormat = FORMAT_SUPPORTED_LANGUAGES.includes(
     (language || "").toLowerCase(),
@@ -177,7 +249,23 @@ export function CodeBlockToolbar({
       >
         <div className="flex shrink-0 items-center gap-1">
           {editable && !isMathOrMermaid ? (
-            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenu
+              open={isOpen}
+              onOpenChange={(open) => {
+                setIsOpen(open);
+                if (open) {
+                  setHighlightedIndex(
+                    defaultLanguageHighlightIndex(
+                      filteredLanguages,
+                      search,
+                      language,
+                    ),
+                  );
+                } else {
+                  setHighlightedIndex(0);
+                }
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -195,14 +283,27 @@ export function CodeBlockToolbar({
                 align="end"
                 editorContext
                 className="w-48 max-h-64 overflow-y-auto text-xs"
+                onOpenAutoFocus={(event) => {
+                  event.preventDefault();
+                  inputRef.current?.focus();
+                }}
               >
                 <div className="pb-2">
                   <Input
                     ref={inputRef}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isOpen}
+                    aria-controls={languageListId}
+                    aria-activedescendant={
+                      filteredLanguages[safeHighlightedIndex]
+                        ? `${languageListId}-opt-${safeHighlightedIndex}`
+                        : undefined
+                    }
                     placeholder="搜索语言..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => e.stopPropagation()}
+                    onChange={(event) => setSearch(event.target.value)}
+                    onKeyDown={handleSearchKeyDown}
                     className="h-7 text-xs"
                   />
                 </div>
@@ -211,25 +312,46 @@ export function CodeBlockToolbar({
                     常用语言
                   </DropdownMenuLabel>
                 )}
-                {filteredLanguages.map((lang) => (
-                  <DropdownMenuItem
-                    key={lang}
-                    onSelect={() => {
-                      onLanguageChange(lang);
-                      setIsOpen(false);
-                    }}
-                    className={cn(
-                      "text-xs",
-                      lang.toLowerCase() === language.toLowerCase() &&
-                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
-                    )}
-                  >
-                    {LANGUAGE_DISPLAY_NAMES[lang] || lang}
-                    {lang.toLowerCase() === language.toLowerCase() && (
-                      <span className="ml-auto">✓</span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                <div id={languageListId} role="listbox" aria-label="代码语言">
+                  {filteredLanguages.length === 0 ? (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      未找到语言
+                    </div>
+                  ) : null}
+                  {filteredLanguages.map((lang, index) => (
+                    <DropdownMenuItem
+                      key={lang}
+                      id={`${languageListId}-opt-${index}`}
+                      ref={
+                        index === safeHighlightedIndex
+                          ? highlightedItemRef
+                          : undefined
+                      }
+                      role="option"
+                      aria-selected={index === safeHighlightedIndex}
+                      data-goose-lang-highlighted={
+                        index === safeHighlightedIndex ? "true" : undefined
+                      }
+                      onPointerMove={(event) => {
+                        event.preventDefault();
+                        setHighlightedIndex(index);
+                      }}
+                      onSelect={() => {
+                        selectLanguage(lang);
+                      }}
+                      className={cn(
+                        "text-xs",
+                        index === safeHighlightedIndex &&
+                          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
+                      )}
+                    >
+                      {LANGUAGE_DISPLAY_NAMES[lang] || lang}
+                      {lang.toLowerCase() === language.toLowerCase() && (
+                        <span className="ml-auto">✓</span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

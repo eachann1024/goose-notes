@@ -37,6 +37,7 @@ import {
 } from "@/components/editor/toolbars/formatting/helpers";
 import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
 import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
+import { AddToChatButton } from "@/components/editor/toolbars/formatting/groups/AddToChatButton";
 import { toast } from "@/components/ui/sonner";
 import { getCustomAIApiKey } from "@/lib/ai-provider";
 import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
@@ -44,6 +45,9 @@ import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/Inli
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
 import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
 import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
+import { canShowAddToChatButton } from "@/components/editor/ai/composer/selectionQuote";
+import { getSelectedImageUrl } from "@/components/editor/utils/selection";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 
 export { shouldRenderFormattingToolbar };
 
@@ -64,7 +68,7 @@ export function EditorFormattingToolbar() {
     ? useExtension(AIExtension)
     : undefined;
   const { ai: aiSettings } = useEditorSettings();
-  const { contentMode } = useEditorPageContext();
+  const { contentMode, page } = useEditorPageContext();
   const protectsFirstTitle = contentMode === "normalized";
   const markStates = useSelectionMarkStates(editor);
 
@@ -76,12 +80,21 @@ export function EditorFormattingToolbar() {
       const selectedText = doc
         .textBetween(selection.from, selection.to, "\n", "\n")
         .trim();
+      let quoteText = "";
+      try {
+        quoteText = (editor.getSelectedText() ?? "").trim();
+      } catch {
+        quoteText = selectedText;
+      }
 
       return {
         hasTextSelection:
           (!selection.empty && selectedText.length > 0) ||
           shouldRenderFormattingToolbar(editor),
         disallowsFormattingToolbar: selectionDisallowsFormattingToolbar(editor),
+        selectedQuoteText: quoteText,
+        isImageNodeSelection:
+          getSelectedImageUrl(editor.prosemirrorState) != null,
       };
     },
   });
@@ -299,6 +312,27 @@ export function EditorFormattingToolbar() {
         key="clear"
         onClear={clearFormatting}
         bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  const showAddToChat =
+    !__GOOSE_EDITOR_COMPACT__ &&
+    !__GOOSE_LITE__ &&
+    canShowAddToChatButton({
+      aiEnabled: aiSettings.enabled,
+      isCompact: false,
+      selectedText: selectionState.selectedQuoteText,
+      isImageNodeSelection: selectionState.isImageNodeSelection,
+    });
+
+  if (showAddToChat) {
+    sections.push(
+      <AddToChatButton
+        key="add-to-chat"
+        selectedText={selectionState.selectedQuoteText}
+        pageId={page.id}
+        pageTitle={getPageTitle(page)}
       />,
     );
   }

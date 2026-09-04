@@ -19,7 +19,13 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
-import { pasteLinesAsBlocks } from "@/components/editor/hooks/useEditorPaste";
+import {
+  cachePasteTarget,
+  pasteClipboardHtmlAsBlocks,
+  pasteLinesAsBlocks,
+  shouldPasteHtmlAsBlocks,
+} from "@/components/editor/hooks/useEditorPaste";
+import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "@/components/editor/extensions/copyCurrentBlockExtension";
 import {
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
@@ -146,6 +152,34 @@ export function EditorContextMenu({
   const handleContextPaste = useCallback(async () => {
     if (!editable) return;
     try {
+      let htmlText = "";
+      let hasGooseMime = false;
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          if (item.types.includes(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) {
+            hasGooseMime = true;
+          }
+          if (!htmlText && item.types.includes("text/html")) {
+            htmlText = await (await item.getType("text/html")).text();
+          }
+        }
+      } catch {
+        // read() 不可用或权限不足时回退 readText
+      }
+
+      if (shouldPasteHtmlAsBlocks(htmlText, hasGooseMime)) {
+        const target = cachePasteTarget(editor);
+        if (target) {
+          const pasted = await pasteClipboardHtmlAsBlocks(
+            editor,
+            htmlText,
+            target,
+          );
+          if (pasted) return;
+        }
+      }
+
       const text = normalizeMarkdownPasteText(
         await navigator.clipboard.readText(),
       );

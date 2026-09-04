@@ -4,10 +4,9 @@
  * macOS 原生 traffic lights 叠在 webview 上（titleBarStyle=hiddenInset），
  * 因此整条顶栏用 -webkit-app-region: drag。左侧 padding 跟主栏左缘对齐
  * （侧栏宽 + stage 左垫 + gap），且不小于红绿灯占位（mac 78px / win 12px）。
- * 按钮/输入框天然挡住拖拽；标题闲置态按住拖窗口、单击才进入编辑。
+ * 按钮/输入框天然挡住拖拽；标签 pill 标 data-electron-no-drag，轨空白保持 drag。
  *
- * 内容从 PageHeader「提升」而来：侧栏折叠钮、标题（SingleTabTitle / 欢迎页「开始」）、
- * AI 钮、回收站恢复/删除、PageMenu「...」。
+ * 内容从 PageHeader「提升」而来：侧栏折叠钮、AI 钮、TabRail、回收站恢复/删除、PageMenu。
  * 收藏、导出、页面置顶和页面历史收在 PageMenu 内。窗口置顶在侧栏左下角。
  * 历史模式改渲染 HistoryToolbar（仍全宽）。
  * uTools 构建不渲染本组件，PageHeader 保持原样。
@@ -31,11 +30,12 @@ import {
   isFullscreenAiLayout,
   type NotebookAiLayoutMode,
 } from "../notebook-ai/useNotebookAiPanel";
-import { useAiHeaderActions } from "../notebook-ai/aiHeaderSlot";
+import { useAiHeaderActions, useAiHeaderTitle } from "../notebook-ai/aiHeaderSlot";
+import { ConversationTitle } from "../notebook-ai/ConversationTitle";
 import { HistoryToolbar } from "../history/HistoryView";
-import { SingleTabTitle } from "./SingleTabTitle";
 import { PageIconButton } from "./PageIconButton";
 import { PageMenu } from "./PageMenu";
+import { TabRail } from "./TabRail";
 import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
 import { useNotebooks } from "@/stores/useNotebooks";
 
@@ -43,6 +43,8 @@ interface DesktopTitleBarProps {
   page?: Page;
   isWelcomeTab: boolean;
   inHistoryMode: boolean;
+  onOpenSearch: () => void;
+  onBeforeActivateTab?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
   aiPanelOpen?: boolean;
@@ -56,8 +58,10 @@ const actionButtonClass =
 
 export function DesktopTitleBar({
   page,
-  isWelcomeTab,
+  isWelcomeTab: _isWelcomeTab,
   inHistoryMode,
+  onOpenSearch,
+  onBeforeActivateTab,
   onRestore,
   onDelete,
   aiPanelOpen,
@@ -72,6 +76,7 @@ export function DesktopTitleBar({
   const aiPhase = useAiStatus((s) => s.phase);
   const aiDoneToken = useAiStatus((s) => s.doneToken);
   const aiHeaderActions = useAiHeaderActions();
+  const aiHeaderTitle = useAiHeaderTitle();
 
   const toggleSidebarShortcutLabel = appShortcuts.toggleSidebar
     ? formatShortcut(appShortcuts.toggleSidebar)
@@ -80,7 +85,6 @@ export function DesktopTitleBar({
     ? formatShortcut(appShortcuts.toggleAIPanel)
     : "";
 
-  /** 全屏 AI 打开时：隐藏页面动作，改挂 AI 工具栏（与 PageHeader 一致）。 */
   const aiFullscreenOpen =
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
 
@@ -101,12 +105,19 @@ export function DesktopTitleBar({
       ),
   );
 
-  return (
+  const titleBarRow = (
     <div
-      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-3"
-      data-electron-no-drag="false"
+      className={cn(
+        "flex min-w-0 items-center justify-between",
+        aiFullscreenOpen ? "h-8 min-h-8 w-full px-3" : "w-full flex-1",
+      )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-2 overflow-hidden",
+          aiFullscreenOpen ? "flex-1" : "flex-1",
+        )}
+      >
         {sidebarCollapsed ? (
           <TooltipProvider delayDuration={600}>
             <Tooltip>
@@ -136,47 +147,17 @@ export function DesktopTitleBar({
           </TooltipProvider>
         ) : null}
 
-        {page ? (
-          <>
-            {showPageIcon ? (
-              <div data-electron-no-drag className="shrink-0">
-                <PageIconButton page={page} />
-              </div>
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <SingleTabTitle
-                key={`${page.id}:${page.localFilePath ?? ""}`}
-                page={page}
-                idleWindowDrag
-              />
-            </div>
-          </>
-        ) : (
-          <span className="min-w-0 truncate px-2 text-sm font-semibold text-foreground">
-            {isWelcomeTab ? "开始" : "Goose Note"}
-          </span>
-        )}
-
-        {page?.isLocked && (
-          <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
-            已锁定
-          </span>
-        )}
-        {page?.trashedAt && (
-          <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
-            页面已被删除
-          </span>
-        )}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1">
         {onToggleAiPanel && !page?.trashedAt && (
           <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className={cn("ai-icon-button", actionButtonClass)}
+                  className={cn(
+                    "ai-icon-button shrink-0",
+                    actionButtonClass,
+                    "text-foreground",
+                  )}
                   data-ai-state={aiPhase}
                   onClick={onToggleAiPanel}
                   aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
@@ -203,6 +184,34 @@ export function DesktopTitleBar({
           </TooltipProvider>
         )}
 
+        {showPageIcon && page && !page.trashedAt ? (
+          <div data-electron-no-drag className="shrink-0">
+            <PageIconButton page={page} />
+          </div>
+        ) : null}
+
+        <TabRail
+          variant="electron-titlebar"
+          page={page}
+          onOpenSearch={onOpenSearch}
+          onBeforeActivateTab={onBeforeActivateTab}
+          aiPanelOpen={aiPanelOpen}
+          aiLayoutMode={aiLayoutMode}
+        />
+
+        {page?.isLocked && (
+          <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
+            已锁定
+          </span>
+        )}
+        {page?.trashedAt && (
+          <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
+            页面已被删除
+          </span>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
         {page?.trashedAt && onRestore && onDelete && (
           <>
             <TooltipProvider delayDuration={600}>
@@ -247,6 +256,27 @@ export function DesktopTitleBar({
           <PageMenu />
         ) : null}
       </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "electron-titlebar flex w-full shrink-0 pr-3",
+        aiFullscreenOpen ? "py-1" : "items-center gap-2",
+      )}
+      data-ai-conversation-header={aiFullscreenOpen || undefined}
+    >
+      {aiFullscreenOpen ? (
+        <div className="notebook-ai-page-header-stack min-w-0 flex-1">
+          <div className="flex min-w-0 items-center px-3">
+            <ConversationTitle summary={aiHeaderTitle ?? "新会话"} />
+          </div>
+          {titleBarRow}
+        </div>
+      ) : (
+        titleBarRow
+      )}
     </div>
   );
 }

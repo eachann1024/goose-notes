@@ -17,7 +17,7 @@ const defaultToastClassNames = {
   // 3. 宽度由 goose-toast.css 控制：max-content + max-width，避免固定 356px。
   toast:
     // uTools 旧内核不支持 hsl(var(--x)/alpha)，避免 bg-*/95、border-*/70 退化成实色
-    "group goose-toast !bg-[rgba(255,255,255,0.95)] dark:!bg-[rgba(18,18,20,0.92)] !text-foreground !border !border-[rgba(15,23,42,0.12)] dark:!border-[rgba(255,255,255,0.14)] !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !overflow-hidden",
+    "group goose-toast !bg-[rgba(255,255,255,0.95)] dark:!bg-[rgba(18,18,20,0.92)] !text-foreground !border !border-[rgba(15,23,42,0.12)] dark:!border-[rgba(255,255,255,0.14)] !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !overflow-visible",
   title: "!text-foreground !opacity-100 !font-semibold",
   description: "!text-muted-foreground",
   actionButton:
@@ -27,7 +27,7 @@ const defaultToastClassNames = {
   // 轻量关闭：无粗边框，默认细 X，hover 才淡底高亮
   // hover 背景必须用 rgba，禁止 foreground/8 —— 旧内核会退化成实心黑圆
   closeButton:
-    "goose-toast-close !absolute !left-auto !right-1.5 !top-1/2 !transform-none !translate-x-0 !-translate-y-1/2 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground hover:!text-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
+    "goose-toast-close !absolute !left-auto !right-1.5 !top-2 !transform-none !translate-x-0 !translate-y-0 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground hover:!text-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
   error:
     "goose-toast-error !border-[rgba(200,25,46,0.18)] dark:!border-[rgba(255,109,125,0.18)]",
   success: "goose-toast-success",
@@ -84,7 +84,7 @@ const Toaster = ({
   return (
     <Sonner
       theme="system"
-      position="bottom-right"
+      position="top-right"
       offset={22}
       mobileOffset={22}
       closeButton

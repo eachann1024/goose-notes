@@ -390,6 +390,15 @@ export function renderInline(content: unknown, theme?: CardTheme): string {
         return `<a href="${escapeHtml(href)}">${inner}</a>`;
       }
 
+      if (item.type === "pageMention") {
+        const title =
+          typeof item.props?.title === "string" && item.props.title.trim()
+            ? item.props.title.trim()
+            : "未命名";
+        const label = title.startsWith("@") ? title : `@${title}`;
+        return `<span style="display:inline-flex;align-items:center;vertical-align:middle;margin:0 0.25em;padding:0 8px;border-radius:6px;background-color:#e0e7ff;color:#4f46e5;font-size:0.85em;line-height:1.25em;">${escapeHtml(label)}</span>`;
+      }
+
       if (item.type === "image" && item.attrs?.src) {
         const src = item.attrs.src;
         const alt = item.attrs.alt || "";
@@ -463,6 +472,13 @@ export function extractInlineText(content: unknown): string {
       if (!item || typeof item !== "object") return "";
       if (item.type === "hardBreak") return "\n";
       if (item.type === "link") return extractInlineText(item.content) || item.text || "";
+      if (item.type === "pageMention") {
+        const title =
+          typeof item.props?.title === "string" && item.props.title.trim()
+            ? item.props.title.trim()
+            : "";
+        return title ? (title.startsWith("@") ? title : `@${title}`) : "";
+      }
       if (item.type === "inlineMath" && item.attrs?.value) return item.attrs.value;
       return item.text || "";
     })

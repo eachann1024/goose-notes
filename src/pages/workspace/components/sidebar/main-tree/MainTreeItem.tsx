@@ -3,6 +3,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type DragEvent,
   type HTMLProps,
   type MouseEvent,
@@ -31,9 +32,19 @@ import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
 import { isExternalFileDrag } from "@/lib/local-folder-target";
 import { setLocalFolderFileDropTarget } from "@/lib/local-folder-file-drop-target";
+import {
+  MAIN_TREE_INDENT,
+  MAIN_TREE_ROW_PADDING_LEFT,
+  shouldHideSortLineForLocalFolder,
+} from "./mainTreeDragGeometry";
+import {
+  captureLocalFolderDropParent,
+  peekLocalFolderDropParent,
+  snapDragBetweenLine,
+} from "./mainTreeLocalDrop";
 
-const INDENT = 18;
-const ROW_PADDING_LEFT = 6;
+const INDENT = MAIN_TREE_INDENT;
+const ROW_PADDING_LEFT = MAIN_TREE_ROW_PADDING_LEFT;
 let activeMainTreeDragId: string | null = null;
 
 function TreeRowIcon({
@@ -226,19 +237,17 @@ function MainTreeRow({
       }
       className={cn(
         withoutChildren.className,
-        // mb-0.5 承担行间距：react-complex-tree 的 computeItemHeight 会把本元素的
-        // margin 计入行高（offsetHeight + max(marginTop, marginBottom)）。
-        // 间距放在 ul 的 space-y 上不会被测到，导致拖拽位置判定逐行累积偏差，
-        // 越往下越拖不准，最后一行永远无法 drop 成子页面。
-        "main-tree-row group/main-row relative z-10 mb-0.5 flex min-h-[28px] items-center gap-0.5 rounded-[8px] py-[4px] pl-0 pr-1.5",
-        "text-[13px] font-medium leading-none cursor-pointer select-none",
+        // 行高用 --main-tree-row-height 锁成整数，避免 margin/子像素让 rct
+        // computeItemHeight 与真实行距不一致（Electron 越往下越拖不准）。
+        "main-tree-row group/main-row relative z-10 flex items-center gap-1 rounded-lg pl-0 pr-2",
+        "font-medium leading-snug cursor-pointer select-none",
         "transition-colors duration-150",
         "outline-none",
         isPendingCreate
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
           : isActive
             ? "main-tree-row--selected"
-            : "text-foreground/80 dark:text-foreground/80",
+            : "text-foreground",
         !isActive &&
           !isPendingCreate &&
           !isDragging &&
@@ -550,7 +559,7 @@ export function renderItem({
         }}
         aria-label={title}
         className={cn(
-          "absolute inset-0 rounded-[8px] outline-none",
+          "absolute inset-0 rounded-lg outline-none",
           isPendingCreate && "pointer-events-none",
         )}
       />
@@ -675,8 +684,16 @@ export function renderTreeContainer({
   children,
   containerProps,
 }: RenderTreeContainerArgs) {
+  const { onDragOver, ...rest } = containerProps;
   return (
-    <div {...containerProps} className="rct-main-tree outline-none">
+    <div
+      {...rest}
+      className="rct-main-tree outline-none min-h-full"
+      onDragOver={(event) => {
+        onDragOver?.(event);
+        captureLocalFolderDropParent(event, event.currentTarget);
+      }}
+    >
       {children}
     </div>
   );
@@ -687,12 +704,39 @@ interface RenderDragBetweenLineArgs {
   lineProps: HTMLProps<HTMLDivElement>;
 }
 
-export function renderDragBetweenLine({
+function MainTreeDragBetweenLine({
   draggingPosition,
   lineProps,
 }: RenderDragBetweenLineArgs) {
+  const lineRef = useRef<HTMLDivElement | null>(null);
+  const isLocalFolder = useNotebooks((state) => {
+    const notebookId = state.activeNotebookId;
+    return notebookId
+      ? state.notebooks[notebookId]?.source === "local-folder"
+      : false;
+  });
+  const parentItem =
+    draggingPosition.targetType === "between-items"
+      ? String(draggingPosition.parentItem)
+      : undefined;
+  const capturedParent = peekLocalFolderDropParent();
+  const nestParent =
+    capturedParent === null ? parentItem : capturedParent;
+  const hideSortLine =
+    isLocalFolder && shouldHideSortLineForLocalFolder(nestParent);
+
+  useLayoutEffect(() => {
+    const lineEl = lineRef.current;
+    if (!lineEl) return;
+    snapDragBetweenLine(lineEl, draggingPosition.linearIndex ?? 0);
+  }, [draggingPosition.linearIndex, draggingPosition.parentItem, hideSortLine]);
+
+  if (hideSortLine) {
+    return <div ref={lineRef} {...lineProps} className="hidden" />;
+  }
+
   const depth = draggingPosition.depth ?? 0;
-  const style = (lineProps.style ?? {}) as React.CSSProperties;
+  const style = (lineProps.style ?? {}) as CSSProperties;
   const hideExpandArrows = useSettings.getState().hideExpandArrows;
   // 行结构：paddingLeft → (展开箭头槽位) → 图标。
   // 蓝点必须以图标左缘为起点，避免落在箭头区被误读成“成为子页面”。
@@ -702,6 +746,7 @@ export function renderDragBetweenLine({
     depth * INDENT + ROW_PADDING_LEFT + (hideExpandArrows ? 0 : ARROW_SLOT);
   return (
     <div
+      ref={lineRef}
       {...lineProps}
       style={{
         ...style,
@@ -711,4 +756,8 @@ export function renderDragBetweenLine({
       className="main-tree-drop-between-line h-[2px] rounded-full"
     />
   );
+}
+
+export function renderDragBetweenLine(args: RenderDragBetweenLineArgs) {
+  return <MainTreeDragBetweenLine {...args} />;
 }

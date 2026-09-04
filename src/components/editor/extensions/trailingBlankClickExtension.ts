@@ -6,12 +6,13 @@ import type { EditorView } from "@tiptap/pm/view";
  * 点击空白时光标跳到行首。
  *
  * Chromium 对 flex 容器的 caretRangeFromPoint 会落到块首；BlockNote 的
- * `.bn-block-content` 是 flex。更关键的是块间距用的是 margin，点在两块
- * 中间的空隙会落到下一块顶部 padding，ProseMirror 默认把光标钉在行首。
+ * `.bn-block-content` 是 flex。块间距用的是 margin，点在两块中间的空隙
+ * 会落到下一块顶部；ProseMirror 默认把光标钉在下一块行首。旧逻辑又把
+ * 空隙判给上方块并钉到行尾。mousedown 微任务与 click 默认处理互抢，
+ * 光标和当前行高亮会在两块之间来回跳。
  *
- * Notion：整行（含右侧空白）和块间空隙都算上方块的点击区，点空白落到
- * 该块最近一行的行尾，而不是下一块行首。这里按 Y 把空隙判给上方块，
- * 再把光标钉到该块行尾。点在字上仍交给默认，保证点哪里落到哪个字。
+ * 块间空隙：不改选区，并拦住默认点击。
+ * 行尾空白：仍钉到该行行尾。点在字上仍交给默认。
  */
 
 export const TRAILING_BLANK_CLICK_SLOP_PX = 2;
@@ -156,8 +157,9 @@ function findNearestPosOnVisualLine(
 export type BlockHitRect = { top: number; bottom: number };
 
 /**
- * Notion：点在块盒子里用最内层块；点在两块之间的空隙归上方块。
+ * 点在块盒子里用最内层块；点在首块之上或末块之下时归最近的那一块。
  * `blocks` 按 DOM 顺序（父先于子），含住时取最后一个即最内层。
+ * 两块之间的空隙由 `isClickInInterBlockGap` 单独吞掉，不走这里。
  */
 export function pickOwningBlockIndex(
   blocks: BlockHitRect[],
@@ -183,6 +185,25 @@ export function pickOwningBlockIndex(
   }
   if (above >= 0) return above;
   return 0;
+}
+
+/** 点在两块内容盒子之间的垂直空隙：不改光标。首块之上、末块之下不算。 */
+export function isClickInInterBlockGap(
+  blocks: BlockHitRect[],
+  clientY: number,
+): boolean {
+  if (blocks.length < 2) return false;
+  for (const block of blocks) {
+    if (clientY >= block.top && clientY <= block.bottom) return false;
+  }
+  let hasAbove = false;
+  let hasBelow = false;
+  for (const block of blocks) {
+    if (block.bottom < clientY) hasAbove = true;
+    if (block.top > clientY) hasBelow = true;
+    if (hasAbove && hasBelow) return true;
+  }
+  return false;
 }
 
 export function resolveLineEndIfClickPastText(args: {
@@ -433,10 +454,67 @@ export function pickTrailingBlankContentEl(
   );
 }
 
+function textBandForContent(
+  view: EditorView,
+  el: HTMLElement,
+  fallback: BlockHitRect,
+): BlockHitRect {
+  const range = textblockRangeFromContentEl(view, el);
+  if (!range) return fallback;
+  try {
+    const first = view.coordsAtPos(range.start);
+    const last = view.coordsAtPos(range.end);
+    return {
+      top: Math.min(first.top, last.top),
+      bottom: Math.max(first.bottom, last.bottom),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * 两块文字行带之间的垂直空隙（含块 padding / margin）。
+ * 点在某块文字行带内（含行尾空白）不算空隙。
+ */
+function isPointerInInterBlockGap(
+  view: EditorView,
+  clientY: number,
+): boolean {
+  const contents = collectInlineBlockContents(view.dom);
+  if (contents.length < 2) return false;
+
+  let hasAbove = false;
+  let hasBelow = false;
+  for (const el of contents) {
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom < clientY) {
+      hasAbove = true;
+      continue;
+    }
+    if (rect.top > clientY) {
+      hasBelow = true;
+      if (hasAbove) return true;
+      continue;
+    }
+    const band = textBandForContent(view, el, {
+      top: rect.top,
+      bottom: rect.bottom,
+    });
+    if (clientY >= band.top && clientY <= band.bottom) return false;
+    if (band.bottom < clientY) hasAbove = true;
+    if (band.top > clientY) hasBelow = true;
+    if (hasAbove && hasBelow) return true;
+  }
+  return hasAbove && hasBelow;
+}
+
 export function resolveTrailingBlankClickPos(
   view: EditorView,
   event: MouseEvent,
 ): number | null {
+  if (isPointerInInterBlockGap(view, event.clientY)) return null;
+
   const contentEl = pickTrailingBlankContentEl(
     event.target,
     collectInlineBlockContents(view.dom),
@@ -465,6 +543,24 @@ function shouldIgnoreTrailingBlankEvent(
   if (view.composing) return true;
   if (!view.editable) return true;
   return isInteractiveCaretClickTarget(event.target);
+}
+
+function isInterBlockGapEvent(view: EditorView, event: MouseEvent): boolean {
+  if (tableCellInlineFromEventTarget(event.target)) return false;
+  const closest = closestBlockContentEl(event.target);
+  if (closest && !isTextBlockContent(closest)) return false;
+  return isPointerInInterBlockGap(view, event.clientY);
+}
+
+/** 拦住块间空隙上的默认选区，避免光标在相邻块之间来回跳。 */
+function swallowInterBlockGapClick(
+  view: EditorView,
+  event: MouseEvent,
+): boolean {
+  if (shouldIgnoreTrailingBlankEvent(view, event)) return false;
+  if (!isInterBlockGapEvent(view, event)) return false;
+  if (!view.hasFocus()) view.focus();
+  return true;
 }
 
 function applyTrailingBlankSelection(view: EditorView, pos: number): boolean {
@@ -496,6 +592,7 @@ export const gooseTrailingBlankClickExtension = createExtension({
       props: {
         handleDOMEvents: {
           mousedown(view, event) {
+            if (swallowInterBlockGapClick(view, event)) return true;
             if (shouldIgnoreTrailingBlankEvent(view, event)) return false;
             const nextPos = resolveTrailingBlankClickPos(view, event);
             if (nextPos == null) return false;
@@ -506,7 +603,10 @@ export const gooseTrailingBlankClickExtension = createExtension({
             return false;
           },
         },
-        handleClick: handleTrailingBlankClick,
+        handleClick(view, pos, event) {
+          if (swallowInterBlockGapClick(view, event)) return true;
+          return handleTrailingBlankClick(view, pos, event);
+        },
       },
     }),
   ],

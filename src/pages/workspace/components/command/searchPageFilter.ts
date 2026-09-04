@@ -1,7 +1,7 @@
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
 
-type SearchNotebook = {
+export type SearchNotebook = {
   source?: "default" | "local-folder";
   excludeFromGlobalSearch?: boolean;
 };
@@ -11,7 +11,7 @@ export function isCommandSearchablePage(
   page: Page,
   notebooks: Record<string, SearchNotebook | undefined>,
 ): boolean {
-  if (page.trashedAt) return false;
+  if (page.trashedAt || page.localUnsaved) return false;
 
   const title = getPageTitle(page);
   if (!title || title === "无标题") return false;

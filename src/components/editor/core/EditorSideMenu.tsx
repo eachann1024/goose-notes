@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   useBlockNoteEditor,
@@ -25,7 +25,10 @@ import { getSectionInsertAnchorId } from "@/components/editor/core/headingSectio
 import {
   HEADING_SIDE_MENU_EXTRA_GAP,
   SIDE_MENU_CONTENT_GAP,
+  TABLE_SIDE_MENU_INSET,
   isEditorSideMenuHoverTarget,
+  isPointerInSideMenuCorridor,
+  isTableSideMenuUiTarget,
 } from "@/components/editor/core/sideMenuHover";
 
 const isMac = /Mac/i.test(navigator.platform);
@@ -42,6 +45,7 @@ export function EditorSideMenu() {
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
   const [hoveringEditor, setHoveringEditor] = useState(false);
+  const [keepWhileHidden, setKeepWhileHidden] = useState(false);
   const [foldHot, setFoldHot] = useState(false);
   const [foldTick, setFoldTick] = useState(0);
   const state = useExtensionState(SideMenuExtension, {
@@ -64,6 +68,21 @@ export function EditorSideMenu() {
     : false;
   void foldTick;
 
+  const sideMenuGap =
+    SIDE_MENU_CONTENT_GAP +
+    (block?.type === "table" ? 0 : HEADING_SIDE_MENU_EXTRA_GAP);
+  const corridorInset = block?.type === "table" ? TABLE_SIDE_MENU_INSET : 0;
+  const corridorRef = useRef({
+    pos: state?.referencePos,
+    gap: sideMenuGap,
+    inset: corridorInset,
+  });
+  corridorRef.current = {
+    pos: state?.referencePos,
+    gap: sideMenuGap,
+    inset: corridorInset,
+  };
+
   useEffect(() => {
     const updateSidebarInteracting = (
       target: EventTarget | null = document.activeElement,
@@ -79,7 +98,19 @@ export function EditorSideMenu() {
 
     const handlePointerMove = (event: PointerEvent) => {
       updateSidebarInteracting(event.target);
-      setHoveringEditor(isEditorSideMenuHoverTarget(event.target));
+      const { pos, gap, inset } = corridorRef.current;
+      const overUi = isEditorSideMenuHoverTarget(event.target);
+      const inCorridor = isPointerInSideMenuCorridor(
+        event.clientX,
+        event.clientY,
+        pos,
+        gap,
+        inset,
+      );
+      setHoveringEditor(overUi || inCorridor);
+      setKeepWhileHidden(
+        inCorridor || isTableSideMenuUiTarget(event.target),
+      );
     };
     const handleFocusChange = (event: FocusEvent) =>
       updateSidebarInteracting(event.target);
@@ -95,10 +126,11 @@ export function EditorSideMenu() {
   }, []);
 
   const shouldShow =
-    Boolean(state?.show && state.referencePos && block) &&
+    Boolean(state?.referencePos && block) &&
     editor.isEditable &&
     !sidebarInteracting &&
-    (hoveringEditor || isDragging);
+    (hoveringEditor || isDragging) &&
+    (Boolean(state?.show) || keepWhileHidden || isDragging);
 
   const handleToggleHeading = useCallback(
     (e: React.MouseEvent) => {
@@ -175,8 +207,6 @@ export function EditorSideMenu() {
     ? textRect.top + textRect.height / 2
     : referencePos.top + referencePos.height / 2;
   const onHeading = block.type === "heading";
-  const sideMenuGap =
-    SIDE_MENU_CONTENT_GAP + (onHeading ? HEADING_SIDE_MENU_EXTRA_GAP : 0);
   const anchorLeft = referencePos.left - sideMenuGap;
   const portalTarget = editor.portalElement ?? document.body;
   return createPortal(
@@ -186,7 +216,7 @@ export function EditorSideMenu() {
         "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
         "[body[data-scroll-locked]_&]:!opacity-0 [body[data-scroll-locked]_&]:!pointer-events-none",
       )}
-      data-heading-gutter={onHeading ? "true" : undefined}
+      data-heading-gutter={block.type !== "table" ? "true" : undefined}
       style={{
         top,
         left: anchorLeft,

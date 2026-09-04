@@ -530,7 +530,7 @@ export const onboardingThirdChildContent: BlockNoteContent = [
     "单文件离线可用：所有样式、排版与字体配置全部内嵌，无需服务器或外部依赖，双击即可在浏览器中打开。",
     "跨设备随处浏览：在手机、平板、电脑的任意浏览器中打开，保持像素级一致的阅读与排版美感。",
     "完整交互全支持：标题折叠（侧栏箭头展开/收起后续内容）、任务清单、多级列表、代码高亮和数学公式均原汁原味呈现。",
-    "导出路径：点击页面右上角「···」菜单 →「导出」→ 选择「HTML」，选择保存路径即可完成。",
+    "导出路径：点击页面右上角「···」菜单 →「导出」→ 选择「HTML」，文件会保存到系统下载目录并打开所在位置。",
   ]),
   heading(2, "3. AI 生产交互式 HTML 小组件与数据可视化"),
   paragraph(
@@ -555,11 +555,6 @@ export const onboardingThirdChildContent: BlockNoteContent = [
         "Markdown 导出",
         "右上角「···」→ 导出 → Markdown",
         "纯文本迁移、Git 版本协同、Obsidian 联动",
-      ],
-      [
-        "JSON 结构化导出",
-        "右上角「···」→ 导出 → JSON",
-        "完整 Block 树与元数据备份、程序二次解析",
       ],
     ],
   ),

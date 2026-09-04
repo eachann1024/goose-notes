@@ -1,10 +1,8 @@
-import { useMemo } from "react";
 import { Command } from "cmdk";
-import * as LucideIcons from "lucide-react";
+import { X } from "lucide-react";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { usePages } from "@/stores/usePages";
 import { LocalFileIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
 import type { SearchResultPage, SearchResults } from "./useCommandSearch";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
@@ -115,6 +113,7 @@ interface PaletteResultGroupProps {
   showRecentInSearch: boolean;
   searchResults: SearchResults;
   getPageBreadcrumb: (page: Page) => string[];
+  pageIdsWithChildren: Set<string>;
   onOpenPage: (page: SearchResultPage | Page, query: string | null) => void;
   onRemoveRecent: (id: string) => void;
   onHideRecent: () => void;
@@ -125,21 +124,12 @@ export function PaletteResultGroup({
   showRecentInSearch,
   searchResults,
   getPageBreadcrumb,
+  pageIdsWithChildren,
   onOpenPage,
   onRemoveRecent,
   onHideRecent,
 }: PaletteResultGroupProps) {
-  const pages = usePages((state) => state.pages);
   const notebooks = useNotebooks((state) => state.notebooks);
-  const pageIdsWithChildren = useMemo(() => {
-    const ids = new Set<string>();
-    Object.values(pages).forEach((page) => {
-      if (!page.trashedAt && page.parentId) {
-        ids.add(page.parentId);
-      }
-    });
-    return ids;
-  }, [pages]);
 
   const renderPageIcon = (page: Page, className?: string) => (
     <LocalFileIcon
@@ -171,7 +161,7 @@ export function PaletteResultGroup({
                   }}
                   className="p-0.5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer transition-colors"
                 >
-                  <LucideIcons.X
+                  <X
                     aria-hidden="true"
                     className="h-3.5 w-3.5 text-muted-foreground"
                   />
@@ -208,7 +198,7 @@ export function PaletteResultGroup({
                       }}
                       className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
                     >
-                      <LucideIcons.X
+                      <X
                         aria-hidden="true"
                         className="h-3 w-3 text-muted-foreground"
                       />

@@ -1,5 +1,7 @@
 import {
   EDITOR_FONT_SIZE_DEFAULT,
+  SIDEBAR_FONT_SIZE_DEFAULT,
+  normalizeSidebarFontSize,
   type UIFontSize,
 } from "@/stores/settings/types";
 import { titleBarHeightPx } from "@/lib/electron/titlebarLayout";
@@ -45,8 +47,12 @@ function applyEditorUiScale(root: HTMLElement, scale: string): void {
   }
 }
 
+export function computeSidebarRowHeight(sidebarFontSize: number): number {
+  return Math.round(normalizeSidebarFontSize(sidebarFontSize) * 2 + 2);
+}
+
 /**
- * 同步写入界面字号与编辑器缩放变量。
+ * 同步写入界面字号、侧栏字号与编辑器缩放变量。
  *
  * 启动恢复与用户主动调整共用同一入口：bootstrap 在首个可绘制帧前调用，
  * App 的 effect 在设置变化时重复调用（幂等）。这样冷启动时窗口一出现
@@ -55,13 +61,18 @@ function applyEditorUiScale(root: HTMLElement, scale: string): void {
 export function applyAppearanceScaleVariables(options: {
   uiFontSize: UIFontSize;
   editorFontSize: number;
+  sidebarFontSize?: number;
 }): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   const targetUiSize =
     UI_FONT_SIZE_MAP[options.uiFontSize] ?? UI_FONT_SIZE_MAP.small;
+  const sidebarFontSize = normalizeSidebarFontSize(
+    options.sidebarFontSize ?? SIDEBAR_FONT_SIZE_DEFAULT,
+  );
   root.style.setProperty("font-size", `${targetUiSize}px`);
   root.style.setProperty("--editor-font-size", `${options.editorFontSize}px`);
+  root.style.setProperty("--sidebar-font-size", `${sidebarFontSize}px`);
   root.style.setProperty(
     "--editor-scale",
     (options.editorFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),

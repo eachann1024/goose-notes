@@ -8,6 +8,69 @@
  * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
  */
 
+/* ── 面板灰底 + 白块分层 ───────────────────────────────── */
+.notebook-ai-panel-header {
+ min-width: 0;
+}
+
+.notebook-ai-conversation-title {
+ animation: notebook-ai-title-fade 120ms ease-out;
+}
+
+@keyframes notebook-ai-title-fade {
+ from {
+  opacity: 0;
+ }
+ to {
+  opacity: 1;
+ }
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .notebook-ai-conversation-title {
+  animation: none;
+ }
+}
+
+/* 全屏叠层：uTools 在 PageHeader 下方；Electron 主区已不含顶栏 */
+.notebook-ai-fullscreen-host {
+ top: 3rem;
+}
+
+body[data-goose-ai-fullscreen] .notebook-ai-fullscreen-host {
+ top: 4.5rem;
+}
+
+html.is-electron .notebook-ai-fullscreen-host {
+ top: 0;
+}
+
+.notebook-ai-page-header-stack {
+ display: flex;
+ flex-direction: column;
+ gap: 0.125rem;
+}
+
+.electron-titlebar[data-ai-conversation-header] .notebook-ai-page-header-stack {
+ min-width: 0;
+ flex: 1;
+ border-radius: 12px;
+ background: hsl(var(--goose-editor-bg));
+ padding-top: 0.25rem;
+ padding-bottom: 0.25rem;
+ margin-right: 8px;
+}
+
+.workspace-divider[data-ai-conversation-header],
+.electron-titlebar[data-ai-conversation-header] {
+ height: auto;
+ min-height: 3rem;
+}
+
+html.is-electron .electron-titlebar[data-ai-conversation-header] {
+ min-height: var(--electron-titlebar-height, 2.75rem);
+}
+
 /*
  * Cmd+= 只改 --editor-scale。消息区用 CSS zoom 而非 transform: scale——zoom 同时
  * 缩放布局盒，正文按新宽度重排（同 Chrome 页面缩放、速记小窗）。百分比宽高已在
@@ -44,6 +107,12 @@
  bottom: 0;
  z-index: 20;
  pointer-events: none;
+}
+
+/* 侧栏：输入条跟标题白块共用面板 p-2（8px），绝对定位不再贴满左右把标题挤偏 */
+[data-ai-panel-layout="side-panel"] .notebook-ai-composer-dock {
+ left: 0.5rem;
+ right: 0.5rem;
 }
 
 /*
@@ -129,6 +198,25 @@
  min-height: 24px;
  max-height: 24px;
  line-height: 24px;
+}
+
+@keyframes goose-selection-quote-enter {
+ from {
+  opacity: 0;
+ }
+ to {
+  opacity: 1;
+ }
+}
+
+.ai-composer-chip[data-ai-selection-quote-enter] {
+ animation: goose-selection-quote-enter 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .ai-composer-chip[data-ai-selection-quote-enter] {
+  animation: none;
+ }
 }
 
 /* ── 聊天时间分隔条（微信风格，居中） ── */
@@ -222,6 +310,13 @@
 .notebook-ai-message-inline .ai-composer-chip[data-ai-mention-chip]:hover {
  background: var(--goose-interactive-hover);
  color: var(--goose-interactive-selected-fg);
+}
+
+.notebook-ai-message-inline .ai-composer-chip[data-ai-selection-quote-chip] {
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-inline-code-border-hover);
+ cursor: default;
 }
 
 [data-ai-composer-editor="true"] .ai-composer-chip-thumb {
@@ -549,10 +644,9 @@
  overflow-anchor: none;
 }
 
-/* 左侧 22px 给箭头/步骤标记，标题和折叠文案齐平 */
+/* 左右同为 20px，跟 .bui-approval 纸面一致；折叠箭头走内容流，不再额外左缩 */
 .notebook-ai-work-card.bui-approval {
- padding-left: 42px;
- padding-bottom: 16px;
+ padding: 22px 20px 16px;
 }
 
 .dark .notebook-ai-work-card {
@@ -586,12 +680,12 @@
 
 .notebook-ai-work-toggle {
  display: flex;
- width: calc(100% + 22px);
+ width: 100%;
  max-width: none;
  min-height: 32px;
  align-items: center;
  gap: 8px;
- margin: 10px 0 2px -22px;
+ margin: 10px 0 2px;
  padding: 8px 10px 8px 0;
  border: 0;
  border-radius: 8px;
@@ -620,6 +714,28 @@
  overflow: hidden;
  text-overflow: ellipsis;
  white-space: nowrap;
+}
+
+.notebook-ai-work-toggle:has(.notebook-ai-work-think) .notebook-ai-work-toggle-label {
+ flex: 0 1 auto;
+}
+
+.notebook-ai-work-think {
+ min-width: 0;
+ flex: 1 1 0;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
+}
+
+.notebook-ai-work-toggle--static {
+ cursor: default;
+}
+
+.notebook-ai-work-toggle--static:hover,
+.notebook-ai-work-toggle--static:focus-visible {
+ background: transparent;
+ color: var(--muted-foreground, #8b8b96);
 }
 
 .notebook-ai-work-live {
@@ -746,43 +862,203 @@
  min-width: 0;
 }
 
+.notebook-ai-letter-fold {
+ margin: 0;
+ min-width: 0;
+}
+
+.notebook-ai-letter-fold-toggle {
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ margin: 0 0 0 -8px;
+ padding: 4px 8px;
+ border: 0;
+ border-radius: 8px;
+ background: transparent;
+ color: var(--muted-foreground, #8b8b96);
+ font-size: 13px;
+ font-weight: 500;
+ line-height: 20px;
+ cursor: pointer;
+}
+
+.notebook-ai-letter-fold-toggle:hover,
+.notebook-ai-letter-fold-toggle:focus-visible {
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+}
+
+.notebook-ai-letter-fold-toggle:focus-visible {
+ outline: 2px solid var(--goose-color-focus, #4f46e5);
+ outline-offset: 2px;
+}
+
+.notebook-ai-letter-chev {
+ flex: 0 0 14px;
+ transition: transform 180ms ease-out;
+}
+
+.notebook-ai-letter-fold-toggle[aria-expanded="true"] .notebook-ai-letter-chev {
+ transform: rotate(90deg);
+}
+
+.notebook-ai-letter-fold-body {
+ margin-top: 8px;
+ min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .notebook-ai-letter-chev {
+  transition: none;
+ }
+}
+
 .notebook-ai-work-proposal {
  margin: 0;
- padding: 12px 14px;
+ padding: 0;
+ overflow: hidden;
  border-radius: 12px;
  background: var(--goose-block-subtle-bg);
  color: hsl(var(--foreground));
 }
 .notebook-ai-work-proposal h4 {
- margin: 0 0 8px;
+ margin: 0;
+ padding: 12px 14px 10px;
  font-size: 13.5px;
  font-weight: 650;
  line-height: 1.35;
  color: hsl(var(--foreground));
 }
-.notebook-ai-work-proposal-row {
- display: flex;
- align-items: flex-start;
- gap: 8px;
- font-size: 14px;
- font-weight: 600;
- line-height: 1.45;
+
+.notebook-ai-plan-file {
+ border-top: 1px solid var(--goose-block-subtle-border, #e4e4e8);
 }
-.notebook-ai-work-proposal-mark {
- width: 16px;
- height: 16px;
- flex: 0 0 16px;
- margin-top: 2px;
- border-radius: 4px;
- border: 1.5px solid var(--muted-foreground, #8b8b96);
+
+.notebook-ai-plan-file-bar {
+ display: flex;
+ min-width: 0;
+ align-items: center;
+ gap: 8px;
+ padding: 8px 14px;
+ color: var(--muted-foreground, #5c5c66);
+ font-size: 12px;
+ line-height: 16px;
+}
+
+.notebook-ai-plan-file-kind {
+ flex: 0 0 auto;
+ font-weight: 600;
+}
+
+.notebook-ai-plan-file-title {
+ min-width: 0;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
+ color: hsl(var(--foreground));
+ font-weight: 600;
+}
+
+.notebook-ai-plan-file-body {
+ padding: 4px 14px 16px;
+ min-width: 0;
+ font-size: var(--editor-font-size, 16px);
+ line-height: 1.7;
  color: hsl(var(--foreground));
 }
-.notebook-ai-work-proposal-sub {
- margin: 6px 0 0 24px;
+
+.notebook-ai-plan-delete-list {
+ margin: 0;
+ padding-left: 1.25em;
+ font-size: 15px;
+ line-height: 1.7;
+}
+
+.notebook-ai-plan-diff {
+ overflow: hidden;
+ border-radius: 8px;
+ border: 1px solid var(--goose-block-subtle-border, #e4e4e8);
+ font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
  font-size: 13px;
- font-weight: 400;
- line-height: 1.55;
- color: var(--muted-foreground, #5c5c66);
+ line-height: 1.65;
+}
+
+.notebook-ai-plan-diff-line {
+ display: flex;
+ gap: 8px;
+ padding: 2px 10px;
+ white-space: pre-wrap;
+ word-break: break-word;
+}
+
+.notebook-ai-plan-diff-line > span:first-child {
+ flex: 0 0 12px;
+ user-select: none;
+}
+
+.notebook-ai-plan-diff-line--del {
+ background: var(--goose-color-danger-subtle-bg);
+ color: var(--goose-color-danger-focus);
+}
+
+.notebook-ai-plan-diff-line--add {
+ background: var(--bui-green-tint, #dcfce7);
+ color: var(--goose-color-success);
+}
+
+/* 计划正文跟编辑器走：标题/清单不再压成聊天窄栏字号 */
+.notebook-ai-plan-md {
+ font-size: var(--editor-font-size, 16px);
+ line-height: 1.7;
+}
+
+.notebook-ai-plan-md [data-streamdown="heading-1"] {
+ font-size: 1.75em;
+ margin-top: 1.25rem;
+ margin-bottom: 0.5rem;
+ font-weight: 700;
+ line-height: 1.25;
+}
+
+.notebook-ai-plan-md [data-streamdown="heading-2"] {
+ font-size: 1.4em;
+ margin-top: 1.1rem;
+ margin-bottom: 0.4rem;
+ font-weight: 650;
+ line-height: 1.3;
+}
+
+.notebook-ai-plan-md [data-streamdown="heading-3"],
+.notebook-ai-plan-md [data-streamdown="heading-4"],
+.notebook-ai-plan-md [data-streamdown="heading-5"],
+.notebook-ai-plan-md [data-streamdown="heading-6"] {
+ font-size: 1.15em;
+ margin-top: 0.9rem;
+ margin-bottom: 0.35rem;
+ font-weight: 600;
+ line-height: 1.35;
+}
+
+.notebook-ai-plan-md > :first-child {
+ margin-top: 0;
+}
+
+.notebook-ai-plan-md .ai-md-checkbox {
+ width: 1em;
+ height: 1em;
+ border-radius: 0.2em;
+ border: 0.09em solid hsl(var(--muted-foreground));
+}
+
+.notebook-ai-plan-md .ai-md-checkbox[data-checked="true"] {
+ background: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-interactive-selected-fg);
+ color: hsl(var(--background));
+}
+
+.notebook-ai-plan-md [data-streamdown="list-item"]:has(.ai-md-checkbox[data-checked="true"]) {
+ color: hsl(var(--muted-foreground));
 }
 
 .notebook-ai-work-aside .ai-md > :first-child {
@@ -892,6 +1168,23 @@
 
 .notebook-ai-work-letter .ai-md [data-streamdown="list-item"]:has(.ai-md-checkbox[data-checked="true"]) {
  color: inherit;
+}
+
+.notebook-ai-work-letter .notebook-ai-plan-md .ai-md-checkbox {
+ width: 1em;
+ height: 1em;
+ border-radius: 0.2em;
+ border: 0.09em solid hsl(var(--muted-foreground));
+}
+
+.notebook-ai-work-letter .notebook-ai-plan-md .ai-md-checkbox[data-checked="true"] {
+ background: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-interactive-selected-fg);
+ color: hsl(var(--background));
+}
+
+.notebook-ai-work-letter .notebook-ai-plan-md [data-streamdown="list-item"]:has(.ai-md-checkbox[data-checked="true"]) {
+ color: hsl(var(--muted-foreground));
 }
 
 /* ── 代码 / mermaid：单层壳 ─────────────────────────────

@@ -20,6 +20,7 @@ import {
 } from "@/stores/useNotebooks";
 import { clearLocalPageMetadataCache, usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useTabs } from "@/stores/useTabs";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import {
@@ -218,6 +219,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setCustomFont,
     uiFontSize,
     setUIFontSize,
+    sidebarFontSize,
+    increaseSidebarFontSize,
+    decreaseSidebarFontSize,
+    editorFontSize,
+    increaseEditorFontSize,
+    decreaseEditorFontSize,
     hideExpandArrows,
     setHideExpandArrows,
     randomIconOnCreate,
@@ -277,6 +284,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setCustomFont: s.setCustomFont,
       uiFontSize: s.uiFontSize,
       setUIFontSize: s.setUIFontSize,
+      sidebarFontSize: s.sidebarFontSize,
+      increaseSidebarFontSize: s.increaseSidebarFontSize,
+      decreaseSidebarFontSize: s.decreaseSidebarFontSize,
+      editorFontSize: s.editorFontSize,
+      increaseEditorFontSize: s.increaseEditorFontSize,
+      decreaseEditorFontSize: s.decreaseEditorFontSize,
       hideExpandArrows: s.hideExpandArrows,
       setHideExpandArrows: s.setHideExpandArrows,
       randomIconOnCreate: s.randomIconOnCreate,
@@ -818,7 +831,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 appShortcuts={appShortcuts}
                 setAppShortcut={setAppShortcut}
                 resetAppShortcuts={resetAppShortcuts}
-                singleTabMode={singleTabMode}
+                singleTabMode={effectiveSingleTabMode(singleTabMode)}
               />
             </div>
           )}
@@ -852,6 +865,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCustomFont={setCustomFont}
                 uiFontSize={uiFontSize}
                 setUIFontSize={setUIFontSize}
+                sidebarFontSize={sidebarFontSize}
+                increaseSidebarFontSize={increaseSidebarFontSize}
+                decreaseSidebarFontSize={decreaseSidebarFontSize}
+                editorFontSize={editorFontSize}
+                increaseEditorFontSize={increaseEditorFontSize}
+                decreaseEditorFontSize={decreaseEditorFontSize}
                 hideExpandArrows={hideExpandArrows}
                 setHideExpandArrows={setHideExpandArrows}
                 randomIconOnCreate={randomIconOnCreate}

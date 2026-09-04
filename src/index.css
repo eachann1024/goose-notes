@@ -283,6 +283,11 @@
     --goose-block-subtle-border: #e8e7e5;
     --goose-block-subtle-hover: #ebeae8;
     --goose-block-subtle-inset: #f7f6f5;
+    /* 当前行底：实色，避免 uTools 旧内核解析 hsl(var(...)/alpha) 失败 */
+    --goose-active-line-bg: #f4f5f7;
+    /* 与标题色条左右外扩对齐；文字/光标仍落在原基线 */
+    --goose-active-line-outset: 8px;
+    --goose-editor-caret-width: 2px;
     --goose-callout-accent: #6366f1;
     --goose-callout-bg: #f7f6f3;
     --goose-callout-border: #e9e9e7;
@@ -370,6 +375,7 @@
     --goose-block-subtle-border: #363636;
     --goose-block-subtle-hover: #2e2e2e;
     --goose-block-subtle-inset: #222222;
+    --goose-active-line-bg: #353432;
     --goose-callout-accent: #6366f1;
     --goose-callout-bg: #2f2f2f;
     --goose-callout-border: #3d3d3d;
@@ -453,6 +459,7 @@
   /* 编辑器缩放变量（通过 JS 动态设置，供编辑器内容模块统一跟随缩放） */
   :root {
     --editor-font-size: 16px;
+    --sidebar-font-size: 13px;
     --editor-scale: 1;
     /* 编辑器上下文 UI 的统一缩放契约。浮层通过显式 opt-in 使用，
        不影响设置、侧栏、Dialog、Toast 等全局界面。 */
@@ -689,30 +696,15 @@
   }
 }
 
-[cmdk-overlay][data-state="open"] {
-  animation: cmdk-overlay-in 200ms ease-out both;
-}
-
+[cmdk-overlay][data-state="open"],
 [cmdk-overlay][data-state="closed"] {
-  animation: cmdk-overlay-out 150ms ease-in both;
+  animation: none;
 }
 
-@keyframes cmdk-overlay-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes cmdk-overlay-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+/* Electron 全屏 backdrop-filter 会强制把编辑器栅成纹理，⌘K 打开明显卡一帧 */
+.is-electron [cmdk-overlay] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* 径向渐变工具类 */
@@ -955,7 +947,6 @@
   transform-origin: 12px 12px;
   transform-box: fill-box;
   animation: ai-icon-flash 720ms cubic-bezier(0.16, 1, 0.3, 1);
-  mix-blend-mode: screen;
   pointer-events: none;
 }
 
@@ -999,14 +990,14 @@
 }
 
 /* 默认透明底；hover 与顶栏其它图标一致起底；选中用强调色底 + 强调色图标 */
-.ai-icon-button {
+button.ai-icon-button {
   position: relative;
   isolation: isolate;
   overflow: visible;
   background: transparent;
   box-shadow: none;
   border: none;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
   transition:
     background-color 150ms ease,
     color 150ms ease;
@@ -1030,10 +1021,7 @@
 }
 
 .ai-icon-button .ai-icon {
-  filter: saturate(1.25) contrast(1.18);
-  transition:
-    filter 180ms ease,
-    transform 180ms ease;
+  transition: transform 180ms ease;
 }
 
 /* 空闲：默认静止，避免无限动画常驻合成器；hover / 键盘焦点时再漂浮。
@@ -1054,7 +1042,6 @@
 }
 
 .ai-icon-button:hover .ai-icon {
-  filter: saturate(1.4) contrast(1.22) brightness(1.08);
   transform: scale(1.06);
 }
 
@@ -1074,10 +1061,10 @@
   transform: none;
 }
 
-.dark .ai-icon-button {
+.dark button.ai-icon-button {
   background: transparent;
   box-shadow: none;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
 }
 
 .dark .ai-icon-button:hover {
@@ -1093,7 +1080,7 @@
 }
 
 .dark .ai-icon-button .ai-icon {
-  filter: saturate(1.08) brightness(1.04);
+  filter: none;
 }
 
 /* 深色选中态必须写在 .dark .ai-icon-button .ai-icon 之后，否则同优先级会被 idle 滤镜盖掉 */
@@ -1108,7 +1095,6 @@
 }
 
 .dark .ai-icon-button:hover .ai-icon {
-  filter: saturate(1.22) contrast(1.12) brightness(1.12);
   transform: scale(1.06);
 }
 

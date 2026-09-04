@@ -74,7 +74,7 @@ export function FavoritesSection({
   return (
     <div className="py-1">
       <div
-        className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] cursor-pointer transition-colors"
+        className="sidebar-section-label group flex cursor-pointer items-center justify-between py-2 pr-2 text-xs font-medium text-[hsl(var(--goose-nav-title))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
         onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
       >
         <span>收藏</span>

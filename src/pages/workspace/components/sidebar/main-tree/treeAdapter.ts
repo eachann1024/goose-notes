@@ -41,7 +41,8 @@ export function pagesToTreeItems(
   isLocalFolder: boolean,
 ): Record<TreeItemIndex, TreeItem<Page>> {
   const scoped = pages.filter(
-    (p) => p.workspaceId === activeNotebookId && !p.trashedAt,
+    (p) =>
+      p.workspaceId === activeNotebookId && !p.trashedAt && !p.localUnsaved,
   );
   const childrenMap = new Map<string | undefined, Page[]>();
   for (const page of scoped) {

@@ -16,7 +16,7 @@ import { splitImageExportTitle } from "./titleLift";
 /** 宽于该值才显示生成图片弹层的真实内容预览。uTools 默认约 800 不显示；桌面端默认 1250 显示。 */
 export const IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH = 1000;
 
-/** 窗口达到该宽度时，生成选项放到弹窗右上角（Electron 默认 1250）。 */
+/** 窗口达到该宽度时，生成选项收成标题行工具条（Electron 默认 1250），避免与标题并排撑高页头。 */
 export const IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH = 1200;
 
 export function shouldShowImageExportLivePreview(width: number): boolean {

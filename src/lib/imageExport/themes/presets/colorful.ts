@@ -1,48 +1,6 @@
 import type { CardTheme } from "../types";
 
 export const COLORFUL_THEMES: CardTheme[] = [
-  // ── 6. Neon ──────────────────────────────────────────────────
-  {
-    id: "neon",
-    name: "霓虹渐变",
-    nameEn: "Neon",
-    description: "鲜艳渐变，视觉冲击",
-    tags: ["渐变", "社交"],
-    mode: "light",
-    titleFont: "'Inter', 'Noto Sans SC', sans-serif",
-    bodyFont: "'Inter', 'Noto Sans SC', sans-serif",
-    codeFont: "'JetBrains Mono', monospace",
-    titleFontSize: 36,
-    titleFontWeight: 800,
-    titleLineHeight: 1.15,
-    titleLetterSpacing: "-0.02em",
-    titleAlign: "center",
-    bodyFontSize: 15,
-    bodyLineHeight: 1.75,
-    bodyLetterSpacing: "0",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 30%, #f093fb 70%, #f5576c 100%)",
-    cardBg: "rgba(255,255,255,0.97)",
-    textColor: "#1a1a2e",
-    secondaryText: "#6b7280",
-    accent: "#7c3aed",
-    codeBg: "#f5f3ff",
-    quoteBorder: "#ddd6fe",
-    calloutBg: "#faf5ff",
-    tableBorder: "#e9d5ff",
-    divider: "#e9d5ff",
-    watermark: "#c4b5fd",
-    containerPaddingX: 56,
-    containerPaddingY: 56,
-    cardPaddingX: 44,
-    cardPaddingY: 40,
-    cardRadius: 24,
-    cardBorder: "1px solid rgba(255,255,255,0.5)",
-    cardShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.3)",
-    showDecorations: true,
-    decorationColor: "rgba(124,58,237,0.08)",
-    watermarkVisible: true,
-  },
-
   // ── 9. Poster ────────────────────────────────────────────────
   {
     id: "poster",

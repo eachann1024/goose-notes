@@ -3,6 +3,7 @@ import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { toast } from "@/components/ui/sonner";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import {
   useEditorPageContext,
@@ -33,6 +34,15 @@ function triggerDownload(url: string, name: string): void {
   document.body.removeChild(link);
 }
 
+async function saveOrFallback(blob: Blob, name: string): Promise<void> {
+  const saved = await saveBlobAndReveal(blob, name);
+  if (saved) {
+    toast.success("已保存到下载文件夹");
+    return;
+  }
+  toast.error("保存失败");
+}
+
 function CustomFileBlockContent({
   block,
   editor,
@@ -58,22 +68,23 @@ function CustomFileBlockContent({
     const name = block.props.name || "download";
     if (!url) return;
 
-    if (!/^(?:https?|data|blob):/i.test(url)) {
-      const blob = await platform.imageStorage.load(url);
-      if (!blob) {
-        toast.error("附件不存在或尚未同步完成");
+    try {
+      if (!/^(?:https?|data|blob):/i.test(url)) {
+        const blob = await platform.imageStorage.load(url);
+        if (!blob) {
+          toast.error("附件不存在或尚未同步完成");
+          return;
+        }
+        await saveOrFallback(blob, name);
         return;
       }
-      const objectUrl = URL.createObjectURL(blob);
-      try {
-        triggerDownload(objectUrl, name);
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
-      }
-      return;
-    }
 
-    triggerDownload(url, name);
+      const response = await fetch(url);
+      await saveOrFallback(await response.blob(), name);
+    } catch (error) {
+      console.error("[file-block] 保存失败，回退浏览器下载:", error);
+      triggerDownload(url, name);
+    }
   }, [block.props.url, block.props.name, platform]);
 
   const handleOpen = useCallback(async () => {

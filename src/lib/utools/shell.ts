@@ -204,14 +204,33 @@ export const shell = {
     return (await pending) as T[];
   },
 
-  getDownloadsPath: (): string | null => {
+  getDownloadsPath: async (): Promise<string | null> => {
     const utools = getUToolsApi();
-    if (!utools?.getPath) return null;
-    try {
-      return utools.getPath("downloads") ?? null;
-    } catch {
-      return null;
+    if (utools?.getPath) {
+      try {
+        const dir = utools.getPath("downloads");
+        if (typeof dir === "string" && dir.trim()) return dir;
+      } catch {
+        /* ignore */
+      }
     }
+    const desktop =
+      typeof window !== "undefined"
+        ? (
+            window as Window & {
+              gooseDesktop?: { getDownloadsPath?: () => Promise<string> };
+            }
+          ).gooseDesktop
+        : null;
+    if (desktop?.getDownloadsPath) {
+      try {
+        const dir = await desktop.getDownloadsPath();
+        return typeof dir === "string" && dir.trim() ? dir : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   },
 };
 

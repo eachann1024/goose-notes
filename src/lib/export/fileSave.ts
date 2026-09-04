@@ -1,56 +1,100 @@
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 
-function getDownloadsPath(): string | null {
-  const w = window as any;
-  const gooseFs = w.gooseFs;
-  const exists = (p: string) => {
-    try { return gooseFs?.exists?.(p); } catch { return false; }
+type HostWindow = Window & {
+  utools?: {
+    getPath?: (name: string) => string | null;
+    shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
   };
+  gooseDesktop?: {
+    getDownloadsPath?: () => Promise<string>;
+    joinPath?: (...parts: string[]) => Promise<string>;
+    saveToDownloads?: (filename: string, data: Uint8Array) => Promise<string>;
+    showItemInFolder?: (targetPath: string) => Promise<void>;
+  };
+  gooseFs?: GooseFs & {
+    revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
+  };
+};
+
+function hostWindow(): HostWindow | null {
+  if (typeof window === "undefined") return null;
+  return window as HostWindow;
+}
+
+function joinWithSeparator(dir: string, name: string): string {
+  const separator = dir.includes("\\") ? "\\" : "/";
+  return `${dir.replace(/[\\/]+$/, "")}${separator}${name}`;
+}
+
+async function resolveDownloadsDir(): Promise<string | null> {
+  const w = hostWindow();
+  if (!w) return null;
+
+  try {
+    const dir = await w.gooseDesktop?.getDownloadsPath?.();
+    if (typeof dir === "string" && dir.trim()) return dir;
+  } catch {
+    /* ignore */
+  }
 
   try {
     const dir = w.utools?.getPath?.("downloads");
-    if (typeof dir === "string" && dir.trim().length > 0) return dir;
-  } catch { /* ignore */ }
+    if (typeof dir === "string" && dir.trim()) return dir;
+  } catch {
+    /* ignore */
+  }
 
   try {
-    const os = w.require?.("os");
-    const path = w.require?.("path");
-    if (os?.homedir && path?.join) {
-      const dir = path.join(os.homedir(), "Downloads");
-      if (exists(dir)) return dir;
-    }
-  } catch { /* ignore */ }
+    const env = (w as Window & { process?: { env?: Record<string, string> } })
+      .process?.env;
+    const xdg = env?.XDG_DOWNLOAD_DIR;
+    if (typeof xdg === "string" && xdg.trim()) return xdg;
+  } catch {
+    /* ignore */
+  }
 
   try {
-    const env = w.process?.env;
-    if (env) {
-      const home = env.HOME || env.USERPROFILE;
-      if (home) {
-        const path = w.require?.("path");
-        const dir = path?.join ? path.join(home, "Downloads") : `${home}/Downloads`;
-        if (exists(dir)) return dir;
-      }
+    const os = (w as Window & { require?: (id: string) => unknown }).require?.(
+      "os",
+    ) as { homedir?: () => string } | undefined;
+    const nodePath = (w as Window & { require?: (id: string) => unknown }).require?.(
+      "path",
+    ) as { join?: (...parts: string[]) => string } | undefined;
+    if (os?.homedir && nodePath?.join) {
+      return nodePath.join(os.homedir(), "Downloads");
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   try {
-    const env = w.process?.env;
-    if (env?.USER) {
-      const dir = `/Users/${env.USER}/Downloads`;
-      if (exists(dir)) return dir;
+    const env = (w as Window & { process?: { env?: Record<string, string> } })
+      .process?.env;
+    const home = env?.HOME || env?.USERPROFILE;
+    if (home) {
+      const nodePath = (
+        w as Window & { require?: (id: string) => unknown }
+      ).require?.("path") as { join?: (...parts: string[]) => string } | undefined;
+      return nodePath?.join
+        ? nodePath.join(home, "Downloads")
+        : `${home.replace(/[\\/]+$/, "")}/Downloads`;
     }
-  } catch { /* ignore */ }
-
-  try {
-    const env = w.process?.env;
-    if (env?.USERNAME) {
-      const sysDrive = env.SystemDrive || "C:";
-      const dir = `${sysDrive}\\Users\\${env.USERNAME}\\Downloads`;
-      if (exists(dir)) return dir;
-    }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   return null;
+}
+
+async function joinDownloadPath(dir: string, name: string): Promise<string> {
+  const w = hostWindow();
+  try {
+    const joined = await w?.gooseDesktop?.joinPath?.(dir, name);
+    if (typeof joined === "string" && joined.trim()) return joined;
+  } catch {
+    /* ignore */
+  }
+  return joinWithSeparator(dir, name);
 }
 
 /** 下载目录已有同名文件时，按系统习惯加 ` (1)`、` (2)`，避免覆盖失败看起来像没导出。 */
@@ -71,53 +115,109 @@ export function nextAvailableFilename(
   return candidate;
 }
 
-function getSuggestedSavePath(filename: string): string {
-  const downloadsDir = getDownloadsPath();
-  if (!downloadsDir) return filename;
-  const separator = downloadsDir.includes("\\") ? "\\" : "/";
-  return `${downloadsDir.replace(/[\\/]+$/, "")}${separator}${filename}`;
+async function nextAvailableDownloadName(
+  downloadsDir: string,
+  filename: string,
+  exists: (fullPath: string) => Promise<boolean>,
+  join: (dir: string, name: string) => Promise<string>,
+): Promise<string> {
+  if (!(await exists(await join(downloadsDir, filename)))) return filename;
+  const extMatch = filename.match(/(\.[^.]+)$/);
+  const ext = extMatch?.[1] ?? "";
+  const stem = ext ? filename.slice(0, -ext.length) : filename;
+  let index = 1;
+  let candidate = `${stem} (${index})${ext}`;
+  while (await exists(await join(downloadsDir, candidate))) {
+    index += 1;
+    candidate = `${stem} (${index})${ext}`;
+  }
+  return candidate;
 }
 
-async function trySaveToDownloads(
+async function pathExists(
+  gooseFs: GooseFs,
+  targetPath: string,
+): Promise<boolean> {
+  try {
+    if (typeof gooseFs.existsAsync === "function") {
+      return Boolean(await gooseFs.existsAsync(targetPath));
+    }
+    return Boolean(gooseFs.exists(targetPath));
+  } catch {
+    return false;
+  }
+}
+
+async function revealSavedFile(targetPath: string): Promise<void> {
+  const w = hostWindow();
+  if (!w) return;
+
+  if (typeof w.gooseFs?.revealItemInFolder === "function") {
+    try {
+      if (await w.gooseFs.revealItemInFolder(targetPath)) return;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (w.gooseDesktop?.showItemInFolder) {
+    try {
+      await w.gooseDesktop.showItemInFolder(targetPath);
+      return;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (w.utools?.shellShowItemInFolder) {
+    try {
+      await Promise.resolve(w.utools.shellShowItemInFolder(targetPath));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+async function trySaveViaElectron(
   blob: Blob,
   filename: string,
 ): Promise<boolean> {
-  if (typeof window === "undefined") return false;
+  const api = hostWindow()?.gooseDesktop;
+  if (!api?.saveToDownloads) return false;
 
-  const hostWindow = window as Window & {
-    utools?: {
-      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-    gooseFs?: GooseFs & {
-      revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-  };
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const targetPath = await api.saveToDownloads(filename, bytes);
+  if (typeof targetPath !== "string" || !targetPath.trim()) return false;
+  await revealSavedFile(targetPath);
+  return true;
+}
 
-  const gooseFs = hostWindow.gooseFs;
+async function trySaveViaGooseFs(
+  blob: Blob,
+  filename: string,
+): Promise<boolean> {
+  const w = hostWindow();
+  const gooseFs = w?.gooseFs;
   if (!gooseFs) return false;
 
-  const downloadsDir = getDownloadsPath();
+  const downloadsDir = await resolveDownloadsDir();
   if (!downloadsDir) return false;
 
-  if (!gooseFs.exists(downloadsDir)) {
-    try { gooseFs.mkdir(downloadsDir); } catch { /* ignore */ }
+  if (!(await pathExists(gooseFs, downloadsDir))) {
+    try {
+      await Promise.resolve(gooseFs.mkdir(downloadsDir));
+    } catch {
+      /* ignore */
+    }
   }
 
-  const w = window as any;
-  const path = w.require && w.require("path");
-  const joinDownload = (name: string) =>
-    path && typeof path.join === "function"
-      ? path.join(downloadsDir, name)
-      : `${downloadsDir.replace(/[/\\]+$/, "")}/${name}`;
-  const uniqueName = nextAvailableFilename(filename, (name) => {
-    try {
-      return Boolean(gooseFs.exists(joinDownload(name)));
-    } catch {
-      return false;
-    }
-  });
-  const targetPath = joinDownload(uniqueName);
-
+  const candidateName = await nextAvailableDownloadName(
+    downloadsDir,
+    filename,
+    (fullPath) => pathExists(gooseFs, fullPath),
+    (dir, name) => joinDownloadPath(dir, name),
+  );
+  const targetPath = await joinDownloadPath(downloadsDir, candidateName);
   const base64 = await blobToBase64(blob);
   const payload = base64.replace(/^data:.*;base64,/, "");
   const saved = gooseFs.writeFileAsync
@@ -125,13 +225,7 @@ async function trySaveToDownloads(
     : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
 
   if (!saved) return false;
-
-  if (typeof gooseFs.revealItemInFolder === "function") {
-    try { await gooseFs.revealItemInFolder(targetPath); } catch { /* ignore */ }
-  } else if (hostWindow.utools?.shellShowItemInFolder) {
-    try { await Promise.resolve(hostWindow.utools.shellShowItemInFolder(targetPath)); } catch { /* ignore */ }
-  }
-
+  await revealSavedFile(targetPath);
   return true;
 }
 
@@ -154,111 +248,27 @@ function triggerBrowserDownload(blob: Blob, filename: string): boolean {
   }
 }
 
-export type PromptSaveResult = "saved" | "cancelled";
-
-async function saveBlobViaDialog(
-  blob: Blob,
-  filename: string,
-): Promise<PromptSaveResult> {
-  if (typeof window === "undefined") {
-    throw new Error("当前环境不支持保存文件");
-  }
-
-  const hostWindow = window as Window & {
-    utools?: {
-      showSaveDialog?: (options?: Record<string, unknown>) => unknown;
-      shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-      shellOpenPath?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-    gooseFs?: GooseFs & {
-      revealItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-    };
-  };
-
-  const utools = hostWindow.utools;
-  const gooseFs = hostWindow.gooseFs;
-  if (!utools || typeof utools.showSaveDialog !== "function" || !gooseFs) {
-    if (triggerBrowserDownload(blob, filename)) return "saved";
-    throw new Error("当前环境不支持保存文件");
-  }
-
-  const saveResult = await Promise.resolve(
-    utools.showSaveDialog({
-      title: "保存文件",
-      defaultPath: getSuggestedSavePath(filename),
-      buttonLabel: "保存",
-    }),
-  );
-
-  const normalizeSavePath = (value: unknown): string | null => {
-    if (typeof value === "string" && value.trim().length > 0) return value;
-    if (Array.isArray(value)) {
-      const first = value.find((item) => typeof item === "string");
-      return typeof first === "string" && first.trim().length > 0 ? first : null;
-    }
-    if (value && typeof value === "object") {
-      const filePath =
-        "filePath" in value && typeof (value as { filePath?: unknown }).filePath === "string"
-          ? (value as { filePath: string }).filePath
-          : null;
-      const canceled = "canceled" in value && Boolean((value as { canceled?: unknown }).canceled);
-      if (canceled) return null;
-      if (filePath && filePath.trim().length > 0) return filePath;
-    }
-    return null;
-  };
-
-  const targetPath = normalizeSavePath(saveResult);
-  if (!targetPath) return "cancelled";
-
-  const base64 = await blobToBase64(blob);
-  const payload = base64.replace(/^data:.*;base64,/, "");
-  const saved = gooseFs.writeFileAsync
-    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
-    : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
-
-  if (!saved) throw new Error("uTools 写入文件失败");
-
-  let revealed = false;
-  if (typeof gooseFs.revealItemInFolder === "function") {
-    revealed = Boolean(await gooseFs.revealItemInFolder(targetPath));
-  }
-  if (!revealed && utools?.shellShowItemInFolder) {
-    revealed = Boolean(await Promise.resolve(utools.shellShowItemInFolder(targetPath)));
-  }
-  if (!revealed && utools?.shellOpenPath) {
-    const folderPath = targetPath.replace(/[/\\][^/\\]*$/, "");
-    await Promise.resolve(utools.shellOpenPath(folderPath));
-  }
-
-  return "saved";
-}
-
-async function saveBlobViaUTools(
-  blob: Blob,
-  filename: string,
-): Promise<boolean> {
-  const silent = await trySaveToDownloads(blob, filename);
-  if (silent) return true;
-  return (await saveBlobViaDialog(blob, filename)) !== "cancelled";
-}
-
+/**
+ * 导出/下载一律写入用户下载目录，不弹保存对话框；
+ * 成功后打开文件管理器并选中该文件。浏览器环境回退为普通下载。
+ */
 export async function saveBlobAndReveal(
   blob: Blob,
   filename: string,
 ): Promise<boolean> {
-  return saveBlobViaUTools(blob, filename);
-}
+  try {
+    if (await trySaveViaElectron(blob, filename)) return true;
+  } catch (error) {
+    console.error("[export] Electron 保存到下载目录失败:", error);
+  }
 
-/**
- * 显式询问保存位置。uTools 中使用系统保存对话框，浏览器中回退到下载。
- * 用户取消时返回 `cancelled`，调用方不应显示“保存成功”。
- */
-export async function saveBlobWithPrompt(
-  blob: Blob,
-  filename: string,
-): Promise<PromptSaveResult> {
-  return saveBlobViaDialog(blob, filename);
+  try {
+    if (await trySaveViaGooseFs(blob, filename)) return true;
+  } catch (error) {
+    console.error("[export] 写入下载目录失败:", error);
+  }
+
+  return triggerBrowserDownload(blob, filename);
 }
 
 export { triggerBrowserDownload };

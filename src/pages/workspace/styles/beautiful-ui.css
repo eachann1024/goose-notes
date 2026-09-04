@@ -350,10 +350,13 @@
   color: var(--bui-ink, hsl(var(--foreground)));
 }
 
-/* 对话列用灰纸，白卡浮起 */
-.bui-chat,
+/* 对话列白纸张；外壳透明，灰缝由 workspace / 面板 gap 露出 */
+.bui-chat {
+  background: transparent;
+}
+
 .notebook-ai-messages {
-  background: var(--goose-block-subtle-inset);
+  background: hsl(var(--goose-editor-bg));
 }
 
 .bui-chip-row {

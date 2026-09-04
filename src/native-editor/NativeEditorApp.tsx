@@ -986,7 +986,7 @@ export function NativeEditorApp() {
               if (current) setCurrentPage({ ...current, content });
               if (!options?.silent) markDirty();
             },
-            onOpenPage: () => {},
+            onOpenPage: () => false,
             getActivePageLocalFilePath: () => pageIDRef.current,
             // 原生编辑器宿主没有「本地文件夹笔记本」概念，路径 tag 不启用。
             getActivePageLocalFolderRoot: () => null,

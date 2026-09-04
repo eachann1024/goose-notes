@@ -25,19 +25,27 @@ import {
   shouldStartWindowDrag,
   startWindowDragging,
 } from "@/lib/electron/windowDrag";
+import { localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
 
 interface SingleTabTitleProps {
   page: Page;
   /** Electron 顶栏：闲置按住拖窗口，单击才进入编辑。uTools 页头不传。 */
   idleWindowDrag?: boolean;
+  /** tab-pill：嵌在标签页里改名，外观跟普通标签文字一致。 */
+  surface?: "page-header" | "tab-pill";
 }
 
 const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 
 const TITLE_IDLE_CLASS =
-  "inline-flex h-8 items-center rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold leading-8 text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
+  "inline-flex h-8 items-center rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold leading-8 text-foreground no-underline outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
 
 const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]`;
+
+const TITLE_TAB_IDLE_CLASS =
+  "inline-flex h-8 min-w-0 w-full flex-1 items-center truncate bg-transparent px-0 text-sm leading-8 text-inherit no-underline outline-none";
+
+const TITLE_TAB_INPUT_CLASS = `${TITLE_TAB_IDLE_CLASS} caret-[var(--goose-interactive-selected-fg)] focus:text-[var(--goose-interactive-selected-fg)]`;
 
 /**
  * 铺满主栏剩余宽度（到右侧 AI / 菜单为止）。
@@ -48,6 +56,7 @@ const TITLE_SIZE_FILL = "min-w-0 w-full flex-1";
 export function SingleTabTitle({
   page,
   idleWindowDrag = false,
+  surface = "page-header",
 }: SingleTabTitleProps) {
   const currentTitle = getPageTitle(page);
   const locked = Boolean(page.isLocked || page.trashedAt);
@@ -173,7 +182,6 @@ export function SingleTabTitle({
     committingRef.current = true;
     try {
       if (page.localFilePath) {
-        // 重命名层已预判同名并自动加 (1)/(2)，成功后以落盘基名回写输入框
         await usePages.getState().renameLocalPageFile(page.id, nextTitle);
         const latestPath =
           usePages.getState().pages[page.id]?.localFilePath ?? null;
@@ -181,6 +189,29 @@ export function SingleTabTitle({
           ? splitFilePath(latestPath).base || nextTitle
           : nextTitle;
         setValue(finalTitle);
+      } else if (page.localUnsaved) {
+        if (
+          nextTitle === UNTITLED_PAGE_TITLE &&
+          !localPageHasPersistableContent(page.content)
+        ) {
+          setValue(nextTitle);
+        } else {
+          const ok = await usePages
+            .getState()
+            .materializeUnsavedLocalPage(page.id, { title: nextTitle });
+          if (!ok) {
+            toast.error("创建文件失败");
+            inputRef.current?.focus();
+            return;
+          }
+          const latestPath =
+            usePages.getState().pages[page.id]?.localFilePath ?? null;
+          setValue(
+            latestPath
+              ? splitFilePath(latestPath).base || nextTitle
+              : nextTitle,
+          );
+        }
       } else {
         usePages.getState().updatePage(page.id, {
           content: withInternalPageTitle(page.content, nextTitle),
@@ -200,13 +231,16 @@ export function SingleTabTitle({
   }, [currentTitle, locked, page, setValue, valueRef]);
 
   const sizeClass = TITLE_SIZE_FILL;
+  const inTab = surface === "tab-pill";
+  const idleClass = inTab ? TITLE_TAB_IDLE_CLASS : TITLE_IDLE_CLASS;
+  const inputClass = inTab ? TITLE_TAB_INPUT_CLASS : TITLE_INPUT_CLASS;
+  const lockedClass = inTab
+    ? `${sizeClass} inline-flex h-8 items-center truncate px-0 text-sm leading-8 text-inherit no-underline`
+    : `${sizeClass} inline-flex h-8 items-center truncate px-2 text-sm font-semibold leading-8 text-foreground no-underline`;
 
   if (locked) {
     return (
-      <span
-        className={`${sizeClass} inline-flex h-8 items-center truncate px-2 text-sm font-semibold leading-8 text-foreground`}
-        title={currentTitle}
-      >
+      <span className={lockedClass} title={currentTitle}>
         {currentTitle}
       </span>
     );
@@ -250,7 +284,7 @@ export function SingleTabTitle({
         data-electron-no-drag
         aria-label="笔记标题"
         title="点击编辑笔记标题"
-        className={`${TITLE_IDLE_CLASS} ${sizeClass} cursor-default truncate text-left`}
+        className={`${idleClass} ${sizeClass} truncate text-left ${inTab ? "cursor-text" : "cursor-default"}`}
         onPointerDown={onIdlePointerDown}
         onClick={beginEditing}
       >
@@ -302,7 +336,7 @@ export function SingleTabTitle({
       title="点击编辑笔记标题"
       spellCheck={false}
       autoComplete="off"
-      className={`${TITLE_INPUT_CLASS} ${sizeClass} box-border`}
+      className={`${inputClass} ${sizeClass} box-border`}
     />
   );
 }

@@ -178,12 +178,21 @@ export interface PagesState {
     parentId?: string;
     title?: string;
     content?: JSONContent;
+    /** 审批计划预分配的绝对路径；传入后不再按标题另行撞名改后缀。 */
+    filePath?: string;
   }) => Promise<string | null>;
   createLocalFolderRecord: (options: {
     workspaceId: string;
     parentId?: string;
     title?: string;
   }) => Promise<string | null>;
+  /** Electron 新标签：内存页，输入内容后再写盘。 */
+  createUnsavedLocalPage: (workspaceId: string, parentId?: string) => string;
+  discardUnsavedLocalPage: (pageId: string) => void;
+  materializeUnsavedLocalPage: (
+    pageId: string,
+    options?: { title?: string },
+  ) => Promise<boolean>;
   writePageContent: (
     pageId: string,
     content: JSONContent,

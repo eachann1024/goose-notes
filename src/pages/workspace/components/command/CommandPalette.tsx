@@ -7,16 +7,22 @@ import {
   useCallback,
 } from "react";
 import { Command } from "cmdk";
-import * as LucideIcons from "lucide-react";
+import { Search, Columns2, Rows2, Maximize2, X } from "lucide-react";
 import type { Page } from "@/types";
 import { UToolsAdapter } from "@/lib/utools";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
+import { useCommandSearchIndexWarmup } from "./useCommandSearchIndexWarmup";
 import { PaletteResultGroup } from "./PaletteResultGroup";
+import {
+  matchingSplitPaletteActions,
+  splitPaletteItemValue,
+} from "./splitPaletteActions";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useTabs } from "@/stores/useTabs";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -28,12 +34,15 @@ import {
 } from "@/lib/shortcut-match";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
+import { formatShortcut } from "@/lib/utils";
 
 const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
 const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
 const IDLE_PAGES: Record<string, Page> = {};
 
 export function CommandPalette() {
+  useCommandSearchIndexWarmup();
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -56,11 +65,14 @@ export function CommandPalette() {
     showRecentInSearch,
     setShowRecentInSearch,
     searchPanelCloseShortcut,
-    singleTabMode,
+    singleTabMode: singleTabModeSetting,
+    appShortcuts,
   } = useSettings();
+  const singleTabMode = effectiveSingleTabMode(singleTabModeSetting);
   const {
     searchResults,
     getPageBreadcrumb,
+    pageIdsWithChildren,
     searchQuery,
     setSearchQuery,
     removeRecent,
@@ -138,6 +150,8 @@ export function CommandPalette() {
   // 计算「渲染顺序里第一个可见结果项」的 value，必须与 PaletteResultGroup 的 value 完全一致：
   //   无 query 且显示最近访问 → recent[0] 用 `recent-...`，否则 all[0] 用 `all-...`
   //   有 query → allDisplay[0] 用 `all-...`
+  //   仅分屏动作命中（无页面）→ `split-action-...`；空查询不渲染动作，避免盖住搜索空态。
+  const splitActions = matchingSplitPaletteActions(searchQuery);
   const firstItemValue = (() => {
     const hasQuery = searchQuery.trim().length > 0;
     if (
@@ -149,7 +163,8 @@ export function CommandPalette() {
       return `recent-${p.id}-${getPageTitle(p)}`;
     }
     const first = searchResults.allDisplay[0];
-    return first ? `all-${first.id}-${getPageTitle(first)}` : "";
+    if (first) return `all-${first.id}-${getPageTitle(first)}`;
+    return splitActions[0] ? splitPaletteItemValue(splitActions[0]) : "";
   })();
 
   // 结果变化时把选中项重置到第一项（cmdk 不会自动做），保证打字后即可直接上下键 + 回车跳转。
@@ -295,30 +310,17 @@ export function CommandPalette() {
     ? useNotebooks.getState().notebooks[activeNotebookId]?.name || "当前记事本"
     : "当前记事本";
 
-  // 手动聚焦输入框，绕过 cmdk 的焦点管理
-  const focusInput = useCallback(() => {
-    // 使用 requestAnimationFrame 确保在 Dialog 渲染后再聚焦
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    });
-  }, []);
-
-  useEffect(() => {
-    if (open) {
-      focusInput();
-    }
-  }, [open, focusInput]);
+  // 手动聚焦输入框，绕过 cmdk 的焦点管理。快捷键面板不能等双 rAF。
+  useLayoutEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const raf = requestAnimationFrame(() => {
-      if (inputRef.current && document.activeElement !== inputRef.current) {
-        inputRef.current.focus();
-      }
-    });
-    return () => cancelAnimationFrame(raf);
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      inputRef.current.focus();
+    }
   }, [open, searchQuery]);
 
   const openPageInTab = useCallback(
@@ -333,7 +335,7 @@ export function CommandPalette() {
 
         if (!singleTabMode && openInNewTabRef.current) {
           openPermanentTab(page.id);
-        } else {
+        } else if (!tryShowPageInFocusedSplit(page.id)) {
           openPreviewTab(page.id);
         }
         setExpandPageId(page.id);
@@ -368,8 +370,8 @@ export function CommandPalette() {
       label="Global Search"
       value={commandValue}
       onValueChange={setCommandValue}
-      filter={() => 1}
-      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.97] data-[state=open]:slide-in-from-top-3 data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.97] data-[state=closed]:slide-out-to-top-3 data-[state=closed]:duration-150 bg-[hsl(var(--goose-shell-bg))] shadow-none"
+      shouldFilter={false}
+      className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 bg-[hsl(var(--goose-shell-bg))] shadow-none"
       aria-describedby={descriptionId}
     >
       <DialogTitle className="sr-only">搜索</DialogTitle>
@@ -377,7 +379,7 @@ export function CommandPalette() {
         搜索和快速访问页面
       </DialogDescription>
       <div className="flex items-center h-14 px-4 shadow-[inset_0_-1px_0_hsl(var(--foreground)/0.07)]" cmdk-input-wrapper="">
-        <LucideIcons.Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />
+        <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />
         <Command.Input
           ref={inputRef}
           value={searchQuery}
@@ -424,10 +426,49 @@ export function CommandPalette() {
           showRecentInSearch={showRecentInSearch}
           searchResults={searchResults}
           getPageBreadcrumb={getPageBreadcrumb}
+          pageIdsWithChildren={pageIdsWithChildren}
           onOpenPage={openPageInTab}
           onRemoveRecent={removeRecent}
           onHideRecent={handleHideRecent}
         />
+
+        {splitActions.length > 0 && (
+          <Command.Group heading="分屏">
+            {splitActions.map((action) => {
+              const shortcut = appShortcuts[action.shortcutId];
+              const Icon =
+                action.id === "split-right"
+                  ? Columns2
+                  : action.id === "split-down"
+                    ? Rows2
+                    : action.id === "split-close"
+                      ? X
+                      : Maximize2;
+              return (
+                <Command.Item
+                  key={action.id}
+                  value={splitPaletteItemValue(action)}
+                  onSelect={() => {
+                    runCommand(() => {
+                      action.run();
+                    });
+                  }}
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                >
+                  <span className="mr-2 flex h-4 w-4 shrink-0 items-center justify-center">
+                    <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{action.label}</span>
+                  {shortcut ? (
+                    <span className="ml-3 shrink-0 text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
+                      {formatShortcut(shortcut)}
+                    </span>
+                  ) : null}
+                </Command.Item>
+              );
+            })}
+          </Command.Group>
+        )}
       </Command.List>
     </Command.Dialog>
   );

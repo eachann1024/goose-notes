@@ -1,6 +1,7 @@
 import { NotebookSwitcher } from "./NotebookSwitcher";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
+import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { isElectronHost } from "@/lib/local-vault";
 import { useSidebarView } from "@/stores/useSidebarView";
@@ -350,6 +351,10 @@ export function SidebarHeader({
         setExpandPageId(targetPage.id);
         return;
       }
+      if (tryShowPageInFocusedSplit(targetPage.id)) {
+        setExpandPageId(targetPage.id);
+        return;
+      }
       openPreviewTab(targetPage.id);
       setExpandPageId(targetPage.id);
     },
@@ -364,13 +369,13 @@ export function SidebarHeader({
 
   return (
     <>
-      <div className="pl-0 pr-[9px] h-12 pt-0 flex items-start shrink-0">
+      <div className="flex h-12 shrink-0 items-start pt-0 pr-2">
         <div className="flex items-center w-full">
           <NotebookSwitcher />
         </div>
       </div>
 
-      <div className="pl-0 pr-[9px] pb-2 pt-0">
+      <div className="pb-2 pr-2 pt-0">
         {(pinnedPages.length > 0 || dragGuide) && (
           <div className="group/pinned relative min-h-10">
             {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}

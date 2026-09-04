@@ -206,6 +206,56 @@
   }
 }
 
+/* ===== 笔记 @ 提及 tag：垂直居中，左右留白避免贴在一起 ===== */
+.workspace-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"],
+.quicknote-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"] {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: bottom;
+  box-sizing: border-box;
+  height: 1.5em;
+  margin-left: 0.25em;
+  margin-right: 0.25em;
+  padding: 0 8px;
+  border-radius: 6px;
+  background-color: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+  line-height: 1;
+  user-select: none;
+  cursor: default;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"]
+  .goose-page-mention,
+.quicknote-editor-surface
+  .bn-inline-content
+  [data-inline-content-type="pageMention"]
+  .goose-page-mention {
+  display: inline-flex;
+  align-items: center;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.workspace-editor-surface
+  .goose-page-mention-armed
+  [data-inline-content-type="pageMention"],
+.workspace-editor-surface
+  .goose-page-mention-armed
+  .goose-page-mention {
+  cursor: pointer;
+}
+
 /* ===== CheckListItem：勾选后用灰色文字代替中划线 ===== */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]

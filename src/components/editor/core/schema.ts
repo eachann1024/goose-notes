@@ -6,6 +6,7 @@ import { customImageBlock } from "../blocks/image/customImageBlock";
 import { customVideoBlock } from "../blocks/video/videoBlock";
 import { codeBlockSpec } from "@/components/editor/blocks/code/codeBlockSpec";
 import { gooseEditorStyleSpecs } from "@/components/editor/inline-code/InlineCodeComponent";
+import { pageMentionSpec } from "@/components/editor/inline/pageMentionSpec";
 
 export const editorSchema = BlockNoteSchema.create({
   blockSpecs: {
@@ -19,4 +20,8 @@ export const editorSchema = BlockNoteSchema.create({
     codeBlock: codeBlockSpec,
   },
   styleSpecs: gooseEditorStyleSpecs,
+}).extend({
+  inlineContentSpecs: {
+    pageMention: pageMentionSpec,
+  },
 });

@@ -5,6 +5,7 @@ import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 import { fs } from "@/lib/utools/fs";
 import { persistPageSnapshots } from "./pages/persistence";
 import { useSettings } from "./useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 
 export interface Notebook {
   id: string;
@@ -323,7 +324,7 @@ export const useNotebooks = create<NotebooksState>()(
         let remainingTabs = tabsStore.openTabs.filter(
           (tab) => !deletedPageIds.has(tab.pageId),
         );
-        if (useSettings.getState().singleTabMode && remainingTabs.length > 1) {
+        if (effectiveSingleTabMode() && remainingTabs.length > 1) {
           const active = remainingTabs.find(
             (tab) => tab.id === tabsStore.activeTabId,
           );

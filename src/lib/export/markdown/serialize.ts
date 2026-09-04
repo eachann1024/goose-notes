@@ -2,6 +2,10 @@ import type { BlockNoteContent } from "@/components/editor/utils/blocknote-conte
 import { isBlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 import { sanitizeCssColor, wrapLocalBlockPropsMarkdown } from "./blockPropsMarker";
+import {
+  sanitizePageMentionProps,
+  serializePageMentionMarkdown,
+} from "@/components/editor/inline/pageMention";
 
 const CODE_BLOCK_META_PREFIX = "goose-note=";
 
@@ -101,6 +105,10 @@ function blockNoteInlineToText(content: any): string {
       if (item.type === "link") {
         const linkText = extractLinkText(item.content);
         return `[${linkText}](${item.href || ""})`;
+      }
+      if (item.type === "pageMention") {
+        const mention = sanitizePageMentionProps(item);
+        return mention ? serializePageMentionMarkdown(mention) : "";
       }
       return serializeInlineText(item.text || "", item.styles || {});
     })

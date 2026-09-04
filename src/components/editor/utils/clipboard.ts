@@ -12,7 +12,8 @@ export function looksLikeMarkdownFragment(text: string): boolean {
     /```/.test(value) ||
     /\|.+\|/.test(value) ||
     /(\*\*|__|~~|`[^`]+`)/.test(value) ||
-    /\[([^\]]+)\]\(([^)]+)\)/.test(value)
+    /\[([^\]]+)\]\(([^)]+)\)/.test(value) ||
+    /\[\[[^\]\n]+\]\]/.test(value)
   );
 }
 
@@ -199,6 +200,67 @@ const ALLOWED_LINK_SCHEMES = /^(https?|ftps?|mailto|tel|callto|sms|cid|xmpp):/i;
  *   autolink 传入的是匹配原文如 `AppClient.java`，HTML 导入传入的是带协议 href)；
  * - 本文件 isValidUrl 的裸域名分支(整段粘贴是 URL 时的判定)。
  */
+function gooseDataAttrHasNonDefaultValue(
+  html: string,
+  attrName: string,
+  defaultValues: string[],
+): boolean {
+  const escaped = attrName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`${escaped}\\s*=\\s*(["'])([^"']*)\\1`, "gi");
+  const defaults = new Set(defaultValues.map((v) => v.toLowerCase()));
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html)) !== null) {
+    const value = match[2].trim().toLowerCase();
+    if (!defaults.has(value)) return true;
+  }
+  return false;
+}
+
+/** Goose 块级 data 属性是否为非默认值（不含 strong/span 等行内格式）。 */
+export function htmlHasNonDefaultGooseBlockAttrs(htmlText: string): boolean {
+  const html = (htmlText || "").trim();
+  if (!html) return false;
+  if (
+    gooseDataAttrHasNonDefaultValue(html, "data-background-color", ["default"])
+  ) {
+    return true;
+  }
+  if (gooseDataAttrHasNonDefaultValue(html, "data-text-color", ["default"])) {
+    return true;
+  }
+  if (
+    gooseDataAttrHasNonDefaultValue(html, "data-text-alignment", [
+      "default",
+      "left",
+    ])
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** 剪贴板 HTML 是否含可保留格式（行内样式、Goose 块属性、标题、引用等）。 */
+export function htmlHasPreservableFormatting(htmlText: string): boolean {
+  const html = (htmlText || "").trim();
+  if (!html) return false;
+  if (/<\s*(strong|b|em|i|u|s|del|code|a|span|mark)\b/i.test(html)) {
+    return true;
+  }
+  if (/data-background-color|data-text-color|data-text-alignment/i.test(html)) {
+    return true;
+  }
+  if (/style\s*=[^>]*(?:\bcolor\b|\bbackground\b)/i.test(html)) {
+    return true;
+  }
+  if (/<\s*h[1-6]\b/i.test(html)) {
+    return true;
+  }
+  if (/<\s*blockquote\b/i.test(html)) {
+    return true;
+  }
+  return false;
+}
+
 export function isLinkworthyText(value: string): boolean {
   const v = value.trim();
   if (!v) return false;

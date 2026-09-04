@@ -5,6 +5,7 @@
 @import "./notebook-ai.css";
 @import "./beautiful-ui.css";
 @import "./empty-state-ai.css";
+@import "./editor-split.css";
 
 @keyframes slow-pulse {
   0%,
@@ -152,6 +153,49 @@ html.is-electron .electron-titlebar [data-page-title-field] {
   box-sizing: border-box;
 }
 
+/* TabRail：1/2/3 等分，4+ 横向滚动；选中只靠浅底胶囊+字色，不要底条。 */
+.tab-rail {
+  padding: 4px;
+  gap: 8px;
+}
+.tab-rail-item {
+  height: 36px;
+  border-radius: 8px;
+  border-bottom: none;
+  text-decoration: none;
+  transition:
+    flex-basis 220ms ease-in-out,
+    background-color 150ms ease;
+}
+.tab-rail-item:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+.tab-rail-item,
+.tab-rail-item span,
+.tab-rail-item input,
+.tab-rail-item [data-page-title-field] {
+  text-decoration: none;
+}
+.tab-rail-item [data-page-title-field],
+.tab-rail-item [data-page-title-field]:focus,
+.tab-rail-item [data-page-title-field]:focus-visible {
+  height: 100%;
+  padding-inline: 0;
+  font-weight: inherit;
+  border-bottom: none;
+  text-decoration: none;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-rail-item {
+    transition: none;
+  }
+}
+html.is-electron .electron-titlebar .tab-rail-item {
+  height: calc(var(--electron-titlebar-height, 2.75rem) - 8px);
+}
+
 html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
   --workspace-sidebar-gap: 0px;
 }
@@ -175,6 +219,18 @@ html[data-sidebar-collapsed] .bn-side-menu {
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
+  font-size: var(--sidebar-font-size, 13px);
+}
+
+.workspace-shell .workspace-sidebar-pane .sidebar-section-label {
+  font-size: calc(var(--sidebar-font-size, 13px) * 0.85);
+  letter-spacing: 0.02em;
+}
+
+.workspace-shell .workspace-sidebar-pane .main-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-notebook-trigger {
+  font-size: var(--sidebar-font-size, 13px);
 }
 
 .workspace-shell .workspace-main-sheet {

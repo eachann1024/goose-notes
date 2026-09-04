@@ -1,5 +1,11 @@
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import type { AccentColor, CodeStyle } from "@/stores/useSettings";
+import {
+  EDITOR_FONT_SIZE_MAX,
+  EDITOR_FONT_SIZE_MIN,
+  SIDEBAR_FONT_SIZE_MAX,
+  SIDEBAR_FONT_SIZE_MIN,
+} from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
@@ -26,6 +32,12 @@ interface SettingsAppearanceProps {
   ) => void;
   uiFontSize: "small" | "normal";
   setUIFontSize: (size: "small" | "normal") => void;
+  sidebarFontSize: number;
+  increaseSidebarFontSize: () => void;
+  decreaseSidebarFontSize: () => void;
+  editorFontSize: number;
+  increaseEditorFontSize: () => void;
+  decreaseEditorFontSize: () => void;
   hideExpandArrows: boolean;
   setHideExpandArrows: (hidden: boolean) => void;
   randomIconOnCreate: boolean;
@@ -187,6 +199,68 @@ const APPEARANCE_OPTION_ROW_CLASS =
 const APPEARANCE_SWITCH_CLASS =
   "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
+function FontSizeStepper({
+  label,
+  description,
+  icon,
+  value,
+  min,
+  max,
+  onDecrease,
+  onIncrease,
+}: {
+  label: string;
+  description: string;
+  icon: ReactNode;
+  value: number;
+  min: number;
+  max: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+    >
+      <div>
+        <div className="flex items-center gap-3">
+          {icon}
+          <Label>{label}</Label>
+        </div>
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 rounded-full"
+          aria-label={`减小${label}`}
+          disabled={value <= min}
+          onClick={onDecrease}
+        >
+          <LucideIcons.Minus className="h-3.5 w-3.5" />
+        </Button>
+        <span
+          className="min-w-8 text-center text-xs tabular-nums text-foreground"
+          aria-live="polite"
+        >
+          {value}
+        </span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 rounded-full"
+          aria-label={`增大${label}`}
+          disabled={value >= max}
+          onClick={onIncrease}
+        >
+          <LucideIcons.Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsAppearance({
   theme,
   setTheme,
@@ -199,6 +273,12 @@ export function SettingsAppearance({
   setCustomFont,
   uiFontSize,
   setUIFontSize,
+  sidebarFontSize,
+  increaseSidebarFontSize,
+  decreaseSidebarFontSize,
+  editorFontSize,
+  increaseEditorFontSize,
+  decreaseEditorFontSize,
   hideExpandArrows,
   setHideExpandArrows,
   randomIconOnCreate,
@@ -260,7 +340,7 @@ export function SettingsAppearance({
 
       <SettingsSectionCard
         title="主题设置"
-        description="选择深浅模式，并调整界面字体大小。"
+        description="选择深浅模式，并分别调整侧栏与编辑器字号。"
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -412,21 +492,51 @@ export function SettingsAppearance({
           </div>
         </div>
 
+        <FontSizeStepper
+          label="侧栏字体大小"
+          description="只影响左侧栏的页面树、分区标题和笔记本名称。"
+          icon={
+            <LucideIcons.PanelLeft
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+          }
+          value={sidebarFontSize}
+          min={SIDEBAR_FONT_SIZE_MIN}
+          max={SIDEBAR_FONT_SIZE_MAX}
+          onDecrease={decreaseSidebarFontSize}
+          onIncrease={increaseSidebarFontSize}
+        />
+
+        <FontSizeStepper
+          label="编辑器字体大小"
+          description={`${formatShortcut("Mod+Plus")} / ${formatShortcut("Mod+-")} / ${formatShortcut("Mod+0")} 也会调整并保存。`}
+          icon={
+            <LucideIcons.ALargeSmall
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+          }
+          value={editorFontSize}
+          min={EDITOR_FONT_SIZE_MIN}
+          max={EDITOR_FONT_SIZE_MAX}
+          onDecrease={decreaseEditorFontSize}
+          onIncrease={increaseEditorFontSize}
+        />
+
         <div
           className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.ALargeSmall
+              <LucideIcons.AppWindow
                 className="h-4 w-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.75}
               />
-              <Label>界面字体大小</Label>
+              <Label>界面缩放</Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              调整整体界面的文字大小；{formatShortcut("Mod+Plus")} /{" "}
-              {formatShortcut("Mod+-")} / {formatShortcut("Mod+0")}
-              会调整并保存编辑器字号。
+              调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">

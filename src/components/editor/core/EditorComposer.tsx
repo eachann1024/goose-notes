@@ -47,13 +47,25 @@ import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
+import { readEditorFindSeed } from "@/components/editor/find/findSeed";
 import {
   isLinkShortcutClaimedByApp,
   isPrimaryLinkShortcutEvent,
 } from "@/components/editor/extensions/linkKeyboardExtension";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
-import { useSettings } from "@/stores/useSettings";
+import { matchShortcut } from "@/lib/shortcut-match";
+import { getPageTitle } from "@/components/editor/utils/page-title";
+import { getSelectedImageUrl } from "@/components/editor/utils/selection";
+import {
+  SELECTION_QUOTE_ADD_SHORTCUT,
+  canDispatchAppendComposerSelection,
+  dispatchAppendComposerSelection,
+} from "@/components/editor/ai/composer/selectionQuote";
+import {
+  isInlineAiEmptyParagraphTriggerKey,
+  shouldOpenInlineAiOnEmptyParagraph,
+} from "@/components/editor/ai/emptyParagraphAiShortcut";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -63,7 +75,11 @@ import {
 } from "@/components/editor/menus/GooseTableHandle";
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
-import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
+import { getPageMentionMenuItems } from "@/components/editor/inline/pageMentionMenuItems";
+import {
+  shouldOpenPageMentionSuggestionMenu,
+  shouldOpenSlashSuggestionMenu,
+} from "@/components/editor/utils/slashMenuPolicy";
 import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
 import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
 import { getMultiBlockToolbarEdgeRect } from "@/components/editor/utils/formattingToolbarReference";
@@ -162,18 +178,28 @@ export function EditorComposer({
   suppressFormattingToolbar = false,
   usesRawEditorContent,
 }: EditorComposerProps) {
-  const singleTabMode = useSettings((state) => state.singleTabMode);
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
   const [findBarOpen, setFindBarOpen] = useState(false);
+  const [findSeedQuery, setFindSeedQuery] = useState("");
+  const [findOpenNonce, setFindOpenNonce] = useState(0);
   const [findNavigationRequest, setFindNavigationRequest] = useState<{
     id: number;
     direction: "next" | "previous";
   } | null>(null);
   const findNavigationRequestIdRef = useRef(0);
   const { ai: aiSettings } = useEditorSettings();
-  const { onPromotePreview } = useEditorPageContext();
+  const { onPromotePreview, searchPages, showLocalFileTitle } =
+    useEditorPageContext();
+  const getMentionItems = useCallback(
+    async (query: string) =>
+      getPageMentionMenuItems(
+        editor,
+        searchPages(query).filter((item) => !item.isFolder),
+      ),
+    [editor, searchPages],
+  );
 
   const handleEditorKeyDownCapture = (
     event: React.KeyboardEvent<HTMLDivElement>,
@@ -210,39 +236,51 @@ export function EditorComposer({
 
     if (
       (!__GOOSE_EDITOR_AI__ && __HOST_TARGET__ !== "native-editor") ||
-      event.key !== " " ||
-      event.defaultPrevented ||
-      event.repeat ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey ||
-      event.nativeEvent.isComposing ||
-      !editable ||
-      !aiSettings.enabled ||
-      (page?.localFilePath && __HOST_TARGET__ !== "native-editor")
+      !isInlineAiEmptyParagraphTriggerKey(event.key) ||
+      (page?.localFilePath && __HOST_TARGET__ !== "native-editor") ||
+      Boolean(page?.localUnsaved)
     ) {
       return;
     }
 
-    if (!target?.closest(".bn-editor")) return;
-
-    let block: any;
+    let block: any = null;
+    let inTable = false;
+    let selectionEmpty = true;
     try {
+      const selection = editor.prosemirrorState?.selection;
+      selectionEmpty = selection?.empty !== false;
+      inTable = Boolean(
+        selection?.$from?.parent?.type?.isInGroup?.("tableContent"),
+      );
       block = editor.getTextCursorPosition().block;
     } catch {
+      block = null;
+    }
+
+    if (
+      !shouldOpenInlineAiOnEmptyParagraph({
+        key: event.key,
+        defaultPrevented: event.defaultPrevented,
+        repeat: event.repeat,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        isComposing: event.nativeEvent.isComposing,
+        editable,
+        aiEnabled: aiSettings.enabled,
+        inEditor: Boolean(target?.closest(".bn-editor")),
+        inTable,
+        selectionEmpty,
+        block,
+      })
+    ) {
       return;
     }
-    const content = block?.content;
-    const isEmptyParagraph =
-      block?.type === "paragraph" &&
-      (content === "" ||
-        content == null ||
-        (Array.isArray(content) && content.length === 0));
-    if (!isEmptyParagraph) return;
 
     event.preventDefault();
     event.stopPropagation();
+    event.nativeEvent.stopImmediatePropagation();
     if (__HOST_TARGET__ === "native-editor") {
       window.dispatchEvent(
         new CustomEvent("goose-note:native-ai-entry", {
@@ -252,22 +290,30 @@ export function EditorComposer({
       return;
     }
     const ai = editor.getExtension(AIExtension);
-    if (ai && block.id) {
+    if (ai && block?.id) {
       ai.openAIMenuAtBlock(block.id);
     }
   };
 
   useEffect(() => {
     const handleOpenFind = () => {
+      const findInputFocused = Boolean(
+        document.activeElement?.closest?.("[data-goose-find-in-page]"),
+      );
+      const seed = findInputFocused
+        ? ""
+        : readEditorFindSeed(editor, editorContainerRef.current);
       // 先关其它弹层，再开查找栏。setTimeout 让 Escape 引发的 commit 先跑完，
       // 避免被同步的 close 路径反吃掉。
       closeAllOverlays();
+      setFindSeedQuery(seed);
+      setFindOpenNonce((value) => value + 1);
       setTimeout(() => setFindBarOpen(true), 0);
     };
     window.addEventListener("goose-note:editor-find-open", handleOpenFind);
     return () =>
       window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
-  }, []);
+  }, [editor, editorContainerRef]);
 
   useEffect(() => {
     // 原生 AppKit 菜单通过桥接事件驱动查找导航。uTools 有自己的热键链路，
@@ -327,6 +373,48 @@ export function EditorComposer({
       window.removeEventListener("keydown", handleEscape, true);
     };
   }, [linkPopoverOpen]);
+
+  useEffect(() => {
+    if (__GOOSE_EDITOR_COMPACT__ || __GOOSE_LITE__) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.isComposing) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) return;
+      if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
+
+      let selectedText = "";
+      try {
+        selectedText = (editor.getSelectedText() ?? "").trim();
+      } catch {
+        selectedText = "";
+      }
+      const isImageNodeSelection =
+        getSelectedImageUrl(editor.prosemirrorState) != null;
+      if (
+        !canDispatchAppendComposerSelection({
+          aiEnabled: aiSettings.enabled,
+          isCompact: false,
+          selectedText,
+          isImageNodeSelection,
+        })
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      dispatchAppendComposerSelection({
+        pageId: page?.id ?? "",
+        pageTitle: getPageTitle(page),
+        text: selectedText,
+        animate: false,
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [aiSettings.enabled, editor, page]);
 
   const handleLinkPopoverSubmit = () => {
     const trimmed = linkPopoverUrl.trim();
@@ -488,6 +576,17 @@ export function EditorComposer({
         : undefined,
     [],
   );
+  // 选区工具栏一出现就可见。链接工具栏 hover 等 150ms 再出现，减少划过误开；
+  // 移出立即收起。挂到 document（portalElement=null），用 --editor-ui-scale
+  // 写真实尺寸，避免 CSS zoom 在放大缩小后和图标对不齐。
+  const linkToolbarFloatingOptions = useMemo<FloatingUIOptions>(
+    () => ({
+      useHoverProps: {
+        delay: { open: 150, close: 0 },
+      },
+    }),
+    [],
+  );
   const handleLocalFileTitleEnter = useCallback(() => {
     const firstBlock = editor.document[0];
     if (!firstBlock) return;
@@ -517,7 +616,7 @@ export function EditorComposer({
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
     >
-      {page?.localFilePath && !singleTabMode && (
+      {page?.localFilePath && showLocalFileTitle && (
         <LocalFileTitle
           pageId={page.id}
           localFilePath={page.localFilePath}
@@ -582,7 +681,11 @@ export function EditorComposer({
             portalElement={null}
           />
         )}
-        <LinkToolbarController linkToolbar={EditorLinkToolbar} />
+        <LinkToolbarController
+          linkToolbar={EditorLinkToolbar}
+          portalElement={null}
+          floatingUIOptions={linkToolbarFloatingOptions}
+        />
         {editable ? <FilePanelController filePanel={EditorFilePanel} /> : null}
         {editable ? (
           <>
@@ -618,6 +721,22 @@ export function EditorComposer({
                 }
               }}
             />
+            {__GOOSE_LITE__ || __HOST_TARGET__ === "native-editor" ? null : (
+              <SuggestionMenuController
+                triggerCharacter="@"
+                getItems={getMentionItems}
+                floatingUIOptions={slashMenuFloatingOptions}
+                shouldOpen={(event) =>
+                  shouldOpenPageMentionSuggestionMenu(event, editor)
+                }
+                suggestionMenuComponent={CustomSlashMenu as any}
+                onItemClick={(item) => {
+                  if (item && "onItemClick" in item) {
+                    (item as any).onItemClick();
+                  }
+                }}
+              />
+            )}
           </>
         ) : null}
         {/* 紧凑编辑器构建不挂 AI 菜单。 */}
@@ -666,6 +785,8 @@ export function EditorComposer({
       <FindInPageBar
         editor={editor}
         open={findBarOpen}
+        seedQuery={findSeedQuery}
+        openNonce={findOpenNonce}
         navigationRequest={findNavigationRequest}
         onClose={() => setFindBarOpen(false)}
       />

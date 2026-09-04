@@ -50,8 +50,11 @@ interface IndexDoc {
 
 let miniSearch: MiniSearch<IndexDoc> | null = null;
 
-/** key=pageId, value=版本键（updatedAt:contentLen）: 记录已索引的版本 */
-const indexedVersions = new Map<string, string>();
+/** key=pageId：用 updatedAt + content 引用判断是否需要重新抽文本 */
+const indexedVersions = new Map<
+  string,
+  { updatedAt: number; content: Page["content"] }
+>();
 
 function getInstance(): MiniSearch<IndexDoc> {
   if (!miniSearch) {
@@ -97,12 +100,17 @@ export function syncIndex(pages: Record<string, Page>): void {
   const toUpdate: IndexDoc[] = [];
 
   for (const page of Object.values(pages)) {
+    const current = indexedVersions.get(page.id);
+    if (
+      current &&
+      current.updatedAt === page.updatedAt &&
+      current.content === page.content
+    ) {
+      continue;
+    }
+
     const title = getPageTitle(page);
     const body = bodyForSearchIndex(page, title);
-    const versionKey = `${page.updatedAt}:${body.length}`;
-    const current = indexedVersions.get(page.id);
-    if (current === versionKey) continue; // 没变，跳过
-
     const doc: IndexDoc = {
       id: page.id,
       title: isPlaceholderTitle(title) ? "" : title,
@@ -114,7 +122,10 @@ export function syncIndex(pages: Record<string, Page>): void {
     } else {
       toUpdate.push(doc);
     }
-    indexedVersions.set(page.id, versionKey);
+    indexedVersions.set(page.id, {
+      updatedAt: page.updatedAt,
+      content: page.content,
+    });
   }
 
   if (toAdd.length > 0) ms.addAll(toAdd);

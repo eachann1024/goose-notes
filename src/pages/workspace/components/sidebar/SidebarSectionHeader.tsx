@@ -25,13 +25,13 @@ export function SidebarSectionHeader({
   const createShortcut = formatShortcut(getFixedAppShortcuts().newNote);
 
   return (
-    <div className="group flex items-center justify-between pl-0 pr-[9px] py-1.5 text-xs font-medium text-[hsl(var(--goose-nav-title))] dark:text-[hsl(var(--goose-nav-title))]">
-      <div className="group/tab-switch inline-flex items-center gap-0.5 rounded-[8px] p-0.5">
+    <div className="sidebar-section-label group flex items-center justify-between py-2 pr-2 text-xs font-medium text-[hsl(var(--goose-nav-title))]">
+      <div className="group/tab-switch inline-flex items-center gap-1 rounded-lg p-0.5">
         <button
           type="button"
           onClick={onSwitchToPages}
           className={cn(
-            "group/page-tab relative inline-flex h-6 min-w-[42px] items-center justify-center overflow-hidden rounded-[7px] px-2 py-1 transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            "group/page-tab relative inline-flex h-6 min-w-[42px] items-center justify-center overflow-hidden rounded-md px-2 py-1 transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
             view === "pages"
               ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
@@ -68,7 +68,7 @@ export function SidebarSectionHeader({
           type="button"
           onClick={onSwitchToOutline}
           className={cn(
-            "rounded-[7px] px-2 py-1 transition-colors",
+            "rounded-md px-2 py-1 transition-colors",
             view === "outline"
               ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
               : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",

@@ -18,6 +18,8 @@ import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
+import { toast } from "@/components/ui/sonner";
 
 function VideoUrlInput({
   block,
@@ -167,14 +169,23 @@ function VideoBlockContent({
     editor.getExtension(FilePanelExtension)?.showMenu(block.id);
   }, [block.id, editor]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!resolvedSrc) return;
-    const link = document.createElement("a");
-    link.href = resolvedSrc;
-    link.download = block.props.name || `video-${Date.now()}.mp4`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const name = block.props.name || `video-${Date.now()}.mp4`;
+    try {
+      const response = await fetch(resolvedSrc);
+      const saved = await saveBlobAndReveal(await response.blob(), name);
+      if (saved) toast.success("已保存到下载文件夹");
+      else toast.error("保存失败");
+    } catch (error) {
+      console.error("[video] 保存失败，回退浏览器下载:", error);
+      const link = document.createElement("a");
+      link.href = resolvedSrc;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
   }, [block.props.name, resolvedSrc]);
 
   const handleDelete = useCallback(() => {

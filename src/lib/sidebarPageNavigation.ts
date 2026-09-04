@@ -1,7 +1,8 @@
 import { useTabs } from "@/stores/useTabs";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
-import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
+import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 
 const isElectronHost =
@@ -35,7 +36,11 @@ export function openPageFromSidebar(
   closeNotebookAiIfFullscreen();
 
   const tabs = useTabs.getState();
-  const effectiveMode = useSettings.getState().singleTabMode ? "preview" : mode;
+  if (tryShowPageInFocusedSplit(pageId)) {
+    usePages.getState().setExpandPageId(pageId);
+    return;
+  }
+  const effectiveMode = effectiveSingleTabMode() ? "preview" : mode;
   if (effectiveMode === "permanent") {
     suppressNextSidebarSelect = true;
     if (suppressTimer !== null) window.clearTimeout(suppressTimer);

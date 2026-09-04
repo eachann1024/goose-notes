@@ -592,6 +592,7 @@ export const bootstrap = async (
     applyAppearanceScaleVariables({
       uiFontSize: settings.uiFontSize,
       editorFontSize: settings.editorFontSize,
+      sidebarFontSize: settings.sidebarFontSize,
     });
 
     const renderApplication = () => {

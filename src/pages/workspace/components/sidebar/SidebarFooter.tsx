@@ -52,8 +52,8 @@ export function SidebarFooter({
     "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]";
 
   return (
-    <div className="px-2 pb-0 pt-1 mt-auto bg-[hsl(var(--goose-shell-bg))] flex items-center justify-between">
-      <div className="flex items-center gap-0.5">
+    <div className="mt-auto flex items-center justify-between gap-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-0 pt-1">
+      <div className="flex items-center gap-1">
         {isElectronHost ? (
           <TooltipProvider delayDuration={600}>
             <Tooltip>
