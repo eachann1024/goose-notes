@@ -58,19 +58,29 @@ test("隐藏、最小化或未聚焦的主窗需要 raise", () => {
 });
 
 test("速记快捷键使用可见性二态切换且不复用主窗三态逻辑", () => {
-  const source = readFileSync(
+  const windowsSource = readFileSync(
     new URL("../../electron/main/windows.ts", import.meta.url),
     "utf8",
   );
-  const quicknoteToggle = source.slice(
-    source.indexOf("export async function toggleQuicknoteWindow"),
-    source.indexOf("export function hideQuicknote"),
+  const indexSource = readFileSync(
+    new URL("../../electron/main/index.ts", import.meta.url),
+    "utf8",
+  );
+  const quicknoteToggle = windowsSource.slice(
+    windowsSource.indexOf("export async function toggleQuicknoteWindow"),
+    windowsSource.indexOf("export function hideQuicknote"),
+  );
+  const hideQuicknote = windowsSource.slice(
+    windowsSource.indexOf("export function hideQuicknote"),
+    windowsSource.indexOf("export function broadcast"),
   );
 
-  expect(source).toContain("function raiseWindow");
-  expect(source).toContain("app.focus({ steal: true })");
+  expect(windowsSource).toContain("function raiseWindow");
+  expect(windowsSource).toContain("app.focus({ steal: true })");
   expect(quicknoteToggle).toContain("if (win.isVisible())");
   expect(quicknoteToggle).toContain("hideQuicknote();");
   expect(quicknoteToggle).toContain("raiseWindow(win);");
   expect(quicknoteToggle).not.toContain("toggleWindow(win)");
+  expect(hideQuicknote).toContain("markQuicknoteHideActivateSuppressed();");
+  expect(indexSource).toContain("shouldSuppressWorkspaceActivate()");
 });

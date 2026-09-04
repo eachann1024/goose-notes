@@ -149,6 +149,17 @@ function emitVisibilityChange(): void {
   }
 }
 
+/** 速记窗刚被隐藏后，macOS 会把 dock/菜单栏 activate 当成「用户点图标」。 */
+let suppressWorkspaceActivateUntil = 0;
+
+export function markQuicknoteHideActivateSuppressed(): void {
+  suppressWorkspaceActivateUntil = Date.now() + 250;
+}
+
+export function shouldSuppressWorkspaceActivate(): boolean {
+  return Date.now() < suppressWorkspaceActivateUntil;
+}
+
 export function hasVisibleWindow(): boolean {
   for (const record of registry.all()) {
     if (windowIsForeground(record.win)) return true;
@@ -753,10 +764,12 @@ export async function toggleQuicknoteWindow(): Promise<void> {
 
 export function hideQuicknote(): void {
   const win = getQuicknoteWindow();
-  if (win && !win.isDestroyed()) {
-    win.hide();
-    setHiddenThrottle(win, true);
+  if (!win || win.isDestroyed()) return;
+  if (win.isVisible() || win.isFocused()) {
+    markQuicknoteHideActivateSuppressed();
   }
+  win.hide();
+  setHiddenThrottle(win, true);
 }
 
 export function broadcast(channel: string, payload: unknown): void {

@@ -18,6 +18,7 @@ import {
   markQuitting,
   requestCloseActiveTab,
   restoreWorkspaceWindows,
+  shouldSuppressWorkspaceActivate,
 } from "./windows";
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
@@ -143,6 +144,8 @@ function startApp(): void {
   });
 
   app.on("activate", () => {
+    // 关闭/隐藏速记窗会让 macOS 发出 activate。这时不要把主界面拉到前台。
+    if (shouldSuppressWorkspaceActivate()) return;
     focusExistingWorkspace();
   });
 
