@@ -1,4 +1,4 @@
-// 可调试构建开关：`GOOSE_DEBUG=1 pnpm build`（或 build:debug）
+// 可调试构建开关：`GOOSE_DEBUG=1 bun run build`（或 build:debug）
 //
 // 正式构建（默认）：sourcemap = 'hidden' + 压缩 → 产物 JS 不含 //# sourceMappingURL，
 //   .map 写盘后由 scripts/electron-build.js removeMapFiles() 删除（不外泄、不增体积）。
