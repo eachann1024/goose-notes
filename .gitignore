@@ -47,7 +47,14 @@ default.profraw
 *.sw?
 
 # Local docs / changelog
-docs
+!/docs/
+/docs/*
+!/docs/showcase/
+/docs/showcase/*
+!/docs/showcase/cover.png
+!/docs/showcase/01-writing-ai.png
+!/docs/showcase/02-code-and-diagram-user.png
+!/docs/showcase/PUBLISH.md
 CHANGELOG.md
 
 skills-lock.json
