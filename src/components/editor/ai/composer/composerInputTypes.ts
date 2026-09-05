@@ -1,6 +1,6 @@
 /**
  * AI 输入框的对外 handle、props 与原生事件表。
- * 被 AiComposerInput、useComposerNativeEditor 使用。
+ * 被 AiComposerInput、useComposerEditor 使用。
  * 依赖 referenceLookup 类型与 JSONContent。
  */
 import type { JSONContent } from "@/types";

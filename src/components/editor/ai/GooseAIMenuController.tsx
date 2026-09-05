@@ -8,11 +8,20 @@ import {
   type FloatingUIOptions,
 } from "@blocknote/react";
 import { autoUpdate, flip, offset, shift, size } from "@floating-ui/react";
-import { getScaledEditorUiPx } from "@/components/editor/utils/editorContextUi";
 import { AIExtension, AIMenu, type AIMenuProps } from "@blocknote/xl-ai";
 import { TextSelection } from "prosemirror-state";
+import {
+  AI_MENU_VIEWPORT_PAD_PX,
+  computeAiMenuFloatingWidth,
+} from "@/components/editor/ai/aiMenuFloatingWidth";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
+import {
+  getEditorUiScale,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
+import "@blocknote/xl-ai/style.css";
+import "@/pages/workspace/styles/editor-ai-menu.css";
 
 type GooseAIMenuControllerProps = {
   aiMenu?: FC<AIMenuProps>;
@@ -137,9 +146,7 @@ export function GooseAIMenuController({
   );
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
-    // 菜单目标宽度 ≈ 91% 视口宽（上限 1248px，下限 468px），
-    // 相对原先 70vw / 960px / 360px 提高 30%。
-    const pad = 8;
+    const pad = AI_MENU_VIEWPORT_PAD_PX;
 
     const sharedMiddleware = [
       offset(() => getScaledEditorUiPx(10)),
@@ -155,22 +162,12 @@ export function GooseAIMenuController({
       }),
       size({
         apply({ availableWidth, elements }) {
-          const scale =
-            typeof document !== "undefined"
-              ? Number.parseFloat(
-                  getComputedStyle(document.documentElement).getPropertyValue(
-                    "--editor-ui-scale",
-                  ) || "1",
-                ) || 1
-              : 1;
-          const desired = Math.min(
-            (typeof window !== "undefined" ? window.innerWidth : 1248) * 0.91,
-            1248,
-          );
-          const maxW = Math.max(
-            468,
-            Math.min(desired, availableWidth / Math.max(scale, 0.5) - pad),
-          );
+          const maxW = computeAiMenuFloatingWidth({
+            viewportWidth:
+              typeof window !== "undefined" ? window.innerWidth : 1248,
+            availableWidth,
+            scale: getEditorUiScale(),
+          });
           Object.assign(elements.floating.style, {
             width: `${maxW}px`,
             maxWidth: `${maxW}px`,

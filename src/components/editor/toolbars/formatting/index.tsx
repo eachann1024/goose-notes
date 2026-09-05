@@ -374,7 +374,7 @@ export function EditorFormattingToolbar() {
         aria-label="文字格式"
         className={cn(
           // 小窗底栏已用固定 px 尺寸，禁止再套 CSS zoom：
-          // uTools 旧内核会放大 zoom 祖先的 getBoundingClientRect，
+          // Electron 旧内核会放大 zoom 祖先的 getBoundingClientRect，
           // 导致 Portal 色板 / tooltip 错位（只露出「文本颜色」标题）。
           !__GOOSE_EDITOR_COMPACT__ && "goose-formatting-toolbar-scaled",
           selectionModeClass,

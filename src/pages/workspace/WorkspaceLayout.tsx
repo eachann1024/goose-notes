@@ -48,7 +48,7 @@ import { isElectronRuntime } from "@/lib/electron/runtime";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 
 // Electron 桌面端 chrome：全宽 overlay 顶栏挂在 .workspace-shell 顶部（覆盖侧栏+主区），
-// 主区内不再重复渲染 PageHeader/HistoryToolbar。uTools 构建保持现状，一行不挪。
+// 主区内不再重复渲染 PageHeader/HistoryToolbar。Electron 构建保持现状，一行不挪。
 const isElectronChrome = isElectronRuntime();
 
 function GuardedNotebookAiPanel(props: ComponentProps<typeof NotebookAiPanel>) {
@@ -167,7 +167,7 @@ export function WorkspaceLayout({
     dragIntent === "text-file";
   const page = activePageId ? getPage(activePageId) : undefined;
   const pageNotebook = page ? notebooks[page.workspaceId] : undefined;
-  // Electron：订阅 activePage 标题，防抖同步系统窗口 title（uTools 构建内部 no-op）。
+  // Electron：订阅 activePage 标题，防抖同步系统窗口 title（Electron 构建内部 no-op）。
   useDesktopWindowTitleSync();
   // 以页面本身是否带本地路径为准（比 notebook.source 更贴合「正文无 H1 标题块」）
   const isLocalFolderPage =
@@ -550,8 +550,13 @@ function NotebookEditorSplitColumn({
       data-local-file-page={isLocalFolderPage ? "true" : undefined}
     >
       <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]"
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+          !isSplit &&
+            "rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
+        )}
         data-editor-split-column=""
+        data-editor-split={isSplit ? "true" : undefined}
       >
         {!isElectronChrome && (
           <PageHeader
@@ -722,7 +727,7 @@ function NotebookAiWorkspaceBody({
                 </>
               ) : activePageId && page && !hideFolderHome ? (
                 page.isFolder && isLocalFolderPage ? (
-                  /* uTools 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
+                  /* Electron 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
                   <>
                     <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">

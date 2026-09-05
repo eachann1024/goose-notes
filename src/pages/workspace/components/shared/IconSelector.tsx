@@ -451,7 +451,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
               grid-template-columns: repeat(6, minmax(0, 1fr));
             }
           }
-          /* uTools 旧内核不执行 Tailwind v4 嵌套 hover；弹层又在 portal，不能靠 .workspace-shell。 */
+          /* 图标弹层经 portal 渲染，悬停样式不能依赖 .workspace-shell 祖先。 */
           .goose-icon-selector button:hover {
             background: var(--goose-interactive-selected);
             color: var(--goose-interactive-selected-fg);

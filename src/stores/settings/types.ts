@@ -40,14 +40,6 @@ export type CodeStyle =
   | "nord"
   | "nord-light";
 
-export interface UToolsSettings {
-  globalSearchEnabled: boolean;
-  openSearchInUtools: boolean;
-  /** 默认 false：图片交给系统默认查看器；开启后使用应用内灯箱。 */
-  useInternalImageViewer: boolean;
-  windowHeight: number;
-}
-
 /** Agent 运行时：pi = Pi harness；legacy = 自研 ToolLoopAgent。 */
 export type AIAgentRuntime = "legacy" | "pi";
 
@@ -171,9 +163,9 @@ export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+K";
 export const DEFAULT_QUICKNOTE_HOTKEY = "CmdOrCtrl+Alt+Q";
 export const DEFAULT_CLOSE_TAB_SHORTCUT = "";
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = "";
-export const UTOOLS_WINDOW_HEIGHT_MIN = 600;
-export const UTOOLS_WINDOW_HEIGHT_MAX = 1200;
-export const UTOOLS_WINDOW_HEIGHT_DEFAULT = 800;
+export const ELECTRON_WINDOW_HEIGHT_MIN = 600;
+export const ELECTRON_WINDOW_HEIGHT_MAX = 1200;
+export const ELECTRON_WINDOW_HEIGHT_DEFAULT = 800;
 export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN = 1;
 export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX = 720;
 export const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT = 24;

@@ -66,7 +66,7 @@ test("snapshotLayout serializes bounds and optional tabs", () => {
   });
 });
 
-test("last workspace and quicknote hide instead of closing unless quitting", () => {
+test("only the last workspace hides instead of closing unless quitting", () => {
   expect(
     shouldHideInsteadOfClose({
       quitting: false,
@@ -87,7 +87,7 @@ test("last workspace and quicknote hide instead of closing unless quitting", () 
       kind: "quicknote",
       isLastWorkspace: false,
     }),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     shouldHideInsteadOfClose({
       quitting: true,

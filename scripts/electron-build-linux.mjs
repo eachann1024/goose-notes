@@ -15,7 +15,7 @@ if (platform !== "linux") {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pack = resolve(root, "dist-electron/app-pack");
 
-// 打包前强制停止正在运行的旧版 Goose Note（AppImage / deb / rpm 安装版通用）。
+// 打包前强制停止正在运行的 Goose Note（AppImage / deb / rpm 安装版通用）。
 // 否则旧实例仍持有数据目录单实例锁（SingletonLock）与挂载的 AppImage，
 // 新打包的 AppImage 无法覆盖，双击启动也会被聚焦到已卡死的旧窗口。
 // 停止是尽力而为：杀进程失败不应中断打包，故整个函数用 try/catch 兜底。
@@ -29,7 +29,7 @@ function stopRunningApp() {
     }
   };
   try {
-    const proc = shell("pgrep -x goose-notes || true");
+    const proc = shell("pgrep -x goose-note-app || true");
     if (!proc) {
       console.log("[linux] 未检测到正在运行的 Goose Note，跳过停止。");
       return;
@@ -37,18 +37,18 @@ function stopRunningApp() {
     console.log(
       `[linux] 检测到正在运行的 Goose Note（PID: ${proc.split(/\n/).join(", ")}），强制停止…`,
     );
-    shell("pkill -x goose-notes || true");
+    shell("pkill -x goose-note-app || true");
     // 等待进程退出，最多 15 秒（SIGTERM 后仍未退则 SIGKILL）。
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
-      if (!shell("pgrep -x goose-notes || true")) {
+      if (!shell("pgrep -x goose-note-app || true")) {
         console.log("[linux] 旧实例已停止。");
         return;
       }
       shell("sleep 0.5");
     }
     console.log("[linux] 旧实例未在宽限期内退出，强制 SIGKILL…");
-    shell("pkill -9 -x goose-notes || true");
+    shell("pkill -9 -x goose-note-app || true");
   } catch (err) {
     console.warn(
       "[linux] 停止旧实例失败（继续打包）：",

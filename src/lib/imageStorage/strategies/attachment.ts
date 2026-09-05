@@ -1,12 +1,12 @@
 /**
  * Attachment 存储策略
- * 用于 uTools 默认模式，使用 db.postAttachment 存储二进制图片
+ * 用于 Electron 默认模式，使用 db.postAttachment 存储二进制图片
  * 相比 Base64Strategy：支持约 10MB 上限（vs 1MB），且不膨胀文档体积
  */
 
 import type { IImageStorageStrategy } from '../types'
 import { getExtensionFromMimeType } from '../utils'
-import { UToolsAdapter } from '../../utools'
+import { HostAdapter } from '../../host/adapter'
 import { compressIfNeeded } from '../../imageProcessor'
 import { MAX_IMAGE_STORE_BYTES } from '../types'
 
@@ -25,7 +25,7 @@ async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
 
 export class AttachmentStrategy implements IImageStorageStrategy {
   /**
-   * 保存图片为 uTools attachment
+   * 保存图片为 Electron attachment
    * - 入口/本处 compressIfNeeded：统一 WebP@80%，已是 WebP 不二次压缩
    * - SHA-256 确定性 id，重复图片直接复用已有 attachment（去重）
    */
@@ -49,13 +49,13 @@ export class AttachmentStrategy implements IImageStorageStrategy {
     const id = `${ID_PREFIX}${hash}.${ext}`
 
     // 去重：已存在则直接复用，不重复写入
-    const existing = await UToolsAdapter.db.getAttachment(id)
+    const existing = await HostAdapter.db.getAttachment(id)
     if (existing) {
       return `${ATT_PREFIX}${id}`
     }
 
-    // 存储到宿主附件（uTools 上限约 10MB，Electron 桌面端 50MB）
-    const result = await UToolsAdapter.db.postAttachment(id, buffer, out.type)
+    // 存储到宿主附件（Electron 上限约 10MB，Electron 桌面端 50MB）
+    const result = await HostAdapter.db.postAttachment(id, buffer, out.type)
     if (!result || result.ok === false) {
       const detail =
         result && typeof result.error === 'string'
@@ -77,10 +77,10 @@ export class AttachmentStrategy implements IImageStorageStrategy {
    */
   async load(ref: string): Promise<Blob | null> {
     const id = ref.slice(ATT_PREFIX.length)
-    const data = await UToolsAdapter.db.getAttachment(id)
+    const data = await HostAdapter.db.getAttachment(id)
     if (!data) return null
 
-    const mimeType = (await UToolsAdapter.db.getAttachmentType(id)) || 'image/jpeg'
+    const mimeType = (await HostAdapter.db.getAttachmentType(id)) || 'image/jpeg'
     return new Blob([data.buffer as ArrayBuffer], { type: mimeType })
   }
 
@@ -90,7 +90,7 @@ export class AttachmentStrategy implements IImageStorageStrategy {
   async delete(ref: string): Promise<void> {
     const id = ref.slice(ATT_PREFIX.length)
     try {
-      UToolsAdapter.db.remove(id)
+      HostAdapter.db.remove(id)
     } catch {
       // 忽略删除失败
     }

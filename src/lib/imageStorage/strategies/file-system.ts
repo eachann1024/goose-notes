@@ -1,6 +1,6 @@
 /**
  * 文件系统存储策略
- * 用于 uTools 本地文件模式，保存图片到 ./assets/ 文件夹
+ * 用于 Electron 本地文件模式，保存图片到 ./assets/ 文件夹
  * 加载时支持所有本地路径格式：
  *   - ./assets/x.png        相对路径（当前目录）
  *   - ../assets/x.png       相对路径（上级目录）
@@ -11,7 +11,7 @@
 
 import type { IImageStorageStrategy } from "../types";
 import { blobToBase64 } from "../utils";
-import { fs } from "@/lib/utools/fs";
+import { fs } from "@/lib/electron-platform/fs";
 import { isInternalAssetRef } from "@/lib/internalAssetRef";
 
 const LOCAL_FILE_EXTENSIONS =
@@ -82,7 +82,7 @@ export function readLocalFileAsBlob(fullPath: string): Blob | null {
 /**
  * 异步读取本地二进制文件为 Blob。
  * 原生 macOS 壳（WKWebView）没有同步 fs，必须经异步桥 readFileBase64Async 往返；
- * uTools/Electron preload 仍有同步 readFileBase64，作为回退。
+ * Electron/Electron preload 仍有同步 readFileBase64，作为回退。
  */
 export async function readLocalFileAsBlobAsync(
   fullPath: string,
@@ -98,7 +98,7 @@ export async function readLocalFileAsBlobAsync(
       if (base64) return base64ToUint8Blob(base64, mime);
     }
 
-    // uTools/Electron：同步二进制
+    // Electron/Electron：同步二进制
     if (typeof gfs.readFileBase64 === "function") {
       const base64 = gfs.readFileBase64(fullPath) as string | null;
       if (base64) return base64ToUint8Blob(base64, mime);

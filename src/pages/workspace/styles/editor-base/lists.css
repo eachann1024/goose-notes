@@ -91,7 +91,7 @@
 }
 
 /* 光标所在列表行的 marker 使用产品现有强调前景色。强调色令牌为实色，
-   避免 uTools 旧 Chromium 对 hsl(var(...)/alpha) 的错误回退。 */
+   避免 Electron 旧 Chromium 对 hsl(var(...)/alpha) 的错误回退。 */
 .workspace-shell
   .workspace-editor-surface
   .bn-editor:focus-within

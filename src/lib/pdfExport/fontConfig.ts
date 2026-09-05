@@ -2,7 +2,7 @@
  * PDF 字体注册（中文支持）。
  *
  * @react-pdf 的 Font.register({ src }) 若给普通 URL，渲染阶段会 fetch。
- * uTools / ZTools 以 file:// 打开 index.html，根路径 `/fonts/xxx`
+ * Electron / Electron 以 file:// 打开 index.html，根路径 `/fonts/xxx`
  * 会变成 file:///fonts/xxx（磁盘根目录）→ ERR_FILE_NOT_FOUND → Failed to fetch。
  * 因此不能把 src 设成站点根 `/fonts/...`，必须先读成 data: URL 再注册。
  *

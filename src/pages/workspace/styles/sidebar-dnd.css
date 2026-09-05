@@ -7,7 +7,7 @@
 }
 
 /* 文件树拖放使用独立语义色，不改变产品现有的中性选中色。
-   直接使用 hex/rgba，兼容 uTools 旧内核，避免 hsl(var(...)/alpha) 解析退化。 */
+   直接使用 hex/rgba，兼容 Electron 旧内核，避免 hsl(var(...)/alpha) 解析退化。 */
 :root {
   --sidebar-dnd-accent: #3f6fec;
   --sidebar-dnd-accent-soft: rgba(63, 111, 236, 0.14);
@@ -40,7 +40,7 @@
   background: var(--goose-interactive-selected) !important;
 }
 
-/* 收藏/虚拟树多行共用 .sidebar-tree-row。uTools 旧内核会把
+/* 收藏/虚拟树多行共用 .sidebar-tree-row。Electron 旧内核会把
    `.sidebar-tree-row:hover` 套到所有同类，两项一起亮。
    悬停由每行 --hovered 类标记，不要写 :hover。 */
 .workspace-shell

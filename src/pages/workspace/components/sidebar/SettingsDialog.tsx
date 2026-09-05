@@ -7,7 +7,7 @@ import {
   LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
   LOCAL_FOLDER_TERMINAL_CANDIDATES,
 } from "@/lib/local-folder-open-apps";
-import { shell } from "@/lib/utools/shell";
+import { shell } from "@/lib/electron-platform/shell";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
@@ -36,7 +36,6 @@ import { APPEARANCE_INITIAL_STATE } from "@/stores/settings/slices/appearanceSli
 import { LOCAL_FOLDER_INITIAL_STATE } from "@/stores/settings/slices/localFolderSlice";
 import { SEARCH_PROVIDERS_INITIAL_STATE } from "@/stores/settings/slices/searchProvidersSlice";
 import { SHORTCUTS_INITIAL_STATE } from "@/stores/settings/slices/shortcutsSlice";
-import { UTOOLS_INITIAL_STATE } from "@/stores/settings/slices/utoolsSlice";
 import { WEBDAV_INITIAL_STATE } from "@/stores/settings/slices/webdavSlice";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import {
@@ -48,10 +47,9 @@ import { historyRepository } from "@/lib/history/repository";
 import { clearAllLocalMdSnapshots } from "@/lib/local-md-snapshot";
 import { removeLocalPageIdMap } from "@/lib/local-page-idmap";
 import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
-import { UToolsAdapter } from "@/lib/utools";
-import { wnd } from "@/lib/utools/window";
+import { HostAdapter } from "@/lib/host/adapter";
 import type { ExportOptions } from "@/lib/export";
-import { uToolsStorage as dataStorage } from "@/lib/storage";
+import { localStorageAdapter as dataStorage } from "@/lib/storage";
 import * as LucideIcons from "lucide-react";
 import { ExternalLink } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
@@ -70,7 +68,7 @@ const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
 ];
 
-// 设置侧栏鹅应用：图标分别取自各项目 plugin.json 指向的 logo.png
+// 设置侧栏鹅应用：图标使用各应用随包提供的 logo.png
 const GOOSE_APPS = [
   {
     id: "goose-quicknote",
@@ -105,7 +103,7 @@ const GOOSE_APPS = [
 const FEEDBACK_URL = "https://wj.qq.com/s2/25958121/2d2e/";
 const SETTINGS_APPS_BANNER_ID = "settings:recommended-apps-banner";
 
-// Electron 桌面端（仅本地模式）：无 uTools 生态，隐藏鹅的全家桶入口。
+// Electron 桌面端（仅本地模式）：无 Electron 生态，隐藏鹅的全家桶入口。
 const isElectronHost = __HOST_TARGET__ === "electron";
 
 const recordPreOverwriteHistory = async (id: string | undefined) => {
@@ -193,15 +191,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     addCustomSearchProvider,
     updateCustomSearchProvider,
     removeCustomSearchProvider,
-    utools,
     ai,
-    setOpenSearchInUtools,
     setAIEnabled,
     setAIReadGlobalPrompt,
     setAIReadLocalSkills,
     setAISelectedModelId,
     saveAICustomConfig,
-    setUToolsWindowHeight,
     privacy,
     setAutoOpenLastNote,
     singleTabMode,
@@ -258,15 +253,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       addCustomSearchProvider: s.addCustomSearchProvider,
       updateCustomSearchProvider: s.updateCustomSearchProvider,
       removeCustomSearchProvider: s.removeCustomSearchProvider,
-      utools: s.utools,
       ai: s.ai,
-      setOpenSearchInUtools: s.setOpenSearchInUtools,
       setAIEnabled: s.setAIEnabled,
       setAIReadGlobalPrompt: s.setAIReadGlobalPrompt,
       setAIReadLocalSkills: s.setAIReadLocalSkills,
       setAISelectedModelId: s.setAISelectedModelId,
       saveAICustomConfig: s.saveAICustomConfig,
-      setUToolsWindowHeight: s.setUToolsWindowHeight,
       privacy: s.privacy,
       setAutoOpenLastNote: s.setAutoOpenLastNote,
       singleTabMode: s.singleTabMode,
@@ -652,7 +644,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       ...structuredClone(LOCAL_FOLDER_INITIAL_STATE),
       ...structuredClone(SEARCH_PROVIDERS_INITIAL_STATE),
       ...structuredClone(SHORTCUTS_INITIAL_STATE),
-      ...structuredClone(UTOOLS_INITIAL_STATE),
       ...structuredClone(WEBDAV_INITIAL_STATE),
       _hasHydrated: true,
     });
@@ -729,14 +720,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   const handleOpenApp = (app: (typeof GOOSE_APPS)[number]) => {
-    if (isElectronHost) return;
-    // 官方：redirect 未找到指令时会跳转插件应用市场并搜索该名称
-    // https://www.u-tools.cn/docs/developer/api-reference/utools/window.html
-    if (wnd.redirect(["插件应用市场", "插件应用市场搜一搜"], app.storeQuery))
-      return;
-    if (wnd.redirect("插件应用市场搜一搜", app.storeQuery)) return;
-    if (wnd.redirect(app.storeQuery)) return;
-    UToolsAdapter.openUrl(app.url, false);
+    HostAdapter.openUrl(app.url, false);
   };
 
   return (
@@ -803,10 +787,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 addCustomSearchProvider={addCustomSearchProvider}
                 updateCustomSearchProvider={updateCustomSearchProvider}
                 removeCustomSearchProvider={removeCustomSearchProvider}
-                openSearchInUtools={utools.openSearchInUtools}
-                setOpenSearchInUtools={setOpenSearchInUtools}
-                windowHeight={utools.windowHeight ?? 600}
-                setWindowHeight={setUToolsWindowHeight}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
                 showRecentInSearch={showRecentInSearch}

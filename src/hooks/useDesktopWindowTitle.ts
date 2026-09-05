@@ -1,6 +1,6 @@
 /**
  * 订阅 activePage + getPageTitle，防抖 300ms 同步 Electron 系统窗口标题。
- * 仅 Electron 构建有效（uTools 构建 effect 内部直接 return）。
+ * 仅 Electron 构建有效（Electron 构建 effect 内部直接 return）。
  */
 import { useEffect } from "react";
 import { usePages } from "@/stores/usePages";

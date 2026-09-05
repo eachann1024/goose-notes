@@ -308,7 +308,7 @@
   .bn-block-content[data-content-type="checkListItem"]
   > div
   > input:checked {
-  /* 对勾画在 background-image 上：uTools 旧内核的 <input> 不生成 ::after。
+  /* 对勾画在 background-image 上：Electron 旧内核的 <input> 不生成 ::after。
      size 用 100% 铺满 padding-box，避免旧内核忽略 background-position
      时对勾贴在左上角。 */
   background-color: var(--goose-interactive-selected-fg);

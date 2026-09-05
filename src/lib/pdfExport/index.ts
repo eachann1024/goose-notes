@@ -1,8 +1,8 @@
 /**
  * PDF 渲染入口（只出 blob）。保存/有附件打 ZIP 由 export/index.exportToPDF 负责。
  *
- * - uTools：隐藏窗 printToPDF（系统中文字体，官方 HTML）
- * - 失败或非 uTools：xl-pdf-exporter + react-pdf，嵌入 Noto Sans SC static TTF
+ * - Electron：隐藏窗 printToPDF（系统中文字体，官方 HTML）
+ * - 失败或非 Electron：xl-pdf-exporter + react-pdf，嵌入 Noto Sans SC static TTF
  * - 两路都失败则 throw，让 PageMenu toast 报失败
  * - 跳过官方 Inter 打包（fontsRegistered=true + vite stub）
  */

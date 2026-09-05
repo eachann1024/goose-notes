@@ -1,5 +1,5 @@
 /**
- * uTools 主路径：把笔记 HTML 丢进隐藏窗，webContents.printToPDF。
+ * Electron 主路径：把笔记 HTML 丢进隐藏窗，webContents.printToPDF。
  * 浏览器没有这套 API 时由 exportToPDF 降级 react-pdf。
  */
 
@@ -20,9 +20,7 @@ const PRINT_FONT_STACK =
 export function canPrintToPdf(): boolean {
   if (typeof window === "undefined") return false;
   const gfs = window.gooseFs as (GooseFs & { printHtmlToPdf?: unknown }) | undefined;
-  if (typeof gfs?.printHtmlToPdf === "function") return true;
-  const utools = (window as Window & { utools?: { createBrowserWindow?: unknown } }).utools;
-  return typeof utools?.createBrowserWindow === "function";
+  return typeof gfs?.printHtmlToPdf === "function";
 }
 
 function escapeHtmlText(value: string): string {
@@ -187,97 +185,6 @@ function pdfBase64ToBlob(base64: string): Blob {
   return new Blob([bytes], { type: "application/pdf" });
 }
 
-async function printHtmlViaHiddenWindow(html: string): Promise<Blob> {
-  const utools = (window as Window & {
-    utools?: {
-      createBrowserWindow?: (
-        url: string,
-        options: Record<string, unknown>,
-        callback?: () => void,
-      ) => {
-        webContents?: {
-          printToPDF?: (options: Record<string, unknown>) => Promise<ArrayBuffer | Uint8Array>;
-          executeJavaScript?: (code: string) => Promise<unknown>;
-          loadURL?: (url: string) => Promise<void> | void;
-        };
-        loadURL?: (url: string) => Promise<void> | void;
-        close?: () => void;
-      };
-    };
-  }).utools;
-  if (typeof utools?.createBrowserWindow !== "function") {
-    throw new Error("createBrowserWindow 不可用");
-  }
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let win: ReturnType<NonNullable<typeof utools.createBrowserWindow>> | null = null;
-    const finish = (error: unknown, blob?: Blob) => {
-      if (settled) return;
-      settled = true;
-      try {
-        win?.close?.();
-      } catch {
-        /* noop */
-      }
-      if (error) reject(error);
-      else if (blob) resolve(blob);
-      else reject(new Error("printToPDF 失败"));
-    };
-
-    try {
-      const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
-      win = utools.createBrowserWindow(
-        dataUrl,
-        { show: false, width: 820, height: 1169, hasShadow: false },
-        () => {
-          void (async () => {
-            try {
-              const webContents = win?.webContents;
-              if (typeof webContents?.printToPDF !== "function") {
-                throw new Error("webContents.printToPDF 不可用");
-              }
-              if (typeof webContents.executeJavaScript === "function") {
-                const start = Date.now();
-                while (Date.now() - start < 8000) {
-                  try {
-                    const ready = await webContents.executeJavaScript(
-                      "Boolean(window.__GOOSE_PRINT_READY__ === true)",
-                    );
-                    if (ready) break;
-                  } catch {
-                    /* navigating */
-                  }
-                  await new Promise((r) => setTimeout(r, 150));
-                }
-              } else {
-                await new Promise((r) => setTimeout(r, 800));
-              }
-              const data = await webContents.printToPDF({
-                printBackground: true,
-                preferCSSPageSize: true,
-              });
-              const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-              let binary = "";
-              for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-              }
-              finish(null, pdfBase64ToBlob(btoa(binary)));
-            } catch (error) {
-              finish(error);
-            }
-          })();
-        },
-      );
-    } catch (error) {
-      finish(error);
-      return;
-    }
-
-    setTimeout(() => finish(new Error("printToPDF 超时")), 20_000);
-  });
-}
-
 export async function exportPageViaPrintToPdf(
   page: Page,
   blocks: BlockNoteContent,
@@ -294,5 +201,5 @@ export async function exportPageViaPrintToPdf(
     if (!base64) throw new Error("printToPDF 返回空内容");
     return pdfBase64ToBlob(base64);
   }
-  return printHtmlViaHiddenWindow(html);
+  throw new Error("Electron PDF 打印服务不可用");
 }

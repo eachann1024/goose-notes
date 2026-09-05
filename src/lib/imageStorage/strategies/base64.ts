@@ -1,6 +1,6 @@
 /**
  * Base64 存储策略
- * 用于 uTools 默认模式，保持现有 Base64 方案（支持多端同步）
+ * 用于 Electron 默认模式，保持现有 Base64 方案（支持多端同步）
  */
 
 import type { IImageStorageStrategy } from '../types'

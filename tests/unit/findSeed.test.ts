@@ -50,7 +50,32 @@ test("打开页内查找时会把当前选区写入查找框", () => {
   expect(composer).toContain("readEditorFindSeed");
   expect(composer).toContain("goose-note:editor-find-open");
   expect(composer).toContain("seedQuery={findSeedQuery}");
+  expect(composer).toContain("openReplace={findOpenReplace}");
   expect(findBar).toContain("seedQuery");
   expect(findBar).toContain("if (seedQuery && seedQuery !== query)");
   expect(findBar).toContain("setQuery(seedQuery)");
+});
+
+test("查找栏在标题栏下方，并可展开替换与全部替换", () => {
+  const findBar = readFileSync(
+    new URL("../../src/components/editor/find/FindInPageBar.tsx", import.meta.url),
+    "utf8",
+  );
+  const composer = readFileSync(
+    new URL("../../src/components/editor/core/EditorComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  const hotkeys = readFileSync(
+    new URL("../../src/hooks/useAppHotkeys.ts", import.meta.url),
+    "utf8",
+  );
+
+  expect(findBar).toContain("--electron-titlebar-height");
+  expect(findBar).toContain("展开替换");
+  expect(findBar).toContain("全部替换");
+  expect(findBar).toContain("replaceCurrentMatch");
+  expect(findBar).toContain("replaceAllMatches");
+  expect(composer).toContain('detail?.replace === true');
+  expect(hotkeys).toContain('matchShortcut(event, "Mod+Alt+F")');
+  expect(hotkeys).toContain("replace: true");
 });

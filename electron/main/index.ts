@@ -144,7 +144,8 @@ function startApp(): void {
   });
 
   app.on("activate", () => {
-    // 关闭/隐藏速记窗会让 macOS 发出 activate。这时不要把主界面拉到前台。
+    // Dock / Cmd+Tab 才拉 workspace。速记窗自己的唤出或关闭会补发
+    // activate，两边没有关联，不能因此把大窗带到前台。
     if (shouldSuppressWorkspaceActivate()) return;
     focusExistingWorkspace();
   });

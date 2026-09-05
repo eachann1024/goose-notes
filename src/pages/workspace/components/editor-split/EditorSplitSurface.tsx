@@ -245,7 +245,7 @@ export function EditorSplitSurface({
 
   if (zoomedLeaf) {
     return (
-      <div className="editor-split-surface editor-split-surface--zoomed">
+      <div className="editor-split-surface editor-split-surface--zoomed" data-editor-split="true">
         <SplitPane
           tabId={tabId}
           leaf={zoomedLeaf}
@@ -274,7 +274,7 @@ export function EditorSplitSurface({
   }
 
   return (
-    <div className="editor-split-surface">
+    <div className="editor-split-surface" data-editor-split="true">
       <SplitGroupView
         key={`${splitState.root.id}:${splitState.root.children.map((child) => child.id).join(",")}`}
         tabId={tabId}

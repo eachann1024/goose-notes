@@ -59,7 +59,7 @@
   width: 100%;
 }
 
-/* uTools 主窗固定全宽布局的左右留白：
+/* Electron 主窗固定全宽布局的左右留白：
    全宽态内容铺满窗口、左缘贴边，side menu(+/把手)锚在内容左缘再 translateX(-100%) 向左展开，
    需 ~56px gutter 让把手落进留白区不溢出窗口；右侧对称留白。
    注：side menu 锚在内容列左缘，translateX(-100%) 整颗 pill 落在 gutter。 */

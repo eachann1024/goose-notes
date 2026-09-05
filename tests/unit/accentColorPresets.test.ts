@@ -55,7 +55,7 @@ test("八组强调色都提供浅色完整令牌和深色覆盖", () => {
   }
 });
 
-test("强调色 preset 不使用旧 uTools 内核不可靠的颜色语法", () => {
+test("强调色 preset 不使用旧 Electron 内核不可靠的颜色语法", () => {
   const declarations = css.replace(/\/\*[\s\S]*?\*\//g, "");
   expect(declarations).not.toContain("oklch(");
   expect(declarations).not.toContain("color-mix(");

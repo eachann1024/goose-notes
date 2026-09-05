@@ -178,7 +178,7 @@ export function PageMenu() {
         </DropdownMenuTrigger>
         {/*
           不要在定位外壳上挂 goose-editor-context-ui（CSS zoom）。
-          uTools 旧内核会把 zoom 祖先的 getBoundingClientRect 再次放大，
+          Electron 旧内核会把 zoom 祖先的 getBoundingClientRect 再次放大，
           导致导出子菜单相对「导出」触发项下漂，中间出现无法穿越的空隙。
           页面更多菜单走 viewport 坐标系，尺寸用真实 px。
         */}

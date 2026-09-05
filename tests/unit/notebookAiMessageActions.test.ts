@@ -106,7 +106,7 @@ test("对话列用灰纸，白卡浮起", () => {
   );
   expect(buiCss).toContain(".notebook-ai-messages");
   expect(buiCss).toMatch(
-    /\.notebook-ai-messages[\s\S]{0,200}background:\s*var\(--goose-block-subtle-inset\)/,
+    /\.notebook-ai-messages[\s\S]{0,200}background:\s*hsl\(var\(--goose-editor-bg\)\)/,
   );
   expect(buiCss).not.toMatch(
     /\.notebook-ai-messages[\s\S]{0,200}background:\s*var\(--bui-canvas/,

@@ -184,6 +184,7 @@ export function EditorComposer({
   const [findBarOpen, setFindBarOpen] = useState(false);
   const [findSeedQuery, setFindSeedQuery] = useState("");
   const [findOpenNonce, setFindOpenNonce] = useState(0);
+  const [findOpenReplace, setFindOpenReplace] = useState(false);
   const [findNavigationRequest, setFindNavigationRequest] = useState<{
     id: number;
     direction: "next" | "previous";
@@ -217,7 +218,7 @@ export function EditorComposer({
       !!target?.closest(".bn-editor");
 
     // 不依赖 ProseMirror keymap 在模块加载时缓存的 navigator.platform。
-    // uTools 的 Windows WebView 偶尔会让 Mod-k 错配，capture 兜底直接按实际
+    // Electron 的 Windows WebView 偶尔会让 Mod-k 错配，capture 兜底直接按实际
     // Ctrl/Meta 状态处理；已有链接仍保持“再次按下即移除”的既有行为。
     if (isPrimaryLinkShortcut) {
       const url = editor.getSelectedLinkUrl();
@@ -235,9 +236,9 @@ export function EditorComposer({
     }
 
     if (
-      (!__GOOSE_EDITOR_AI__ && __HOST_TARGET__ !== "native-editor") ||
+      (!__GOOSE_EDITOR_AI__ && true) ||
       !isInlineAiEmptyParagraphTriggerKey(event.key) ||
-      (page?.localFilePath && __HOST_TARGET__ !== "native-editor") ||
+      (page?.localFilePath && true) ||
       Boolean(page?.localUnsaved)
     ) {
       return;
@@ -281,7 +282,7 @@ export function EditorComposer({
     event.preventDefault();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
-    if (__HOST_TARGET__ === "native-editor") {
+    if (false) {
       window.dispatchEvent(
         new CustomEvent("goose-note:native-ai-entry", {
           detail: { source: "empty-paragraph" },
@@ -296,17 +297,20 @@ export function EditorComposer({
   };
 
   useEffect(() => {
-    const handleOpenFind = () => {
+    const handleOpenFind = (event: Event) => {
       const findInputFocused = Boolean(
         document.activeElement?.closest?.("[data-goose-find-in-page]"),
       );
       const seed = findInputFocused
         ? ""
         : readEditorFindSeed(editor, editorContainerRef.current);
+      const openReplace =
+        (event as CustomEvent<{ replace?: unknown }>).detail?.replace === true;
       // 先关其它弹层，再开查找栏。setTimeout 让 Escape 引发的 commit 先跑完，
       // 避免被同步的 close 路径反吃掉。
       closeAllOverlays();
       setFindSeedQuery(seed);
+      setFindOpenReplace(openReplace);
       setFindOpenNonce((value) => value + 1);
       setTimeout(() => setFindBarOpen(true), 0);
     };
@@ -316,9 +320,9 @@ export function EditorComposer({
   }, [editor, editorContainerRef]);
 
   useEffect(() => {
-    // 原生 AppKit 菜单通过桥接事件驱动查找导航。uTools 有自己的热键链路，
+    // 原生 AppKit 菜单通过桥接事件驱动查找导航。Electron 有自己的热键链路，
     // 不在共享编辑器里接管，避免原生宿主接线改变其它宿主的运行时行为。
-    if (__HOST_TARGET__ !== "native-editor") return;
+    if (true) return;
 
     const handleFindNavigation = (event: Event) => {
       const direction = (event as CustomEvent<{ direction?: unknown }>).detail
@@ -536,7 +540,7 @@ export function EditorComposer({
               // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
               // 工具栏直接使用缩放后的布局尺寸，Floating UI 与
               // 按钮 DOMRect 共用同一套 viewport 坐标，无需再换算 CSS zoom。
-              // 旧 uTools 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
+              // 旧 Electron 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
               const safeAvailableWidth = Math.max(0, availableWidth);
               elements.floating.style.maxWidth = `${safeAvailableWidth}px`;
               elements.floating.style.overflowX = "visible";
@@ -721,7 +725,7 @@ export function EditorComposer({
                 }
               }}
             />
-            {__GOOSE_LITE__ || __HOST_TARGET__ === "native-editor" ? null : (
+            {__GOOSE_LITE__ || false ? null : (
               <SuggestionMenuController
                 triggerCharacter="@"
                 getItems={getMentionItems}
@@ -787,6 +791,8 @@ export function EditorComposer({
         open={findBarOpen}
         seedQuery={findSeedQuery}
         openNonce={findOpenNonce}
+        openReplace={findOpenReplace}
+        editable={editable}
         navigationRequest={findNavigationRequest}
         onClose={() => setFindBarOpen(false)}
       />

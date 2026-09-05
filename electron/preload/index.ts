@@ -118,7 +118,7 @@ const gooseDesktop = {
     invoke("desktop:syncTitleBarHeight", height) as Promise<void>,
   toggleMainWindow: () => invoke("desktop:toggleMainWindow") as Promise<void>,
   toggleQuicknote: () => invoke("desktop:toggleQuicknote") as Promise<void>,
-  hideQuicknote: () => invoke("desktop:hideQuicknote") as Promise<void>,
+  closeQuicknote: () => invoke("desktop:closeQuicknote") as Promise<void>,
   registerHotkeys: (k: { wake: string; quicknote: string; search: string }) =>
     invoke("desktop:registerHotkeys", k) as Promise<{
       wakeOk: boolean;

@@ -23,7 +23,7 @@ import { SettingsSectionCard } from "./SettingsSectionCard"
 import { ShortcutField } from "./ShortcutField"
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
 
-// Electron 桌面端（仅本地模式）：设置-快捷键页多出「桌面全局快捷键」分区；uTools 不出现。
+// Electron 桌面端（仅本地模式）：设置-快捷键页多出「桌面全局快捷键」分区；Electron 不出现。
 // 单元测试没有 vite define，用 typeof 兜底避免模块加载即 ReferenceError。
 const isElectronHost =
   typeof __HOST_TARGET__ !== "undefined" && __HOST_TARGET__ === "electron"
@@ -51,6 +51,7 @@ const TAB_ONLY_APP_SHORTCUT_IDS = new Set([
 const ALWAYS_FIXED_SHORTCUT_VALUES = [
   FIXED_APP_SHORTCUTS.openSettings,
   FIXED_APP_SHORTCUTS.editorFindOpen,
+  "Mod+Alt+F",
   FIXED_APP_SHORTCUTS.newNote,
   "Mod+G",
   "Mod+Shift+G",
@@ -213,6 +214,7 @@ function makeCloseSetter(
 const FIXED_SHORTCUTS = [
   { label: "新建笔记", shortcut: FIXED_APP_SHORTCUTS.newNote },
   { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
+  { label: "页内替换", shortcut: "Mod+Alt+F" },
   { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
   { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
   { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9", tabOnly: true },

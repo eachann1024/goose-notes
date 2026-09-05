@@ -9,7 +9,6 @@ import {
 import { Command } from "cmdk";
 import { Search, Columns2, Rows2, Maximize2, X } from "lucide-react";
 import type { Page } from "@/types";
-import { UToolsAdapter } from "@/lib/utools";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
 import { useCommandSearchIndexWarmup } from "./useCommandSearchIndexWarmup";
@@ -37,8 +36,6 @@ import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebo
 import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
 import { formatShortcut } from "@/lib/utils";
 
-const UTOOLS_INPUT_EVENT = "goose-note:utools-search";
-const UTOOLS_SYNC_EVENT = "goose-note:utools-search-sync";
 const IDLE_PAGES: Record<string, Page> = {};
 
 export function CommandPalette() {
@@ -83,7 +80,7 @@ export function CommandPalette() {
     searchAllNotebooks,
   });
   const trackSearchOpened = useCallback(
-    (_openSource: "utools_input" | "shortcut" | "programmatic") => {},
+    (_openSource: "shortcut" | "programmatic") => {},
     [],
   );
 
@@ -185,31 +182,6 @@ export function CommandPalette() {
     toast.info("已关闭「最近访问」，可在设置中重新开启", { duration: 3000 });
   }, [setShowRecentInSearch]);
 
-  useEffect(() => {
-    const handleUToolsInput = (event: Event) => {
-      const detail = (event as CustomEvent<{ text: string }>).detail;
-      const text = detail?.text ?? "";
-      openInNewTabRef.current = false;
-      setSearchQuery(text);
-      trackSearchOpened("utools_input");
-      setOpen(true);
-    };
-
-    window.addEventListener(UTOOLS_INPUT_EVENT, handleUToolsInput);
-    return () => {
-      window.removeEventListener(UTOOLS_INPUT_EVENT, handleUToolsInput);
-    };
-  }, []);
-
-  useEffect(() => {
-    // 只有在 uTools 环境下才同步搜索词
-    if (UToolsAdapter.isUTools) {
-      if (document.activeElement === inputRef.current) return;
-      window.dispatchEvent(
-        new CustomEvent(UTOOLS_SYNC_EVENT, { detail: { text: searchQuery } }),
-      );
-    }
-  }, [searchQuery]);
 
   useEffect(() => {
     let pendingModifierOnlyClose = false;
@@ -399,7 +371,7 @@ export function CommandPalette() {
             type="button"
             onClick={() => setSearchAllNotebooks(!searchAllNotebooks)}
             className={`px-2.5 py-1 rounded-[8px] text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              // 用实色交互变量而非 bg-foreground/8：uTools 旧内核解析不了 Tailwind 的
+              // 用实色交互变量而非 bg-foreground/8：Electron 旧内核解析不了 Tailwind 的
               // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
               searchAllNotebooks
                 ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"

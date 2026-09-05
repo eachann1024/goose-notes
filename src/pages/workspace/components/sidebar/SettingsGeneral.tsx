@@ -1,13 +1,9 @@
-import { UToolsAdapter } from "@/lib/utools";
-import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import * as LucideIcons from "lucide-react";
 import {
-  UTOOLS_WINDOW_HEIGHT_MAX,
-  UTOOLS_WINDOW_HEIGHT_MIN,
   type CustomAction,
   type SearchProvider,
 } from "@/stores/useSettings";
@@ -26,10 +22,6 @@ interface SettingsGeneralProps {
     provider: Pick<SearchProvider, "name" | "urlTemplate">,
   ) => void;
   removeCustomSearchProvider: (id: string) => void;
-  openSearchInUtools: boolean;
-  setOpenSearchInUtools: (enabled: boolean) => void;
-  windowHeight: number;
-  setWindowHeight: (height: number) => void;
   autoOpenLastNote: boolean;
   setAutoOpenLastNote: (enabled: boolean) => void;
   showRecentInSearch: boolean;
@@ -51,9 +43,6 @@ const SETTINGS_OPTION_ROW_CLASS =
 const SETTINGS_SWITCH_CLASS =
   "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
-// Electron 桌面端（仅本地模式）：隐藏 uTools 生态相关设置项。
-const isElectronHost = __HOST_TARGET__ === "electron";
-
 export function SettingsGeneral({
   searchProviders,
   toggleSearchProvider,
@@ -61,10 +50,6 @@ export function SettingsGeneral({
   addCustomSearchProvider,
   updateCustomSearchProvider,
   removeCustomSearchProvider,
-  openSearchInUtools,
-  setOpenSearchInUtools,
-  windowHeight,
-  setWindowHeight,
   autoOpenLastNote,
   setAutoOpenLastNote,
   showRecentInSearch,
@@ -182,70 +167,7 @@ export function SettingsGeneral({
         />
       </SettingsSectionCard>
 
-      {!isElectronHost && (
-        <SettingsSectionCard title="插件设置">
-          <div
-            className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
-          >
-            <div>
-              <div className="flex items-center gap-3">
-                <LucideIcons.Plug2
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <Label htmlFor="open-in-utools" className="cursor-pointer">
-                  使用 uTools 打开链接
-                </Label>
-              </div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">
-                开启后，搜索结果和笔记中的网页链接会在 uTools
-                内置浏览器里打开；关闭则用系统浏览器。
-              </p>
-            </div>
-            <Switch
-              id="open-in-utools"
-              checked={openSearchInUtools ?? false}
-              onCheckedChange={setOpenSearchInUtools}
-              className={SETTINGS_SWITCH_CLASS}
-            />
-          </div>
-        </SettingsSectionCard>
-      )}
-
-      {!isElectronHost && (
-        <SettingsSectionCard title="窗口高度">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <LucideIcons.MoveVertical
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label>窗口高度</Label>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {windowHeight}px
-            </span>
-          </div>
-          <Slider
-            value={[windowHeight]}
-            min={UTOOLS_WINDOW_HEIGHT_MIN}
-            max={UTOOLS_WINDOW_HEIGHT_MAX}
-            step={10}
-            onValueChange={([val]) => {
-              // 拖动过程仅更新本地显示值，避免高频调用 uTools API 导致卡死
-              setWindowHeight(val);
-            }}
-            onValueCommit={([val]) => {
-              // 释放后再实际调整窗口高度
-              UToolsAdapter.setExpendHeight(val);
-            }}
-            className="py-2"
-          />
-        </SettingsSectionCard>
-      )}
-
-      {!isElectronHost && (
-        <SettingsSectionCard
+      <SettingsSectionCard
           title={
             <span className="flex items-center gap-2">
               <LucideIcons.Zap
@@ -348,7 +270,6 @@ export function SettingsGeneral({
             </p>
           )}
         </SettingsSectionCard>
-      )}
     </div>
   );
 }

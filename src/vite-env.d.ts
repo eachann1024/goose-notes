@@ -6,9 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_TINYFISH_API_KEY_A?: string;
   readonly VITE_TINYFISH_API_KEY_B?: string;
 }
-
 declare global {
-  const __HOST_TARGET__: "utools" | "native-editor" | "electron";
+  const __HOST_TARGET__: "electron";
 
   /**
    * 速记小窗（plugin B / dist-quicknote）精简构建标志。
@@ -106,7 +105,7 @@ declare global {
     syncTitleBarHeight: (height: number) => Promise<void>
     toggleMainWindow: () => Promise<void>
     toggleQuicknote: () => Promise<void>
-    hideQuicknote: () => Promise<void>
+    closeQuicknote: () => Promise<void>
     registerHotkeys: (k: { wake: string; quicknote: string; search: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
     pauseHotkeys: () => Promise<void>
     resumeHotkeys: () => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
@@ -150,7 +149,6 @@ declare global {
   }
 
   interface Window {
-    utools?: any;
     gooseAiContext?: {
       readGlobalPrompt: () => string | null;
       listLocalSkills: () => Array<{ path: string; content: string }>;

@@ -104,7 +104,7 @@ test("searchWeb 缺 Key 时不访问网络", async () => {
     fetchCalled = true;
     throw new Error("should not fetch");
   };
-  useSettings.getState().setTinyfishApiKey("");
+  useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: "" } }));
   try {
     const result = await searchWeb.execute!(
       { query: "rust", maxResults: 5 },
@@ -114,7 +114,7 @@ test("searchWeb 缺 Key 时不访问网络", async () => {
     expect(fetchCalled).toBe(false);
   } finally {
     globalThis.fetch = originalFetch;
-    useSettings.getState().setTinyfishApiKey(previous);
+    useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: previous } }));
   }
 });
 
@@ -145,7 +145,7 @@ test("searchWeb 只请求 TinyFish 并映射结果", async () => {
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
-  useSettings.getState().setTinyfishApiKey(" tf-test-key ");
+  useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: " tf-test-key " } }));
   try {
     const result = await searchWeb.execute!(
       { query: "rust", maxResults: 5 },
@@ -169,7 +169,7 @@ test("searchWeb 只请求 TinyFish 并映射结果", async () => {
     });
   } finally {
     globalThis.fetch = originalFetch;
-    useSettings.getState().setTinyfishApiKey(previous);
+    useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: previous } }));
   }
 });
 
@@ -178,7 +178,7 @@ test("readWebPage 401 提示 Key 无效", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
-  useSettings.getState().setTinyfishApiKey("tf-bad");
+  useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: "tf-bad" } }));
   try {
     const result = await readWebPage.execute!(
       { url: "https://example.com/article" },
@@ -187,7 +187,7 @@ test("readWebPage 401 提示 Key 无效", async () => {
     expect(result).toEqual({ error: TINYFISH_KEY_INVALID_ERROR });
   } finally {
     globalThis.fetch = originalFetch;
-    useSettings.getState().setTinyfishApiKey(previous);
+    useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: previous } }));
   }
 });
 
@@ -223,7 +223,7 @@ test("searchWeb 首个 Key 429 后立刻换下一个 Key", async () => {
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
-  useSettings.getState().setTinyfishApiKey("");
+  useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: "" } }));
   setTinyfishBakedEnvKeysForTests({ a: "tf-key-a", b: "tf-key-b" });
   try {
     const result = await searchWeb.execute!(
@@ -247,7 +247,7 @@ test("searchWeb 首个 Key 429 后立刻换下一个 Key", async () => {
     });
   } finally {
     globalThis.fetch = originalFetch;
-    useSettings.getState().setTinyfishApiKey(previous);
+    useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: previous } }));
     setTinyfishBakedEnvKeysForTests(null);
   }
 });
@@ -263,7 +263,7 @@ test("searchWeb 全部 Key 连续 3 轮 429 后返回限流错误", async () => 
       status: 429,
     });
   };
-  useSettings.getState().setTinyfishApiKey("");
+  useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: "" } }));
   setTinyfishBakedEnvKeysForTests({ a: "tf-key-a", b: "tf-key-b" });
   setTinyfishRateLimitWaitForTests(async () => {
     waitCount += 1;
@@ -278,7 +278,7 @@ test("searchWeb 全部 Key 连续 3 轮 429 后返回限流错误", async () => 
     expect(waitCount).toBe(2);
   } finally {
     globalThis.fetch = originalFetch;
-    useSettings.getState().setTinyfishApiKey(previous);
+    useSettings.setState((state) => ({ ai: { ...state.ai, tinyfishApiKey: previous } }));
     setTinyfishBakedEnvKeysForTests(null);
     setTinyfishRateLimitWaitForTests(null);
   }

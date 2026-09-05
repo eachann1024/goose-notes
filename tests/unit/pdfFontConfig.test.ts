@@ -16,10 +16,10 @@ import {
 } from "../../src/lib/pdfExport/fontConfig";
 
 test("file:// 插件页把相对 fonts/ 解析到同目录，而不是磁盘根 /fonts/", () => {
-  const href = "file:///Users/eachann/Library/Application%20Support/uTools/plugins/goose-note/index.html";
+  const href = "file:///Users/eachann/Library/Application%20Support/Electron/plugins/goose-note/index.html";
   const url = resolvePdfFontUrl(PDF_FONT_RELATIVE_PATHS[0], href);
   expect(url).toBe(
-    "file:///Users/eachann/Library/Application%20Support/uTools/plugins/goose-note/fonts/NotoSansSC-Regular.ttf",
+    "file:///Users/eachann/Library/Application%20Support/Electron/plugins/goose-note/fonts/NotoSansSC-Regular.ttf",
   );
   expect(url.includes("file:///fonts/")).toBeFalsy();
 });

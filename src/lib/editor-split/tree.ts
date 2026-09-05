@@ -1,6 +1,5 @@
 import {
   MAX_SPLIT_LEAVES,
-  NARROW_EDITOR_WIDTH_PX,
   type CloseLeafResult,
   type SplitDirection,
   type SplitGroup,
@@ -12,10 +11,7 @@ import {
   type SplitState,
 } from "./types";
 
-export {
-  MAX_SPLIT_LEAVES,
-  NARROW_EDITOR_WIDTH_PX,
-} from "./types";
+export { MAX_SPLIT_LEAVES } from "./types";
 
 const SIZE_EPS = 1e-4;
 
@@ -227,16 +223,13 @@ export type SplitLeafInput = {
   newPageId: string;
   /** 默认当前焦点叶。 */
   leafId?: string;
-  editorWidthPx?: number;
   newLeafId?: string;
   newGroupId?: string;
 };
 
 /**
  * 在指定叶处分屏。新叶落在右侧（horizontal）或下方（vertical）。
- *
- * 已有 4 叶时返回错误，不改树。`editorWidthPx < 720` 时向右分会改成向下分，
- * 并标 `didFallbackToDown: true`。分屏会清掉 zoom，好让新格立刻可见。
+ * 原叶 pageId 不变。已有 4 叶时返回错误，不改树。分屏会清掉 zoom。
  */
 export function splitLeaf(
   state: SplitState,
@@ -251,12 +244,7 @@ export function splitLeaf(
     return { ok: false, error: "最多只能分成 4 格", state };
   }
 
-  const didFallbackToDown =
-    input.direction === "right" &&
-    typeof input.editorWidthPx === "number" &&
-    input.editorWidthPx < NARROW_EDITOR_WIDTH_PX;
-  const direction: SplitDirection = didFallbackToDown ? "down" : input.direction;
-  const orientation = orientationForDirection(direction);
+  const orientation = orientationForDirection(input.direction);
   const newLeaf: SplitLeaf = {
     kind: "leaf",
     id: input.newLeafId ?? createSplitNodeId("leaf"),
@@ -291,7 +279,6 @@ export function splitLeaf(
 
   return {
     ok: true,
-    didFallbackToDown,
     newLeafId: newLeaf.id,
     state: {
       root: nextRoot,

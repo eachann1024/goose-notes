@@ -19,7 +19,7 @@ import { CreateVaultDialog } from "./CreateVaultDialog";
 import { isElectronHost, pickVaultParentDirectory } from "@/lib/local-vault";
 import { renderNotebookIcon } from "./notebookUtils";
 import { activateNotebook } from "@/lib/notebookNavigation";
-import { dialogs } from "@/lib/utools/dialogs";
+import { dialogs } from "@/lib/electron-platform/dialogs";
 import {
   sortNotebooksByOrder,
   type Notebook,
@@ -276,41 +276,14 @@ export function NotebookSwitcher() {
 
   const handleOpenLocalFolder = async () => {
     try {
-      const utools = (
-        window as Window & {
-          utools?: {
-            showOpenDialog?: (options: {
-              title?: string;
-              properties: string[];
-            }) => Promise<string[] | null>;
-          };
-        }
-      ).utools;
-      if (typeof utools?.showOpenDialog === "function") {
-        const result = await utools.showOpenDialog({
-          title: "选择 Markdown 文件夹",
-          properties: ["openDirectory"],
+      const path = await dialogs.selectDirectory();
+      if (path) {
+        const folderName = path.split(/[\\/]/).pop() || "Unknown";
+        const notebookId = createLocalFolderNotebook(folderName, path);
+        await usePages.getState().loadLocalFolderPages(notebookId, path, {
+          showWelcome: true,
         });
-        if (result && result.length > 0) {
-          const folderName = result[0].split(/[\\/]/).pop() || "Unknown";
-          const notebookId = createLocalFolderNotebook(folderName, result[0]);
-          await usePages
-            .getState()
-            .loadLocalFolderPages(notebookId, result[0], {
-              showWelcome: true,
-            });
-          void activateNotebook(notebookId);
-        }
-      } else {
-        const path = await dialogs.selectDirectory();
-        if (path) {
-          const folderName = path.split(/[\\/]/).pop() || "Unknown";
-          const notebookId = createLocalFolderNotebook(folderName, path);
-          await usePages.getState().loadLocalFolderPages(notebookId, path, {
-            showWelcome: true,
-          });
-          void activateNotebook(notebookId);
-        }
+        void activateNotebook(notebookId);
       }
     } catch (e) {
       console.error(e);

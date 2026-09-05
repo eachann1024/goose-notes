@@ -110,7 +110,7 @@ function MdInput({
 /**
  * 覆盖 Streamdown 默认 table。
  * 默认 table 带 w-full / 无 nowrap，且 utility 可能未被 Tailwind 扫到；
- * 这里用 plain DOM + notebook-ai.css 锁宽度与横向滚动（兼容 uTools 旧内核）。
+ * 这里用 plain DOM + notebook-ai.css 锁宽度与横向滚动（兼容 Electron 旧内核）。
  * node 是 hast 节点，不能落到 DOM 上；className 常含 w-full，直接丢弃。
  */
 function MdTable({

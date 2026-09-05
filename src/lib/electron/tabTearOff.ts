@@ -182,7 +182,5 @@ export function tabDragEnabled(opts: {
   variant: string;
   tabCount: number;
 }): boolean {
-  if (opts.tabCount < 1) return false;
-  if (canDragTabBetweenWindows(opts)) return true;
   return opts.tabCount >= 2;
 }

@@ -1,7 +1,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { blobToBase64, getExtensionFromMimeType } from "@/lib/imageStorage/utils";
-import { fs } from "@/lib/utools/fs";
-import { shell } from "@/lib/utools/shell";
+import { fs } from "@/lib/electron-platform/fs";
+import { shell } from "@/lib/electron-platform/shell";
 
 /** 所有「打开来看」预览按钮的统一文案 */
 export const PREVIEW_ACTION_TOOLTIP = "预览（左键全屏 / 右键系统）";

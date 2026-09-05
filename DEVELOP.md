@@ -1,8 +1,8 @@
-# 鹅的笔记 · goose-notes
+# 鹅的笔记 · goose-note-app
 
-A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
+A local-first, Notion-style note-taking app — built as a [Electron](https://u.tools/) plugin, also runnable in the browser.
 
-本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 uTools 插件运行，也支持浏览器端使用。
+本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 Electron 插件运行，也支持浏览器端使用。
 
 ## ✨ 特性
 
@@ -20,7 +20,7 @@ A local-first, Notion-style note-taking app — built as a [uTools](https://u.to
 - **状态管理**：Zustand
 - **UI**：Radix UI + HeroUI + Tailwind CSS
 - **AI**：Vercel AI SDK
-- **宿主**：uTools（可选）/ 浏览器
+- **宿主**：Electron（可选）/ 浏览器
 
 ## 🚀 本地开发
 
@@ -31,29 +31,29 @@ bun install
 # 启动开发服务器（http://localhost:6001）
 bun run dev
 
-# 构建（产出 uTools 插件包）
+# 构建（产出 Electron 插件包）
 bun run build
 ```
 
-### uTools 插件调试
+### Electron 插件调试
 
-浏览器 `bun run dev` 适合改 UI，但 uTools 真机行为（preload、主题、窗口等）需在插件环境里验证：
+浏览器 `bun run dev` 适合改 UI，但 Electron 真机行为（preload、主题、窗口等）需在插件环境里验证：
 
-1. 执行 `bun run build`（会生成 `dist/` 下的完整插件包，含 `dist/plugin.json`）
-2. 打开 **uTools 开发者工具**
-3. **加载插件**，选择本仓库的 `dist/plugin.json`
+1. 执行 `bun run build`（生成双 renderer、Electron 主进程/preload 与 `dist-electron/app-pack`）
+2. 打开 **Electron 开发者工具**
+3. 启动 Electron 开发模式并验证主窗口
 4. 在开发者工具中 **打开** 该插件，即可看到最新构建效果
 
 改代码后重复步骤 1，再在开发者工具里重新打开插件（或按工具提示刷新）即可。
 
-速记小窗（B 插件）产物在 `dist-quicknote/plugin.json`，加载方式相同。
+速记小窗由同一 Electron 应用的 `quicknote.html` renderer 提供。
 
 ### Electron 桌面端（仅本地模式）
 
-默认 `bun run build` 仍是 uTools 插件，与桌面端产物隔离。
+默认 `bun run build` 仍是 Electron 插件，与桌面端产物隔离。
 
 ```bash
-# 开发调试（Vite http://localhost:6001 + Electron；不经过 uTools 打包）
+# 开发调试（Vite http://localhost:6001 + Electron；不经过 Electron 打包）
 bun run mac:dev
 
 # 构建 macOS .app（Apple Silicon arm64；前端产物在 dist-electron/renderer/）
@@ -73,7 +73,7 @@ bun run win
 
 桌面端 = Obsidian 式「仅本地文件夹」：无自带/内置笔记本（不种 default-notebook、不种新手引导页、UI 无「新建记事本」），仓库 = local-folder 挂载列表；无仓库时为空态（打开文件夹 / 新建仓库），允许移除最后一个仓库回到空态。残留的旧内置页（web-db `gn:page:*`）不灌进侧栏，可在「设置 → 本地文件夹」一次性导出为 .md（不静默迁移、不自动删除）。
 
-桌面端数据只落本机：内部记事本走 localStorage，附件走 `appDataDir/attachments` 磁盘（上限 50MB），本地文件夹走磁盘 `.md`；无账号、速记小窗、全局热键等 uTools 生态能力。构建目标互不污染：`bun run build` 只产出 uTools 包，`bun run mac` 只产出 macOS 桌面 App，`bun run win` 只产出 Windows NSIS 安装包。
+桌面端数据只落本机：内部记事本走 localStorage，附件走 `appDataDir/attachments` 磁盘（上限 50MB），本地文件夹走磁盘 `.md`；无账号、速记小窗、全局热键等 Electron 生态能力。构建目标互不污染：`bun run build` 只产出 Electron 包，`bun run mac` 只产出 macOS 桌面 App，`bun run win` 只产出 Windows NSIS 安装包。
 
 构建完成后，最终产物会自动收集到顶层 `dist-desktop/`：
 
@@ -94,7 +94,7 @@ bun run win
 
 ## 📦 构建产物
 
-`bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。
+`bun run build` 会执行 `tsc` 类型检查 + `vite build` + Electron 打包脚本，产出可加载到 Electron 的插件包。
 
 提交前请确保以下检查通过（CI 也会跑这些）：
 

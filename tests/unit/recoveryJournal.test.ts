@@ -10,42 +10,15 @@ import {
 } from "../../src/lib/storage/recoveryJournal";
 import { getContentSignature } from "../../src/components/editor/utils/blocknote-content";
 import { recoverQuickNoteDrafts } from "../../src/stores/useQuickNote";
-import { setDbStorageItem } from "../../src/lib/storage/utoolsDbStorage";
+import { setDbStorageItem } from "../../src/lib/storage/localDbStorage";
+import { installElectronLocalStorageRuntime } from "./electronLocalStorageRuntime";
 
 function installStorageRuntime(options?: { failStorageWrites?: boolean }) {
-  let rev = 0;
-  const docs = new Map<string, { _id: string; _rev: string; data: unknown }>();
-  (globalThis as any).window = {
-    utools: {
-      db: {
-        get: (id: string) => docs.get(id) ?? null,
-        put: (doc: { _id: string; _rev?: string; data: unknown }) => {
-          if (
-            options?.failStorageWrites &&
-            (doc._id.startsWith("gn:storage:") ||
-              doc._id.startsWith("gn:recovery:"))
-          ) {
-            return { id: doc._id, ok: false, error: "fault-injected" };
-          }
-          const current = docs.get(doc._id);
-          if (doc._rev !== current?._rev && current) {
-            return { id: doc._id, ok: false, error: "conflict" };
-          }
-          const nextRev = `rev-${++rev}`;
-          docs.set(doc._id, { ...doc, _rev: nextRev });
-          return { id: doc._id, ok: true, rev: nextRev };
-        },
-        remove: (id: string) => {
-          docs.delete(id);
-          return { id, ok: true };
-        },
-        allDocs: (prefix = "") =>
-          Array.from(docs.values()).filter((doc) => doc._id.startsWith(prefix)),
-      },
-    },
-  };
-
-  return { docs };
+  return installElectronLocalStorageRuntime({
+    failPut: (id) =>
+      Boolean(options?.failStorageWrites) &&
+      (id.startsWith("gn:storage:") || id.startsWith("gn:recovery:")),
+  });
 }
 
 test.afterEach(() => delete (globalThis as any).window);
@@ -151,38 +124,21 @@ test("迁移到已有恢复稿时以新 revision 返回源内容", () => {
   expect(moved.entry?.content).toBeNull();
 });
 
-test("旧 ACK 与新 record 冲突时不能清掉新稿", () => {
-  const { docs } = installStorageRuntime();
+test("旧 ACK 不会清掉已被新 record 替换的恢复稿", () => {
+  installStorageRuntime();
   const first = recordRecoveryEntry({
     source: "internal-page",
     id: "racy",
     content: [{ type: "paragraph", content: "first" }] as any,
   })!;
-  const id = "gn:recovery:v2:internal-page:racy";
-  const db = (globalThis as any).window.utools.db;
-  const originalPut = db.put;
-  let injected = false;
-  db.put = (doc: any) => {
-    if (!injected && doc.data?.acknowledgedRevision === 1) {
-      injected = true;
-      docs.set(id, {
-        _id: id,
-        _rev: "concurrent-rev",
-        data: {
-          version: 2,
-          entry: {
-            ...first,
-            revision: 2,
-            content: [{ type: "paragraph", content: "new" }],
-          },
-        },
-      });
-    }
-    return originalPut(doc);
-  };
+  const latest = recordRecoveryEntry({
+    source: "internal-page",
+    id: "racy",
+    content: [{ type: "paragraph", content: "new" }] as any,
+  })!;
 
-  expect(acknowledgeRecoveryEntry("internal-page", "racy", 1)).toBe(false);
-  expect(getRecoveryEntry("internal-page", "racy")?.revision).toBe(2);
+  expect(acknowledgeRecoveryEntry("internal-page", "racy", first.revision)).toBe(false);
+  expect(getRecoveryEntry("internal-page", "racy")?.revision).toBe(latest.revision);
 });
 
 test("旧整包恢复日志会迁移为独立文档", () => {

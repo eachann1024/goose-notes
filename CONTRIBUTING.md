@@ -16,7 +16,7 @@ bun install
 # Start the dev server (http://localhost:6001)
 bun run dev
 
-# Build the uTools plugin bundle
+# Build the Electron plugin bundle
 bun run build
 ```
 
@@ -56,7 +56,7 @@ All checks must pass. CI runs them on every internal pull request to `main` and
 ## Reporting bugs & requesting features
 
 Authorized collaborators should use the private project tracker and include
-reproduction steps, the environment (OS, uTools version or browser), and
+reproduction steps, the environment (OS, Electron version or browser), and
 expected versus actual behavior.
 
 ## Maintainer review checklist
@@ -67,13 +67,13 @@ Use this when reviewing internal pull requests.
 2. **Merge gate** — `typecheck`, `lint`, and full `build` (includes the quick-note plugin build).
 3. **Scope** — One logical change; Conventional Commits; no `tasks/`, `.env*`, or AI-only tooling artifacts.
 4. **Editor** — Changes under `src/components/editor/` must not break **title block one** (first block is always H1; see `AGENTS.md` / `firstTitleGuard.ts`).
-5. **uTools UI** — Style changes must avoid Tailwind alpha/palette traps that fail in the uTools WebView; prefer CSS variables in `src/index.css`. Browser dev alone is not enough for hover/selected states.
+5. **Electron UI** — Style changes must avoid Tailwind alpha/palette traps that fail in the Electron WebView; prefer CSS variables in `src/index.css`. Browser dev alone is not enough for hover/selected states.
 6. **Dual plugin** — Shared code must still build for both the main app and `GOOSE_BUILD_TARGET=quicknote` / `__GOOSE_LITE__`.
 7. **Data** — Persistence and local-folder sync changes must not lose or silently overwrite notes.
 8. **Security** — No hardcoded secrets or personal paths in defaults; see [SECURITY.md](./SECURITY.md).
 9. **Verification** — Ask for a short **Testing** note in the PR when behavior changes. CI runs typecheck, lint, unit tests, e2e tests, and the full build.
 
-Local uTools smoke test after `bun run build`: load `dist/plugin.json` in the uTools developer tools (see README).
+Run `bun run build`, then start the packaged Electron app from `dist-electron/app-pack` for a local smoke test (see README).
 
 ## Security
 

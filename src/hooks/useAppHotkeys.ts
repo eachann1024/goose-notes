@@ -19,7 +19,11 @@ import {
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { isPlatformPrimaryModifierEvent } from "@/lib/shortcut-platform";
-import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
+import { getFocusedAiPanelLayout } from "@/pages/workspace/components/notebook-ai/aiPanelFocus";
+import {
+  closeNotebookAiIfFullscreen,
+  closeNotebookAiPanel,
+} from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
 import {
   isImeKeyboardEvent,
@@ -32,6 +36,7 @@ import {
   splitRight,
   toggleZoom,
 } from "@/lib/editor-split/commands";
+import { findLoneVisibleWorkspaceTab } from "@/pages/workspace/components/page/visibleTabs";
 
 type HotkeyEntry = {
   id: string;
@@ -151,10 +156,24 @@ export function useAppHotkeys() {
         );
         return;
       }
+      // 焦点在 AI 侧栏或全屏面板内：只收起 UI，不关 Tab / 分屏格 / 窗口，也不 stop 会话。
+      if (getFocusedAiPanelLayout(document.activeElement)) {
+        closeNotebookAiPanel();
+        return;
+      }
       // 已分屏时先关当前格；最后一格才走原来的关 Tab。
       if (closePaneOrTab() === "closed-pane") return;
       if (!isElectronRuntime() && effectiveSingleTabMode()) return;
       const activeId = activeTabIdRef.current;
+      const loneVisibleTab = findLoneVisibleWorkspaceTab(
+        openTabsRef.current,
+        (pageId) => usePages.getState().getPage(pageId),
+        useNotebooks.getState().activeNotebookId,
+      );
+      if (isElectronRuntime() && loneVisibleTab?.id === activeId) {
+        void getGooseDesktop()?.closeWindow?.();
+        return;
+      }
       if (activeId) {
         useTabs.getState().closeTab(activeId);
         return;
@@ -254,6 +273,20 @@ export function useAppHotkeys() {
           event.preventDefault();
           event.stopPropagation();
           window.dispatchEvent(new CustomEvent("goose-note:editor-find-open"));
+        },
+      },
+      // 页内替换：macOS 不用 Mod+H（会隐藏应用），与 VS Code 一样走 Mod+Alt+F。
+      {
+        id: "editor-find-replace-open",
+        match: (event) => matchShortcut(event, "Mod+Alt+F"),
+        handler: (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          window.dispatchEvent(
+            new CustomEvent("goose-note:editor-find-open", {
+              detail: { replace: true },
+            }),
+          );
         },
       },
       // cmd+g forward / cmd+shift+g backward — direction driven by shiftKey,

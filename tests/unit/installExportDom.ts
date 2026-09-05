@@ -2,7 +2,10 @@ import { parseHTML } from "linkedom";
 
 /** blocksToFullHTML / React headless 渲染需要 document。只给 Node 单测用。 */
 export function installExportDom() {
-  if (!(typeof document !== "undefined" && typeof document.createElement === "function")) {
+  if (
+    typeof window === "undefined" ||
+    !(typeof document !== "undefined" && typeof document.createElement === "function")
+  ) {
     const { window, document: doc } = parseHTML(
       "<!DOCTYPE html><html><body></body></html>",
     );

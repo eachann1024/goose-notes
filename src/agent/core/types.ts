@@ -38,7 +38,8 @@ export type AgentComposerToken =
       role?: AgentTokenRole;
     })
   | Extract<AiComposerToken, { type: "image" }>
-  | Extract<AiComposerToken, { type: "skill" }>;
+  | Extract<AiComposerToken, { type: "skill" }>
+  | Extract<AiComposerToken, { type: "selectionQuote" }>;
 
 export interface AgentInputContext {
   surface: AgentSurface;

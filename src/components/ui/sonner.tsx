@@ -16,7 +16,7 @@ const defaultToastClassNames = {
   //    toast（data-visible=false），强制不透明会让"幽灵 toast"留在屏幕上且点不动。
   // 3. 宽度由 goose-toast.css 控制：max-content + max-width，避免固定 356px。
   toast:
-    // uTools 旧内核不支持 hsl(var(--x)/alpha)，避免 bg-*/95、border-*/70 退化成实色
+    // Electron 旧内核不支持 hsl(var(--x)/alpha)，避免 bg-*/95、border-*/70 退化成实色
     "group goose-toast !bg-[rgba(255,255,255,0.95)] dark:!bg-[rgba(18,18,20,0.92)] !text-foreground !border !border-[rgba(15,23,42,0.12)] dark:!border-[rgba(255,255,255,0.14)] !shadow-[0_10px_26px_rgba(2,6,23,0.14)] dark:!shadow-[0_10px_28px_rgba(2,6,23,0.42)] backdrop-blur-md !rounded-xl !px-4 !py-2.5 !font-medium !text-sm !overflow-visible",
   title: "!text-foreground !opacity-100 !font-semibold",
   description: "!text-muted-foreground",

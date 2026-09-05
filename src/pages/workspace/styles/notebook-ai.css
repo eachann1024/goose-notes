@@ -32,7 +32,7 @@
  }
 }
 
-/* 全屏叠层：uTools 在 PageHeader 下方；Electron 主区已不含顶栏 */
+/* 全屏叠层：Electron 在 PageHeader 下方；Electron 主区已不含顶栏 */
 .notebook-ai-fullscreen-host {
  top: 3rem;
 }
@@ -281,7 +281,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  vertical-align: middle;
  appearance: none;
  -webkit-appearance: none;
- /* 字面量 rgba/hex：uTools 旧内核对 hsl(var(--x)/a) 支持差 */
+ /* 字面量 rgba/hex：Electron 旧内核对 hsl(var(--x)/a) 支持差 */
 }
 
 /* skill：青绿，叠在卡片白气泡上仍有边框与底色差 */
@@ -343,7 +343,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 /* ── Composer 图片 chip hover 预览浮层（body portal） ──
- * 不用 hsl(var(--x)/alpha)；阴影用 rgba，兼容 uTools 旧内核。
+ * 不用 hsl(var(--x)/alpha)；阴影用 rgba，兼容 Electron 旧内核。
  */
 .ai-composer-image-preview {
  position: fixed;
@@ -455,7 +455,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 /*
- * AI 消息内宽表格：旧 Chromium（uTools）上更稳的写法
+ * AI 消息内宽表格：旧 Chromium（Electron）上更稳的写法
  * - 单层滚动：wrapper 直接 overflow-x:auto（避免「外 hidden + 内 auto」在旧内核失效）
  * - 不用 grid/minmax/max-content（旧内核组合易把滚动容器撑破后被祖先裁切）
  * - table 用 width:auto + 单元格 nowrap 按内容撑开，触发横向滚动
@@ -469,7 +469,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  max-width: 100%;
  min-width: 0;
  box-sizing: border-box;
- /* 实色，避免 var(...)/alpha 在 uTools 旧内核退化 */
+ /* 实色，避免 var(...)/alpha 在 Electron 旧内核退化 */
  margin: 10px 0;
  padding: 0;
  border: 1px solid var(--goose-block-subtle-border, hsl(var(--border)));

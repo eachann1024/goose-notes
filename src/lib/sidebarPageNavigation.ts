@@ -28,7 +28,7 @@ export function openPageFromSidebar(
   mode: "preview" | "permanent",
   options?: { pin?: boolean },
 ) {
-  // Electron：文件夹不进主区。uTools 本地文件夹仍打开 FolderHomePage。
+  // Electron：文件夹不进主区。Electron 本地文件夹仍打开 FolderHomePage。
   if (isElectronLocalFolderDirectory(pageId)) return;
 
   // AI 全屏时主区域被会话盖住：侧栏点页面应退出 AI 并切到该标签

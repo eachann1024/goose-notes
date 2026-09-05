@@ -443,7 +443,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
           collapsed: false,
         },
         content,
-      } as PartialBlock,
+      } as unknown as PartialBlock,
       ...nestedChildren,
       ...restBlocks,
     ];

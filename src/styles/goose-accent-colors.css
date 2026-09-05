@@ -1,6 +1,6 @@
 /*
  * 产品强调色 preset。所有关键交互色均为静态 HSL 通道、hex 或 rgba，
- * 不依赖 oklch / color-mix / hsl(var(...)/alpha)，兼容 uTools 旧 Chromium。
+ * 不依赖 oklch / color-mix / hsl(var(...)/alpha)，兼容 Electron 旧 Chromium。
  * 无 data-goose-accent 时继续使用 index.css 的现有鸢尾 fallback。
  */
 
@@ -760,7 +760,7 @@
   color: inherit;
 }
 
-/* 强调色 radio 的状态使用扁平选择器，避免旧 uTools 内核忽略嵌套 hover。 */
+/* 强调色 radio 的状态使用扁平选择器，避免旧 Electron 内核忽略嵌套 hover。 */
 .goose-accent-option:hover {
   background: var(--goose-accent-option-light-surface) !important;
 }

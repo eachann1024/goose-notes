@@ -1,6 +1,6 @@
-import { UToolsAdapter } from "@/lib/utools";
+import { HostAdapter } from "@/lib/host/adapter";
 import { hostRuntime } from "@/lib/host";
-import { fs } from "@/lib/utools/fs";
+import { fs } from "@/lib/electron-platform/fs";
 import {
   currentLocalPagePath,
   pageDirectory,
@@ -16,7 +16,7 @@ import {
 export const MAX_VIDEO_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 export const ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE = 50 * 1024 * 1024;
 
-/** 视频附件上限：uTools 10MB，Electron 桌面端 50MB。 */
+/** 视频附件上限：Electron 10MB，Electron 桌面端 50MB。 */
 function getMaxVideoAttachmentSize(): number {
   return hostRuntime.kind === "electron"
     ? ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE
@@ -74,7 +74,7 @@ export const videoStorage = {
       );
     }
     const id = `${VIDEO_ID_PREFIX}${Date.now()}_${crypto.randomUUID().slice(0, 8)}.mp4`;
-    const result = await UToolsAdapter.db.postAttachment(
+    const result = await HostAdapter.db.postAttachment(
       id,
       new Uint8Array(await video.arrayBuffer()),
       VIDEO_OUTPUT_MIME,
@@ -97,11 +97,11 @@ export const videoStorage = {
   ): Promise<Blob | null> {
     if (ref.startsWith(VIDEO_ATTACHMENT_PREFIX)) {
       const id = attachmentId(ref);
-      const data = await UToolsAdapter.db.getAttachment(id);
+      const data = await HostAdapter.db.getAttachment(id);
       return data
         ? new Blob([data.slice()], {
             type:
-              (await UToolsAdapter.db.getAttachmentType(id)) || VIDEO_OUTPUT_MIME,
+              (await HostAdapter.db.getAttachmentType(id)) || VIDEO_OUTPUT_MIME,
           })
         : null;
     }

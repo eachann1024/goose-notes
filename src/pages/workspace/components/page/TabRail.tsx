@@ -110,7 +110,6 @@ interface SortableTabItemProps {
   tabCount: number;
   variant: TabRailVariant;
   isActive: boolean;
-  isDirty: boolean;
   hasLeftTabs: boolean;
   hasRightTabs: boolean;
   hasOtherTabs: boolean;
@@ -134,7 +133,6 @@ function SortableTabItem({
   tabCount,
   variant,
   isActive,
-  isDirty,
   hasLeftTabs,
   hasRightTabs,
   hasOtherTabs,
@@ -223,12 +221,6 @@ function SortableTabItem({
               className="h-3 w-3 shrink-0 text-primary"
             />
           )}
-          {isDirty && (
-            <span
-              aria-label="未保存"
-              className="h-2 w-2 shrink-0 rounded-full bg-[var(--goose-color-unsaved)]"
-            />
-          )}
           {editTitleInPill && tabPage ? (
             <SingleTabTitle
               key={`${tabPage.id}:${tabPage.localFilePath ?? ""}:${getPageTitle(tabPage)}`}
@@ -241,8 +233,6 @@ function SortableTabItem({
               className={cn(
                 "min-w-0 flex-1 truncate no-underline",
                 tab.preview && "italic text-muted-foreground",
-                isDirty && "font-medium",
-                isDirty && !tab.preview && "italic",
               )}
             >
               {title}
@@ -355,9 +345,6 @@ export function TabRail({
   const aiDoneToken = useAiStatus((state) => state.doneToken);
   const getPage = usePages((s) => s.getPage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
-  const dirtyLocalPageIds = usePages((state) => state.dirtyLocalPageIds);
-  const isTabDirty = (tabPageId: string) =>
-    Boolean(dirtyLocalPageIds?.[tabPageId]);
   const {
     openTabs,
     activeTabId,
@@ -595,7 +582,6 @@ export function TabRail({
               activeTabId === tab.id &&
               !(aiPanelOpen && isFullscreenAiLayout(aiLayoutMode))
             }
-            isDirty={isTabDirty(displayPageId)}
             hasLeftTabs={visibleIndex > 0}
             hasRightTabs={visibleIndex < visibleTabs.length - 1}
             hasOtherTabs={visibleTabs.length > 1}

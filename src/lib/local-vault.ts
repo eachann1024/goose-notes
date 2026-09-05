@@ -1,5 +1,5 @@
 import { toast } from "@/components/ui/sonner";
-import { dialogs } from "@/lib/utools/dialogs";
+import { dialogs } from "@/lib/electron-platform/dialogs";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 
@@ -17,25 +17,8 @@ const WELCOME_MARKDOWN = `# 欢迎使用鹅的笔记
 - 设置里可以配置文件管理器、外部编辑器等打开方式
 `;
 
-/** 选择新建仓库的父目录（uTools 优先走原生 showOpenDialog）。 */
+/** 选择新建仓库的父目录。 */
 export async function pickVaultParentDirectory(): Promise<string | null> {
-  const utools = (
-    window as {
-      utools?: {
-        showOpenDialog?: (options: {
-          title: string;
-          properties: string[];
-        }) => Promise<string[] | null>;
-      };
-    }
-  ).utools;
-  if (typeof utools?.showOpenDialog === "function") {
-    const result = await utools.showOpenDialog({
-      title: "选择仓库的父目录",
-      properties: ["openDirectory", "createDirectory"],
-    });
-    return result && result.length > 0 ? result[0] : null;
-  }
   try {
     return await dialogs.selectDirectory();
   } catch (error) {

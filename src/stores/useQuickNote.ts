@@ -4,7 +4,7 @@ import type { StateStorage } from "zustand/middleware";
 import {
   getDbStorageItem,
   setDbStorageItem,
-  uToolsStorage,
+  localStorageAdapter,
 } from "@/lib/storage";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
@@ -31,7 +31,7 @@ import { toast } from "@/components/ui/sonner";
 /**
  * 速记小窗状态（独立窗口进程内使用）。
  *
- * 小窗与主窗是两个独立的 WebView 进程，但共享同一份 uTools db。小窗是「草稿便签」：
+ * 小窗与主窗是两个独立的 WebView 进程，但共享同一份 Electron db。小窗是「草稿便签」：
  * 不直接对应一条真实笔记，编辑内容只落到草稿存储，不写进 pages、不进笔记列表 / 搜索。
  * 用户点左上角「保存到笔记本」才把当前槽位草稿整体 createPageRecord 入库，
  * 随后清空该槽位、回到空白便签。
@@ -104,7 +104,7 @@ export function recoverQuickNoteDrafts(draftsRaw: unknown): {
 }
 
 const quickNoteStorage: StateStorage = {
-  getItem: (name) => uToolsStorage.getItem(name),
+  getItem: (name) => localStorageAdapter.getItem(name),
   setItem: (name, value) => {
     const saved = setDbStorageItem(name, value);
     if (saved) {
@@ -134,7 +134,7 @@ const quickNoteStorage: StateStorage = {
       },
     });
   },
-  removeItem: (name) => uToolsStorage.removeItem(name),
+  removeItem: (name) => localStorageAdapter.removeItem(name),
 };
 
 export function createEmptyQuickNoteDrafts(): QuickNoteDrafts {
@@ -190,7 +190,7 @@ function normalizeSlotNames(raw: unknown): QuickNoteSlotNames {
 
 /**
  * 便签名称单独落库，避免改名时同步重写包含正文与 200 步撤销快照的速记主文档。
- * uTools 的数据库调用是同步的；主文档较大时，这种无关的整包写入会直接堵住旧渲染进程。
+ * Electron 的数据库调用是同步的；主文档较大时，这种无关的整包写入会直接堵住旧渲染进程。
  */
 const QUICKNOTE_SLOT_NAMES_STORAGE_KEY = "goose-note:quicknote-slot-names";
 

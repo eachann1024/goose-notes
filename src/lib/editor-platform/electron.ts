@@ -1,8 +1,7 @@
 /**
  * Electron 桌面端（仅本地模式）的 EditorPlatform 实现。
  *
- * fs / dialog 的目录选择复用 src/lib/utools/fs.ts、dialogs.ts —— 它们读
- * window.gooseFs，由 runtime.electron.ts 的 ensureGooseFs 在启动时注入。
+ * fs / dialog 通过 Electron preload 注入的 window.gooseFs 提供。
  * shell / clipboard / ai.customFetch 走 window.gooseDesktop。
  */
 import type {
@@ -17,8 +16,8 @@ import type {
   FileStat,
   FsWatchEvent,
 } from "@/components/editor/platform/types";
-import { fs as hostFs } from "@/lib/utools/fs";
-import { dialogs as hostDialogs } from "@/lib/utools/dialogs";
+import { fs as hostFs } from "@/lib/electron-platform/fs";
+import { dialogs as hostDialogs } from "@/lib/electron-platform/dialogs";
 import { imageStorage as appImageStorage } from "@/lib/imageStorage";
 import { resolveImageRefToUrl } from "@/lib/imageStorage/resolveUrl";
 import { getGooseDesktop } from "@/lib/electron/runtime";

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * 视口"紧凑"状态：当窗口高度低于阈值（典型 utools 吸附/subInput 模式）
+ * 视口"紧凑"状态：当窗口高度低于阈值时启用紧凑布局。
  * 时返回 true。用于在小高度下切换 AI 页面 composer 的固定底部布局，
  * 避免布局被吞掉。
  */

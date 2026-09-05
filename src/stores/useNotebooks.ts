@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { uToolsStorage } from "@/lib/storage";
+import { localStorageAdapter } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
-import { fs } from "@/lib/utools/fs";
+import { fs } from "@/lib/electron-platform/fs";
 import { persistPageSnapshots } from "./pages/persistence";
 import { useSettings } from "./useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
@@ -296,7 +296,7 @@ export const useNotebooks = create<NotebooksState>()(
       deleteNotebook: (id) => {
         const state = get();
         const notebookCount = Object.keys(state.notebooks).length;
-        // 桌面端允许移除最后一个文件夹（回到空态）；uTools 至少保留一本。
+        // 桌面端允许移除最后一个文件夹（回到空态）；Electron 至少保留一本。
         if (!isElectronHost && notebookCount <= 1) return;
         const deletedNotebook = state.notebooks[id];
 
@@ -488,7 +488,7 @@ export const useNotebooks = create<NotebooksState>()(
     {
       name: "goose-note-notebooks",
       version: 4,
-      storage: createJSONStorage(() => uToolsStorage),
+      storage: createJSONStorage(() => localStorageAdapter),
       partialize: (state) => ({
         notebooks: state.notebooks,
         activeNotebookId: state.activeNotebookId,

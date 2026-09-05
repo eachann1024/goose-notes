@@ -97,7 +97,7 @@ export const permanentlyDeletePageAction = async (
   }
 
   const targetPage = get().pages[id];
-  // 清理历史快照：内部页存于 uTools dbStorage（gn:hist: 前缀），永久删除后
+  // 清理历史快照：内部页存于 Electron dbStorage（gn:hist: 前缀），永久删除后
   // 若不清理会成为孤儿数据。在 store 记录删除前调用。
   if (targetPage) {
     void resolveHistoryBackend(id).dropAll(id);

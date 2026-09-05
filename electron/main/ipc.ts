@@ -38,11 +38,11 @@ import {
 } from "./tabDock";
 import {
   broadcast,
+  closeQuicknote,
   closeWorkspaceWindow,
   createWorkspaceWindow,
   getMainWindow,
   hasVisibleWindow,
-  hideQuicknote,
   lookupWindowContext,
   onWindowVisibilityChange,
   setMainWindowTitleBarHeight,
@@ -632,8 +632,8 @@ export function registerIpcHandlers(): void {
     await toggleQuicknoteWindow();
   });
 
-  ipcMain.handle("desktop:hideQuicknote", async () => {
-    hideQuicknote();
+  ipcMain.handle("desktop:closeQuicknote", async () => {
+    closeQuicknote();
   });
 
   ipcMain.handle(

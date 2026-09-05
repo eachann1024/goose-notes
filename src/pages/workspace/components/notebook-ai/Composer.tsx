@@ -59,7 +59,7 @@ import {
 
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
-/** 草稿走 zustand persist → uTools 同步写盘，必须防抖（含整行删除后的清空） */
+/** 草稿走 zustand persist → Electron 同步写盘，必须防抖（含整行删除后的清空） */
 const COMPOSER_DRAFT_PERSIST_MS = 500;
 const SUPPORTED_IMAGE_MEDIA_TYPES = new Set([
   "image/png",
@@ -222,7 +222,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
 
     const handleContentChange = useCallback(
       (content: JSONContent | null) => {
-        // 防抖写 uTools：英文快打也会打到同步 dbStorage；拼音中间态已在 input 层跳过
+        // 防抖写 Electron：英文快打也会打到同步 dbStorage；拼音中间态已在 input 层跳过
         const seq = ++draftSeqRef.current;
         if (draftTimerRef.current != null) {
           clearTimeout(draftTimerRef.current);

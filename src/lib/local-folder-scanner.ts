@@ -69,7 +69,7 @@ interface LocalFolderEntry {
 const SCAN_CPU_SLICE_MS = 8;
 
 /**
- * Markdown 解析发生在渲染线程。批量扫描时定期让出一帧，避免旧版 uTools
+ * Markdown 解析发生在渲染线程。批量扫描时定期让出一帧，避免旧版 Electron
  * Chromium 因连续长任务把窗口判定为无响应。Node 单测环境回落到 setTimeout。
  */
 function yieldToRenderer(): Promise<void> {

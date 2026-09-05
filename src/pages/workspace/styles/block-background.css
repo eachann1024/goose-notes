@@ -2,9 +2,9 @@
  * 常规笔记本的语义颜色令牌。
  *
  * BlockNote 默认深色方案把同色文字与同色背景放在相近明度，叠加后对比不足。
- * 这里保留 gray / blue / red 等文档语义，只在常规笔记本与原生编辑器的
+ * 这里保留 gray / blue / red 等文档语义，只在常规笔记本的
  * 深色渲染层拆成「高明度文字 + 低明度表面」。速记小窗不在覆盖范围内。
- * 使用 hex 实色，兼容 uTools 旧内核，也方便颜色面板复用同一套预览。
+ * 使用 hex 实色，确保颜色面板复用同一套预览。
  */
 :root {
   --goose-editor-highlight-gray-text: #9b9a97;
@@ -49,8 +49,7 @@
 }
 
 /* 提高到 BlockNote 深色主题规则之上；只映射颜色，不改变已保存的文档数据。 */
-.dark .workspace-shell .bn-root[data-color-scheme="dark"],
-.dark .native-editor-root .bn-root[data-color-scheme="dark"] {
+.dark .workspace-shell .bn-root[data-color-scheme="dark"] {
   --bn-colors-highlights-gray-text: var(--goose-editor-highlight-gray-text);
   --bn-colors-highlights-gray-background: var(--goose-editor-highlight-gray-bg);
   --bn-colors-highlights-brown-text: var(--goose-editor-highlight-brown-text);
@@ -90,7 +89,7 @@
 /* 左右各向编辑器现有留白借 6px，再用等量 padding 把内容放回原基线：
    - 背景比原内容区宽 12px；
    - 文字起点和实际可输入宽度不变；
-   - 显式使用物理方向属性，兼容 uTools 旧内核。 */
+   - 显式使用物理方向属性，确保跨平台布局一致。 */
 .bn-block-content[data-background-color] {
   box-sizing: border-box;
   width: calc(100% + 12px);

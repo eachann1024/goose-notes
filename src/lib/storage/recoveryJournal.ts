@@ -1,10 +1,10 @@
 import type { JSONContent } from "@/types";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
-import { UToolsAdapter } from "@/lib/utools";
+import { HostAdapter } from "@/lib/host/adapter";
 import {
   getDbStorageItem,
   removeDbStorageItem,
-} from "./utoolsDbStorage";
+} from "./localDbStorage";
 
 export type RecoverySource = "internal-page" | "local-file" | "quicknote";
 
@@ -57,10 +57,10 @@ const putDocWithCas = (
 ): RecoveryJournalDoc | null => {
   const idForDb = docId(source, id);
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const currentDoc = UToolsAdapter.db.get<RecoveryJournalDoc>(idForDb);
+    const currentDoc = HostAdapter.db.get<RecoveryJournalDoc>(idForDb);
     const next = build(currentDoc?.data ?? null);
     if (!next) return null;
-    const result = UToolsAdapter.db.put(idForDb, next, currentDoc?._rev);
+    const result = HostAdapter.db.put(idForDb, next, currentDoc?._rev);
     if (result.ok !== false) return next;
   }
   console.error("[recovery-journal] CAS put failed", source, id);
@@ -72,7 +72,7 @@ const migrateLegacyEntries = (): RecoveryJournalEntry[] => {
   if (legacyEntries.length === 0) return [];
   let allMigrated = true;
   for (const legacy of legacyEntries) {
-    const existing = UToolsAdapter.db.get<RecoveryJournalDoc>(
+    const existing = HostAdapter.db.get<RecoveryJournalDoc>(
       docId(legacy.source, legacy.id),
     )?.data?.entry;
     if (existing && existing.revision >= legacy.revision) continue;
@@ -90,7 +90,7 @@ export const listRecoveryEntries = (
   source?: RecoverySource,
 ): RecoveryJournalEntry[] => {
   migrateLegacyEntries();
-  return UToolsAdapter.db
+  return HostAdapter.db
     .allDocs<RecoveryJournalDoc>(RECOVERY_JOURNAL_DOC_PREFIX)
     .flatMap((doc) => (doc.data.entry ? [doc.data.entry] : []))
     .filter((entry) => !source || entry.source === source);
@@ -100,11 +100,11 @@ export const getRecoveryEntry = (
   source: RecoverySource,
   id: string,
 ): RecoveryJournalEntry | null => {
-  const current = UToolsAdapter.db.get<RecoveryJournalDoc>(docId(source, id));
+  const current = HostAdapter.db.get<RecoveryJournalDoc>(docId(source, id));
   if (current?.data.entry) return current.data.entry;
   migrateLegacyEntries();
   return (
-    UToolsAdapter.db.get<RecoveryJournalDoc>(docId(source, id))?.data.entry ?? null
+    HostAdapter.db.get<RecoveryJournalDoc>(docId(source, id))?.data.entry ?? null
   );
 };
 
@@ -190,9 +190,9 @@ export const moveRecoveryEntry = (
 };
 
 export const clearRecoveryJournalForTests = (): void => {
-  UToolsAdapter.db
+  HostAdapter.db
     .allDocs(RECOVERY_JOURNAL_DOC_PREFIX)
-    .forEach((doc) => UToolsAdapter.db.remove(doc._id));
+    .forEach((doc) => HostAdapter.db.remove(doc._id));
   removeDbStorageItem(RECOVERY_JOURNAL_STORAGE_KEY);
 };
 

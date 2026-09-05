@@ -147,7 +147,7 @@ test("撕离窗出现在指针下方，沿用源窗尺寸", () => {
   });
 });
 
-test("仅 Electron 顶栏允许单标签拖去拼接；uTools 仍要两个标签才可拖", () => {
+test("只有一项时禁止拖动标签，至少两项才可拖", () => {
   expect(
     canDragTabBetweenWindows({
       isElectron: true,
@@ -160,7 +160,7 @@ test("仅 Electron 顶栏允许单标签拖去拼接；uTools 仍要两个标签
       variant: "electron-titlebar",
       tabCount: 1,
     }),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     tabDragEnabled({
       isElectron: false,
@@ -168,6 +168,13 @@ test("仅 Electron 顶栏允许单标签拖去拼接；uTools 仍要两个标签
       tabCount: 1,
     }),
   ).toBe(false);
+  expect(
+    tabDragEnabled({
+      isElectron: true,
+      variant: "electron-titlebar",
+      tabCount: 2,
+    }),
+  ).toBe(true);
   expect(
     tabDragEnabled({
       isElectron: false,

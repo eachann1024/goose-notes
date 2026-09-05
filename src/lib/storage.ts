@@ -1,9 +1,9 @@
 export {
-  flushUToolsStorageWrites,
+  flushLocalStorageWrites,
   getDbStorageItem,
   readDbStorageJSON,
   removeDbStorageItem,
   setDbStorageItem,
-  uToolsStorage,
+  localStorageAdapter,
   writeDbStorageJSON,
-} from "./storage/utoolsDbStorage";
+} from "./storage/localDbStorage";

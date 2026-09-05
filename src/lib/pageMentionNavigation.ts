@@ -11,7 +11,7 @@ export type PageMentionNavigationResult =
     };
 
 function isJumpablePage(page: Page | undefined): page is Page {
-  return Boolean(page) && !page.trashedAt && !page.isFolder;
+  return page !== undefined && !page.trashedAt && !page.isFolder;
 }
 
 function pageWikiKeys(page: Page): string[] {

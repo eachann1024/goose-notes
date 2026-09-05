@@ -129,7 +129,7 @@ function decodeMarker(encoded: string, isCurrent: boolean): PersistedBlockProps 
   }
 }
 
-/** native-editor 的 lossless 比较将可恢复的旧命名空间归一为 v1 标记。 */
+/** editor 的 lossless 比较将可恢复的旧命名空间归一为 v1 标记。 */
 export function canonicalizeBlockPropsMarkers(markdown: string): string {
   return markdown.replace(
     /<!--[ \t]*goose-note:(native-)?block-props=([^\s]+)[ \t]*-->/gi,
@@ -363,7 +363,7 @@ export function encodeBlockPropsMarkers(blocks: BlockNoteContent): BlockNoteCont
   }) as BlockNoteContent;
 }
 
-/** 恢复当前标记及 native-editor 旧标记；损坏内容保持原样，保证正文仍可打开。 */
+/** 恢复当前标记及 editor 旧标记；损坏内容保持原样，保证正文仍可打开。 */
 export function restoreBlockPropsMarkers(blocks: BlockNoteContent): BlockNoteContent {
   return (blocks as MarkdownBlock[]).map((block) => {
     const children = Array.isArray(block.children)

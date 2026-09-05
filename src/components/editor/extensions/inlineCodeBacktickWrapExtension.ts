@@ -9,7 +9,7 @@ import type { EditorView } from "@tiptap/pm/view";
  * 选中非空文本后按 `` ` ``：切换行内 code mark（Notion 风格），不插入反引号字符。
  *
  * 与 headingMarkSuppress 一样走 ProseMirror handleKeyDown（视图级，优先于 keymap），
- * 确保在旧 uTools WebView 上也能吞掉按键。
+ * 确保在旧 Electron WebView 上也能吞掉按键。
  *
  * 不处理空选区：空选区仍走默认输入 / markdown input rule（`` `text` ``）。
  */

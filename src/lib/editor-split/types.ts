@@ -1,16 +1,13 @@
 /**
- * Tab 内 Ghostty 式纸缝分屏。侧栏 / AI 面板不进这棵树。
+ * Tab 内并排卡片分屏。侧栏 / AI 面板不进这棵树。
  *
- * - `horizontal`：左右并排（Cmd+D，新格在右）
+ * - `horizontal`：左右并排（Cmd+D，新格在右，左叶 pageId 不变）
  * - `vertical`：上下叠放（Cmd+Shift+D，新格在下）
  */
 
 export const MAX_SPLIT_LEAVES = 4;
 
-/** 编辑列窄于此宽度时，向右分改成向下分。 */
-export const NARROW_EDITOR_WIDTH_PX = 720;
-
-/** 分屏前量宽度用的编辑列标记。 */
+/** 分屏列标记（量宽 / 样式钩子）。 */
 export const EDITOR_SPLIT_COLUMN_ATTR = "data-editor-split-column";
 
 export type SplitGroupOrientation = "horizontal" | "vertical";
@@ -57,7 +54,6 @@ export type SplitLeafSuccess = {
   ok: true;
   state: SplitState;
   newLeafId: string;
-  didFallbackToDown: boolean;
 };
 
 export type SplitLeafFailure = {
@@ -76,13 +72,11 @@ export type SplitFocusedInput = {
   tabId: string;
   direction: SplitDirection;
   newPageId: string;
-  editorWidthPx?: number;
 };
 
 export type SplitFocusedResult =
   | {
       ok: true;
-      didFallbackToDown: boolean;
       newLeafId: string;
       newPageId: string;
     }

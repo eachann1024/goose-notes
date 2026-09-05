@@ -1,14 +1,13 @@
 /**
- * EditorHostBridge —— 宿主（uTools app）把应用 store 桥接成编辑器内核所需的注入对象。
+ * EditorHostBridge —— 宿主（Electron app）把应用 store 桥接成编辑器内核所需的注入对象。
  *
  * 编辑器内核（@/components/editor）不直接读 usePages/useNotebooks/useSettings/useTabs，
- * 也不直接碰平台 API；本桥读取这些 store 与 uTools 平台实现，组装成 EditorSettings /
+ * 也不直接碰平台 API；本桥读取这些 store 与 Electron 平台实现，组装成 EditorSettings /
  * EditorPageContext，经 <EditorPlatformProvider> + <EditorHostProvider> 注入，再渲染
  * 传入的 <Editor>（children）。
  *
  * 行为保持不变：注入对象的各字段/回调一一对应抽取前 Editor.tsx 内的 store 直读逻辑。
  *
- * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §3 / §4 Step 6
  */
 import { useMemo, type ReactNode } from "react";
 import type { Page } from "@/types";
@@ -39,7 +38,7 @@ import {
   resolveAiReferenceContexts,
 } from "@/components/editor/ai/composer/referenceLookup";
 import { editorPlatform } from "@/lib/editor-platform/resolve";
-import { UToolsAdapter } from "@/lib/utools";
+import { HostAdapter } from "@/lib/host/adapter";
 import { fileStorage } from "@/lib/fileStorage";
 import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
 import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
@@ -78,7 +77,6 @@ export function EditorHostBridge({
   const setDefaultCodeBlockWrap = useSettings((s) => s.setDefaultCodeBlockWrap);
   const ai = useSettings((s) => s.ai);
   const searchProviders = useSettings((s) => s.searchProviders);
-  const utools = useSettings((s) => s.utools);
   const customActions = useSettings((s) => s.customActions);
   const singleTabModeSetting = useSettings((s) => s.singleTabMode);
   const openTabs = useTabs((s) => s.openTabs);
@@ -102,24 +100,17 @@ export function EditorHostBridge({
       ai,
       searchProviders,
       customActions,
-      openLinksInHost:
-        __HOST_TARGET__ === "electron" ? false : utools.openSearchInUtools,
-      useInternalImageViewer: utools.useInternalImageViewer,
+      openLinksInHost: false,
+      useInternalImageViewer: false,
       features: {
         tablePresentationControls: true,
         mermaidUnsafeHTML: true,
         // Electron 无 FFmpeg：视频原文件保存，slash 文案走「保存为相对资源」。
-        transcodeVideoUploads: __HOST_TARGET__ !== "electron",
+        transcodeVideoUploads: false,
         openAttachmentsExternally: true,
         localFolderNotebook: notebook?.source === "local-folder",
       },
-      // Electron 无 uTools redirect 生态：不传 redirectAction，右键「快捷动作」整块不渲染。
-      redirectAction:
-        __HOST_TARGET__ === "electron"
-          ? undefined
-          : (label, payload) => {
-              UToolsAdapter.redirect(label as string | [string, string], payload);
-            },
+      redirectAction: undefined,
     };
     },
     [
@@ -130,7 +121,6 @@ export function EditorHostBridge({
       setDefaultCodeBlockWrap,
       ai,
       searchProviders,
-      utools,
       customActions,
       page.workspaceId,
     ],

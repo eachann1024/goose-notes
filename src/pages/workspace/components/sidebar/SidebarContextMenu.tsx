@@ -10,7 +10,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
-import { shell } from "@/lib/utools/shell";
+import { shell } from "@/lib/electron-platform/shell";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";

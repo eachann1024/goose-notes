@@ -1,6 +1,6 @@
-import { UToolsAdapter } from "@/lib/utools";
+import { HostAdapter } from "@/lib/host/adapter";
 import { hostRuntime } from "@/lib/host";
-import { fs } from "@/lib/utools/fs";
+import { fs } from "@/lib/electron-platform/fs";
 import {
   currentLocalNotebookRoot,
   currentLocalPagePath,
@@ -17,7 +17,7 @@ import type { FileAttachmentAttrs } from "@/types";
 export const MAX_FILE_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 export const ELECTRON_MAX_FILE_ATTACHMENT_SIZE = 50 * 1024 * 1024;
 
-/** 附件上限：uTools 10MB，Electron 桌面端 50MB。 */
+/** 附件上限：Electron 10MB，Electron 桌面端 50MB。 */
 export function getMaxFileAttachmentSize(): number {
   return hostRuntime.kind === "electron" ? ELECTRON_MAX_FILE_ATTACHMENT_SIZE : MAX_FILE_ATTACHMENT_SIZE;
 }
@@ -142,7 +142,7 @@ export const fileStorage = {
 
     const attachmentId = `${FILE_ID_PREFIX}${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
     const buffer = new Uint8Array(await file.arrayBuffer());
-    const result = await UToolsAdapter.db.postAttachment(attachmentId, buffer, mimeType);
+    const result = await HostAdapter.db.postAttachment(attachmentId, buffer, mimeType);
 
     if (!result || result.ok === false) {
       const detail = typeof result?.error === "string" ? result.error : "";
@@ -171,11 +171,11 @@ export const fileStorage = {
   ): Promise<Blob | null> {
     if (storageRef.startsWith(FILE_ATTACHMENT_PREFIX)) {
       const attachmentId = getAttachmentId(storageRef);
-      const data = await UToolsAdapter.db.getAttachment(attachmentId);
+      const data = await HostAdapter.db.getAttachment(attachmentId);
       if (!data) return null;
 
       const mimeType =
-        (await UToolsAdapter.db.getAttachmentType(attachmentId)) || DEFAULT_MIME_TYPE;
+        (await HostAdapter.db.getAttachmentType(attachmentId)) || DEFAULT_MIME_TYPE;
       return new Blob([data.slice()], {
         type: mimeType,
       });
@@ -214,7 +214,7 @@ export const fileStorage = {
   ): Promise<void> {
     if (storageRef.startsWith(FILE_ATTACHMENT_PREFIX)) {
       const attachmentId = getAttachmentId(storageRef);
-      UToolsAdapter.db.remove(attachmentId);
+      HostAdapter.db.remove(attachmentId);
       return;
     }
 

@@ -18,7 +18,6 @@ export type {
 
 export {
   MAX_SPLIT_LEAVES,
-  NARROW_EDITOR_WIDTH_PX,
   EDITOR_SPLIT_COLUMN_ATTR,
 } from "./types";
 
@@ -45,7 +44,6 @@ export { createSplitBlankPage } from "./createBlankPage";
 export {
   closePaneOrTab,
   focusNeighbor,
-  measureEditorColumnWidth,
   splitDown,
   splitRight,
   tryShowPageInFocusedSplit,

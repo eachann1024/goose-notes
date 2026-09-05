@@ -38,8 +38,7 @@ export interface HostHotkeyRegisterResult {
 }
 
 export interface HostRuntime {
-  kind: "utools" | "electron";
-  isUTools: boolean;
+  kind: "electron";
   supportsSublist: boolean;
   supportsWakeHotkey: boolean;
   ensureGooseFs?: () => Promise<void>;
@@ -53,7 +52,7 @@ export interface HostRuntime {
     get: <T>(id: string) => HostDoc<T> | null;
     remove: (id: string) => HostRemoveResult;
     allDocs: <T>(prefix?: string) => Array<HostDoc<T>>;
-    // 附件三方法允许异步：uTools 同步返回，Electron 走磁盘返回 Promise。
+    // Electron 附件存储走磁盘，接口为异步兼容。
     postAttachment: (
       id: string,
       data: Uint8Array,

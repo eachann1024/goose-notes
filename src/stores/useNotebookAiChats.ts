@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { prepareNotebookAiMessagesForPersistence } from "@/lib/notebook-ai/messageUtils";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
-import { uToolsStorage } from "@/lib/storage";
+import { localStorageAdapter } from "@/lib/storage";
 import type { JSONContent } from "@/types";
 
 /** 每个会话最多保留的消息条数 */
@@ -625,7 +625,7 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
     {
       name: "goose-note-notebook-ai-chats",
       version: NOTEBOOK_AI_CHATS_STORAGE_VERSION,
-      storage: createJSONStorage(() => uToolsStorage),
+      storage: createJSONStorage(() => localStorageAdapter),
       skipHydration: true,
       migrate: (persistedState: unknown) =>
         migrateNotebookAiChatsState(persistedState),

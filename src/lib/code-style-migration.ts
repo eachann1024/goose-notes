@@ -1,4 +1,4 @@
-import { uToolsStorage } from "@/lib/storage";
+import { localStorageAdapter } from "@/lib/storage";
 import type { CodeStyle } from "@/stores/useSettings";
 
 const SETTINGS_STORAGE_KEY = "goose-note-settings";
@@ -28,7 +28,7 @@ interface PersistedSettingsState {
 
 function hasMigrationMark(): boolean {
   try {
-    return uToolsStorage.getItem(MIGRATION_MARK_KEY) === "1";
+    return localStorageAdapter.getItem(MIGRATION_MARK_KEY) === "1";
   } catch {
     return false;
   }
@@ -36,7 +36,7 @@ function hasMigrationMark(): boolean {
 
 function writeMigrationMark(): void {
   try {
-    uToolsStorage.setItem(MIGRATION_MARK_KEY, "1");
+    localStorageAdapter.setItem(MIGRATION_MARK_KEY, "1");
   } catch {
     // Ignore write failures and keep migration logic idempotent.
   }
@@ -65,7 +65,7 @@ export async function runCodeStyleMigration2026(): Promise<void> {
 
   try {
     const raw = await Promise.resolve(
-      uToolsStorage.getItem(SETTINGS_STORAGE_KEY),
+      localStorageAdapter.getItem(SETTINGS_STORAGE_KEY),
     );
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedSettingsState;
@@ -75,7 +75,7 @@ export async function runCodeStyleMigration2026(): Promise<void> {
       if (parsed?.state && before !== after) {
         parsed.state.codeStyle = after;
         await Promise.resolve(
-          uToolsStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(parsed)),
+          localStorageAdapter.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(parsed)),
         );
       }
     }

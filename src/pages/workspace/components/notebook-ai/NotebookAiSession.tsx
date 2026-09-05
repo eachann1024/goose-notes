@@ -59,7 +59,7 @@ import {
   generateConversationCompactSummary,
 } from "@/lib/notebook-ai/compactConversation";
 
-/** 流式响应持续无任何消息更新时自动收尾，避免旧 uTools 内核永久占用会话。 */
+/** 流式响应持续无任何消息更新时自动收尾，避免旧 Electron 内核永久占用会话。 */
 const NOTEBOOK_AI_STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 export const NOTEBOOK_AI_PLACEHOLDER_HINTS = [
@@ -229,7 +229,7 @@ export function NotebookAiSessionProvider({
       const cleanedMessages = ensureNotebookAiMessageCreatedAt(
         sanitizeNotebookAiMessages(finishedMessages),
       );
-      // 先把 UI 状态对齐；uTools 同步落盘挪到空闲时段，避免和输入框 BorderBeam
+      // 先把 UI 状态对齐；Electron 同步落盘挪到空闲时段，避免和输入框 BorderBeam
       // 抢主线程（长会话序列化 + 写盘时常见约 1s 掉帧）。
       queueMicrotask(() => setMessages(cleanedMessages));
       const persist = () => {

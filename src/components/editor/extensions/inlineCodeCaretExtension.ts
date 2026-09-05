@@ -49,7 +49,7 @@ function segmentGraphemes(text: string): string[] {
   ).Segmenter;
 
   if (!Segmenter) {
-    // 旧版 uTools Chromium 没有 Intl.Segmenter 时，至少正确处理代理对。
+    // 旧版 Electron Chromium 没有 Intl.Segmenter 时，至少正确处理代理对。
     return Array.from(text);
   }
   const values: string[] = [];

@@ -49,7 +49,7 @@
   zoom: 1;
 }
 
-/* 可交互触发器不使用 CSS zoom。uTools 旧内核会把 zoom 祖先的
+/* 可交互触发器不使用 CSS zoom。Electron 旧内核会把 zoom 祖先的
    getBoundingClientRect 再次放大，导致 Portal 面板与 tooltip 飘到右下方。
    改用真实布局尺寸，使定位与绘制共用 viewport 坐标系。 */
 .goose-editor-tooltip-surface {
@@ -120,7 +120,7 @@
 }
 
 /* 块把手挂在 fixed 外壳上，用 translate(-50%) 对齐行中线。
-   CSS zoom 在 uTools 旧内核里往往只缩小绘制、不缩小定位盒，
+   CSS zoom 在 Electron 旧内核里往往只缩小绘制、不缩小定位盒，
    缩小后视觉中心会偏上。这里关掉 zoom，改用真实布局尺寸。 */
 .bn-side-menu > .goose-editor-inline-context-ui {
   zoom: 1;

@@ -24,36 +24,13 @@ import { usePages } from "../../src/stores/usePages";
 import { useSettings } from "../../src/stores/useSettings";
 import { useSidebarView } from "../../src/stores/useSidebarView";
 import type { Page } from "../../src/types";
+import { installElectronLocalStorageRuntime } from "./electronLocalStorageRuntime";
 
 const NOTEBOOK_ID = "vault-notebook";
 const FILE_ID = "local-file-note";
 
 function installDbRuntime() {
-  let rev = 0;
-  const docs = new Map<string, { _id: string; _rev: string; data: unknown }>();
-  (globalThis as any).window = {
-    utools: {
-      db: {
-        get: (id: string) => docs.get(id) ?? null,
-        put: (doc: { _id: string; _rev?: string; data: unknown }) => {
-          const current = docs.get(doc._id);
-          if (current && doc._rev !== current._rev) {
-            return { ok: false, error: "conflict" };
-          }
-          const stored = { ...doc, _rev: `rev-${++rev}` };
-          docs.set(doc._id, stored);
-          return { ok: true, id: doc._id, rev: stored._rev };
-        },
-        remove: (id: string) => {
-          docs.delete(id);
-          return { ok: true, id };
-        },
-        allDocs: (prefix = "") =>
-          Array.from(docs.values()).filter((doc) => doc._id.startsWith(prefix)),
-      },
-    },
-  };
-  return { docs };
+  return installElectronLocalStorageRuntime();
 }
 
 function localFilePage(overrides: Partial<Page> = {}): Page {
@@ -95,7 +72,7 @@ test("侧栏文件图标固定 16px，避免 Lucide 默认 24 撑大收藏行", 
   expect(iconSource).toMatch(/SelectedIcon[\s\S]*?size=\{16\}/);
 });
 
-test("uTools 图标选择器用扁平 :hover，避免旧内核吃不到 Tailwind 嵌套 hover", () => {
+test("Electron 图标选择器用扁平 :hover，避免旧内核吃不到 Tailwind 嵌套 hover", () => {
   const selector = readFileSync(
     resolve("src/pages/workspace/components/shared/IconSelector.tsx"),
     "utf8",
@@ -377,9 +354,9 @@ test("createLocalPageRecord 在 randomIconOnCreate 开启时写入随机图标",
   const created = usePages.getState().pages[pageId!];
   expect(created?.icon).toBeTruthy();
   expect(
-  (globalThis as any).window.utools.db.get(
-      `${LOCAL_PAGE_META_DOC_PREFIX}${pageId}`,
-    )?.data?.icon,
+    JSON.parse(
+      (globalThis as any).window.localStorage.getItem("goose-note:web-db") ?? "{}",
+    )[`${LOCAL_PAGE_META_DOC_PREFIX}${pageId}`]?.data?.icon,
   ).toBe(created?.icon);
 });
 

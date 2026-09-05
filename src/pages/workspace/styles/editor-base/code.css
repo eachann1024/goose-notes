@@ -231,6 +231,7 @@
   --goose-code-font-size: 0.85em;
   --goose-code-line-box: calc(var(--goose-code-font-size) * 1.7);
   position: relative;
+  overflow: hidden;
   padding-top: var(--editor-code-toolbar-row-height, 36px);
 }
 
@@ -278,9 +279,11 @@
   line-height: inherit;
 }
 
-/* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。 */
+/* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。
+ * 限定到当前代码块的直接内容层；wrapper 自身负责裁切，避免高亮条越出代码块。 */
 .bn-block-outer[data-goose-code-active-line]
-  .goose-code-content-wrapper::before {
+  .goose-code-block-node
+  > .goose-code-content-wrapper::before {
   content: "";
   position: absolute;
   left: 0;

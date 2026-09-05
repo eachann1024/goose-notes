@@ -212,7 +212,7 @@ export function repairExecuteBatchPlanInput(input: string): string | null {
  * 工具 execute 先冻结计划：全部为 create 时 prepare 成功后立即执行；
  * 含 edit/search_replace/delete 时只返回 prepared 审批卡，真正写入由用户批准后触发。
  *
- * 不使用 AI SDK 的 needsApproval：旧 uTools Chromium 在大工具参数结束后偶发无法
+ * 不使用 AI SDK 的 needsApproval：旧 Electron Chromium 在大工具参数结束后偶发无法
  * 收到 approval-request，导致模型已完成但 UI 永久停在 streaming。应用本来就有
  * 独立的本地审批执行器，因此直接返回 prepared / completed 状态更简单也更可靠。
  */

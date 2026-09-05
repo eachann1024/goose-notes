@@ -72,7 +72,7 @@ export const createGooseHeadingBlockSpec = createBlockSpec(
     runsBefore: ["toggleListItem"],
     render(block) {
       const dom = document.createElement(`h${block.props.level}`);
-      if (block.props.collapsed === true || block.props.collapsed === "true") {
+      if (block.props.collapsed === true) {
         dom.setAttribute("data-collapsed", "true");
       }
       return { dom, contentDOM: dom };

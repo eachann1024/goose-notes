@@ -1,6 +1,6 @@
 ---
 name: 鹅的笔记
-description: uTools 本地化笔记应用，BlockNote 驱动，Notion 风格
+description: Electron 本地化笔记应用，BlockNote 驱动，Notion 风格
 
 colors:
   shell-bg: "#f7f7f7"
@@ -280,4 +280,4 @@ components:
 - **Don't** 在按钮或 UI chrome 上使用 Notion Blue (#2383e2)。它是编辑器选择的专属颜色。
 - **Don't** 使用纯黑 (#000000) 或纯白 (#ffffff) 作为任何元素的颜色。即使前景色接近黑，也使用带暖 tint 的 Ink (#1e1e1e)。
 - **Don't** 做 Notion 全功能克隆的视觉风格。学习 Notion 的克制和留白，但不复制它的具体色彩值和组件形状。
-- **Don't** 做 Web-first SaaS 布局。这是 uTools 插件，界面应感觉像原生桌面应用的一部分。
+- **Don't** 做 Web-first SaaS 布局。这是 Electron 插件，界面应感觉像原生桌面应用的一部分。

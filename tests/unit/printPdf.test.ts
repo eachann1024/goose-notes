@@ -13,7 +13,7 @@ test.beforeEach(() => {
   installExportDom();
 });
 
-test("浏览器环境没有 utools 打印 API 时不走 printToPDF", () => {
+test("浏览器环境没有 electron 打印 API 时不走 printToPDF", () => {
   const originalWindow = (globalThis as { window?: unknown }).window;
   Object.defineProperty(globalThis, "window", {
     configurable: true,

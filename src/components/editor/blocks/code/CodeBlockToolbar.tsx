@@ -80,7 +80,6 @@ export function CodeBlockToolbar({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const highlightedItemRef = useRef<HTMLDivElement | null>(null);
   const languageListId = useId();
   const { format, isLoading } = useFormatCode();
   const platform = useEditorPlatform();
@@ -219,8 +218,10 @@ export function CodeBlockToolbar({
 
   useLayoutEffect(() => {
     if (!isOpen) return;
-    highlightedItemRef.current?.scrollIntoView({ block: "nearest" });
-  }, [isOpen, safeHighlightedIndex]);
+    document
+      .getElementById(`${languageListId}-opt-${safeHighlightedIndex}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [isOpen, languageListId, safeHighlightedIndex]);
 
   const canFormat = FORMAT_SUPPORTED_LANGUAGES.includes(
     (language || "").toLowerCase(),
@@ -283,9 +284,8 @@ export function CodeBlockToolbar({
                 align="end"
                 editorContext
                 className="w-48 max-h-64 overflow-y-auto text-xs"
-                onOpenAutoFocus={(event) => {
+                onCloseAutoFocus={(event) => {
                   event.preventDefault();
-                  inputRef.current?.focus();
                 }}
               >
                 <div className="pb-2">
@@ -322,11 +322,6 @@ export function CodeBlockToolbar({
                     <DropdownMenuItem
                       key={lang}
                       id={`${languageListId}-opt-${index}`}
-                      ref={
-                        index === safeHighlightedIndex
-                          ? highlightedItemRef
-                          : undefined
-                      }
                       role="option"
                       aria-selected={index === safeHighlightedIndex}
                       data-goose-lang-highlighted={

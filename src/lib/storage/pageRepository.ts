@@ -3,8 +3,8 @@ import {
   readDbStorageJSON,
   removeDbStorageItem,
   writeDbStorageJSON,
-} from "./utoolsDbStorage";
-import { UToolsAdapter } from "../utools";
+} from "./localDbStorage";
+import { HostAdapter } from "../host/adapter";
 
 export const PAGE_DOC_PREFIX = "gn:page:";
 export const LOCAL_PAGE_META_DOC_PREFIX = "gn:local-meta:";
@@ -45,12 +45,12 @@ const getLocalPageMetaDocId = (pageId: string) => `${LOCAL_PAGE_META_DOC_PREFIX}
 const clonePage = <T>(value: T): T => structuredClone(value) as T;
 
 const putDocWithRetry = <T>(id: string, data: T): boolean => {
-  const current = UToolsAdapter.db.get<T>(id);
-  let result = UToolsAdapter.db.put(id, data, current?._rev);
+  const current = HostAdapter.db.get<T>(id);
+  let result = HostAdapter.db.put(id, data, current?._rev);
   if (result.ok !== false) return true;
 
-  const latest = UToolsAdapter.db.get<T>(id);
-  result = UToolsAdapter.db.put(id, data, latest?._rev);
+  const latest = HostAdapter.db.get<T>(id);
+  result = HostAdapter.db.put(id, data, latest?._rev);
   if (result.ok === false) {
     console.error("[pageRepository] db.put failed", id, result.error);
     return false;
@@ -59,9 +59,9 @@ const putDocWithRetry = <T>(id: string, data: T): boolean => {
 };
 
 const removeDoc = (id: string): void => {
-  const current = UToolsAdapter.db.get(id);
+  const current = HostAdapter.db.get(id);
   if (!current) return;
-  const result = UToolsAdapter.db.remove(id);
+  const result = HostAdapter.db.remove(id);
   if (result.ok === false) {
     console.error("[pageRepository] db.remove failed", id, result.error);
   }
@@ -125,7 +125,7 @@ export const saveInternalPage = (page: Page): boolean => {
 
 /** 从 db 读取单条内部页快照（跨窗同步用：另一窗写盘后重读最新）。 */
 export const loadInternalPage = (pageId: string): Page | null => {
-  const doc = UToolsAdapter.db.get<PersistedPageDoc>(getPageDocId(pageId));
+  const doc = HostAdapter.db.get<PersistedPageDoc>(getPageDocId(pageId));
   if (!doc?.data) return null;
   const { isFullWidth: _legacyFullWidth, ...page } = clonePage(
     doc.data as PersistedPageDoc & { isFullWidth?: boolean },
@@ -154,7 +154,7 @@ export const removeLocalPageMeta = (pageId: string): void => {
 };
 
 export const removeLocalPageMetaByWorkspaceId = (workspaceId: string): void => {
-  const docs = UToolsAdapter.db.allDocs<PersistedLocalPageMetaDoc>(
+  const docs = HostAdapter.db.allDocs<PersistedLocalPageMetaDoc>(
     LOCAL_PAGE_META_DOC_PREFIX,
   );
   docs.forEach((doc) => {
@@ -165,8 +165,8 @@ export const removeLocalPageMetaByWorkspaceId = (workspaceId: string): void => {
 };
 
 export const loadPagesFromStorage = (): HydratedPagesPayload => {
-  const pageDocs = UToolsAdapter.db.allDocs<PersistedPageDoc>(PAGE_DOC_PREFIX);
-  const localMetaDocs = UToolsAdapter.db.allDocs<PersistedLocalPageMetaDoc>(
+  const pageDocs = HostAdapter.db.allDocs<PersistedPageDoc>(PAGE_DOC_PREFIX);
+  const localMetaDocs = HostAdapter.db.allDocs<PersistedLocalPageMetaDoc>(
     LOCAL_PAGE_META_DOC_PREFIX,
   );
 
@@ -213,13 +213,13 @@ export const removePagesMeta = (): void => {
 };
 
 export const clearPersistedInternalPages = (): void => {
-  UToolsAdapter.db.allDocs(PAGE_DOC_PREFIX).forEach((doc) => removeDoc(doc._id));
+  HostAdapter.db.allDocs(PAGE_DOC_PREFIX).forEach((doc) => removeDoc(doc._id));
   removePagesMeta();
 };
 
 export const clearPersistedPages = (): void => {
   clearPersistedInternalPages();
-  UToolsAdapter.db
+  HostAdapter.db
     .allDocs(LOCAL_PAGE_META_DOC_PREFIX)
     .forEach((doc) => removeDoc(doc._id));
 };

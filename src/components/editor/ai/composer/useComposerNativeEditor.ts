@@ -26,7 +26,7 @@ import {
 import type { ComposerNativeHandlers } from "./composerInputTypes";
 import { isEditorDomEmpty } from "./composerChipDom";
 
-export function useComposerNativeEditor(options: {
+export function useComposerEditor(options: {
   editorHostRef: RefObject<HTMLDivElement | null>;
   editorRef: RefObject<HTMLDivElement | null>;
   variant: "compact" | "panel";

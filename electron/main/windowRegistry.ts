@@ -23,7 +23,6 @@ export function shouldHideInsteadOfClose(opts: {
   isLastWorkspace: boolean;
 }): boolean {
   if (opts.quitting) return false;
-  if (opts.kind === "quicknote") return true;
   return opts.kind === "workspace" && opts.isLastWorkspace;
 }
 

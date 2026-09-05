@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 外壳基础控件：原生 input（避免 HeroUI/RAC 在 uTools 旧内核下受控输入失效）。
+ * 外壳基础控件：原生 input（避免 HeroUI/RAC 在 Electron 旧内核下受控输入失效）。
  * 业务契约：type/value/onChange(e)/placeholder/disabled/id/autoFocus/onKeyDown/autoComplete/ref…
  */
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(

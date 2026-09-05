@@ -631,7 +631,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         editor,
         aiSettingsRef.current.enabled &&
           (contentModeRef.current === "normalized" ||
-            __HOST_TARGET__ === "native-editor"),
+            false),
         settingsRef.current.features,
       );
       if (hiddenSlashItemTitles && hiddenSlashItemTitles.length > 0) {

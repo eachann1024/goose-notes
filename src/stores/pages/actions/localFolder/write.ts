@@ -387,7 +387,7 @@ const saveLocalPageContentUnlocked = async (
 
   const { blocksToMarkdown } = await import("@/lib/export");
   // 本地文件夹以可见的块级 span 持久化样式，Obsidian Live Preview 也会实际应用。
-  // 普通导出、AI 上下文与 native-editor 仍各自使用原有序列化策略。
+  // 普通导出、AI 上下文与 editor 仍各自使用原有序列化策略。
   const markdownContent = await blocksToMarkdown(
     encodeLocalBlockPropsWrappers(processedContent as any),
   );

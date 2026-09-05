@@ -39,6 +39,7 @@ import {
   shouldHideInsteadOfClose,
   WindowRegistry,
 } from "./windowRegistry";
+import { createQuicknoteActivateSuppression } from "./quicknoteActivateSuppression";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -149,15 +150,15 @@ function emitVisibilityChange(): void {
   }
 }
 
-/** 速记窗刚被隐藏后，macOS 会把 dock/菜单栏 activate 当成「用户点图标」。 */
-let suppressWorkspaceActivateUntil = 0;
+/** 速记窗 show/close/steal focus 都会补发 activate，期间不要碰 workspace。 */
+const quicknoteActivateSuppression = createQuicknoteActivateSuppression();
 
-export function markQuicknoteHideActivateSuppressed(): void {
-  suppressWorkspaceActivateUntil = Date.now() + 250;
+export function markQuicknoteActivateSuppressed(): void {
+  quicknoteActivateSuppression.mark();
 }
 
 export function shouldSuppressWorkspaceActivate(): boolean {
-  return Date.now() < suppressWorkspaceActivateUntil;
+  return quicknoteActivateSuppression.shouldSuppress();
 }
 
 export function hasVisibleWindow(): boolean {
@@ -309,7 +310,7 @@ function sendWindowInit(
   send();
 }
 
-/** Cmd/Ctrl+W：工作区关当前标签；速记小窗仍走 close（隐藏）。绝不把关标签当成关窗。 */
+/** Cmd/Ctrl+W：工作区交给渲染层决定关标签或关窗；速记小窗直接关闭。 */
 export function requestCloseActiveTab(
   win: BrowserWindow | null | undefined,
 ): void {
@@ -514,6 +515,7 @@ export function createQuicknoteWindow(): BrowserWindow {
   });
 
   win.on("hide", () => {
+    if (!appQuitting()) markQuicknoteActivateSuppressed();
     setHiddenThrottle(win, true);
     scheduleQuicknoteIdleDestroy(win);
     emitVisibilityChange();
@@ -529,18 +531,8 @@ export function createQuicknoteWindow(): BrowserWindow {
     emitVisibilityChange();
   });
 
-  win.on("close", (event) => {
-    if (
-      shouldHideInsteadOfClose({
-        quitting: appQuitting(),
-        kind: "quicknote",
-        isLastWorkspace: false,
-      })
-    ) {
-      event.preventDefault();
-      win.hide();
-      setHiddenThrottle(win, true);
-    }
+  win.on("close", () => {
+    if (!appQuitting()) markQuicknoteActivateSuppressed();
   });
 
   win.on("closed", () => {
@@ -726,6 +718,12 @@ function raiseWindow(win: BrowserWindow): void {
   }
 }
 
+/** 只抬速记窗。steal focus 触发的 activate 不得拉起 workspace。 */
+function raiseQuicknoteWindow(win: BrowserWindow): void {
+  markQuicknoteActivateSuppressed();
+  raiseWindow(win);
+}
+
 export async function toggleWindow(win: BrowserWindow | null): Promise<void> {
   if (!win || win.isDestroyed()) return;
   const visible = win.isVisible();
@@ -742,7 +740,7 @@ export async function toggleWindow(win: BrowserWindow | null): Promise<void> {
 /**
  * 首次唤起才创建速记窗，避免启动就多一个 renderer。
  *
- * 速记快捷键是严格二态切换：只要窗口可见，再次按键就隐藏，不因全局
+ * 速记快捷键是严格二态切换：只要窗口可见，再次按键就关闭，不因全局
  * 快捷键触发时焦点短暂转移而重新聚焦。这里不调用 toggleWindow，避免改变
  * workspace 窗口原有的「可见但未聚焦时先聚焦」行为。
  */
@@ -752,24 +750,20 @@ export async function toggleQuicknoteWindow(): Promise<void> {
     win = createQuicknoteWindow();
     await waitReadyToShow(win);
     if (win.isDestroyed()) return;
-    raiseWindow(win);
+    raiseQuicknoteWindow(win);
     return;
   }
   if (win.isVisible()) {
-    hideQuicknote();
+    closeQuicknote();
     return;
   }
-  raiseWindow(win);
+  raiseQuicknoteWindow(win);
 }
 
-export function hideQuicknote(): void {
+export function closeQuicknote(): void {
   const win = getQuicknoteWindow();
   if (!win || win.isDestroyed()) return;
-  if (win.isVisible() || win.isFocused()) {
-    markQuicknoteHideActivateSuppressed();
-  }
-  win.hide();
-  setHiddenThrottle(win, true);
+  win.close();
 }
 
 export function broadcast(channel: string, payload: unknown): void {

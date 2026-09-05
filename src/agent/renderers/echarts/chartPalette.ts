@@ -44,7 +44,7 @@ export function getSeriesColor(index: number, isDark: boolean): string {
   return palette[index % palette.length]!;
 }
 
-/** 把 hex 转成 rgba，兼容 uTools 旧内核（避免 hsl(var)/alpha） */
+/** 把 hex 转成 rgba，兼容 Electron 旧内核（避免 hsl(var)/alpha） */
 export function hexToRgba(hex: string, alpha: number): string {
   const raw = hex.replace("#", "");
   const full =

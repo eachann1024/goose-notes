@@ -1,3 +1,4 @@
+import type { DragEvent as ReactDragEvent } from "react";
 import { isExternalFileDrag } from "@/lib/local-folder-target";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -64,7 +65,7 @@ export function applyMainTreeNestHighlight(pageId: string | undefined): void {
 }
 
 export function captureLocalFolderDropParent(
-  event: DragEvent,
+  event: ReactDragEvent<HTMLElement>,
   tree: Element,
 ): string | undefined | null {
   if (!isActiveLocalFolderNotebook()) return null;

@@ -4,7 +4,7 @@ import {
   setDesktopAlwaysOnTop,
 } from "@/lib/electron/alwaysOnTop";
 
-/** 仅 Electron 有效；uTools 构建里始终为 false。 */
+/** 仅 Electron 有效；Electron 构建里始终为 false。 */
 export function useWindowAlwaysOnTop(): {
   alwaysOnTop: boolean;
   toggleAlwaysOnTop: () => void;

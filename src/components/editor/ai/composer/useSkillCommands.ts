@@ -111,7 +111,7 @@ function detectCommandAtCaret(container: HTMLElement): DetectedCommand | null {
 
 /**
  * 零宽锚点：contenteditable=false 的 chip 两侧必须有文本节点，
- * 否则旧 Chromium（uTools）setStartAfter(chip) 后左右方向键光标不可见。
+ * 否则旧 Chromium（Electron）setStartAfter(chip) 后左右方向键光标不可见。
  * 序列化时会剥掉；视觉宽度为 0，不产生“假空格”。
  */
 export const COMPOSER_CARET_ZWSP = "\u200B";

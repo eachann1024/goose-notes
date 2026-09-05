@@ -2,7 +2,7 @@ import {
   loadPagesFromStorage,
   saveInternalPage,
 } from "@/lib/storage/pageRepository";
-import { getDbStorageItem, setDbStorageItem } from "@/lib/storage/utoolsDbStorage";
+import { getDbStorageItem, setDbStorageItem } from "@/lib/storage/localDbStorage";
 
 import type { PagesState } from "../types";
 import {

@@ -44,9 +44,9 @@ export function WorkspacePage() {
   const editorRef = paneRegistry.focusedEditorRef;
   const scrollContainerRef = paneRegistry.focusedScrollRef;
   useEffect(() => {
-    // Electron 桌面端打 is-electron（顶栏在文档流里，安全区为 0）；其余保持 is-utools。
+    // Electron 顶栏在文档流里，安全区为 0。
     const root = document.documentElement;
-    root.classList.add(isElectronRuntime() ? "is-electron" : "is-utools");
+    root.classList.add("is-electron");
     if (isElectronRuntime() && /Win/i.test(navigator.platform)) {
       root.classList.add("is-win");
     }

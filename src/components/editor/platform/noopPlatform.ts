@@ -7,7 +7,6 @@
  *
  * 真实平台能力由各宿主注入对应实现。
  *
- * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §1 / §4 Step 4
  */
 import type {
   EditorPlatform,

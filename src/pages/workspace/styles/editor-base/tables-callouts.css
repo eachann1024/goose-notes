@@ -1,6 +1,6 @@
 /* 表格与分割线、链接、标注、表格扩展/拖拽手柄、图视频块间距。
  * 被 editor-base.css 按序 @import。
- * 依赖 --goose-interactive-selected-fg / --goose-accent-link / --border / --primary / --muted-foreground。
+ * 依赖 --goose-editor-selection-bg / --goose-interactive-selected-fg / --goose-accent-link / --border / --primary / --muted-foreground。
  */
 
 /* BlockNote 自身已让 block/content/tableWrapper 占满父级；这里只覆盖 table 的 auto 宽度。
@@ -79,7 +79,34 @@
   color: inherit;
 }
 
-/* 跨出表格时只压住原生 ::selection，不要给所有表格盖不透明遮罩。 */
+/* 跨表格文档选区与 CellSelection 都在单元格背景层使用同一强调色，
+   避免伪元素遮罩盖住文字；这里的特异性也足以覆盖表头默认背景。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  th,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  td,
+:root .workspace-editor-surface .bn-editor .selectedCell {
+  background-color: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  );
+}
+
+/* prosemirror-tables 默认用位于文字上方的 ::after 着色；只清空它的背景，
+   保留依赖提供的定位、层级与 pointer-events 行为。 */
+:root .workspace-editor-surface .bn-editor .selectedCell::after {
+  background: transparent;
+  background-color: transparent;
+}
+
+/* 跨表格文档选区用单元格背景连成一片；同时压住文字级
+   ::selection，避免 token 背景被重复叠加。 */
 :root
   .workspace-editor-surface
   .bn-editor.goose-table-span-select

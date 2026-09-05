@@ -1,7 +1,7 @@
 /* BlockNote xl-ai AI 菜单样式覆盖：把 Mantine 默认外观对齐项目设计系统。
    目标：选中文字 → 点 AI 图标后弹出的 input + 命令列表。
    覆盖原 CSS：@blocknote/xl-ai/style.css 与 @blocknote/mantine/style.css。
-   注意：uTools 旧内核对 hsl(var(--xxx)/alpha) 支持差，本文件只用 rgba/hex。 */
+   注意：Electron 旧内核对 hsl(var(--xxx)/alpha) 支持差，本文件只用 rgba/hex。 */
 
 /* ---------- Popover 卡片（input + items 共用容器） ---------- */
 .bn-combobox {
@@ -10,7 +10,7 @@
      避免「块宽 100% + 菜单居中」把输入框甩到标题正下方。 */
   box-sizing: border-box;
   width: 100% !important;
-  min-width: 468px;
+  min-width: min(468px, 100%);
   max-width: 100% !important;
   padding: 5px 6px;
   gap: 2px;
@@ -25,12 +25,17 @@
 }
 
 /* Floating UI 外层：JS size 中间件会覆写 width/maxWidth，这里是兜底
-   在原 70vw / 960px 上提高 30% → 91vw / 1248px，下限 468px。 */
+   在原 70vw / 960px 上提高 30% → 91vw / 1248px；窄窗按视口收缩。 */
 .goose-ai-menu-floating {
   box-sizing: border-box;
   width: min(91vw, 1248px);
-  min-width: 468px;
+  min-width: min(468px, 91vw, calc(100vw - 16px));
   max-width: min(91vw, 1248px, calc(100vw - 16px));
+}
+
+/* 选区包装层不占盒，避免小窗里多出一层把输入框和 tag 挤扁。 */
+.goose-ai-menu-selection {
+  display: contents;
 }
 
 .dark .bn-combobox,

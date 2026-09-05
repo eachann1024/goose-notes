@@ -96,6 +96,9 @@ declare global {
   const EDITOR_UI_SCALE_CHANGE_EVENT: typeof import('./lib/appearance').EDITOR_UI_SCALE_CHANGE_EVENT
   const ELECTRON_MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').ELECTRON_MAX_FILE_ATTACHMENT_SIZE
   const ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE
+  const ELECTRON_WINDOW_HEIGHT_DEFAULT: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_DEFAULT
+  const ELECTRON_WINDOW_HEIGHT_MAX: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_MAX
+  const ELECTRON_WINDOW_HEIGHT_MIN: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_MIN
   const FILE_NAV_AI_PANEL: typeof import('./stores/useFileNavHistory').FILE_NAV_AI_PANEL
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
@@ -196,10 +199,6 @@ declare global {
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
   const UI_FONT_SIZE_MAP: typeof import('./lib/appearance').UI_FONT_SIZE_MAP
   const UNTITLED_PAGE_TITLE: typeof import('./components/editor/utils/page-title').UNTITLED_PAGE_TITLE
-  const UTOOLS_WINDOW_HEIGHT_DEFAULT: typeof import('./stores/settings/index').UTOOLS_WINDOW_HEIGHT_DEFAULT
-  const UTOOLS_WINDOW_HEIGHT_MAX: typeof import('./stores/settings/index').UTOOLS_WINDOW_HEIGHT_MAX
-  const UTOOLS_WINDOW_HEIGHT_MIN: typeof import('./stores/settings/index').UTOOLS_WINDOW_HEIGHT_MIN
-  const UToolsAdapter: typeof import('./lib/utools').UToolsAdapter
   const VALID_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').VALID_BLOCK_TYPES
   const VIDEO_OUTPUT_MIME: typeof import('./lib/videoProcessor').VIDEO_OUTPUT_MIME
   const WELCOME_TAB_PAGE_ID: typeof import('./stores/useTabs').WELCOME_TAB_PAGE_ID
@@ -324,8 +323,8 @@ declare global {
   const finishPasteAtAnchor: typeof import('./components/editor/hooks/useEditorPaste').finishPasteAtAnchor
   const flattenParsedBlocksToSoftWrapInline: typeof import('./components/editor/utils/softWrapPaste').flattenParsedBlocksToSoftWrapInline
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
+  const flushLocalStorageWrites: typeof import('./lib/storage').flushLocalStorageWrites
   const flushSidebarViewPersist: typeof import('./stores/useSidebarView').flushSidebarViewPersist
-  const flushUToolsStorageWrites: typeof import('./lib/storage').flushUToolsStorageWrites
   const focusPastedBlock: typeof import('./components/editor/utils/pasteAtCursor').focusPastedBlock
   const formatAttachmentSize: typeof import('./lib/fileStorage').formatAttachmentSize
   const formatDualShortcut: typeof import('./lib/onboardingContent').formatDualShortcut
@@ -456,6 +455,7 @@ declare global {
   const localAssetPaths: typeof import('./lib/local-folder-asset-maintenance').localAssetPaths
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const localPageHasPersistableContent: typeof import('./lib/unsavedLocalPage').localPageHasPersistableContent
+  const localStorageAdapter: typeof import('./lib/storage').localStorageAdapter
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
   const looksLikeMermaidDiagram: typeof import('./components/editor/utils/clipboard').looksLikeMermaidDiagram
@@ -635,7 +635,6 @@ declare global {
   const transcodeVideo: typeof import('./lib/videoProcessor').transcodeVideo
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const tryPasteGooseMarkdownFragment: typeof import('./components/editor/hooks/useEditorPaste').tryPasteGooseMarkdownFragment
-  const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const updateQuickNoteSlotName: typeof import('./stores/useQuickNote').updateQuickNoteSlotName
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
   const updateSnapshotStat: typeof import('./lib/local-md-snapshot').updateSnapshotStat
@@ -694,7 +693,6 @@ declare global {
   const useSyncExternalStore: typeof import('react').useSyncExternalStore
   const useTabs: typeof import('./stores/useTabs').useTabs
   const useTransition: typeof import('react').useTransition
-  const useUToolsMcpBridge: typeof import('./hooks/useUToolsMcpBridge').useUToolsMcpBridge
   const useWindowAlwaysOnTop: typeof import('./hooks/useWindowAlwaysOnTop').useWindowAlwaysOnTop
   const validateGeneratedBlockStructure: typeof import('./lib/ai-write/index').validateGeneratedBlockStructure
   const videoStorage: typeof import('./lib/videoStorage').videoStorage
@@ -737,7 +735,7 @@ declare global {
   export type { QuickNoteSlot, QuickNoteDrafts, QuickNoteSlotNames } from './stores/useQuickNote'
   import('./stores/useQuickNote')
   // @ts-ignore
-  export type { SettingsState, SearchProvider, Theme, AccentColor, CodeStyle, UToolsSettings, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
+  export type { SettingsState, SearchProvider, Theme, AccentColor, CodeStyle, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
   export type { TabType, TabItem } from './stores/useTabs'
@@ -790,9 +788,6 @@ declare global {
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
-  // @ts-ignore
-  export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
-  import('./lib/utools')
   // @ts-ignore
   export type { VideoTranscodeProgress } from './lib/videoProcessor'
   import('./lib/videoProcessor')

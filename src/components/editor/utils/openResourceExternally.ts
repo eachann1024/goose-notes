@@ -132,7 +132,7 @@ function readBlobViaXhr(source: string): Promise<Blob> {
 }
 
 async function readUrlAsBlob(source: string): Promise<Blob> {
-  // uTools 以 file:// 加载插件时，fetch(blob:) / fetch(data:) 常变成 Failed to fetch。
+  // Electron 以 file:// 加载插件时，fetch(blob:) / fetch(data:) 常变成 Failed to fetch。
   if (/^(?:blob|data):/i.test(source)) {
     try {
       return await readBlobViaXhr(source);

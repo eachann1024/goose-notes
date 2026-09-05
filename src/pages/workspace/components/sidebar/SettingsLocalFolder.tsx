@@ -22,8 +22,8 @@ import {
   LOCAL_FOLDER_TERMINAL_CANDIDATES,
   type LocalFolderOpenAppCandidate,
 } from "@/lib/local-folder-open-apps";
-import { getCachedAvailableOpenApps, shell } from "@/lib/utools/shell";
-import { fs } from "@/lib/utools/fs";
+import { getCachedAvailableOpenApps, shell } from "@/lib/electron-platform/shell";
+import { fs } from "@/lib/electron-platform/fs";
 import {
   scanUnreferencedLocalAssets,
   restoreMissingReferencedLocalAssets,
@@ -36,7 +36,7 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { UToolsAdapter } from "@/lib/utools";
+import { HostAdapter } from "@/lib/host/adapter";
 import { PAGE_DOC_PREFIX } from "@/lib/storage/pageRepository";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { Page } from "@/types";
@@ -46,7 +46,7 @@ const isElectronHost = __HOST_TARGET__ === "electron";
 /** 检测 db 中残留的内置（非本地文件）页面——桌面模式下用于一次性导出。 */
 function listLegacyInternalPages(): Page[] {
   try {
-    return UToolsAdapter.db
+    return HostAdapter.db
       .allDocs<Page>(PAGE_DOC_PREFIX)
       .map((doc) => doc.data)
       .filter((page) => page && !page.localFilePath && !page.trashedAt);

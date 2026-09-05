@@ -1,10 +1,6 @@
 import { blobToBase64 } from "@/lib/imageStorage/utils";
 
 type HostWindow = Window & {
-  utools?: {
-    getPath?: (name: string) => string | null;
-    shellShowItemInFolder?: (targetPath: string) => boolean | Promise<boolean>;
-  };
   gooseDesktop?: {
     getDownloadsPath?: () => Promise<string>;
     joinPath?: (...parts: string[]) => Promise<string>;
@@ -27,65 +23,11 @@ function joinWithSeparator(dir: string, name: string): string {
 }
 
 async function resolveDownloadsDir(): Promise<string | null> {
-  const w = hostWindow();
-  if (!w) return null;
-
   try {
-    const dir = await w.gooseDesktop?.getDownloadsPath?.();
-    if (typeof dir === "string" && dir.trim()) return dir;
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const dir = w.utools?.getPath?.("downloads");
-    if (typeof dir === "string" && dir.trim()) return dir;
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const env = (w as Window & { process?: { env?: Record<string, string> } })
-      .process?.env;
-    const xdg = env?.XDG_DOWNLOAD_DIR;
-    if (typeof xdg === "string" && xdg.trim()) return xdg;
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const os = (w as Window & { require?: (id: string) => unknown }).require?.(
-      "os",
-    ) as { homedir?: () => string } | undefined;
-    const nodePath = (w as Window & { require?: (id: string) => unknown }).require?.(
-      "path",
-    ) as { join?: (...parts: string[]) => string } | undefined;
-    if (os?.homedir && nodePath?.join) {
-      return nodePath.join(os.homedir(), "Downloads");
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const env = (w as Window & { process?: { env?: Record<string, string> } })
-      .process?.env;
-    const home = env?.HOME || env?.USERPROFILE;
-    if (home) {
-      const nodePath = (
-        w as Window & { require?: (id: string) => unknown }
-      ).require?.("path") as { join?: (...parts: string[]) => string } | undefined;
-      return nodePath?.join
-        ? nodePath.join(home, "Downloads")
-        : `${home.replace(/[\\/]+$/, "")}/Downloads`;
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return null;
+    const dir = await hostWindow()?.gooseDesktop?.getDownloadsPath?.();
+    return typeof dir === "string" && dir.trim() ? dir : null;
+  } catch { return null; }
 }
-
 async function joinDownloadPath(dir: string, name: string): Promise<string> {
   const w = hostWindow();
   try {
@@ -149,35 +91,8 @@ async function pathExists(
 }
 
 async function revealSavedFile(targetPath: string): Promise<void> {
-  const w = hostWindow();
-  if (!w) return;
-
-  if (typeof w.gooseFs?.revealItemInFolder === "function") {
-    try {
-      if (await w.gooseFs.revealItemInFolder(targetPath)) return;
-    } catch {
-      /* ignore */
-    }
-  }
-
-  if (w.gooseDesktop?.showItemInFolder) {
-    try {
-      await w.gooseDesktop.showItemInFolder(targetPath);
-      return;
-    } catch {
-      /* ignore */
-    }
-  }
-
-  if (w.utools?.shellShowItemInFolder) {
-    try {
-      await Promise.resolve(w.utools.shellShowItemInFolder(targetPath));
-    } catch {
-      /* ignore */
-    }
-  }
+  await hostWindow()?.gooseDesktop?.showItemInFolder?.(targetPath);
 }
-
 async function trySaveViaElectron(
   blob: Blob,
   filename: string,
@@ -192,83 +107,14 @@ async function trySaveViaElectron(
   return true;
 }
 
-async function trySaveViaGooseFs(
-  blob: Blob,
-  filename: string,
-): Promise<boolean> {
-  const w = hostWindow();
-  const gooseFs = w?.gooseFs;
-  if (!gooseFs) return false;
-
-  const downloadsDir = await resolveDownloadsDir();
-  if (!downloadsDir) return false;
-
-  if (!(await pathExists(gooseFs, downloadsDir))) {
-    try {
-      await Promise.resolve(gooseFs.mkdir(downloadsDir));
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const candidateName = await nextAvailableDownloadName(
-    downloadsDir,
-    filename,
-    (fullPath) => pathExists(gooseFs, fullPath),
-    (dir, name) => joinDownloadPath(dir, name),
-  );
-  const targetPath = await joinDownloadPath(downloadsDir, candidateName);
-  const base64 = await blobToBase64(blob);
-  const payload = base64.replace(/^data:.*;base64,/, "");
-  const saved = gooseFs.writeFileAsync
-    ? await gooseFs.writeFileAsync(targetPath, payload, "base64")
-    : await Promise.resolve(gooseFs.writeFile(targetPath, payload, "base64"));
-
-  if (!saved) return false;
-  await revealSavedFile(targetPath);
-  return true;
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string): boolean {
-  try {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    requestAnimationFrame(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 导出/下载一律写入用户下载目录，不弹保存对话框；
- * 成功后打开文件管理器并选中该文件。浏览器环境回退为普通下载。
- */
 export async function saveBlobAndReveal(
   blob: Blob,
   filename: string,
 ): Promise<boolean> {
   try {
-    if (await trySaveViaElectron(blob, filename)) return true;
+    return await trySaveViaElectron(blob, filename);
   } catch (error) {
     console.error("[export] Electron 保存到下载目录失败:", error);
+    return false;
   }
-
-  try {
-    if (await trySaveViaGooseFs(blob, filename)) return true;
-  } catch (error) {
-    console.error("[export] 写入下载目录失败:", error);
-  }
-
-  return triggerBrowserDownload(blob, filename);
 }
-
-export { triggerBrowserDownload };

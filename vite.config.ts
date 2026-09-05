@@ -12,10 +12,9 @@ import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 //   通过 __GOOSE_LITE__ 标志 + 重型依赖 alias 到空壳，把 katex/mermaid/prettier/PDF/echarts
 //   等「文档级」代码排除出小窗包（约省 9MB），小窗只保留快速记文字/标题/清单/代码高亮等。
 // - GOOSE_BUILD_TARGET=electron：input=index.html + quicknote.html → dist-electron/renderer/，Electron 桌面端（仅本地模式）。
-//   不经过 scripts/utools-build.js（不注入 plugin.json/preload），与 uTools 产物互不污染。
+//   renderer 与 main/preload 由 Electron 构建链分别产出。
 const isQuicknoteBuild = process.env.GOOSE_BUILD_TARGET === "quicknote";
-const isElectronBuild = process.env.GOOSE_BUILD_TARGET === "electron";
-const hostTarget = isElectronBuild ? "electron" : "utools";
+const hostTarget = "electron";
 
 // 小窗精简构建专用：把这些「仅经动态 import 进入图」的重型 JS 依赖 alias 到极小空壳，
 // 确保它们不被打进 dist-quicknote（消费点已被 __GOOSE_LITE__ 短路，运行时不会真正调用）。
@@ -32,7 +31,7 @@ const pdfFontEmptyModule = path.resolve(__dirname, "./src/lib/vite-stubs/pdf-fon
 if (!existsSync(liteEmptyModule) || !existsSync(nodeFsStubModule) || !existsSync(pdfFontEmptyModule)) {
   throw new Error(
     `[vite] 缺少构建 stub（${path.relative(__dirname, liteEmptyModule)} / ${path.relative(__dirname, nodeFsStubModule)} / ${path.relative(__dirname, pdfFontEmptyModule)}）。` +
-      "不要把这些文件放在名为 build 的目录里：全局 gitignore 的 build/ 会让 ztools publish 漏传，商店 Linux CI 会挂。",
+      "不要把这些文件放在名为 build 的目录里：全局 gitignore 的 build/ 会让 electron publish 漏传，商店 Linux CI 会挂。",
   );
 }
 const liteStubAliases: { find: RegExp; replacement: string }[] = isQuicknoteBuild
@@ -207,7 +206,7 @@ const codeSplittingGroups: ChunkGroup[] = [
 // https://vite.dev/config/
 export default defineConfig({
   customLogger: logger,
-  base: "./", // utools 需要相对路径
+  base: "./", // electron 需要相对路径
   define: {
     __HOST_TARGET__: JSON.stringify(hostTarget),
     __GOOSE_LITE__: JSON.stringify(isQuicknoteBuild),
@@ -216,13 +215,11 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: "exclude-guide-assets-from-utools",
+      name: "exclude-guide-assets-from-electron",
       closeBundle() {
         const outDir = isQuicknoteBuild
           ? "dist-quicknote"
-          : isElectronBuild
-            ? "dist-electron/renderer"
-            : "dist";
+          : "dist-electron/renderer";
         rmSync(path.resolve(__dirname, outDir, "guide"), { recursive: true, force: true });
         // 禁止 NotoSansSC 打进产物；其它 public/fonts（如 UI 字体）不动
         for (const name of ["NotoSansSC-Regular.ttf", "NotoSansSC-Regular.otf"]) {
@@ -337,9 +334,7 @@ export default defineConfig({
         find: "@host-runtime",
         replacement: path.resolve(
           __dirname,
-          isElectronBuild
-            ? "./src/lib/host/runtime.electron.ts"
-            : "./src/lib/host/runtime.utools.ts",
+          "./src/lib/host/runtime.electron.ts",
         ),
       },
 
@@ -375,14 +370,12 @@ export default defineConfig({
   },
 
   build: {
-    // app → dist/；quicknote → dist-quicknote/（两个 uTools 插件各自独立打包，互不共享 chunk）；
-    // electron → dist-electron/renderer/（桌面端独立产物，utools-build.js 只认 dist/dist-quicknote，不会触碰）。
+    // app → dist/；quicknote → dist-quicknote/（两个 Electron 插件各自独立打包，互不共享 chunk）；
+    // electron → dist-electron/renderer/（桌面端独立产物，electron-build.js 只认 dist/dist-quicknote，不会触碰）。
     outDir: isQuicknoteBuild
       ? "dist-quicknote"
-      : isElectronBuild
-        ? "dist-electron/renderer"
-        : "dist",
-    // 正式 'hidden'（写盘后由 utools-build 删）；GOOSE_DEBUG=1 时 true（保留，供 DevTools 还原 src/）
+      : "dist-electron/renderer",
+    // 正式 'hidden'（写盘后由 electron-build 删）；GOOSE_DEBUG=1 时 true（保留，供 DevTools 还原 src/）
     sourcemap: debugSourcemap,
     minify: debugMinify,
     rolldownOptions: {
@@ -392,12 +385,10 @@ export default defineConfig({
       // Electron 桌面端同时打 index.html（主窗）与 quicknote.html（速记小窗），outDir 为 dist-electron/renderer。
       input: isQuicknoteBuild
         ? { quicknote: path.resolve(__dirname, "quicknote.html") }
-        : isElectronBuild
-          ? {
-              index: path.resolve(__dirname, "index.html"),
-              quicknote: path.resolve(__dirname, "quicknote.html"),
-            }
-          : { index: path.resolve(__dirname, "index.html") },
+        : {
+            index: path.resolve(__dirname, "index.html"),
+            quicknote: path.resolve(__dirname, "quicknote.html"),
+          },
       output: {
         // rolldown 原生分包；不用废弃的 manualChunks
         codeSplitting: {

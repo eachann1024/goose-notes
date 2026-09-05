@@ -1,4 +1,4 @@
-// Polyfill for older Chromium (uTools built-in)
+// Polyfill for older Chromium (Electron built-in)
 if (typeof globalThis.structuredClone !== "function") {
   Object.defineProperty(globalThis, "structuredClone", {
     value: function structuredClonePolyfill<T>(value: T): T {
@@ -45,7 +45,7 @@ if (!(Array.prototype as any).toReversed) {
   });
 }
 
-// Iterator Helpers (ES2025) polyfill — uTools 旧内核 (< Chrome 122) 缺 Iterator.prototype.*。
+// Iterator Helpers (ES2025) polyfill — Electron 旧内核 (< Chrome 122) 缺 Iterator.prototype.*。
 // @blocknote/xl-ai 直接用了 Map.prototype.values().filter()，缺失时会抛
 // `s.values(...).filter is not a function`，导致 AI 调用在错误处理路径二次崩溃。
 {
@@ -236,10 +236,9 @@ import {
   migrateCodeStyleTo2026,
   runCodeStyleMigration2026,
 } from "./lib/code-style-migration";
-import { recoverMissingNotebooksFromPages } from "./lib/storage/recoverMissingNotebooks";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
-import { UToolsAdapter } from "./lib/utools";
-import { DEFAULT_NOTEBOOK, useNotebooks } from "./stores/useNotebooks";
+import { HostAdapter } from "./lib/host/adapter";
+import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -326,10 +325,7 @@ const retryPendingWrites = () => {
   // 所有入口都复用 runFlushOnce：连续点击或生命周期事件只共享一个在途任务。
   void runFlushOnce()
     .then(() => {
-      toast.success("内容已保存", {
-        id: "goose-pending-writes-failed",
-        duration: 1200,
-      });
+      toast.dismiss("goose-pending-writes-failed");
     })
     .catch(reportFlushFailure);
 };
@@ -397,8 +393,7 @@ const setupSaveGuards = () => {
       void pagesState
         .saveDirtyLocalPage(activePageId)
         .then((ok) => {
-          if (ok) toast.success("已保存", { duration: 1200 });
-          else {
+          if (!ok) {
             reportFlushFailure(new Error(`manual save failed: ${activePageId}`));
           }
         })
@@ -406,11 +401,7 @@ const setupSaveGuards = () => {
       return;
     }
 
-    void runFlushOnce()
-      .then(() => {
-        toast.success("内容已保存", { duration: 1200 });
-      })
-      .catch(reportFlushFailure);
+    void runFlushOnce().catch(reportFlushFailure);
   };
 
   const handleVisibilityChange = () => {
@@ -444,22 +435,12 @@ const setupSaveGuards = () => {
 };
 
 const initHostFs = async () => {
-  await UToolsAdapter.ensureGooseFs();
-  // uTools 没接上时（浏览器 / bun dev / web 部署），用 File System Access API
-  // 作为兜底实现，让 scanner / saveLocalPageContent 走同一套 gooseFs 接口。
-  if (typeof window !== "undefined" && !window.gooseFs) {
-    try {
-      const { installWebGooseFs } = await import("@/lib/web-fs");
-      installWebGooseFs();
-    } catch (err) {
-      console.warn("[bootstrap] web-fs 加载失败", err);
-    }
-  }
+  await HostAdapter.ensureGooseFs();
 };
 
 // 渲染目标由调用方传入：主窗口（index-entry.tsx）渲染 <App/>，速记小窗（quicknote.tsx）
 // 渲染 <QuickNoteApp/>，但两者复用同一套 host fs / 迁移 / hydration / guard 流程，
-// 保证两个窗口进程的数据层初始化完全一致（共享 uTools db）。
+// 保证两个窗口进程的数据层初始化完全一致（共享 Electron db）。
 //
 // 注意：renderRoot 必须显式传入、本模块不再 import App。这是刻意的解耦——
 // 小窗（quicknote.tsx → 本模块）不再经默认参数把整个 workspace <App/> 拖进依赖图，
@@ -475,7 +456,7 @@ export const bootstrap = async (
   const { lean = false, beforeInit } = options;
   const root = createRoot(rootElement);
   // 主工作区在恢复完成前保持 index.html 的空 root，不提交启动页或首页。
-  // uTools 会先显示 BrowserWindow，任何提前 render 都会成为用户看见的错误首帧。
+  // Electron 会先显示 BrowserWindow，任何提前 render 都会成为用户看见的错误首帧。
   // 速记是独立入口，继续沿用原有的草稿初始化页，不受主工作区门控影响。
   if (lean) {
     root.render(<BootstrapScreen lean />);
@@ -484,7 +465,7 @@ export const bootstrap = async (
   try {
     await beforeInit?.();
     // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
-    // saveLocalPageContent 走与 uTools 相同的 gooseFs 接口）。
+    // saveLocalPageContent 走与 Electron 相同的 gooseFs 接口）。
     // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
     if (import.meta.env.DEV && location.search.includes("e2eLocalMock")) {
       const { installE2ELocalMock } = await import("@/lib/dev/e2eLocalMock");
@@ -506,25 +487,11 @@ export const bootstrap = async (
       useNotebookAiChats.persist.rehydrate();
       // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
       await usePages.getState().hydrateFromStorage();
-      // Electron 仅本地文件夹模式：内置页（gn:page:* 里非 local-folder 工作区的残留）
-      // 不灌进侧栏；数据仍保留在 db，可在「设置 → 本地文件夹」一次性导出。
+      // Electron 仅本地文件夹模式不会恢复旧内置记事本，因此这些页面不会进入
+      // 侧栏或成为活动页；但必须保留在 state 中，供备份链路和「设置 → 本地文件夹」
+      // 的显式 Markdown 导出读取。不得在启动时过滤或清除这批升级数据。
       if (__HOST_TARGET__ === "electron") {
-        const localIds = new Set(
-          Object.values(useNotebooks.getState().notebooks)
-            .filter((n) => n.source === "local-folder")
-            .map((n) => n.id),
-        );
-        const pagesState = usePages.getState();
-        const localOnlyPages = Object.fromEntries(
-          Object.entries(pagesState.pages).filter(([, page]) =>
-            localIds.has(page.workspaceId),
-          ),
-        );
-        usePages.setState({
-          pages: localOnlyPages,
-          activePageId: null,
-          onboardingCompleted: true,
-        });
+        usePages.setState({ activePageId: null, onboardingCompleted: true });
       }
     }
     if (import.meta.env.DEV) {
@@ -532,45 +499,13 @@ export const bootstrap = async (
       installTestBridge();
     }
     if (!lean) {
-      const pagesStore = usePages.getState();
-      const notebooksStore = useNotebooks.getState();
-      // Electron 仅本地文件夹模式：禁止从页面数据回种内置本（含 default-notebook）
-      const recoveredNotebooks =
-        __HOST_TARGET__ === "electron"
-          ? null
-          : recoverMissingNotebooksFromPages({
-              notebooks: notebooksStore.notebooks,
-              pages: pagesStore.pages,
-            });
-
-      if (recoveredNotebooks) {
-        const shouldFocusRecoveredNotebook = !hasVisiblePagesInNotebook(
-          notebooksStore.activeNotebookId,
-          pagesStore.pages,
-        );
-        useNotebooks.setState({
-          notebooks: recoveredNotebooks.notebooks,
-          ...(shouldFocusRecoveredNotebook
-            ? {
-                activeNotebookId:
-                  recoveredNotebooks.recoveredNotebookIds[0] ?? null,
-              }
-            : {}),
-        });
-        console.warn(
-          `[bootstrap] 已从页面数据恢复 ${recoveredNotebooks.recoveredCount} 个缺失记事本索引`,
-        );
-      }
 
       const nextNotebooksStore = useNotebooks.getState();
       if (
         !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
       ) {
         // Electron：无仓库时保持 null（空态），绝不回落 DEFAULT_NOTEBOOK
-        const firstNotebookId =
-          __HOST_TARGET__ === "electron"
-            ? (Object.keys(nextNotebooksStore.notebooks)[0] ?? null)
-            : (Object.keys(nextNotebooksStore.notebooks)[0] ?? DEFAULT_NOTEBOOK);
+        const firstNotebookId = Object.keys(nextNotebooksStore.notebooks)[0] ?? null;
         useNotebooks.setState({ activeNotebookId: firstNotebookId });
       }
     }
@@ -638,52 +573,6 @@ export const bootstrap = async (
     return;
   }
 
-  // 速记收件箱消费：B 插件 redirect 回传的 blocks 落库。由主应用（plugin A）消费；
-  // 速记小窗自身（lean）是发送方，不接收，故跳过。
-  if (lean) return;
-
-  // 冷启动时 preload 已 push 进 window.__gooseQuickNoteInbox，mount 后在此消费；
-  // 热场景（A 已在运行）通过 "goose-note:quicknote-inbox" 事件触发消费。
-  const consumeQuickNoteInbox = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const inbox: string[] | undefined = w.__gooseQuickNoteInbox;
-    if (!Array.isArray(inbox) || inbox.length === 0) return;
-    const items = inbox.splice(0, inbox.length);
-    for (const blocksJson of items) {
-      try {
-        const blocks = JSON.parse(blocksJson);
-        const nbId =
-          useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
-        usePages
-          .getState()
-          .createPageRecord({ workspaceId: nbId, content: blocks });
-      } catch (e) {
-        console.error("[quicknote_save] 落库失败", e);
-      }
-    }
-    // 落库后：若是被 redirect 唤起（A 本轮不是用户主动打开的），退回后台。
-    if (w.__gooseQuickNoteRedirectWoke) {
-      w.__gooseQuickNoteRedirectWoke = false;
-      try {
-        const ut = w.utools;
-        if (ut && typeof ut.outPlugin === "function") {
-          ut.outPlugin(false);
-        }
-      } catch {
-        /* noop */
-      }
-    }
-  };
-  // Electron 桌面端无速记小窗（quicknote 入口不构建、无 preload 注入、无 redirect 唤起），
-  // 跳过收件箱消费与监听。
-  if (__HOST_TARGET__ !== "electron") {
-    // 冷启动消费（React 刚 mount，已有积压）
-    consumeQuickNoteInbox();
-    // 热场景监听
-    window.addEventListener("goose-note:quicknote-inbox", consumeQuickNoteInbox);
-  }
-
   // 主窗启动后后台静默预热所有 local-folder 记事本页面，使「所有记事本」全局搜索覆盖全量。
   // 不 await：不阻塞首屏；小窗（quicknote）不预热。idle 时机执行，避开首屏渲染高峰。
   if (rootElement.dataset.entry !== "quicknote") {
@@ -694,15 +583,7 @@ export const bootstrap = async (
         console.error("预加载本地文件夹页面失败", err);
       }
       // Electron 桌面端（仅本地模式）：WebDAV 自动备份默认不触发（设置 UI 保留，仍可手动备份）。
-      if (__HOST_TARGET__ !== "electron") {
-        import("@/lib/webdavSync")
-          .then(({ triggerAutoWebdavBackup }) => {
-            void triggerAutoWebdavBackup();
-          })
-          .catch((e) => {
-            console.error("加载 webdavSync 模块失败", e);
-          });
-      }
+
     };
     if (typeof requestIdleCallback === "function") {
       requestIdleCallback(preloadAll, { timeout: 4000 });

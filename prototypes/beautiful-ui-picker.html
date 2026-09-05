@@ -140,7 +140,7 @@
       border-top: 1px solid var(--line);
       padding: 12px 20px;
     }
-    /* uTools 旧内核会把 color-mix 塌掉；这里用实色兜底 */
+    /* 使用实色，保证桌面端渲染一致。 */
     @supports not (background: color-mix(in srgb, white 50%, black)) {
       .dock { background: var(--surface); }
     }

@@ -9,7 +9,6 @@
  * 编辑器自有类型（Page / BlockNoteContent / AISettings / CustomFonts 等）从 app 现有
  * 类型 import 复用，避免重复定义。
  *
- * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §3
  */
 import { createContext, useContext, type ReactNode } from "react";
 import type { Page } from "@/types";

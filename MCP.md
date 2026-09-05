@@ -1,12 +1,12 @@
 # MCP 工具
 
-鹅的笔记通过 uTools 插件清单中的 `tools` + `utools.registerTool` 暴露原生 MCP 工具。安装构建产物后，支持 uTools MCP 的客户端会自动发现这些工具；不需要另行启动 HTTP / stdio MCP 服务，也不会把笔记数据上传到第三方。
+鹅的笔记通过 Electron 插件清单中的 `tools` + `electron.registerTool` 暴露原生 MCP 工具。安装构建产物后，支持 Electron MCP 的客户端会自动发现这些工具；不需要另行启动 HTTP / stdio MCP 服务，也不会把笔记数据上传到第三方。
 
 正文对外只走 **Markdown 字符串**，不会把 BlockNote JSON 交给模型。
 
 ## 架构
 
-- **只读工具**在 preload 直读 `utools.db` 与本地 Markdown，不依赖插件页是否打开。
+- **只读工具**在 preload 直读 `electron.db` 与本地 Markdown，不依赖插件页是否打开。
 - **写入工具**走渲染层桥：preload `registerTool` 只转发，由已打开的插件页 live store 落库。
 - 事件前缀：`goose-note:mcp-tool-{request,response,ready}`。
 - 插件页未打开时，写入会等待 ready 最多 **15 秒**，单次执行最多 **30 秒**。
@@ -49,4 +49,4 @@ node --test preload/mcp-tools.test.cjs
 bun run build
 ```
 
-构建完成后，在 uTools 开发者工具中加载 `dist/plugin.json`，然后重新打开插件页，再让 MCP 客户端刷新工具列表。
+构建完成后启动 Electron 应用，重新打开工作区，再让 MCP 客户端刷新工具列表。

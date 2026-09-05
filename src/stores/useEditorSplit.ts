@@ -181,7 +181,6 @@ export const useEditorSplit = create<EditorSplitStore>()((set, get) => ({
     const result = splitLeaf(current, {
       direction: input.direction,
       newPageId: input.newPageId,
-      editorWidthPx: input.editorWidthPx,
     });
     if (!result.ok) {
       return { ok: false, error: result.error };
@@ -189,7 +188,6 @@ export const useEditorSplit = create<EditorSplitStore>()((set, get) => ({
     set({ byTabId: patchTab(get().byTabId, input.tabId, result.state) });
     return {
       ok: true,
-      didFallbackToDown: result.didFallbackToDown,
       newLeafId: result.newLeafId,
       newPageId: input.newPageId,
     };

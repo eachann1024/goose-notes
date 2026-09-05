@@ -7,7 +7,7 @@ import {
   createEmptyBlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
 import { importFromMarkdown, type ImportResult } from "./markdown/parse";
-import { saveBlobAndReveal, triggerBrowserDownload } from "./fileSave";
+import { saveBlobAndReveal } from "./fileSave";
 import {
   buildSinglePageExport,
   type SinglePageExportFormat,
@@ -39,12 +39,10 @@ async function downloadBlob(blob: Blob, filename: string) {
     const saved = await saveBlobAndReveal(blob, filename);
     if (saved) return;
   } catch (error) {
-    console.error("[export] saveBlobAndReveal 失败，尝试浏览器下载:", error);
+    console.error("[export] saveBlobAndReveal 失败:", error);
   }
 
-  if (triggerBrowserDownload(blob, filename)) return;
-
-  throw new Error("导出失败：无法保存文件");
+  throw new Error("导出失败：无法通过 Electron 保存文件");
 }
 
 async function exportPage(

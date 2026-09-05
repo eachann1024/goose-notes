@@ -1,11 +1,11 @@
 // 可调试构建开关：`GOOSE_DEBUG=1 pnpm build`（或 build:debug）
 //
 // 正式构建（默认）：sourcemap = 'hidden' + 压缩 → 产物 JS 不含 //# sourceMappingURL，
-//   .map 写盘后由 scripts/utools-build.js removeMapFiles() 删除（不外泄、不增体积）。
+//   .map 写盘后由 scripts/electron-build.js removeMapFiles() 删除（不外泄、不增体积）。
 // 调试构建（GOOSE_DEBUG=1）：sourcemap = true + 不压缩 → 产物 JS 含 sourceMappingURL，
-//   removeMapFiles() 跳过保留 .map，uTools 开发者工具(Chromium DevTools) Sources 面板直读 src/。
+//   removeMapFiles() 跳过保留 .map，Electron 开发者工具(Chromium DevTools) Sources 面板直读 src/。
 //
-// 关联：vite.config.ts 读取这些导出；scripts/utools-build.js 用同一 env 判断是否保留 .map。
+// 关联：vite.config.ts 读取这些导出；scripts/electron-build.js 用同一 env 判断是否保留 .map。
 
 export const isDebugBuild = process.env.GOOSE_DEBUG === "1";
 

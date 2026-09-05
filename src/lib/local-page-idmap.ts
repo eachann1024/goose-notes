@@ -12,15 +12,15 @@
  * - 外部直接重命名/删除文件时，旧 id 自然退役（扫描结束清理已消失路径的条目），可接受。
  *
  * 存储：key = `gn:local-idmap:{notebookId}`，值为 { [relativePath]: stableId }
- * 使用 utoolsDbStorage 的 readDbStorageJSON / writeDbStorageJSON，
- * 浏览器 dev 环境自动回落 localStorage，uTools 环境用 dbStorage / db 文档。
+ * 使用 localDbStorage 的 readDbStorageJSON / writeDbStorageJSON，
+ * 浏览器 dev 环境自动回落 localStorage，Electron 环境用 dbStorage / db 文档。
  */
 
 import {
   readDbStorageJSON,
   removeDbStorageItem,
   writeDbStorageJSON,
-} from "./storage/utoolsDbStorage";
+} from "./storage/localDbStorage";
 
 const IDMAP_KEY_PREFIX = "gn:local-idmap:";
 

@@ -12,7 +12,12 @@ import {
   type PartialTableContent,
 } from "@blocknote/core";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
-import { CellSelection, deleteRow, selectedRect } from "prosemirror-tables";
+import {
+  CellSelection,
+  deleteColumn,
+  deleteRow,
+  selectedRect,
+} from "prosemirror-tables";
 import {
   useBlockNoteEditor,
   useExtension,
@@ -27,6 +32,10 @@ import {
 } from "@/components/editor/ui/dropdown-menu";
 import { cn } from "@/components/editor/utils/cn";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import {
+  createTableDeletionSnapshot,
+  isCellSelectionInsideBlock,
+} from "./tableDeletion";
 
 type TableExtendButtonProps = {
   orientation: "addOrRemoveRows" | "addOrRemoveColumns";
@@ -209,7 +218,22 @@ function cloneTableCell(cell: unknown) {
 }
 
 function getTableColumnCount(content: PartialTableContent<any, any>) {
-  return Math.max(0, ...content.rows.map((row) => row.cells.length));
+  return Math.max(
+    0,
+    ...content.rows.map((row) =>
+      row.cells.reduce((count, cell) => {
+        if (
+          typeof cell === "object" &&
+          cell !== null &&
+          "type" in cell &&
+          cell.type === "tableCell"
+        ) {
+          return count + Math.max(1, Number(cell.props?.colspan) || 1);
+        }
+        return count + 1;
+      }, 0),
+    ),
+  );
 }
 
 function getInsertedColumnRows(
@@ -236,40 +260,18 @@ function getInsertedColumnRows(
   );
 }
 
-function getDeletedColumnRows(
-  content: PartialTableContent<any, any>,
-  fromIndex: number,
-  toIndex = fromIndex + 1,
-) {
-  return content.rows.map((row) => ({
-    ...row,
-    cells: row.cells.filter(
-      (_, cellIndex) => cellIndex < fromIndex || cellIndex >= toIndex,
-    ),
-  }));
-}
-
 function getUpdatedColumnWidths(
   columnWidths: unknown[] | undefined,
-  action:
-    | { type: "insert"; index: number }
-    | { type: "delete"; fromIndex: number; toIndex: number },
+  action: { type: "insert"; index: number },
 ) {
   if (!Array.isArray(columnWidths)) return columnWidths;
 
   const nextColumnWidths = [...columnWidths];
-  if (action.type === "insert") {
-    nextColumnWidths.splice(
-      action.index,
-      0,
-      columnWidths[action.index] ?? columnWidths.at(-1),
-    );
-  } else {
-    nextColumnWidths.splice(
-      action.fromIndex,
-      action.toIndex - action.fromIndex,
-    );
-  }
+  nextColumnWidths.splice(
+    action.index,
+    0,
+    columnWidths[action.index] ?? columnWidths.at(-1),
+  );
   return nextColumnWidths;
 }
 
@@ -287,6 +289,27 @@ function getEvenColumnWidths(columnCount: number, tableWidth: number) {
   const widths = Array.from({ length: columnCount }, () => baseWidth);
   widths[widths.length - 1] += Math.round(tableWidth - baseWidth * columnCount);
   return widths;
+}
+
+function deleteTableBlock(editor: any, block: any) {
+  const previousBlock = editor.getPrevBlock(block);
+  const nextBlock = editor.getNextBlock(block);
+
+  if (!previousBlock && !nextBlock) {
+    const [replacement] = editor.replaceBlocks(
+      [block],
+      [{ type: "paragraph" }],
+    );
+    if (replacement) editor.setTextCursorPosition(replacement, "start");
+    return;
+  }
+
+  editor.removeBlocks([block]);
+  if (previousBlock) {
+    editor.setTextCursorPosition(previousBlock, "end");
+  } else if (nextBlock) {
+    editor.setTextCursorPosition(nextBlock, "start");
+  }
 }
 
 export function GooseTableHandle({
@@ -334,26 +357,18 @@ export function GooseTableHandle({
   }, [tableHandles, hideOtherElements]);
 
   const updateTableColumns = useCallback(
-    (action: "add-left" | "add-right" | "delete") => {
+    (action: "add-left" | "add-right") => {
       if (!state?.block || !tableHandles || index === undefined || isRow)
         return;
 
       const block = state.block;
       const content = block.content as PartialTableContent<any, any>;
-      const columnCount = getTableColumnCount(content);
       const insertIndex = action === "add-left" ? index : index + 1;
-      const rows =
-        action === "delete"
-          ? getDeletedColumnRows(content, index)
-          : getInsertedColumnRows(tableHandles, block, insertIndex);
-      const columnWidths = getUpdatedColumnWidths(
-        content.columnWidths,
-        action === "delete"
-          ? { type: "delete", fromIndex: index, toIndex: index + 1 }
-          : { type: "insert", index: insertIndex },
-      );
-
-      if (action === "delete" && columnCount <= 1) return;
+      const rows = getInsertedColumnRows(tableHandles, block, insertIndex);
+      const columnWidths = getUpdatedColumnWidths(content.columnWidths, {
+        type: "insert",
+        index: insertIndex,
+      });
 
       editor.updateBlock(block, {
         type: "table",
@@ -369,55 +384,74 @@ export function GooseTableHandle({
   );
 
   const handleDelete = useCallback(() => {
+    if (!state?.block || !tableHandles || index === undefined) return;
+
+    const block = state.block;
+    const content = block.content as PartialTableContent<any, any>;
     const selection = editor.prosemirrorState.selection;
-    if (selection instanceof CellSelection) {
+    let selectionRect;
+    if (
+      selection instanceof CellSelection &&
+      isCellSelectionInsideBlock(
+        editor.prosemirrorState.doc,
+        block.id,
+        selection.$anchorCell.pos,
+        selection.$headCell.pos,
+      )
+    ) {
       const rect = selectedRect(editor.prosemirrorState);
-      const selectedRows = rect.bottom - rect.top;
-      const selectedColumns = rect.right - rect.left;
-
-      if (isRow && selectedRows > 1) {
-        editor.exec((state, dispatch) => deleteRow(state, dispatch));
-        return;
-      }
-
-      if (!isRow && selectedColumns > 1) {
-        if (state?.block) {
-          const content = state.block.content as PartialTableContent<any, any>;
-          const columnCount = getTableColumnCount(content);
-          if (selectedColumns < columnCount) {
-            editor.updateBlock(state.block, {
-              type: "table",
-              content: {
-                ...content,
-                columnWidths: getUpdatedColumnWidths(content.columnWidths, {
-                  type: "delete",
-                  fromIndex: rect.left,
-                  toIndex: rect.right,
-                }),
-                rows: getDeletedColumnRows(content, rect.left, rect.right),
-              } as any,
-            });
-            editor.setTextCursorPosition(state.block);
-          }
-        }
-        return;
-      }
+      selectionRect = {
+        blockId: block.id,
+        anchorCell: selection.$anchorCell.pos,
+        headCell: selection.$headCell.pos,
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+      };
     }
 
-    if (isRow) {
-      tableHandles?.removeRowOrColumn(index!, orientation);
-    } else {
-      updateTableColumns("delete");
+    // Snapshot the target before Radix dismisses the menu and editor.focus()
+    // changes the live ProseMirror selection.
+    const snapshot = createTableDeletionSnapshot({
+      blockId: block.id,
+      orientation,
+      handleIndex: index,
+      rowCount: content.rows.length,
+      columnCount: getTableColumnCount(content),
+      selection: selectionRect,
+    });
+
+    if (snapshot.plan.kind === "delete-table") {
+      deleteTableBlock(editor, block);
+      return;
     }
-  }, [
-    editor,
-    index,
-    isRow,
-    orientation,
-    state?.block,
-    tableHandles,
-    updateTableColumns,
-  ]);
+
+    const { fromIndex, toIndex } = snapshot.plan;
+    editor.exec((beforeState, dispatch) => {
+      const commandState = snapshot.cellSelection
+        ? beforeState.apply(
+            beforeState.tr.setSelection(
+              CellSelection.create(
+                beforeState.doc,
+                snapshot.cellSelection.anchorCell,
+                snapshot.cellSelection.headCell,
+              ),
+            ),
+          )
+        : tableHandles.setCellSelection(
+            beforeState,
+            isRow ? { row: fromIndex, col: 0 } : { row: 0, col: fromIndex },
+            isRow
+              ? { row: toIndex - 1, col: snapshot.columnCount - 1 }
+              : { row: snapshot.rowCount - 1, col: toIndex - 1 },
+          );
+
+      return isRow
+        ? deleteRow(commandState, dispatch)
+        : deleteColumn(commandState, dispatch);
+    });
+  }, [editor, index, isRow, orientation, state, tableHandles]);
 
   const handleToggleHeaderRow = useCallback(
     (checked: boolean | "indeterminate") => {
@@ -548,7 +582,7 @@ export function GooseTableHandle({
                 </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem onClick={handleDelete}>
+            <DropdownMenuItem onSelect={handleDelete}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除行
             </DropdownMenuItem>
           </>
@@ -568,7 +602,7 @@ export function GooseTableHandle({
             >
               <LucideIcons.ArrowRight className="mr-2 h-4 w-4" /> 右侧添加列
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => runMenuAction(handleDelete)}>
+            <DropdownMenuItem onSelect={handleDelete}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除列
             </DropdownMenuItem>
           </>

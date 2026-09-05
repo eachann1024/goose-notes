@@ -153,7 +153,7 @@ function conflictHandlers(filePath: string, pageId: string) {
 }
 
 /**
- * 主动新鲜度检查：watch 不在场期间（uTools 窗口隐藏、查看其他笔记本、插件退出）
+ * 主动新鲜度检查：watch 不在场期间（Electron 窗口隐藏、查看其他笔记本、插件退出）
  * 的外部修改收不到 change 事件，在切页 / 窗口恢复可见时主动读盘 diff 兜底。
  * 没变 → 无操作；变了且页面干净且无近期交互 → 静默重载；变了且 dirty / 刚聚焦编辑器 → 冲突提示。
  */
@@ -464,7 +464,7 @@ export function useLocalFolderWatch({
     void checkLocalPageFreshness(activePageId);
   }, [activePageId, notebook?.id, notebook?.source]);
 
-  // ── 主动新鲜度检查：uTools 窗口重新可见 / 聚焦时 ───────────────────────────
+  // ── 主动新鲜度检查：Electron 窗口重新可见 / 聚焦时 ───────────────────────────
   useEffect(() => {
     if (notebook?.source !== "local-folder") return;
     const check = () => {

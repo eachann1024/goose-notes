@@ -56,7 +56,7 @@ export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
 }
 
 /**
- * uTools db.postAttachment 上限约 10MB。
+ * Electron db.postAttachment 上限约 10MB。
  * 超过则拒绝入库（不再降质量兜底）。
  */
 export const MAX_IMAGE_STORE_BYTES = 10 * 1024 * 1024

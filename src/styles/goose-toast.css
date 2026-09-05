@@ -2,7 +2,7 @@
  * 错误态走 goose-toast-error（红字 + 圆底 !）；成功态与默认 toast 同源，
  * 仅勾号/操作使用产品 primary（鸢尾靛蓝），禁止默认 sonner 绿。
  *
- * uTools 旧内核注意：不要用 hsl(var(--token)/alpha) 或 Tailwind 的
+ * Electron 旧内核注意：不要用 hsl(var(--token)/alpha) 或 Tailwind 的
  * bg-foreground/8 一类写法，会退化成实心前景色（关闭按钮 hover 变黑圆）。
  * hover 背景统一用 rgba。
  */
@@ -11,7 +11,7 @@
 .goose-toaster[data-sonner-toaster],
 [data-sonner-toaster].goose-toaster {
  --width: 356px;
- /* sonner 在 max-width:600px 会改成 left+right 通栏；uTools 窗口经常踩中，
+ /* sonner 在 max-width:600px 会改成 left+right 通栏；Electron 窗口经常踩中，
      toast 会落在内容区中间。主窗始终钉在右上。 */
  left: auto !important;
  right: var(--offset-right, 22px) !important;

@@ -46,9 +46,9 @@ test("Electron 导出写入下载目录并选中文件，不弹保存对话框",
         return "/tmp/should-not-run.html";
       },
     },
-    utools: {
+    electron: {
       showSaveDialog: () => {
-        calls.push("utools-dialog");
+        calls.push("electron-dialog");
         return "/tmp/should-not-run.html";
       },
     },
@@ -65,99 +65,5 @@ test("Electron 导出写入下载目录并选中文件，不弹保存对话框",
   } finally {
     (globalThis as typeof globalThis & { window: unknown }).window =
       previousWindow;
-  }
-});
-
-test("uTools 导出写入下载目录并选中文件，不弹保存对话框", async () => {
-  const previousWindow = globalThis.window;
-  const previousFileReader = (globalThis as { FileReader?: unknown }).FileReader;
-  const calls: string[] = [];
-  const files = new Set<string>();
-  (globalThis as { FileReader?: unknown }).FileReader = TestFileReader;
-  (globalThis as typeof globalThis & { window: unknown }).window = {
-    utools: {
-      getPath: (name: string) =>
-        name === "downloads" ? "/Users/me/Downloads" : null,
-      showSaveDialog: () => {
-        calls.push("dialog");
-        return "/tmp/should-not-run.md";
-      },
-      shellShowItemInFolder: (targetPath: string) => {
-        calls.push(`utools-reveal:${targetPath}`);
-        return true;
-      },
-    },
-    gooseFs: {
-      exists: () => false,
-      existsAsync: async (targetPath: string) => files.has(targetPath),
-      mkdir: () => true,
-      writeFileAsync: async (targetPath: string) => {
-        files.add(targetPath);
-        calls.push(`write:${targetPath}`);
-        return true;
-      },
-      writeFile: () => false,
-      revealItemInFolder: async (targetPath: string) => {
-        calls.push(`reveal:${targetPath}`);
-        return true;
-      },
-    },
-  };
-
-  try {
-    await expect(
-      saveBlobAndReveal(new Blob(["hello"]), "note.md"),
-    ).resolves.toBe(true);
-    expect(calls).toEqual([
-      "write:/Users/me/Downloads/note.md",
-      "reveal:/Users/me/Downloads/note.md",
-    ]);
-  } finally {
-    (globalThis as typeof globalThis & { window: unknown }).window =
-      previousWindow;
-    (globalThis as { FileReader?: unknown }).FileReader = previousFileReader;
-  }
-});
-
-test("uTools 下载目录已有同名文件时自动加序号", async () => {
-  const previousWindow = globalThis.window;
-  const previousFileReader = (globalThis as { FileReader?: unknown }).FileReader;
-  const calls: string[] = [];
-  const files = new Set(["/Users/me/Downloads/note.md"]);
-  (globalThis as { FileReader?: unknown }).FileReader = TestFileReader;
-  (globalThis as typeof globalThis & { window: unknown }).window = {
-    utools: {
-      getPath: (name: string) =>
-        name === "downloads" ? "/Users/me/Downloads" : null,
-    },
-    gooseFs: {
-      exists: () => false,
-      existsAsync: async (targetPath: string) => files.has(targetPath),
-      mkdir: () => true,
-      writeFileAsync: async (targetPath: string) => {
-        files.add(targetPath);
-        calls.push(`write:${targetPath}`);
-        return true;
-      },
-      writeFile: () => false,
-      revealItemInFolder: async (targetPath: string) => {
-        calls.push(`reveal:${targetPath}`);
-        return true;
-      },
-    },
-  };
-
-  try {
-    await expect(
-      saveBlobAndReveal(new Blob(["hello"]), "note.md"),
-    ).resolves.toBe(true);
-    expect(calls).toEqual([
-      "write:/Users/me/Downloads/note (1).md",
-      "reveal:/Users/me/Downloads/note (1).md",
-    ]);
-  } finally {
-    (globalThis as typeof globalThis & { window: unknown }).window =
-      previousWindow;
-    (globalThis as { FileReader?: unknown }).FileReader = previousFileReader;
   }
 });

@@ -30,7 +30,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Toaster } from "@/components/ui/sonner";
-import { quickNoteWindow } from "@/lib/utools/quickNoteWindow";
+import { quickNoteWindow } from "@/lib/electron/quickNoteWindow";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { QuickNoteSlotSwitcher } from "./QuickNoteSlotSwitcher";
@@ -299,7 +299,7 @@ export function QuickNoteApp() {
     [flushEditor],
   );
 
-  /** 关窗 / 收起前把当前位置写进 store + preload，保证下次 uTools 唤起仍在原处。 */
+  /** 关窗 / 收起前把当前位置写进 store + preload，保证下次 Electron 唤起仍在原处。 */
   const persistPlacementThenClose = useCallback(() => {
     flushEditor();
     const x = window.screenX;
@@ -487,7 +487,7 @@ export function QuickNoteApp() {
         resizeSettleTimerRef.current = null;
         isResizingRef.current = false;
         // 持久化由主窗用 win.getSize() 权威读取后写回 dbStorage：子窗渲染进程的
-        // outerWidth 在 uTools frameless 窗口里 resize 后并不更新，直接存会记错值，
+        // outerWidth 在 Electron frameless 窗口里 resize 后并不更新，直接存会记错值，
         // 导致下次开窗仍回默认宽度（用户每次都要重新拉宽）。
         quickNoteWindow.persistSize();
         // 同步进程内 store（best-effort），用视口宽高兜底，开窗尺寸以 dbStorage 为准。
@@ -672,7 +672,7 @@ export function QuickNoteApp() {
           onContentChangeOverride={onDraftChange}
         >
           {/*
-            用 CSS zoom（Chromium/uTools 支持）而不是 transform:scale + 反向宽高。
+            用 CSS zoom（Chromium/Electron 支持）而不是 transform:scale + 反向宽高。
             transform 不改变布局盒：缩小后 width=100/zoom% 会 > 100%，父级
             overflow-y-auto 会连带出现底部横向滚动条，放大时也会出现可视高度与
             scrollHeight 不一致。zoom 同步缩放布局与绘制，滚动条只随真实内容出现。

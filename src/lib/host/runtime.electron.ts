@@ -1,8 +1,8 @@
 /**
  * Electron 桌面端（仅本地模式）的 HostRuntime 实现。
  *
- * 数据只落本机：db / dbStorage 走 localStorage（与 runtime.utools.ts 的
- * web 兜底同构）；附件走 userData/attachments 磁盘（@/lib/electron/attachments，
+ * 数据只落本机：db / dbStorage 走 localStorage；附件走
+ * userData/attachments 磁盘（@/lib/electron/attachments，
  * 上限 50MB）。无账号、无 sublist、无 redirect。全局热键走
  * @/lib/electron/globalHotkeys。本地文件夹能力由 ensureGooseFs 注入的
  * window.gooseFs（@/lib/electron/gooseFs，基于 window.gooseDesktop）提供。
@@ -31,12 +31,13 @@ const readWebDb = (): Record<string, HostDoc<unknown>> => {
   }
 };
 
-const writeWebDb = (db: Record<string, HostDoc<unknown>>): void => {
-  if (typeof window === "undefined") return;
+const writeWebDb = (db: Record<string, HostDoc<unknown>>): boolean => {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(WEB_DB_STORAGE_KEY, JSON.stringify(db));
+    return true;
   } catch {
-    // ignore
+    return false;
   }
 };
 
@@ -49,7 +50,6 @@ const electronAttachments = () => import("@/lib/electron/attachments");
 
 export const hostRuntime: HostRuntime = {
   kind: "electron",
-  isUTools: false,
   supportsSublist: false,
   supportsWakeHotkey: true,
   ensureGooseFs: async () => {
@@ -91,7 +91,9 @@ export const hostRuntime: HostRuntime = {
       const db = readWebDb();
       const nextRev = nextWebRev(rev || db[id]?._rev);
       db[id] = { _id: id, _rev: nextRev, data };
-      writeWebDb(db);
+      if (!writeWebDb(db)) {
+        return { id, ok: false, error: "local-storage-write-failed" };
+      }
       return { id, ok: true, rev: nextRev };
     },
     get: <T>(id: string): HostDoc<T> | null => {
@@ -100,7 +102,9 @@ export const hostRuntime: HostRuntime = {
     remove: (id: string): HostRemoveResult => {
       const db = readWebDb();
       delete db[id];
-      writeWebDb(db);
+      if (!writeWebDb(db)) {
+        return { id, ok: false, error: "local-storage-write-failed" };
+      }
       void electronAttachments()
         .then((mod) => mod.removeAttachment(id))
         .catch(() => {});

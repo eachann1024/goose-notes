@@ -18,11 +18,14 @@ export interface WebdavSliceActions {
 
 export type WebdavSlice = WebdavSliceState & WebdavSliceActions
 
+export const DEFAULT_WEBDAV_REMOTE_DIR = "goose-note-app"
+
 export const WEBDAV_INITIAL_STATE: WebdavSliceState = {
   webdavUrl: "https://example.com/dav/",
   webdavUsername: "",
   webdavPassword: "",
-  webdavRemoteDir: "goose-notes",
+  // 新配置写入新目录；已保存的 "goose-notes" 值保持不变，以继续读取历史备份。
+  webdavRemoteDir: DEFAULT_WEBDAV_REMOTE_DIR,
   webdavRetentionDays: 365,
   webdavAutoBackupEnabled: true,
   webdavLastUploadAt: null,

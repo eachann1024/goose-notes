@@ -392,6 +392,7 @@ async function allocateLocalMarkdownFilePath(
     }
   };
 
+  const localPath = notebook.localPath;
   const normalizedTitle = (
     (title || UNTITLED_PAGE_TITLE).trim() || UNTITLED_PAGE_TITLE
   ).replace(/[\\/:*?"<>|]/g, "_");
@@ -401,7 +402,7 @@ async function allocateLocalMarkdownFilePath(
     ? parentPage?.isFolder
       ? parentPath
       : parentPath.replace(/[^\/\\]+$/, "")
-    : notebook.localPath;
+    : localPath;
   const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
 
   const checkExists = async (path: string) => {
@@ -412,7 +413,7 @@ async function allocateLocalMarkdownFilePath(
   };
 
   const isPathInsideNotebookRoot = (candidate: string) => {
-    const root = notebook.localPath.replace(/\\/g, "/").replace(/\/$/, "");
+    const root = localPath.replace(/\\/g, "/").replace(/\/$/, "");
     const normalized = candidate.replace(/\\/g, "/");
     return normalized === root || normalized.startsWith(`${root}/`);
   };
@@ -610,6 +611,7 @@ export const createLocalPageRecordAction = async (
   };
 
   const now = Date.now();
+  const localPath = notebook.localPath;
   const normalizedTitle = (
     (title || UNTITLED_PAGE_TITLE).trim() || UNTITLED_PAGE_TITLE
   ).replace(/[\\/:*?"<>|]/g, "_");
@@ -623,7 +625,7 @@ export const createLocalPageRecordAction = async (
     ? parentPage?.isFolder
       ? parentPath
       : parentPath.replace(/[^\/\\]+$/, "")
-    : notebook.localPath;
+    : localPath;
   const normalizedBaseDir = baseDir.replace(/[\/\\]$/, "");
 
   const checkExists = async (path: string) => {
@@ -634,7 +636,7 @@ export const createLocalPageRecordAction = async (
   };
 
   const isPathInsideNotebookRoot = (candidate: string) => {
-    const root = notebook.localPath.replace(/\\/g, "/").replace(/\/$/, "");
+    const root = localPath.replace(/\\/g, "/").replace(/\/$/, "");
     const normalized = candidate.replace(/\\/g, "/");
     return normalized === root || normalized.startsWith(`${root}/`);
   };

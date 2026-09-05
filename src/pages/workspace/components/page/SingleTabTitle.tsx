@@ -29,7 +29,7 @@ import { localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
 
 interface SingleTabTitleProps {
   page: Page;
-  /** Electron 顶栏：闲置按住拖窗口，单击才进入编辑。uTools 页头不传。 */
+  /** Electron 顶栏：闲置按住拖窗口，单击才进入编辑。Electron 页头不传。 */
   idleWindowDrag?: boolean;
   /** tab-pill：嵌在标签页里改名，外观跟普通标签文字一致。 */
   surface?: "page-header" | "tab-pill";

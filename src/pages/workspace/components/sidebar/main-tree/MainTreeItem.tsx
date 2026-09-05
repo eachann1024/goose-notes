@@ -173,7 +173,7 @@ function TreeRowIcon({
 
   return (
     <div
-      className="pointer-events-none flex h-6 w-6 shrink-0 items-center justify-center mr-0.5"
+      className="pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5"
       aria-disabled={isRenaming ? "true" : undefined}
     >
       <div className="flex h-4 w-4 items-center justify-center">
@@ -240,7 +240,7 @@ function MainTreeRow({
         // 行高用 --main-tree-row-height 锁成整数，避免 margin/子像素让 rct
         // computeItemHeight 与真实行距不一致（Electron 越往下越拖不准）。
         "main-tree-row group/main-row relative z-10 flex items-center gap-1 rounded-lg pl-0 pr-2",
-        "font-medium leading-snug cursor-pointer select-none",
+        "text-[13px] font-medium leading-none cursor-pointer select-none",
         "transition-colors duration-150",
         "outline-none",
         isPendingCreate
@@ -551,7 +551,7 @@ export function renderItem({
           e.stopPropagation();
           if (isLocalDirectory) {
             if (isElectronHost) return;
-            // uTools：双击文件夹晋升永久标签（目录主页）
+            // Electron：双击文件夹晋升永久标签（目录主页）
             onActivateLocalDirectory?.(String(item.index), "permanent");
             return;
           }
@@ -716,7 +716,8 @@ function MainTreeDragBetweenLine({
       : false;
   });
   const parentItem =
-    draggingPosition.targetType === "between-items"
+    draggingPosition.targetType === "between-items" ||
+    draggingPosition.targetType === "item"
       ? String(draggingPosition.parentItem)
       : undefined;
   const capturedParent = peekLocalFolderDropParent();
@@ -729,7 +730,7 @@ function MainTreeDragBetweenLine({
     const lineEl = lineRef.current;
     if (!lineEl) return;
     snapDragBetweenLine(lineEl, draggingPosition.linearIndex ?? 0);
-  }, [draggingPosition.linearIndex, draggingPosition.parentItem, hideSortLine]);
+  }, [draggingPosition.linearIndex, parentItem, hideSortLine]);
 
   if (hideSortLine) {
     return <div ref={lineRef} {...lineProps} className="hidden" />;

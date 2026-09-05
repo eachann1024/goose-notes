@@ -242,7 +242,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   overflow: hidden;
 }
 
-/* 历史页交互状态使用扁平选择器：uTools 旧内核不执行 Tailwind v4 的嵌套 hover CSS。 */
+/* 历史页交互状态使用扁平选择器：Electron 旧内核不执行 Tailwind v4 的嵌套 hover CSS。 */
 .workspace-shell .history-secondary-control:hover {
   color: hsl(var(--foreground)) !important;
   background-color: var(--goose-control-hover-bg) !important;
@@ -306,7 +306,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   background-color: var(--goose-primary-hover-bg) !important;
 }
 
-/* uTools 旧内核不执行 Tailwind v4 嵌套 hover：侧栏/顶栏换图标入口。 */
+/* Electron 旧内核不执行 Tailwind v4 嵌套 hover：侧栏/顶栏换图标入口。 */
 .workspace-shell .goose-page-icon-trigger:hover,
 .workspace-shell .goose-page-icon-trigger[data-state="open"] {
   color: var(--goose-interactive-selected-fg);

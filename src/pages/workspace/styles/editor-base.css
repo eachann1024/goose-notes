@@ -1,5 +1,5 @@
 /* 编辑器基础样式入口：按原文件书写顺序引入子文件，级联与拆分前一致。
- * 被 src/index.css、workspace/styles/index.css、native-editor/main.tsx 引入。
+ * 被 src/index.css、workspace/styles/index.css、editor/main.tsx 引入。
  * 子文件依赖 --editor-* / --goose-*（定义在 src/index.css）；本文件只负责顺序。
  */
 @import "./editor-base/shell.css";

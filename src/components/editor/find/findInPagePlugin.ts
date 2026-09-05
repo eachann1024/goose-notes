@@ -1,5 +1,5 @@
 import { createExtension } from "@blocknote/core";
-import { Plugin, PluginKey } from "prosemirror-state";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import type { EditorView } from "prosemirror-view";
 import type { BlockNoteEditor } from "@blocknote/core";
@@ -59,7 +59,7 @@ function recomputeAfterDocChange(prev: FindState, doc: import("prosemirror-model
   return { ...prev, matches, current };
 }
 
-const findInPagePlugin = new Plugin<FindState>({
+export const findInPagePlugin = new Plugin<FindState>({
   key: findInPageKey,
   state: {
     init: () => initialState,
@@ -154,6 +154,59 @@ export function clearFind(editor: BlockNoteEditor<any, any, any>) {
   const view = getView(editor);
   if (!view) return;
   view.dispatch(view.state.tr.setMeta(findInPageKey, { type: "clear" } satisfies FindMeta));
+}
+
+export function createReplaceCurrentTransaction(
+  state: EditorState,
+  replacement: string,
+): Transaction | null {
+  const value = findInPageKey.getState(state);
+  if (!value || value.current < 0 || value.current >= value.matches.length) {
+    return null;
+  }
+  const match = value.matches[value.current];
+  return state.tr.insertText(replacement, match.from, match.to);
+}
+
+export function createReplaceAllTransaction(
+  state: EditorState,
+  replacement: string,
+): Transaction | null {
+  const value = findInPageKey.getState(state);
+  if (!value || value.matches.length === 0) return null;
+  let tr = state.tr;
+  for (let i = value.matches.length - 1; i >= 0; i--) {
+    const match = value.matches[i];
+    tr = tr.insertText(replacement, match.from, match.to);
+  }
+  return tr;
+}
+
+export function replaceCurrentMatch(
+  editor: BlockNoteEditor<any, any, any>,
+  replacement: string,
+): boolean {
+  const view = getView(editor);
+  if (!view) return false;
+  const tr = createReplaceCurrentTransaction(view.state, replacement);
+  if (!tr) return false;
+  view.dispatch(tr);
+  scrollToCurrentMatch(view);
+  return true;
+}
+
+export function replaceAllMatches(
+  editor: BlockNoteEditor<any, any, any>,
+  replacement: string,
+): number {
+  const view = getView(editor);
+  if (!view) return 0;
+  const value = findInPageKey.getState(view.state);
+  const count = value?.matches.length ?? 0;
+  const tr = createReplaceAllTransaction(view.state, replacement);
+  if (!tr) return 0;
+  view.dispatch(tr);
+  return count;
 }
 
 function scrollToCurrentMatch(view: EditorView) {

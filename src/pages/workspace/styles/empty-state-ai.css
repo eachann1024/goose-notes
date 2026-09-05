@@ -1,7 +1,7 @@
 /**
  * 空状态 AI 入口 · V5 星云 tilt
  * 去掉取景框四角；高饱和光晕；图标轻微 3D tilt（陀螺仪/磁力跟随感）。
- * 注意：uTools 旧内核勿用 hsl(var(--x)/alpha)，一律用 rgba/hex 实色。
+ * 注意：Electron 旧内核勿用 hsl(var(--x)/alpha)，一律用 rgba/hex 实色。
  */
 
 .page-empty-ai-card {

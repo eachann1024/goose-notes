@@ -9,7 +9,7 @@
  * 内容从 PageHeader「提升」而来：侧栏折叠钮、AI 钮、TabRail、回收站恢复/删除、PageMenu。
  * 收藏、导出、页面置顶和页面历史收在 PageMenu 内。窗口置顶在侧栏左下角。
  * 历史模式改渲染 HistoryToolbar（仍全宽）。
- * uTools 构建不渲染本组件，PageHeader 保持原样。
+ * Electron 构建不渲染本组件，PageHeader 保持原样。
  */
 import * as LucideIcons from "lucide-react";
 import type { Page } from "@/types";
@@ -114,8 +114,8 @@ export function DesktopTitleBar({
     >
       <div
         className={cn(
-          "flex min-w-0 items-center gap-2 overflow-hidden",
-          aiFullscreenOpen ? "flex-1" : "flex-1",
+          "min-w-0 flex-1 items-center gap-2 overflow-hidden",
+          "flex",
         )}
       >
         {sidebarCollapsed ? (

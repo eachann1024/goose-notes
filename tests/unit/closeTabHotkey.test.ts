@@ -34,8 +34,13 @@ test("Electron 菜单 Cmd+W 关标签，不关窗口", () => {
   expect(hotkeys).toContain('matchShortcut(normalized, "Mod+W")');
   expect(hotkeys).toContain("onCloseActiveTab");
   expect(hotkeys).toContain("runUnifiedClose");
+  expect(hotkeys).toContain("getFocusedAiPanelLayout");
+  expect(hotkeys).toContain("closeNotebookAiPanel");
   expect(hotkeys).toContain("closePaneOrTab");
   expect(hotkeys).toContain("closeTab(activeId)");
+  expect(hotkeys).toContain("findLoneVisibleWorkspaceTab");
+  expect(hotkeys).toContain("loneVisibleTab?.id === activeId");
+  expect(hotkeys).toContain("closeWindow?.()");
   expect(hotkeys).toContain('closePaneOrTab() !== "close-tab"');
 
   expect(preload).toContain("desktop:close-active-tab");

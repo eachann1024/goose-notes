@@ -23,10 +23,10 @@
 /* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
 @source "../node_modules/streamdown/dist/index.js";
 
-/* ── uTools 旧内核 @property 降级 ───────────────────────────────
+/* ── Electron 旧内核 @property 降级 ───────────────────────────────
  * Tailwind v4 的 shadow-* / ring-* / 渐变 / transform 等工具类全部依赖
  * @property 注册初值的 --tw-* 变量链（如 box-shadow: var(--tw-inset-shadow), ..., var(--tw-shadow)）。
- * uTools 旧内核不支持 @property，且 Tailwind 自带降级块包在旧内核同样匹配不上的
+ * Electron 旧内核不支持 @property，且 Tailwind 自带降级块包在旧内核同样匹配不上的
  * @supports 门里 → 变量未定义 → 整条 box-shadow 等声明作废（菜单/弹层投影消失）。
  * 这里把官方降级块原样无条件声明一份（@layer properties 优先级低于 utilities，
  * 工具类自身的变量赋值仍正常覆盖，新内核/浏览器零影响）。 */
@@ -250,21 +250,21 @@
   :root {
     --goose-shell-bg: 0 0% 95.69%; /* #f4f4f4 */
     --goose-selected-bg: 60 6.67% 94.12%;
-    /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，uTools 旧内核安全） */
+    /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，Electron 旧内核安全） */
     --goose-interactive-selected: #e0e7ff;
     --goose-interactive-selected-fg: #4f46e5;
     --goose-interactive-selected-border: transparent;
     /* hover / 图标底跟选中表面同一色，换强调色时一起变 */
     --goose-interactive-hover: var(--goose-interactive-selected);
     --goose-editor-selection-bg: #e0e7ff;
-    /* 紧凑按钮状态：实色，避免 uTools 旧内核解析 hsl(var(...)/alpha) 失败 */
+    /* 紧凑按钮状态：实色，避免 Electron 旧内核解析 hsl(var(...)/alpha) 失败 */
     --goose-control-hover-bg: #ebeae8;
     --goose-primary-hover-bg: #4f46e5;
     --goose-primary-active-bg: #4338ca;
     --goose-icon-chip-on-selected: var(--goose-interactive-selected);
-    /* 置顶/Pin 激活红：必须是 hex 实色，uTools 旧内核解析不了 Tailwind 的 oklch 红 */
+    /* 置顶/Pin 激活红：必须是 hex 实色，Electron 旧内核解析不了 Tailwind 的 oklch 红 */
     --goose-pin-accent: #ef4444;
-    /* 语义实色变量——替代 Tailwind 裸调色板色，uTools 旧内核 oklch 解析失败兜底 */
+    /* 语义实色变量——替代 Tailwind 裸调色板色，Electron 旧内核 oklch 解析失败兜底 */
     --goose-color-danger: #ef4444; /* Pin/删除强调红 */
     --goose-color-danger-hover: #dc2626; /* 删除按钮 hover 背景红 */
     --goose-color-danger-subtle-bg: #fee2e2; /* 链接移除按钮 hover 淡红背景 */
@@ -278,12 +278,12 @@
     --goose-color-capture-hint: #ef4444; /* 快捷键捕获提示占位符红 */
     --goose-ai-approval-check-bg: #6366f1;
     --goose-ai-approval-check-fg: #ffffff;
-    /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，uTools 旧内核会回退成刺眼实色 */
+    /* 编辑器内浅色容器（callout / 代码工具栏等）：禁 /alpha，Electron 旧内核会回退成刺眼实色 */
     --goose-block-subtle-bg: #f3f2f1;
     --goose-block-subtle-border: #e8e7e5;
     --goose-block-subtle-hover: #ebeae8;
     --goose-block-subtle-inset: #f7f6f5;
-    /* 当前行底：实色，避免 uTools 旧内核解析 hsl(var(...)/alpha) 失败 */
+    /* 当前行底：实色，避免 Electron 旧内核解析 hsl(var(...)/alpha) 失败 */
     --goose-active-line-bg: #f4f5f7;
     /* 与标题色条左右外扩对齐；文字/光标仍落在原基线 */
     --goose-active-line-outset: 8px;
@@ -345,7 +345,7 @@
   .dark {
     --goose-shell-bg: 0 0% 12.55%;
     --goose-selected-bg: 60 2.4% 16.1%;
-    /* 暗色鸢尾靛蓝：浅底用 rgba 直写（uTools 旧内核安全） */
+    /* 暗色鸢尾靛蓝：浅底用 rgba 直写（Electron 旧内核安全） */
     --goose-interactive-selected: rgba(99, 102, 241, 0.2);
     --goose-interactive-selected-fg: #a5b4fc;
     --goose-interactive-selected-border: transparent;
@@ -504,7 +504,7 @@
   /* 产品全局不绘制 focus 外框或 Tailwind ring。交互反馈由组件自身的
      背景、文字与状态变化承担，避免 contenteditable 被浏览器包成输入框。
      [tabindex] 包含 -1：Radix DialogContent 等容器在打开和窗口重获焦点时
-     会被程序性聚焦，uTools 旧内核会按系统强调色画出贴窗口边缘的 outline。 */
+     会被程序性聚焦，Electron 旧内核会按系统强调色画出贴窗口边缘的 outline。 */
   :where(
     a[href],
     button,
@@ -676,7 +676,7 @@
 }
 
 /* --- CMDK Overlay：搜索框外全屏磨砂 ---
- * 中等 blur + 半透明底，独立合成层；只淡入淡出 opacity，不动画 filter（uTools 旧内核更稳、更省） */
+ * 中等 blur + 半透明底，独立合成层；只淡入淡出 opacity，不动画 filter（Electron 旧内核更稳、更省） */
 [cmdk-overlay] {
   position: fixed;
   inset: 0;
@@ -1231,7 +1231,7 @@ svg.lucide {
   stroke-width: 1.75;
 }
 
-/* ── uTools 旧内核兜底：模态菜单/弹层打开期间静默其余悬浮层 ──
+/* ── Electron 旧内核兜底：模态菜单/弹层打开期间静默其余悬浮层 ──
    Radix 模态层（右键菜单/下拉菜单/对话框）打开时 body 会带 data-scroll-locked。
    旧内核可能丢失 pointerleave 等事件，导致 tooltip 等浮层卡住不关、
    悬在菜单旁形成"幽灵阴影"。菜单打开期间这些浮层本就不该出现，直接隐藏。 */

@@ -18,7 +18,7 @@
 
 ## 同系列
 
-- [鹅的笔记](https://github.com/eachann1024/goose-notes)
+- [Goose Note App](https://github.com/eachann1024/goose-note-app)
 - [鹅的书签](https://github.com/eachann1024/goose-mark)
 - [鹅的监控](https://github.com/eachann1024/goose-monitor)
 - [鹅的验证](https://github.com/eachann1024/goose-2fa)

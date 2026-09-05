@@ -317,7 +317,7 @@ export function SortablePageRow({
         <div
           {...sortableHandlers}
           className={cn(
-            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-2 rounded-lg overflow-hidden cursor-pointer transition-colors font-medium leading-snug",
+            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-2 rounded-lg overflow-hidden cursor-pointer transition-colors text-[13px] font-medium leading-none",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive && "text-foreground",
@@ -447,7 +447,7 @@ export function SortablePageRow({
             )}
 
             <InlineOverflowRevealText
-              className="leading-snug"
+              className="text-[13px] leading-snug"
               text={titleText}
               expandedText={expandedTitleText}
               active={isActive || rowHovered}

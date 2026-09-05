@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "goose-notes",
+      "name": "goose-note-app",
       "dependencies": {
         "@ai-sdk/anthropic": "3.0.81",
         "@ai-sdk/mcp": "1.0.64",

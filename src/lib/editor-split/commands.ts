@@ -11,7 +11,6 @@ import { isNotebookAiFullscreenOpen } from "@/pages/workspace/components/noteboo
 import { isUnsavedLocalPage, localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
 import { walkLeaves } from "@/lib/editor-split/tree";
 import type { SplitDirection, SplitNeighborDirection } from "@/lib/editor-split/types";
-import { EDITOR_SPLIT_COLUMN_ATTR } from "@/lib/editor-split/types";
 import { useEditorSplit } from "@/stores/useEditorSplit";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { flushEditorContent, usePages } from "@/stores/usePages";
@@ -19,13 +18,6 @@ import { isSpecialTab, useTabs } from "@/stores/useTabs";
 import { createSplitBlankPage } from "./createBlankPage";
 
 export type ClosePaneOrTabResult = "close-tab" | "closed-pane";
-
-export function measureEditorColumnWidth(): number | undefined {
-  if (typeof document === "undefined") return undefined;
-  const el = document.querySelector(`[${EDITOR_SPLIT_COLUMN_ATTR}]`);
-  if (!(el instanceof HTMLElement)) return undefined;
-  return el.clientWidth;
-}
 
 function activeWorkspaceTab() {
   const { activeTabId, openTabs } = useTabs.getState();
@@ -84,15 +76,21 @@ async function splitInDirection(direction: SplitDirection): Promise<boolean> {
   const split = useEditorSplit.getState();
   split.ensureTab(tab.id, tab.pageId);
   const previousFocused = split.focusedPageId(tab.id);
+  const sourcePageId = previousFocused ?? tab.pageId;
 
   const newPageId = await createSplitBlankPage();
   if (!newPageId) return false;
+
+  // createPage 会把 activePage 切到新页；未分屏时 ensureTab 会跟着改左叶。
+  // 分屏前把源叶钉回原页，保证左边不变、右边才是新空页。
+  if (!split.isSplit(tab.id)) {
+    split.ensureTab(tab.id, sourcePageId);
+  }
 
   const result = split.splitFocused({
     tabId: tab.id,
     direction,
     newPageId,
-    editorWidthPx: measureEditorColumnWidth(),
   });
   if (!result.ok) {
     discardFailedSplitPage(newPageId);
@@ -103,9 +101,6 @@ async function splitInDirection(direction: SplitDirection): Promise<boolean> {
     return false;
   }
 
-  if (result.didFallbackToDown && direction === "right") {
-    toast.message("编辑区较窄，已改为向下分屏");
-  }
   void usePages.getState().setActivePage(newPageId);
   return true;
 }

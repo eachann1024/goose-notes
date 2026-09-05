@@ -111,6 +111,16 @@ export function closeNotebookAiIfFullscreen(): void {
   closeAiPanelHandler?.();
 }
 
+/**
+ * 只收起 AI 面板 UI，不 abort / stop 会话。
+ * 侧栏 Cmd+W、全屏 Esc / Cmd+W 共用这条路径。
+ */
+export function closeNotebookAiPanel(): boolean {
+  if (!readStoredOpen()) return false;
+  closeAiPanelHandler?.();
+  return true;
+}
+
 export function useNotebookAiPanel() {
   const [isOpen, setIsOpen] = useState<boolean>(readStoredOpen);
   const [layoutMode, setLayoutModeState] = useState<NotebookAiLayoutMode>(
@@ -168,10 +178,14 @@ export function useNotebookAiPanel() {
         close();
       }
     };
+    const onClosePanel = () => {
+      close();
+    };
     window.addEventListener(
       "goose-note:close-ai-panel-if-fullscreen",
       onCloseIfFullscreen,
     );
+    window.addEventListener("goose-note:close-ai-panel", onClosePanel);
     return () => {
       if (closeAiPanelHandler === close) {
         closeAiPanelHandler = null;
@@ -180,6 +194,7 @@ export function useNotebookAiPanel() {
         "goose-note:close-ai-panel-if-fullscreen",
         onCloseIfFullscreen,
       );
+      window.removeEventListener("goose-note:close-ai-panel", onClosePanel);
     };
   }, [close]);
 

@@ -7,8 +7,10 @@ import {
   createTableAwareSelection,
   gooseTableCellSelectionExtension,
   isCrossCellPointer,
+  isSpanningTableSelection,
   promoteCrossCellTextSelection,
   selectionCrossesTableBoundary,
+  shouldTakeOverOutsideTableDrag,
 } from "../../src/components/editor/extensions/tableCellSelectionExtension";
 
 const TABLE_CONTENT = [
@@ -218,6 +220,62 @@ test("有 tableEditing 时，跨出表格的 TextSelection 不会被收成单元
   expect(state.selection).not.toBeInstanceOf(CellSelection);
   expect(state.selection.from).toBeLessThanOrEqual(heading.from);
   expect(state.selection.to).toBeGreaterThanOrEqual(from.from);
+});
+
+for (const direction of ["正向", "反向"] as const) {
+  test(`${direction}从表外进入表格再越过表格时，始终保留原始锚点`, () => {
+    const editor = BlockNoteEditor.create({
+      schema: editorSchema,
+      initialContent: HEADING_THEN_TABLE as any,
+    });
+    const plugins = [
+      tableEditing(),
+      ...(gooseTableCellSelectionExtension().prosemirrorPlugins ?? []),
+    ];
+    const heading = findTextRange(editor, "资质");
+    const cell = findTextRange(editor, "维度");
+    const after = findTextRange(editor, "after");
+    const initialAnchor = direction === "正向" ? heading.from : after.to;
+    const finalHead = direction === "正向" ? after.to : heading.from;
+    const initialSelection = createTableAwareSelection(
+      editor.prosemirrorState.doc.resolve(initialAnchor),
+      editor.prosemirrorState.doc.resolve(cell.from),
+    );
+    expect(initialSelection).toBeInstanceOf(TextSelection);
+    expect(initialSelection?.anchor).toBe(initialAnchor);
+    expect(initialSelection?.head).toBe(
+      direction === "正向" ? initialSelection?.to : initialSelection?.from,
+    );
+
+    let state = EditorState.create({
+      schema: editor.prosemirrorState.schema,
+      doc: editor.prosemirrorState.doc,
+      selection: initialSelection!,
+      plugins,
+    });
+    const finalSelection = TextSelection.create(
+      state.doc,
+      initialAnchor,
+      finalHead,
+    );
+
+    expect(isSpanningTableSelection(finalSelection)).toBe(true);
+
+    state = state.apply(state.tr.setSelection(finalSelection));
+
+    expect(state.selection).toBeInstanceOf(TextSelection);
+    expect(state.selection.eq(finalSelection)).toBe(true);
+    expect(state.selection.anchor).toBe(initialAnchor);
+    expect(state.selection.head).toBe(finalHead);
+  });
+}
+
+test("表外起拖命中或跨过表格后接管，并持续到拖动结束", () => {
+  expect(shouldTakeOverOutsideTableDrag(false, null)).toBe(false);
+  expect(shouldTakeOverOutsideTableDrag(false, 12)).toBe(true);
+  expect(shouldTakeOverOutsideTableDrag(false, null, true)).toBe(true);
+  expect(shouldTakeOverOutsideTableDrag(true, 12)).toBe(true);
+  expect(shouldTakeOverOutsideTableDrag(true, null)).toBe(true);
 });
 
 test("isCrossCellPointer 只在两个不同单元格时为 true", () => {

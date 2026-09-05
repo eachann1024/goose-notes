@@ -1,7 +1,7 @@
-/* Ghostty 纸缝：Tab 内编辑器分屏。变量挂在 .workspace-shell。 */
+/* Tab 内并排卡片分屏。变量挂在 .workspace-shell。 */
 
 .workspace-shell {
-  --split-sash-visual: 1px;
+  --split-sash-visual: 8px;
   --split-sash-hit-fine: 8px;
   --split-sash-hit-coarse: 24px;
 }
@@ -28,6 +28,18 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
+}
+
+.editor-split-surface[data-editor-split="true"] .editor-split-pane {
+  overflow: hidden;
+  border-radius: 12px;
+  background: hsl(var(--goose-editor-bg));
+  box-shadow: 0 0 0 1px hsl(var(--border) / 0.45);
+}
+
+.editor-split-surface[data-editor-split="true"]
+  .editor-split-pane[data-focused="true"] {
+  box-shadow: 0 0 0 1.5px var(--goose-interactive-selected);
 }
 
 .editor-split-pane-body {
@@ -69,10 +81,9 @@
   z-index: 1;
   flex-grow: 0;
   flex-shrink: 0;
-  background: var(--workspace-divider);
+  background: transparent;
   outline: none;
   touch-action: none;
-  transition: background-color 150ms ease;
 }
 
 .editor-split-sash[aria-orientation="vertical"] {
@@ -85,20 +96,14 @@
 
 @media (hover: hover) and (pointer: fine) {
   .editor-split-sash:hover {
-    background: hsl(var(--muted-foreground) / 0.45);
+    background: hsl(var(--muted-foreground) / 0.18);
   }
 }
 
 .editor-split-sash:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
-  background: hsl(var(--muted-foreground) / 0.45);
-}
-
-.editor-split-group[data-dragging="true"] .editor-split-sash,
-.editor-split-sash[data-separator="active"],
-.editor-split-sash:active {
-  transition: none;
+  background: hsl(var(--muted-foreground) / 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -22,14 +22,13 @@ node_modules
 dist
 dist-ssr
 dist-quicknote/
-dist-native-editor/
+dist-editor/
 dist-electron/
 dist-desktop/
-dist-tauri/
 default.profraw
 # Vite stubs live in src/lib/vite-stubs/ (NOT src/lib/build/).
 # Global ~/.gitignore_global has `build/`; a folder named build is dropped by
-# ztools publish and store Linux CI then fails (missing node-fs-stub.ts).
+# electron publish and store Linux CI then fails (missing node-fs-stub.ts).
 !src/lib/vite-stubs/
 !src/lib/vite-stubs/*
 *.local
@@ -54,17 +53,13 @@ CHANGELOG.md
 skills-lock.json
 !src/agent/AGENTS.md
 !src/agent/**/SKILL.md
-!src/components/editor/AGENTS.md
 
 # ---- Local-only scratch ----
 tasks/
 .pi-lens.json
 scripts/*
-!scripts/utools-build.js
-!scripts/check-utools-size.js
-!scripts/utools-size-baseline.json
-!scripts/audit-native-editor.mjs
-!scripts/serve-native-editor.mjs
+!scripts/audit-editor.mjs
+!scripts/serve-editor.mjs
 !scripts/collect-desktop-artifacts.mjs
 !scripts/compile-electron.mjs
 !scripts/electron-build-linux.mjs
@@ -77,7 +72,6 @@ scripts/*
 !cover.png
 !series-features.png
 
-# app/ 是 ZTools 入口（plugin.json main=app/index.html），发布必须带上
 未命名/
 
 # PDF CJK font (downloaded at build; not committed)

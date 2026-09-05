@@ -161,8 +161,8 @@ export function NotebookAiPanel({
       const parentW = parent.clientWidth;
       const room = parentW - EDITOR_MIN - GAP;
       // room 足够时：不超过 stored / MAX，且留给编辑区至少 EDITOR_MIN
-      // 极窄时（如 uTools 窄窗口）：适应可用 room 宽度（至少 200px），避免挤爆或超出父级视口
-      const availableRoom = Math.max(200, room > 0 ? room : parentW);
+      // 极窄时（如 Electron 窄窗口）：让面板占用扣除 flex gap 后的可用宽度，避免右侧裁切
+      const availableRoom = room > 0 ? room : Math.max(0, parentW - GAP);
       const next = Math.min(width, Math.min(PANEL_WIDTH_MAX, availableRoom));
       setEffectiveWidth(next);
     };
@@ -518,7 +518,7 @@ export function NotebookAiPanel({
           "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden gap-2",
           isFullscreen
             ? "min-w-0 w-full flex-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-2 pt-0"
-            : "bg-[hsl(var(--goose-shell-bg))] p-2",
+            : "bg-[hsl(var(--goose-shell-bg))] px-2",
         )}
       >
         {!isFullscreen ? (

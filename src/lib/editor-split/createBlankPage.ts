@@ -5,7 +5,7 @@ import { usePages } from "@/stores/usePages";
 /**
  * 分屏前创建同本空白页。
  * 内置笔记本走 createPage；本地文件夹优先 unsaved local page，
- * uTools 本地文件夹没有 unsaved 通道时回退 createLocalPage。
+ * Electron 本地文件夹没有 unsaved 通道时回退 createLocalPage。
  */
 export async function createSplitBlankPage(): Promise<string | null> {
   const notebooks = useNotebooks.getState();

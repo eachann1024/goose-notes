@@ -93,7 +93,7 @@ export function calculateSafePixelRatio(width: number, height: number): number {
 }
 
 /**
- * uTools 的 Chromium 运行时连续创建大画布时可能暂时无法分配足够内存。
+ * Electron 的 Chromium 运行时连续创建大画布时可能暂时无法分配足够内存。
  * 首次使用安全上限倍率；失败后逐级降到 2x、1x，避免一次偶发的画布失败
  * 直接中断整个导出流程。
  */

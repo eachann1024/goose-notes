@@ -602,7 +602,7 @@ export function SidebarMainTree({
       return;
     }
 
-    // ── uTools 内置模式：原有内存排序逻辑 ────────────────────────────────────
+    // ── Electron 内置模式：原有内存排序逻辑 ────────────────────────────────────
     const allChildren = getChildren(newParentId, activeNotebookId).map(
       (p) => p.id,
     );

@@ -85,7 +85,7 @@ import {
 } from "./composerInputTypes";
 import { useComposerFlush } from "./useComposerFlush";
 import { useComposerImages } from "./useComposerImages";
-import { useComposerNativeEditor } from "./useComposerNativeEditor";
+import { useComposerEditor } from "./useComposerNativeEditor";
 
 export {
   COMPOSER_CHIP_DELETE_FLUSH_MS,
@@ -876,7 +876,7 @@ export const AiComposerInput = forwardRef<
       },
     };
 
-    useComposerNativeEditor({
+    useComposerEditor({
       editorHostRef,
       editorRef,
       variant,

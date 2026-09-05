@@ -27,7 +27,7 @@ interface HistoryReadOnlyEditorProps {
  *  - 不复用 Editor.tsx：那是写态编辑器，绑死 usePages.activePageId、有 debouncedUpdate / file drop / shortcuts，
  *    在历史模式下这些副作用全是噪音。这里只要一个干净的只读渲染。
  *  - 切版本时用 editor.replaceBlocks 原地换内容，而非靠外层 key 重建实例。
- *    重建 BlockNote/ProseMirror 实例开销极大，uTools 旧内核下连续回看多个版本会卡死主线程；
+ *    重建 BlockNote/ProseMirror 实例开销极大，Electron 旧内核下连续回看多个版本会卡死主线程；
  *    复用同一实例只换 blocks 把开销降到一次解析。
  *  - 不挂 SideMenu / FormattingToolbar / SlashMenu：只读不需要任何编辑控件。
  */

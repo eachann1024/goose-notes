@@ -302,7 +302,7 @@ export function EditorContextMenu({
               <ContextMenuSeparator />
             </>
           )}
-          {/* 快捷动作依赖 uTools redirect 生态：Electron 桌面端或宿主未注入 redirectAction 时整块不渲染 */}
+          {/* 快捷动作依赖 Electron redirect 生态：Electron 桌面端或宿主未注入 redirectAction 时整块不渲染 */}
           {__HOST_TARGET__ !== "electron" &&
             redirectAction &&
             selectedText &&

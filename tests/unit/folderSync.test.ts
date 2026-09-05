@@ -19,6 +19,10 @@ import {
   recordRecoveryEntry,
 } from "../../src/lib/storage/recoveryJournal";
 import { DiskWriteError } from "../../src/lib/diskWriteError";
+import {
+  clearElectronLocalStorageRuntime,
+  installElectronLocalStorageRuntime,
+} from "./electronLocalStorageRuntime";
 
 const PAGE_ID = "local-page";
 
@@ -42,33 +46,11 @@ function resetFolderSyncState() {
   pendingLocalSaveContents.clear();
   pendingLocalSaveRevisions.clear();
   localSaveWriteChains.clear();
-  delete (globalThis as any).window;
+  clearElectronLocalStorageRuntime();
 }
 
-function installRecoveryRuntime() {
-  let rev = 0;
-  const docs = new Map<string, { _id: string; _rev: string; data: unknown }>();
-  (globalThis as any).window = {
-    utools: {
-      db: {
-        get: (id: string) => docs.get(id) ?? null,
-        put: (doc: { _id: string; _rev?: string; data: unknown }) => {
-          const current = docs.get(doc._id);
-          if (current && doc._rev !== current._rev) return { ok: false, error: "conflict" };
-          const stored = { ...doc, _rev: `rev-${++rev}` };
-          docs.set(doc._id, stored);
-          return { ok: true, id: doc._id, rev: stored._rev };
-        },
-        remove: (id: string) => {
-          docs.delete(id);
-          return { ok: true, id };
-        },
-        allDocs: (prefix = "") =>
-          Array.from(docs.values()).filter((doc) => doc._id.startsWith(prefix)),
-      },
-    },
-  };
-  return { docs, db: (globalThis as any).window.utools.db };
+function installRecoveryRuntime(failPut?: (id: string) => boolean) {
+  return installElectronLocalStorageRuntime({ failPut });
 }
 
 test.beforeEach(resetFolderSyncState);
@@ -162,7 +144,7 @@ test("ACK 失败时保留 pending revision 供后续重试", async () => {
 });
 
 test("恢复日志迁移失败时保留旧 pageId 的 pending 状态", () => {
-  const { db } = installRecoveryRuntime();
+  installRecoveryRuntime((id) => id.endsWith(":new-id"));
   const draft = content("keep-old-id");
   const entry = recordRecoveryEntry({
     source: "local-file",
@@ -171,12 +153,6 @@ test("恢复日志迁移失败时保留旧 pageId 的 pending 状态", () => {
   })!;
   pendingLocalSaveContents.set("old-id", draft);
   pendingLocalSaveRevisions.set("old-id", entry.revision);
-  const originalPut = db.put;
-  db.put = (doc: any) =>
-    doc._id.endsWith(":new-id")
-      ? { ok: false, error: "fault-injected" }
-      : originalPut(doc);
-
   const result = migratePendingLocalSave("old-id", "new-id", stateWithSave(async () => true));
 
   expect(result.ok).toBe(false);

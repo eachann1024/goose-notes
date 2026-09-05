@@ -27,7 +27,6 @@ function mustSplit(state: SplitState, direction: "right" | "down", pageId: strin
 test("向右分：新叶在右，焦点到新格", () => {
   const start = createSingleLeafState("page-a");
   const result = mustSplit(start, "right", "page-b");
-  expect(result.didFallbackToDown).toBe(false);
   expect(walkLeaves(result.state.root).map((leaf) => leaf.pageId)).toEqual([
     "page-a",
     "page-b",
@@ -52,19 +51,28 @@ test("向下分：新叶在下", () => {
   }
 });
 
-test("窄编辑列向右分会改成向下分", () => {
+test("即使很窄，向右分仍是 horizontal，左页 id 不变", () => {
   const start = createSingleLeafState("page-a");
+  const leftId = start.root.kind === "leaf" ? start.root.id : "";
   const result = splitLeaf(start, {
     direction: "right",
     newPageId: "page-b",
-    editorWidthPx: 719,
   });
   expect(result.ok).toBe(true);
   if (!result.ok) return;
-  expect(result.didFallbackToDown).toBe(true);
+  expect(result.state.root.kind).toBe("group");
   if (result.state.root.kind === "group") {
-    expect(result.state.root.orientation).toBe("vertical");
+    expect(result.state.root.orientation).toBe("horizontal");
+    expect(result.state.root.children[0]?.kind).toBe("leaf");
+    if (result.state.root.children[0]?.kind === "leaf") {
+      expect(result.state.root.children[0].id).toBe(leftId);
+      expect(result.state.root.children[0].pageId).toBe("page-a");
+    }
   }
+  expect(walkLeaves(result.state.root).map((leaf) => leaf.pageId)).toEqual([
+    "page-a",
+    "page-b",
+  ]);
 });
 
 test("2x2 时向右邻接按几何而不是创建顺序", () => {

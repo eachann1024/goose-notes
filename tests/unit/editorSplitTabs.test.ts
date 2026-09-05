@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import {
   closePaneOrTab,
@@ -270,12 +271,64 @@ test("releaseTab 会 flush 全部分屏叶并 clearTab", () => {
   expect(useTabs.getState().recentlyClosedPageIds).toEqual([]);
 });
 
+test("分屏视觉是独立卡片，sash 不画纸缝线", () => {
+  const css = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-split.css", import.meta.url),
+    "utf8",
+  );
+  const layout = readFileSync(
+    new URL("../../src/pages/workspace/WorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  expect(css).toContain('data-editor-split="true"');
+  expect(css).toContain("border-radius: 12px");
+  expect(css).toContain("var(--goose-interactive-selected)");
+  expect(css).toContain("background: transparent");
+  expect(css).not.toContain("blue-500");
+  expect(layout).toContain('data-editor-split={isSplit ? "true" : undefined}');
+  expect(layout).toContain("!isSplit &&");
+});
+
+test("splitInDirection 在建新页后把未分屏左叶钉回源页", () => {
+  const source = readFileSync(
+    new URL("../../src/lib/editor-split/commands.ts", import.meta.url),
+    "utf8",
+  );
+  expect(source).toContain("createSplitBlankPage");
+  expect(source).toContain("if (!split.isSplit(tab.id))");
+  expect(source).toContain("split.ensureTab(tab.id, sourcePageId)");
+  expect(source).not.toContain("didFallbackToDown");
+  expect(source).not.toContain("已改为向下分屏");
+});
+
 test("打开 tab 时 store 会 ensureTab", () => {
   useTabs.getState().openPermanentTab("a");
   const tabId = useTabs.getState().activeTabId!;
   expect(useEditorSplit.getState().getStateForTab(tabId)?.root).toEqual(
     expect.objectContaining({ kind: "leaf", pageId: "a" }),
   );
+});
+
+test("createPage 改 activePage 后分屏前会钉回左叶", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  useEditorSplit.getState().ensureTab(tabId, "a");
+  usePages.setState({ activePageId: "b" });
+  useEditorSplit.getState().ensureTab(tabId, "b");
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("b");
+
+  useEditorSplit.getState().ensureTab(tabId, "a");
+  const result = useEditorSplit.getState().splitFocused({
+    tabId,
+    direction: "right",
+    newPageId: "c",
+  });
+  expect(result.ok).toBe(true);
+  expect(
+    walkLeaves(useEditorSplit.getState().getStateForTab(tabId)!.root).map(
+      (leaf) => leaf.pageId,
+    ),
+  ).toEqual(["a", "c"]);
 });
 
 test("ensureTab 未分屏时同步叶子，已分屏不改树", () => {

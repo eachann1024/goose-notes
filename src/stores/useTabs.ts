@@ -207,8 +207,12 @@ function syncEditorSplitsToOpenTabs(
 // 提交当前编辑器内容（切换/关闭标签前调用），确保未防抖落盘的编辑不丢。
 const commitActiveEditor = () => {
   if (typeof window === "undefined") return;
+  const EventConstructor = window.CustomEvent ?? globalThis.CustomEvent;
+  if (typeof EventConstructor !== "function") return;
   window.dispatchEvent(
-    new CustomEvent("goose-note:flush-editor", { detail: { immediate: true } }),
+    new EventConstructor("goose-note:flush-editor", {
+      detail: { immediate: true },
+    }),
   );
 };
 

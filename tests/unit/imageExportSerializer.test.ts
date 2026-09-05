@@ -512,7 +512,7 @@ test("主题字体与水印微调生效", () => {
 });
 
 test("已删除主题会迁移到保留的代表主题", () => {
-  expect(CARD_THEMES).toHaveLength(16);
+  expect(CARD_THEMES).toHaveLength(15);
   expect(CARD_THEMES[0].id).toBe("notebook");
   expect(normalizeCardThemeId(undefined)).toBe("notebook");
   expect(normalizeCardThemeId("missing-theme")).toBe("notebook");

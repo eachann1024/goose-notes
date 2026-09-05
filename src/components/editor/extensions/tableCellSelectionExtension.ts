@@ -55,13 +55,15 @@ function blockContainerRangeAroundTable(
   };
 }
 
-function textSelectionAt(doc: ResolvedPos["doc"], a: number, b: number) {
-  const from = Math.min(a, b);
-  const to = Math.max(a, b);
+function textSelectionAt(
+  doc: ResolvedPos["doc"],
+  anchor: number,
+  head: number,
+) {
   try {
-    return TextSelection.create(doc, from, to);
+    return TextSelection.create(doc, anchor, head);
   } catch {
-    return TextSelection.between(doc.resolve(from), doc.resolve(to));
+    return TextSelection.between(doc.resolve(anchor), doc.resolve(head));
   }
 }
 
@@ -80,23 +82,56 @@ export function isSpanningTableSelection(
   sel: { empty?: boolean; $anchor: ResolvedPos; $head: ResolvedPos },
 ): boolean {
   if (sel.empty) return false;
-  return selectionCrossesTableBoundary(sel.$anchor, sel.$head);
+  if (selectionCrossesTableBoundary(sel.$anchor, sel.$head)) return true;
+  if (!(sel instanceof TextSelection)) return false;
+
+  // 两端都在表格外时，选区仍可能完整跨过中间的表格块。
+  // 两端位于同一张表格时则保留原有单元格选区行为。
+  if (
+    tablePosFromResolved(sel.$anchor) != null ||
+    tablePosFromResolved(sel.$head) != null
+  ) {
+    return false;
+  }
+
+  const from = Math.min(sel.$anchor.pos, sel.$head.pos);
+  const to = Math.max(sel.$anchor.pos, sel.$head.pos);
+  let containsTable = false;
+  sel.$anchor.doc.nodesBetween(from, to, (node) => {
+    if (node.type.spec?.tableRole !== "table") return !containsTable;
+    containsTable = true;
+    return false;
+  });
+  return containsTable;
 }
 
 export function createSelectionLeavingTable(
   $inTable: ResolvedPos,
   $outside: ResolvedPos,
+  inTableIsAnchor = true,
 ) {
   const range = blockContainerRangeAroundTable($inTable);
-  if (!range) return TextSelection.between($inTable, $outside);
+  if (!range) {
+    return inTableIsAnchor
+      ? TextSelection.between($inTable, $outside)
+      : TextSelection.between($outside, $inTable);
+  }
   const doc = $inTable.doc;
   if ($outside.pos <= range.from) {
     const tableEnd = TextSelection.near(doc.resolve(range.to), -1).head;
-    return textSelectionAt(doc, $outside.pos, tableEnd);
+    return textSelectionAt(
+      doc,
+      inTableIsAnchor ? tableEnd : $outside.pos,
+      inTableIsAnchor ? $outside.pos : tableEnd,
+    );
   }
   if ($outside.pos >= range.to) {
     const tableStart = TextSelection.near(doc.resolve(range.from), 1).head;
-    return textSelectionAt(doc, tableStart, $outside.pos);
+    return textSelectionAt(
+      doc,
+      inTableIsAnchor ? tableStart : $outside.pos,
+      inTableIsAnchor ? $outside.pos : tableStart,
+    );
   }
   return null;
 }
@@ -116,9 +151,10 @@ export function createTableAwareSelection(
     return CellSelection.create($anchor.doc, anchorCell, headCell);
   }
   if (!selectionCrossesTableBoundary($anchor, $head)) return null;
-  const inTable = tablePosFromResolved($anchor) != null ? $anchor : $head;
+  const anchorInTable = tablePosFromResolved($anchor) != null;
+  const inTable = anchorInTable ? $anchor : $head;
   const outside = inTable === $anchor ? $head : $anchor;
-  return createSelectionLeavingTable(inTable, outside);
+  return createSelectionLeavingTable(inTable, outside, anchorInTable);
 }
 
 function sameTableCells(
@@ -268,15 +304,15 @@ function tryDispatchCellSelection(
 
 function tryDispatchDocSelection(
   view: EditorView,
-  inTablePos: number,
-  outsidePos: number,
+  anchorPos: number,
+  headPos: number,
 ): boolean {
   try {
-    const $inTable = view.state.doc.resolve(inTablePos);
-    const $outside = view.state.doc.resolve(outsidePos);
+    const $anchor = view.state.doc.resolve(anchorPos);
+    const $head = view.state.doc.resolve(headPos);
     const selection =
-      createSelectionLeavingTable($inTable, $outside) ??
-      TextSelection.between($inTable, $outside);
+      createTableAwareSelection($anchor, $head) ??
+      TextSelection.between($anchor, $head);
     if (view.state.selection.eq(selection)) return true;
     const tr = view.state.tr.setSelection(selection);
     tr.setMeta(tableEditingKey, -1);
@@ -299,10 +335,7 @@ function cellsFromPoint(
   startTable: HTMLTableElement | null,
 ): HTMLTableCellElement | null {
   const doc = getHitDocument(view);
-  const stack =
-    "elementsFromPoint" in doc
-      ? doc.elementsFromPoint(clientX, clientY)
-      : [doc.elementFromPoint(clientX, clientY)];
+  const stack = doc.elementsFromPoint(clientX, clientY);
   for (const el of stack) {
     if (!el) continue;
     const cell = tableCellFromTarget(el, view.dom);
@@ -330,6 +363,15 @@ function isDocPosInTable(
   } catch {
     return false;
   }
+}
+
+/** 表外拖选命中或跨过表格后接管，普通文本拖选继续使用原生行为。 */
+export function shouldTakeOverOutsideTableDrag(
+  draggingDoc: boolean,
+  currentTablePos: number | null,
+  spansTable = false,
+): boolean {
+  return draggingDoc || currentTablePos != null || spansTable;
 }
 
 function syncSelectionClasses(
@@ -418,9 +460,35 @@ const tableCellSelectionPlugin = new Plugin({
     };
 
     const handlePointerMove = (event: Event) => {
-      if (!mouseDown || !startCell || startDocPos == null) return;
+      if (!mouseDown || startDocPos == null) return;
       const mouse = event as MouseEvent;
       const headDocPos = coordsPos(view, mouse);
+
+      if (!startCell) {
+        if (headDocPos == null) return;
+        const currentTablePos = tablePosFromResolved(
+          view.state.doc.resolve(headDocPos),
+        );
+        // Electron can coalesce fast pointer moves, so the first move after
+        // mousedown may already be on the paragraph beyond the table. Detect
+        // the crossed table from the document range instead of requiring an
+        // intermediate mousemove whose target is inside a cell.
+        const spansTable = isSpanningTableSelection(
+          textSelectionAt(view.state.doc, startDocPos, headDocPos),
+        );
+        if (
+          !shouldTakeOverOutsideTableDrag(
+            draggingDoc,
+            currentTablePos,
+            spansTable,
+          )
+        ) {
+          return;
+        }
+        if (!draggingDoc) startTablePos = currentTablePos;
+        takeOverDocDrag(event, headDocPos);
+        return;
+      }
 
       if (draggingDoc) {
         let outsidePos = headDocPos;
@@ -464,7 +532,7 @@ const tableCellSelectionPlugin = new Plugin({
       const mouse = event as MouseEvent;
       if (mouse.button !== 0 || mouse.ctrlKey || mouse.metaKey) return;
       const cell = tableCellFromTarget(mouse.target, view.dom);
-      if (!cell || !view.dom.contains(cell)) {
+      if (!eventInsideEditor(view, event)) {
         startCell = null;
         startDocPos = null;
         startTablePos = null;
@@ -474,8 +542,19 @@ const tableCellSelectionPlugin = new Plugin({
         draggingDoc = false;
         return;
       }
+      const docPos = coordsPos(view, mouse);
+      if (!cell) {
+        startCell = null;
+        startDocPos = docPos;
+        startTablePos = null;
+        lastOutsidePos = docPos;
+        mouseDown = docPos != null;
+        draggingCells = false;
+        draggingDoc = false;
+        return;
+      }
       startCell = cell;
-      startDocPos = coordsPos(view, mouse) ?? cellPosFromDom(view, cell);
+      startDocPos = docPos ?? cellPosFromDom(view, cell);
       startTablePos =
         startDocPos != null
           ? tablePosFromResolved(view.state.doc.resolve(startDocPos))

@@ -11,7 +11,6 @@
 import App from "./App.tsx";
 import { bootstrap } from "./main";
 import { initGooseNoteErrorReporting } from "./error-reporting/init";
-import "@blocknote/xl-ai/style.css";
 
 initGooseNoteErrorReporting();
 void bootstrap(() => <App />);

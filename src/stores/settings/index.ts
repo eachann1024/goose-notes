@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { uToolsStorage } from "@/lib/storage";
+import { localStorageAdapter } from "@/lib/storage";
 import { applyAccentColor, syncAccentColorCssVars } from "@/lib/accentColor";
 import { normalizeCardThemeId } from "@/lib/imageExport/themes";
 
@@ -8,7 +8,6 @@ import type {
   Theme,
   CodeStyle,
   AISettings,
-  UToolsSettings,
   DesktopSettings,
 } from "./types";
 import {
@@ -23,9 +22,6 @@ import {
   mergeDesktopSettings,
   mergeSearchProvidersWithDefaults,
   normalizeCustomActions,
-  UTOOLS_WINDOW_HEIGHT_MIN,
-  UTOOLS_WINDOW_HEIGHT_MAX,
-  UTOOLS_WINDOW_HEIGHT_DEFAULT,
   DEFAULT_CLOSE_TAB_SHORTCUT,
   DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
 } from "./types";
@@ -35,7 +31,6 @@ import {
   createAppearanceSlice,
   type AppearanceSlice,
 } from "./slices/appearanceSlice";
-import { createUToolsSlice, type UToolsSlice } from "./slices/utoolsSlice";
 import {
   createShortcutsSlice,
   type ShortcutsSlice,
@@ -50,13 +45,16 @@ import {
   createLocalFolderSlice,
   type LocalFolderSlice,
 } from "./slices/localFolderSlice";
-import { createWebdavSlice, type WebdavSlice } from "./slices/webdavSlice";
+import {
+  createWebdavSlice,
+  DEFAULT_WEBDAV_REMOTE_DIR,
+  type WebdavSlice,
+} from "./slices/webdavSlice";
 import { normalizeWatermarkConfig } from "@/lib/imageExport";
 import { migrateSettingsPersistedState } from "./migrations";
 
 export type SettingsState = AISlice &
   AppearanceSlice &
-  UToolsSlice &
   ShortcutsSlice &
   SearchProvidersSlice &
   LocalFolderSlice &
@@ -120,7 +118,6 @@ export const useSettings = create<SettingsState>()(
         set as Parameters<typeof createAppearanceSlice>[0],
         getApply,
       ),
-      ...createUToolsSlice(set as Parameters<typeof createUToolsSlice>[0]),
       ...createShortcutsSlice(
         set as Parameters<typeof createShortcutsSlice>[0],
       ),
@@ -138,7 +135,7 @@ export const useSettings = create<SettingsState>()(
       version: 3,
       migrate: (persistedState) =>
         migrateSettingsPersistedState(persistedState),
-      storage: createJSONStorage(() => uToolsStorage),
+      storage: createJSONStorage(() => localStorageAdapter),
       skipHydration: true,
       onRehydrateStorage: () => (state) => {
         const theme = state?.theme || "system";
@@ -193,61 +190,6 @@ export const useSettings = create<SettingsState>()(
           useSettings.setState({ sidebarFontSize: normalizedSidebarFontSize });
         }
 
-        const normalizedWindowHeight = Math.min(
-          UTOOLS_WINDOW_HEIGHT_MAX,
-          Math.max(
-            UTOOLS_WINDOW_HEIGHT_MIN,
-            state?.utools?.windowHeight ?? UTOOLS_WINDOW_HEIGHT_DEFAULT,
-          ),
-        );
-        if (
-          state?.utools &&
-          state.utools.windowHeight !== normalizedWindowHeight
-        ) {
-          useSettings.setState({
-            utools: {
-              ...state.utools,
-              windowHeight: normalizedWindowHeight,
-            },
-          });
-        }
-
-        const normalizedUTools: UToolsSettings | null = state?.utools
-          ? {
-              globalSearchEnabled: Boolean(state.utools.globalSearchEnabled),
-              openSearchInUtools:
-                typeof state.utools.openSearchInUtools === "boolean"
-                  ? state.utools.openSearchInUtools
-                  : true,
-              useInternalImageViewer:
-                typeof state.utools.useInternalImageViewer === "boolean"
-                  ? state.utools.useInternalImageViewer
-                  : false,
-              windowHeight: normalizedWindowHeight,
-            }
-          : null;
-        if (
-          normalizedUTools &&
-          JSON.stringify(state?.utools ?? null) !==
-            JSON.stringify(normalizedUTools)
-        ) {
-          useSettings.setState({ utools: normalizedUTools });
-        }
-
-        // Apply window height immediately upon rehydration
-        if (normalizedUTools) {
-          try {
-            const hostWindow = window as Window & {
-              utools?: {
-                setExpendHeight?: (height: number) => void;
-              };
-            };
-            hostWindow.utools?.setExpendHeight?.(normalizedUTools.windowHeight);
-          } catch (e) {
-            console.error("Failed to apply window height on rehydrate", e);
-          }
-        }
-
         const normalizedAI = normalizeAISettings(
           state?.ai as Partial<AISettings> | undefined,
         );
@@ -268,7 +210,7 @@ export const useSettings = create<SettingsState>()(
             useSettings.setState({ webdavPassword: "" });
           }
           if (typeof state.webdavRemoteDir !== "string") {
-            useSettings.setState({ webdavRemoteDir: "goose-notes" });
+            useSettings.setState({ webdavRemoteDir: DEFAULT_WEBDAV_REMOTE_DIR });
           }
           const retention = state.webdavRetentionDays;
           if (
@@ -463,7 +405,6 @@ export type {
   Theme,
   AccentColor,
   CodeStyle,
-  UToolsSettings,
   AISettings,
   DesktopHotkeyStatusState,
   DesktopHotkeyStatus,
@@ -490,9 +431,6 @@ export {
   AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN,
   AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX,
   AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT,
-  UTOOLS_WINDOW_HEIGHT_MIN,
-  UTOOLS_WINDOW_HEIGHT_MAX,
-  UTOOLS_WINDOW_HEIGHT_DEFAULT,
   DEFAULT_SEARCH_PROVIDERS,
   ACCENT_COLORS,
   DEFAULT_ACCENT_COLOR,

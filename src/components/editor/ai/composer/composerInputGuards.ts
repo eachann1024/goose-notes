@@ -25,7 +25,7 @@ export function shouldProcessComposerInput(options: {
 }
 
 /**
- * 非 IME 输入防抖：避免快打/连删时同步 setState + 扫 DOM + 写 uTools。
+ * 非 IME 输入防抖：避免快打/连删时同步 setState + 扫 DOM + 写 Electron。
  * 注意：IME 会话绝不能靠短超时自动结束——选词窗停住时无按键，
  * 超时 flush 会在组合中 setState，微信输入法必卡。
  */

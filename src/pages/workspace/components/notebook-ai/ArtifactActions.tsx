@@ -17,7 +17,7 @@ import {
   type PreviewContent,
 } from "@/lib/preview/previewAction";
 import { getEditorPlatform } from "@/components/editor/platform/context";
-import { shell } from "@/lib/utools/shell";
+import { shell } from "@/lib/electron-platform/shell";
 import type { ArtifactInsertResult } from "./insertArtifact";
 
 interface ArtifactActionsProps {

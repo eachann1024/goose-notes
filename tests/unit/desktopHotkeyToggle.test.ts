@@ -57,7 +57,7 @@ test("隐藏、最小化或未聚焦的主窗需要 raise", () => {
   ).toBe(true);
 });
 
-test("速记快捷键使用可见性二态切换且不复用主窗三态逻辑", () => {
+test("速记快捷键再次触发会关闭窗口且不复用主窗三态逻辑", () => {
   const windowsSource = readFileSync(
     new URL("../../electron/main/windows.ts", import.meta.url),
     "utf8",
@@ -68,19 +68,21 @@ test("速记快捷键使用可见性二态切换且不复用主窗三态逻辑",
   );
   const quicknoteToggle = windowsSource.slice(
     windowsSource.indexOf("export async function toggleQuicknoteWindow"),
-    windowsSource.indexOf("export function hideQuicknote"),
+    windowsSource.indexOf("export function closeQuicknote"),
   );
-  const hideQuicknote = windowsSource.slice(
-    windowsSource.indexOf("export function hideQuicknote"),
+  const closeQuicknote = windowsSource.slice(
+    windowsSource.indexOf("export function closeQuicknote"),
     windowsSource.indexOf("export function broadcast"),
   );
 
   expect(windowsSource).toContain("function raiseWindow");
+  expect(windowsSource).toContain("function raiseQuicknoteWindow");
   expect(windowsSource).toContain("app.focus({ steal: true })");
   expect(quicknoteToggle).toContain("if (win.isVisible())");
-  expect(quicknoteToggle).toContain("hideQuicknote();");
-  expect(quicknoteToggle).toContain("raiseWindow(win);");
+  expect(quicknoteToggle).toContain("closeQuicknote();");
+  expect(quicknoteToggle).toContain("raiseQuicknoteWindow(win);");
   expect(quicknoteToggle).not.toContain("toggleWindow(win)");
-  expect(hideQuicknote).toContain("markQuicknoteHideActivateSuppressed();");
+  expect(closeQuicknote).toContain("win.close();");
+  expect(windowsSource).toContain("markQuicknoteActivateSuppressed();");
   expect(indexSource).toContain("shouldSuppressWorkspaceActivate()");
 });

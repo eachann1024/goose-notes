@@ -208,7 +208,7 @@ body,
    滚动容器（标题栏已从视口扣掉）剩余高度。 */
 .quicknote-editor-surface .bn-editor {
   box-sizing: border-box;
-  min-height: calc(100% - 8px);
+  min-height: 100%;
 }
 
 /* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
@@ -251,7 +251,7 @@ body,
 
 /* ── 双 Shift「采集」预览 ───────────────────────────────────────
  * 仅 collectVariant 查询参数存在时渲染。原型只在会话内计数，不写真实笔记。
- * 新样式使用静态 rgba / hex，兼容 uTools 的旧 Chromium 内核。
+ * 新样式使用静态 rgba / hex，兼容 Electron 的旧 Chromium 内核。
  */
 .quicknote-collect-chip {
   position: absolute;
@@ -590,7 +590,7 @@ body,
   [data-goose-slash-lite="true"]
   [data-notion-slash-surface="true"] {
   overflow: hidden;
-  /* uTools 旧内核会把大圆角外投影绘成直角灰块；小窗只留很轻的边界感。 */
+  /* Electron 旧内核会把大圆角外投影绘成直角灰块；小窗只留很轻的边界感。 */
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
@@ -627,7 +627,7 @@ body,
 
 /* ── 1–5 便签切换器 ─────────────────────────────────────────────
  * 顶栏显示时绝对居中；浅灰分段器内，当前槽位使用白底高亮。
- * 使用静态 rgba / hex，避免 uTools 旧内核解析 alpha 变量异常。
+ * 使用静态 rgba / hex，避免 Electron 旧内核解析 alpha 变量异常。
  */
 .quicknote-slot-switcher {
   position: relative;
@@ -669,7 +669,6 @@ body,
   transition:
     opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1),
     color 0.14s ease,
-    background 0.14s ease,
     box-shadow 0.14s ease;
 }
 

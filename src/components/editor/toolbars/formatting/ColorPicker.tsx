@@ -131,7 +131,7 @@ const MIXED = "__mixed__";
  * - 点文本色：只更新 lastTextColor（含 default）
  * - 点背景色：只更新 lastBackgroundColor（含 default / 无背景）
  * - 右键色对：同时更新两者
- * - 右键工具栏 Palette：当前不是上次颜色时复现记忆；再次右键清除颜色
+ * - 点击 / 右键工具栏 Palette：当前不是上次颜色时复现记忆；再次操作清除颜色
  * - 两者都没有记录时 no-op
  * 使用 localStorage，跨笔记 / 重启可复用；读写对 SSR / 无 window 安全。
  */
@@ -270,6 +270,9 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
 export function FormattingToolbarColorPicker() {
   const editor = useBlockNoteEditor();
   const selectionColors = useSelectionColorState(editor);
+  const [lastColors, setLastColors] = useState<LastFormatColors>(
+    readLastFormatColors,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [position, setPosition] = useState<PositionState>({
@@ -374,12 +377,12 @@ export function FormattingToolbarColorPicker() {
     } else {
       editor.addStyles({ textColor: color });
     }
-    writeLastFormatColors({ textColor: color });
+    rememberLastFormatColors({ textColor: color });
   };
 
   const applyBackgroundColor = (color: string) => {
     if (applyHeadingBlockBackground(editor, color)) {
-      writeLastFormatColors({ backgroundColor: color });
+      rememberLastFormatColors({ backgroundColor: color });
       return;
     }
     if (color === "default") {
@@ -387,7 +390,7 @@ export function FormattingToolbarColorPicker() {
     } else {
       editor.addStyles({ backgroundColor: color });
     }
-    writeLastFormatColors({ backgroundColor: color });
+    rememberLastFormatColors({ backgroundColor: color });
   };
 
   const applyColorPair = (index: number) => {
@@ -407,8 +410,23 @@ export function FormattingToolbarColorPicker() {
     } else {
       editor.addStyles({ backgroundColor: backgroundColor });
     }
-    writeLastFormatColors({ textColor, backgroundColor });
+    rememberLastFormatColors({ textColor, backgroundColor });
   };
+
+  const rememberLastFormatColors = (patch: LastFormatColors) => {
+    writeLastFormatColors(patch);
+    setLastColors(readLastFormatColors());
+  };
+
+  const lastTextPreview =
+    lastColors.textColor && lastColors.textColor !== "default"
+      ? COLOR_PREVIEW[lastColors.textColor]
+      : undefined;
+  const lastBgPreview =
+    lastColors.backgroundColor && lastColors.backgroundColor !== "default"
+      ? BG_PREVIEW[lastColors.backgroundColor]
+      : undefined;
+  const lastColorBar = lastBgPreview ?? lastTextPreview;
 
   const applyLastFormatColors = () => {
     const last = readLastFormatColors();
@@ -471,7 +489,7 @@ export function FormattingToolbarColorPicker() {
     >
       <div
         className="goose-color-picker-panel flex flex-col border bg-popover dark:border-white/20"
-        // uTools 旧内核不吃 hsl(var(--x)/alpha)，用 rgba 投影避免整块实色遮住色板。
+        // Electron 旧内核不吃 hsl(var(--x)/alpha)，用 rgba 投影避免整块实色遮住色板。
         style={{
           borderColor: "rgba(128,128,128,0.28)",
           boxShadow:
@@ -570,18 +588,34 @@ export function FormattingToolbarColorPicker() {
       <button
         type="button"
         ref={buttonRef}
+        data-goose-preserve-icon-color="true"
         aria-pressed={
           isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
         }
         className={cn("goose-formatting-toolbar-control")}
-        aria-label="颜色选择；右键切换上次颜色"
+        aria-label="颜色选择；点击应用上次颜色"
+        onClick={() => {
+          applyLastFormatColors();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyLastFormatColors();
         }}
       >
-        <LucideIcons.Palette aria-hidden="true" />
+        <span className="relative inline-flex size-4 items-center justify-center">
+          <LucideIcons.Palette
+            aria-hidden="true"
+            className="size-4"
+            style={lastTextPreview ? { color: lastTextPreview } : undefined}
+          />
+          {lastColorBar ? (
+            <span
+              className="absolute inset-x-0.5 bottom-0 h-0.5 rounded-full"
+              style={{ background: lastColorBar }}
+            />
+          ) : null}
+        </span>
       </button>
       <Portal>{panelContent}</Portal>
     </div>

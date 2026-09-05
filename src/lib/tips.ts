@@ -11,7 +11,7 @@ export const TIPS = [
   () => {
     const shortcut = useSettings.getState().appShortcuts.openSearch;
     return shortcut
-      ? `${formatShortcut(shortcut)} 可快速搜索页面（uTools 输入会自动同步）`
+      ? `${formatShortcut(shortcut)} 可快速搜索页面（Electron 输入会自动同步）`
       : "可在设置 → 快捷键中配置全局搜索";
   },
   () =>

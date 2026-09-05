@@ -222,7 +222,7 @@ export async function getExportHtmlCss(): Promise<string> {
   return assembleExportCss(await loadViteVendorCss());
 }
 
-/** uTools 旧内核 printToPDF：去掉 hsl(var)/alpha，避免整块实色。 */
+/** Electron 旧内核 printToPDF：去掉 hsl(var)/alpha，避免整块实色。 */
 export function sanitizePrintCss(css: string): string {
   return css
     .replace(/[^{};]+:[^;{}]*hsl\(\s*var\([^;{}]*;/g, "")

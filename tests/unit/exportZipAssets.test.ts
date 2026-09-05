@@ -11,6 +11,10 @@ import {
 } from "../../src/lib/export";
 import { inlineExportMediaAsBase64 } from "../../src/lib/export/inlineImagesBase64";
 import type { Page } from "../../src/types";
+import {
+  clearElectronLocalStorageRuntime,
+  installElectronLocalStorageRuntime,
+} from "./electronLocalStorageRuntime";
 
 const notebookId = "notebook-export";
 const imageRef = "att:goose-img/pixel.png";
@@ -122,39 +126,21 @@ function installAttachmentRuntime(onGetAttachment?: (id: string) => void) {
   };
 
   installDomStub(documentElement);
-  (globalThis as any).window = {
+  installElectronLocalStorageRuntime({
+    attachments: Object.fromEntries(attachments),
+    onGetAttachment,
+  });
+  Object.assign((globalThis as any).window, {
     matchMedia: () => ({
       matches: false,
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
     }),
-    localStorage: {
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined,
-    },
-    utools: {
-      db: {
-        getAttachment: (id: string) => {
-          onGetAttachment?.(id);
-          return attachments.get(id)?.data ?? null;
-        },
-        getAttachmentType: (id: string) => attachments.get(id)?.type ?? null,
-      },
-      dbStorage: {
-        getItem: () => null,
-        setItem: () => undefined,
-        removeItem: () => undefined,
-      },
-    },
-  };
+  });
   (globalThis as any).FileReader = TestFileReader;
 }
 
 function installDbRuntime() {
-  let rev = 0;
-  const docs = new Map<string, { _id: string; _rev: string; data: any }>();
-  const dbStorage = new Map<string, string>();
   const classes = new Set<string>();
 
   installDomStub({
@@ -167,45 +153,12 @@ function installDbRuntime() {
     removeAttribute: () => undefined,
   });
 
-  (globalThis as any).window = {
-    matchMedia: () => ({
-      matches: false,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }),
-    localStorage: {
-      getItem: (key: string) => dbStorage.get(key) ?? null,
-      setItem: (key: string, value: string) => dbStorage.set(key, value),
-      removeItem: (key: string) => dbStorage.delete(key),
-    },
-    utools: {
-      db: {
-        get: (id: string) => docs.get(id) ?? null,
-        put: (doc: { _id: string; _rev?: string; data: unknown }) => {
-          const nextRev = `rev-${++rev}`;
-          docs.set(doc._id, { _id: doc._id, _rev: nextRev, data: doc.data });
-          return { id: doc._id, ok: true, rev: nextRev };
-        },
-        remove: (id: string) => {
-          docs.delete(id);
-          return { id, ok: true };
-        },
-        allDocs: (prefix = "") =>
-          Array.from(docs.values()).filter((doc) => doc._id.startsWith(prefix)),
-      },
-      dbStorage: {
-        getItem: (key: string) => dbStorage.get(key) ?? null,
-        setItem: (key: string, value: string) => {
-          dbStorage.set(key, value);
-        },
-        removeItem: (key: string) => {
-          dbStorage.delete(key);
-        },
-      },
-    },
-  };
+  const runtime = installElectronLocalStorageRuntime();
+  Object.assign((globalThis as any).window, {
+    matchMedia: () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }),
+  });
 
-  return { docs };
+  return { docs: runtime.docs };
 }
 
 function buildPage(): Page {
@@ -328,7 +281,7 @@ async function buildZipBlob() {
 }
 
 test.afterEach(() => {
-  delete (globalThis as { window?: unknown }).window;
+  clearElectronLocalStorageRuntime();
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { FileReader?: unknown }).FileReader;
 });
@@ -633,24 +586,11 @@ test("generateExportZip keeps same relative image names separate across local fo
     setAttribute: () => undefined,
     removeAttribute: () => undefined,
   });
-  (globalThis as any).window = {
-    matchMedia: () => ({
-      matches: false,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }),
-    localStorage: {
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined,
-    },
-    gooseFs: {
-      readFileBase64: (path: string) => {
-        reads.push(path);
-        return path.includes("/b/") ? "YmJi" : "YQ==";
-      },
-    },
-  };
+  installElectronLocalStorageRuntime();
+  Object.assign((globalThis as any).window, {
+    matchMedia: () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }),
+    gooseFs: { readFileBase64: (path: string) => { reads.push(path); return path.includes("/b/") ? "YmJi" : "YQ=="; } },
+  });
   (globalThis as any).FileReader = TestFileReader;
 
   const zipBlob = await generateExportZip(

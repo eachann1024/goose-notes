@@ -118,7 +118,7 @@ function detectRasterMime(bytes: Uint8Array, declaredType: string): RasterMime |
 
 /**
  * 将剪贴板/上传文件固化为带正确 MIME 的 Blob。
- * Electron/uTools 大图粘贴时，延迟读取的 File 可能失效；先读完字节再处理。
+ * Electron/Electron 大图粘贴时，延迟读取的 File 可能失效；先读完字节再处理。
  */
 export async function materializeImageBlob(
   input: Blob | File,

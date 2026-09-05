@@ -129,7 +129,9 @@ function collectNeighborText(
           ? `@${token.reference.titleSnapshot}`
           : token.type === "skill"
             ? `/${token.skill.name}`
-            : `[图片 ${token.image.fileName}]`;
+            : token.type === "image"
+              ? `[图片 ${token.image.fileName}]`
+              : token.quote.text;
     if (text) {
       const slice =
         direction === "before"
