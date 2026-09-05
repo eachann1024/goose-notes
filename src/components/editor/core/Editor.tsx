@@ -912,6 +912,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       const safePageId = targetPageId ?? pageIdForUpdateRef.current;
       if (!safePageId) return;
       debouncedUpdate.cancel();
+      if (
+        safePageId !== pageIdForUpdateRef.current ||
+        !pendingEditorChangeRef.current
+      ) return;
       const { content, signature } = readCurrentEditorContent();
       const result = commitPendingEditorChange({
         targetPageId: safePageId,
