@@ -1,4 +1,5 @@
 import { SettingsAppearance } from "./SettingsAppearance";
+import { SettingsAbout } from "./settings/SettingsAbout";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsShortcuts } from "./settings/SettingsShortcuts";
 import { SettingsLocalFolder } from "./SettingsLocalFolder";
@@ -66,6 +67,7 @@ const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
   { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
+  { id: "about", label: "关于与许可", icon: LucideIcons.Info },
 ];
 
 // 设置侧栏鹅应用：图标使用各应用随包提供的 logo.png
@@ -732,7 +734,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         hideClose
         overlayClassName="bg-transparent backdrop-blur-0"
         contentClassName="border-0 bg-[hsl(var(--goose-shell-bg))]"
-        bodyClassName="h-full animate-in fade-in duration-200"
+        bodyClassName="min-w-0 h-full animate-in fade-in duration-200"
       >
         <SettingsScaffold
           activeTab={activeTab}
@@ -873,6 +875,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               />
             </div>
           )}
+
+          {activeTab === "about" && <SettingsAbout />}
 
           {activeTab === "data" && (
             <SettingsDataPanel

@@ -80,9 +80,12 @@ export function SettingsScaffold({
         </button>
       </div>
 
-      <div className="workspace-stage flex-1 overflow-hidden p-3">
-        <div className="workspace-main-sheet flex w-60 shrink-0 flex-col overflow-hidden rounded-[16px] bg-[hsl(var(--goose-shell-bg))]">
-          <nav className="flex-1 space-y-1 p-3">
+      <div className="workspace-stage min-h-0 flex-1 flex-col overflow-hidden p-3 md:flex-row">
+        <div className="workspace-main-sheet flex w-full shrink-0 flex-col md:w-60 overflow-hidden rounded-[16px] bg-[hsl(var(--goose-shell-bg))]">
+          <nav
+            aria-label="设置分类"
+            className="flex gap-1 overflow-x-auto p-3 md:block md:flex-1 md:space-y-1"
+          >
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -93,7 +96,7 @@ export function SettingsScaffold({
                   size="sm"
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "h-auto w-full justify-start gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "h-auto w-auto shrink-0 justify-start gap-3 md:w-full rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
                       ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                       : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
@@ -114,12 +117,12 @@ export function SettingsScaffold({
           ) : null}
         </div>
 
-        <div className="workspace-main-sheet flex-1 overflow-hidden rounded-[18px]">
+        <div className="workspace-main-sheet min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px]">
           <div className="workspace-editor-surface h-full overflow-hidden rounded-[16px]">
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className="h-full overflow-y-auto p-6"
+              className="h-full overflow-y-auto p-4 md:p-6"
             >
               <div className="mx-auto w-full max-w-5xl">{children}</div>
             </div>
