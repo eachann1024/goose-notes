@@ -108,8 +108,8 @@ bun run build
 
 ## 🔒 项目状态
 
-本项目是闭源专有软件，不接受未经授权的使用、复制、修改或分发，也不接受外部代码贡献。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
+本项目当前代码采用 GPL-3.0-only；第三方和历史版本保留原许可。贡献应具备相应权利并保留来源声明。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
 
 ## 📄 许可证
 
-专有软件，未经授权不得使用、复制、修改或分发。详见 [LICENSE](./LICENSE)。
+采用标准 GPL-3.0-only。分发时应提供对应版本源码与必要构建脚本，详见 [LICENSE](./LICENSE)、[第三方声明](THIRD-PARTY-NOTICES.txt) 与 [源码获取说明](SOURCE-CODE.md)。

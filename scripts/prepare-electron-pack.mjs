@@ -70,6 +70,12 @@ function stripPackJunk(dir) {
 
 stripPackJunk(pack);
 
+// Legal notices and source instructions must survive release-file filtering.
+for (const file of ["LICENSE", "THIRD-PARTY-NOTICES.txt"]) {
+  cpSync(resolve(root, file), resolve(pack, file));
+}
+cpSync(resolve(root, "SOURCE-CODE.md"), resolve(pack, "SOURCE-CODE.txt"));
+
 writeFileSync(
   resolve(pack, "package.json"),
   JSON.stringify(

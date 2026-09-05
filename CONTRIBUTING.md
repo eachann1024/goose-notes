@@ -1,9 +1,6 @@
-# Internal development guide
+# Goose Note contribution guide
 
-goose-note is proprietary software and does not accept external code
-contributions. This document is retained for authorized maintainers and
-collaborators only. Access to the source code does not grant permission to use,
-copy, modify, or distribute it; see [LICENSE](./LICENSE).
+Goose Note is licensed under GPL-3.0-only. Contributions must be compatible with that license and preserve third-party notices. Submit only work you own or are authorized to contribute, and identify imported code and its license. Contributing does not transfer your copyright. See [LICENSE](./LICENSE) and [THIRD-PARTY-NOTICES.txt](./THIRD-PARTY-NOTICES.txt).
 
 ## Development setup
 
@@ -22,7 +19,7 @@ bun run build
 
 Node.js `>=20` is required if you run the toolchain without Bun.
 
-## Before opening an internal pull request
+## Before opening a pull request
 
 Run the same checks CI runs, locally:
 
@@ -55,7 +52,7 @@ All checks must pass. CI runs them on every internal pull request to `main` and
 
 ## Reporting bugs & requesting features
 
-Authorized collaborators should use the private project tracker and include
+Use the project tracker and include
 reproduction steps, the environment (OS, Electron version or browser), and
 expected versus actual behavior.
 
