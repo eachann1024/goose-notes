@@ -84,7 +84,7 @@ writeFileSync(
       version: pkg.version,
       description: pkg.description,
       author: pkg.author,
-      homepage: pkg.homepage || "https://github.com/eachann1024/goose-note-app",
+      homepage: pkg.homepage || "https://github.com/eachann1024/goose-notes",
       license: pkg.license,
       private: true,
       type: "module",

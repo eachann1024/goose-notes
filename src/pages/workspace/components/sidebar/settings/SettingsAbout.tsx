@@ -5,7 +5,7 @@ import { getGooseDesktop } from "@/lib/electron/runtime";
 import licenseText from "/LICENSE?raw";
 import sourceInfo from "/SOURCE-CODE.md?raw";
 
-const PROJECT_URL = "https://github.com/eachann1024/goose-note-app";
+const PROJECT_URL = "https://github.com/eachann1024/goose-notes";
 const textClass =
   "max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border p-4 text-xs leading-relaxed text-foreground";
 

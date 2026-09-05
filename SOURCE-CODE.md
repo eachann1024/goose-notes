@@ -1,6 +1,6 @@
 # 对应版本源码与构建
 
-项目：https://github.com/eachann1024/goose-note-app
+项目：https://github.com/eachann1024/goose-notes
 
 项目目前在私有仓库中维护，尚未公开发布；此链接不代表当前版本已有公众可访问的对应源码下载。公开分发前，发布者必须同时提供匹配该构建的源码包或可访问的固定版本地址，而不是只链接会变化的 main。
 

@@ -2,7 +2,7 @@
 
 每次推送 `main`，或在 Actions 中手动运行 **Desktop installers**，都会独立构建安装包；所有任务共用该次运行的固定提交。仓库保持私有。main 上全部构建成功后自动创建开发预发布 Release，直接附安装包、源码及校验值；不向 AUR 发布。手动运行可选择分支。
 
-优先进入 https://github.com/eachann1024/goose-note-app/releases ，在开发预发布版本的 **Assets** 直接下载安装包。每个版本固定对应提交，不覆盖稳定版本。也可进入 https://github.com/eachann1024/goose-note-app/actions/workflows/desktop-build.yml ，打开成功的运行，在 **Artifacts** 下载。需要仓库访问权限；Actions 产物保留 30 天，Release 附件不使用此到期策略；过期后可从固定提交重新构建。下载的 Actions ZIP 是外层归档，请先解压。
+优先进入 https://github.com/eachann1024/goose-notes/releases ，在开发预发布版本的 **Assets** 直接下载安装包。每个版本固定对应提交，不覆盖稳定版本。也可进入 https://github.com/eachann1024/goose-notes/actions/workflows/desktop-build.yml ，打开成功的运行，在 **Artifacts** 下载。需要仓库访问权限；Actions 产物保留 30 天，Release 附件不使用此到期策略；过期后可从固定提交重新构建。下载的 Actions ZIP 是外层归档，请先解压。
 
 | 系统 | CPU | 安装包 |
 | --- | --- | --- |

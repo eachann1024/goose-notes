@@ -47,7 +47,7 @@ an individual is officially representing the community in public spaces.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the maintainers through
-[GitHub's private reporting](https://github.com/eachann1024/goose-note-app/security/advisories/new)
+[GitHub's private reporting](https://github.com/eachann1024/goose-notes/security/advisories/new)
 or by opening an issue requesting a private contact channel. All complaints will
 be reviewed and investigated promptly and fairly.
 
