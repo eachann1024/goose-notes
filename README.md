@@ -1,67 +1,86 @@
-# Goose Note · 鹅的笔记
+<p align="center">
+  <img src="public/logo.png" width="64" height="64" alt="Goose Note 图标" />
+</p>
 
-**把灵感写下来，把下一步留给自己。**
+<h1 align="center">Goose Note</h1>
 
-本地优先的桌面笔记应用，把 Markdown 文件夹、独立速记小窗和 AI 助手放进同一个写作空间。
+<p align="center">鹅的笔记 · 给思绪一个安静的地方</p>
 
-[![Goose Note 封面](docs/showcase/cover.png)](docs/showcase/cover.png)
+<p align="center">
+  本地 Markdown、随手速记与 AI，放在同一个写作空间。
+</p>
 
-Goose Note 适合用来记录灵感、整理项目资料、写技术笔记和沉淀日常思考。打开一个本地文件夹，就能开始；需要帮助时，让助手结合笔记继续整理。
+<p align="center">
+  <a href="#开始记录">开始记录</a> ·
+  <a href="DEVELOP.md">开发文档</a> ·
+  <a href="SECURITY.md">安全说明</a>
+</p>
 
-[项目地址](https://github.com/eachann1024/goose-note-app) · [开发说明](DEVELOP.md) · [安全说明](SECURITY.md)
+<br />
 
-## 从记录到表达
+[![Goose Note：笔记编辑与 AI 助手并排，原文和整理结果随时对照](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
 
-### 写作与 AI，放在同一个空间
+<p align="center"><sub>写下想法，慢慢理清。macOS 开发版实拍，点击查看原图。</sub></p>
 
-用标题、待办和表格梳理思路，再让 AI 引用笔记、提炼重点。编辑器与对话并排，原文和结果随时对照。
+<br />
 
-[![写作与 AI 笔记总结](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
+## 从自己的文件夹开始
 
-### 文字、代码与图示，写在一起
+打开一个本地 Markdown 文件夹，就能继续写作。项目资料、阅读摘录与日常记录，都留在自己的文件里。
 
-代码高亮与 Mermaid 预览让技术笔记更易读。通过页面菜单调整字体、查看历史与导出内容。
+灵感来得突然时，用独立速记小窗先记下来，再收进笔记。需要梳理思路时，让 AI 引用已有内容、提炼重点，或修改指定段落；原文与对话始终可以并排对照。
 
-[![代码、Mermaid 图示与页面菜单](docs/showcase/02-code-and-diagram-user.png)](docs/showcase/02-code-and-diagram-user.png)
+<br />
 
-以上两张功能截图使用作者提供的 macOS 开发版原图，可点击查看高清大图；内容为演示笔记。封面为 AI 生成的品牌插画。
+## 让复杂的内容，也容易读
 
-## 核心功能
+文字、代码、公式和 Mermaid 图示写在一起。用清单推进下一步，用表格整理信息，再将笔记导出为 Markdown、HTML、PDF、Word 或图片。
 
-- **文件夹就是记事本**：直接打开本地 Markdown 目录；卸载挂载不会删除磁盘文件。
-- **独立速记小窗**：随手记录，再收进主笔记，让零散想法有地方落下。
-- **围绕笔记的 AI 助手**：读取与整理笔记，也支持按标题定位内容，修改指定段落。
-- **丰富的内容表达**：标题、待办、表格、代码、公式与 Mermaid 图示共同组成笔记。
-- **多格式导出**：支持 Markdown、HTML、PDF、Word 和图片，便于归档与分享。
-- **页面锁定与历史版本**：保护重要内容，并通过里程碑保留值得回看的版本。
+[![Goose Note：代码高亮、Mermaid 图示与页面菜单](docs/showcase/02-code-and-diagram-user.png)](docs/showcase/02-code-and-diagram-user.png)
 
-笔记以本地文件为基础。使用在线 AI 服务时，相关请求与引用内容会交由所配置的服务处理。
+<sub>macOS 开发版实拍，内容为演示笔记。页面菜单提供字体、历史与导出入口。</sub>
 
-## 快速上手
+<br />
+
+## 留下内容，也保留余地
+
+- **文件在本地。** 直接使用 Markdown 目录，解除挂载不会删除磁盘文件。
+- **重要内容有迹可循。** 页面锁定与历史版本，保留值得回看的节点。
+- **按需使用 AI。** 使用在线服务时，请求及引用的笔记内容会发送至所配置的服务。
+
+<br />
+
+## 开始记录
 
 1. 启动 Goose Note，选择「打开本地文件夹」或「新建仓库」。
-2. 打开已有 Markdown 文件，或新建文件开始记录。
-3. 用标题、清单和表格整理内容；技术笔记还可以加入代码与图示。
-4. 需要辅助时打开 AI 面板，引用笔记并提出具体要求。
-5. 在页面「更多操作」中选择导出格式，把成果带到其他地方。
+2. 打开已有 Markdown 文件，或新建一页，写下第一个想法。
+3. 需要整理时打开 AI 面板；需要分享时，从页面菜单导出。
 
-## 开发与平台
+<details>
+<summary>从源码运行与平台说明</summary>
 
-采用 Electron、React、TypeScript 和 BlockNote。仓库提供 macOS、Windows 和 Linux 的开发与构建命令；本次展示在 macOS 开发版完成，安装包可用性以实际提供的构建为准。
+采用 Electron、React、TypeScript 和 BlockNote。仓库提供 macOS、Windows 和 Linux 的开发与构建命令；上方截图来自 macOS 开发版，安装包可用性以实际提供的构建为准。
 
 ```bash
 bun install --frozen-lockfile
 bun run mac:dev
 ```
 
-完整运行、验证与打包步骤见 [DEVELOP.md](DEVELOP.md)。
+完整运行、验证与打包步骤见 [开发文档](DEVELOP.md)。
 
-## 同系列
+</details>
 
-[鹅的书签](https://github.com/eachann1024/goose-mark) · [鹅的监控](https://github.com/eachann1024/goose-monitor) · [鹅的验证](https://github.com/eachann1024/goose-2fa) · [鹅的 Agent](https://github.com/eachann1024/eachann1024)
+<br />
 
-## 许可
+---
+
+**同系列**　[鹅的书签](https://github.com/eachann1024/goose-mark) · [鹅的监控](https://github.com/eachann1024/goose-monitor) · [鹅的验证](https://github.com/eachann1024/goose-2fa) · [鹅的 Agent](https://github.com/eachann1024/eachann1024)
+
+<details>
+<summary>许可与第三方声明 · GPL-3.0-only</summary>
 
 Goose Note 当前代码以 **GNU GPL 第三版（GPL-3.0-only）** 提供，允许商用、修改和再分发，不提供担保。分发受 GPL 约束的应用时，应按 GPL 向接收者提供对应版本源码及必要的构建、安装脚本；单纯内部使用或无副本传递的网络交互通常不属于 GPL 的分发。
 
 详见 [LICENSE](LICENSE)、[第三方声明](THIRD-PARTY-NOTICES.txt) 和 [源码获取说明](SOURCE-CODE.md)。第三方代码与历史 MIT 版本保留其原有许可和版权声明。本项目未添加强制宣传链接或其他定制署名条款。
+
+</details>
