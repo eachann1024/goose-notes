@@ -175,7 +175,6 @@ declare global {
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
   const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
-  const TIPS: typeof import('./lib/tips').TIPS
   const TITLE_HEADING_LEVEL: typeof import('./components/editor/utils/blocknote-content/index').TITLE_HEADING_LEVEL
   const TOOLTIP_DELAY_MS: typeof import('./components/ui/tooltip-delay').TOOLTIP_DELAY_MS
   const Table: typeof import('./components/ui/table').Table
@@ -258,7 +257,6 @@ declare global {
   const computeSidebarRowHeight: typeof import('./lib/appearance').computeSidebarRowHeight
   const consumeDiskWriteFailure: typeof import('./lib/diskWriteError').consumeDiskWriteFailure
   const consumePendingAssociatedMarkdownFiles: typeof import('./lib/openAssociatedMarkdown').consumePendingAssociatedMarkdownFiles
-  const containsMarkdownTable: typeof import('./lib/markdownTableParser').containsMarkdownTable
   const convertImageBlobToPng: typeof import('./lib/imageProcessor').convertImageBlobToPng
   const countWords: typeof import('./components/editor/utils/content-text-extractor').countWords
   const createAiChatOnlyTarget: typeof import('./lib/ai-write/index').createAiChatOnlyTarget
@@ -375,8 +373,6 @@ declare global {
   const getProviderCredentialSlots: typeof import('./lib/ai-provider/index').getProviderCredentialSlots
   const getProviderFixedBaseURL: typeof import('./lib/ai-provider/index').getProviderFixedBaseURL
   const getQuickNoteSlotName: typeof import('./stores/useQuickNote').getQuickNoteSlotName
-  const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
-  const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getScaledEditorUiPx: typeof import('./components/editor/utils/editorContextUi').getScaledEditorUiPx
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
   const getSelectedImageUrl: typeof import('./components/editor/utils/selection').getSelectedImageUrl
@@ -480,6 +476,7 @@ declare global {
   const normalizeBlocks: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlocks
   const normalizeCardThemeId: typeof import('./lib/imageExport/index').normalizeCardThemeId
   const normalizeClipboardLineEndings: typeof import('./components/editor/utils/clipboard').normalizeClipboardLineEndings
+  const normalizeClipboardListMarkers: typeof import('./components/editor/utils/clipboard').normalizeClipboardListMarkers
   const normalizeEditorUiScale: typeof import('./components/editor/utils/editorContextUi').normalizeEditorUiScale
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
@@ -510,8 +507,6 @@ declare global {
   const parseLocalFrontmatterBlob: typeof import('./lib/local-frontmatter').parseLocalFrontmatterBlob
   const parseLocalMarkdownContent: typeof import('./lib/local-folder-scanner').parseLocalMarkdownContent
   const parseMarkdownLink: typeof import('./components/editor/utils/clipboard').parseMarkdownLink
-  const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
-  const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
   const parsePersistedQuickNoteSlotNames: typeof import('./stores/useQuickNote').parsePersistedQuickNoteSlotNames
   const parseWikiLinkInner: typeof import('./lib/wikiLink').parseWikiLinkInner
   const pasteBlocksAtCursor: typeof import('./components/editor/utils/pasteAtCursor').pasteBlocksAtCursor
@@ -646,7 +641,6 @@ declare global {
   const useAppHotkeys: typeof import('./hooks/useAppHotkeys').useAppHotkeys
   const useCallback: typeof import('react').useCallback
   const useCenteredActiveItemScroll: typeof import('./components/editor/hooks/useCenteredActiveItemScroll').useCenteredActiveItemScroll
-  const useCompactViewport: typeof import('./hooks/useCompactViewport').useCompactViewport
   const useContext: typeof import('react').useContext
   const useContextMenu: typeof import('./components/editor/state/contextMenu').useContextMenu
   const useDebugValue: typeof import('react').useDebugValue
