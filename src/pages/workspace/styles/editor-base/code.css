@@ -87,11 +87,12 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  min-height: 96px;
+  /* 普通代码块随内容撑高，避免单行内容被固定最小高度撑出额外留白。 */
+  min-height: 0;
   background-color: var(--code-bg, hsl(var(--muted) / 0.55));
   color: var(--code-fg, hsl(var(--foreground)));
   /* 外壳边框与文件块统一，不随代码主题走（--code-border 仅供内部分隔线使用） */
-  border: 1px solid hsl(var(--border) / 0.4);
+  border: 1px solid var(--goose-block-subtle-border);
   border-radius: var(--editor-code-block-radius, 8px);
   overflow: hidden;
 }
@@ -229,7 +230,10 @@
 
 .goose-code-content-wrapper {
   --goose-code-font-size: 0.85em;
-  --goose-code-line-box: calc(var(--goose-code-font-size) * 1.7);
+  /* 高亮与 pre 共用已计算的字号/行高，避免 em 在不同层级重复缩放。 */
+  font-size: var(--goose-code-font-size);
+  line-height: 1.7;
+  --goose-code-line-box: 1lh;
   position: relative;
   overflow: hidden;
   padding-top: var(--editor-code-toolbar-row-height, 36px);
@@ -260,8 +264,8 @@
     "Courier New",
     monospace
   );
-  font-size: var(--goose-code-font-size, 0.85em);
-  line-height: 1.7;
+  font-size: inherit;
+  line-height: inherit;
   overflow-x: auto;
 }
 
@@ -282,7 +286,9 @@
 /* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。
  * 限定到当前代码块的直接内容层；wrapper 自身负责裁切，避免高亮条越出代码块。 */
 .bn-block-outer[data-goose-code-active-line]
-  .goose-code-block-node
+  > .bn-block
+  > .bn-block-content
+  > .goose-code-block-node
   > .goose-code-content-wrapper::before {
   content: "";
   position: absolute;
