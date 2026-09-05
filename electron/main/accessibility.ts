@@ -14,7 +14,7 @@ export function isMacAccessibilityTrusted(): boolean {
 
 export function requestMacAccessibilityAccess(): boolean {
   if (process.platform !== "darwin") return true;
-  let trusted = false;
+  let trusted: boolean;
   try {
     trusted = systemPreferences.isTrustedAccessibilityClient(true);
   } catch {

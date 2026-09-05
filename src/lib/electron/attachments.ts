@@ -50,7 +50,7 @@ export const migrateLegacyAttachments = (): Promise<void> => {
     if (typeof window === "undefined") return;
     const api = getGooseDesktop();
     if (!api) return;
-    let keys: string[] = [];
+    let keys: string[];
     try {
       keys = Object.keys(window.localStorage).filter((key) =>
         key.startsWith(WEB_ATT_STORAGE_PREFIX),

@@ -75,7 +75,7 @@ export function parsePageMentionHref(href: string): Pick<
   const queryIndex = rest.indexOf("?");
   const encodedId = (queryIndex === -1 ? rest : rest.slice(0, queryIndex)).trim();
   if (!encodedId) return null;
-  let pageId = encodedId;
+  let pageId: string;
   try {
     pageId = decodeURIComponent(encodedId);
   } catch {

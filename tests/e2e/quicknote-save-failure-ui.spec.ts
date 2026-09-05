@@ -83,6 +83,9 @@ test("stacks multiple save alerts inside a 320px safe area", async ({ page }) =>
   await page.evaluate(() => localStorage.clear());
   await page.reload();
 
+  await expect(page.getByRole("region", { name: "Notifications alt+T" })).toBeAttached();
+  await expect(page.getByRole("textbox").first()).toBeVisible();
+
   await page.evaluate(async () => {
     const { toast } = await import("/src/components/ui/sonner.tsx");
     toast.warning("恢复提醒", { id: "stack-one", duration: 10_000 });

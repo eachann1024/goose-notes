@@ -80,7 +80,7 @@ export function EditorFormattingToolbar() {
       const selectedText = doc
         .textBetween(selection.from, selection.to, "\n", "\n")
         .trim();
-      let quoteText = "";
+      let quoteText: string;
       try {
         quoteText = (editor.getSelectedText() ?? "").trim();
       } catch {
