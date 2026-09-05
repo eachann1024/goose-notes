@@ -3,7 +3,7 @@ import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { pinyinMatchIndices } from "@/lib/pinyin-search";
+import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
 import { searchIndex } from "./pageSearchIndex";
 import {
   filterCatalogByScope,
@@ -201,11 +201,13 @@ export function useCommandSearch({
 
     // pinyin 补充命中（倒排索引不含拼音，需额外一轮）
     const pinyinHitIds = new Set<string>();
-    for (const [id, page] of filteredSet) {
-      if (!indexHitIds.has(id)) {
-        const title = getPageTitle(page);
-        if (pinyinMatchIndices(title, deferredQuery.trim()) !== null) {
-          pinyinHitIds.add(id);
+    if (isPinyinQuery(deferredQuery.trim())) {
+      for (const [id, page] of filteredSet) {
+        if (!indexHitIds.has(id)) {
+          const title = getPageTitle(page);
+          if (pinyinMatchIndices(title, deferredQuery.trim()) !== null) {
+            pinyinHitIds.add(id);
+          }
         }
       }
     }

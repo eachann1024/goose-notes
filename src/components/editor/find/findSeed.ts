@@ -35,7 +35,7 @@ export function readEditorFindSeed(
 ): string {
   if (!editor) return "";
 
-  let raw = "";
+  let raw: string;
   try {
     raw = editor.getSelectedText?.() ?? "";
   } catch {
