@@ -23,18 +23,14 @@ async function seedTwoPages(page: import("playwright/test").Page) {
     bridge.setCloseTabShortcut("Alt+W");
   });
 
-  return page.evaluate(() => {
-    const bridge = (window as Window & {
-      __GOOSE_TEST__?: {
-        createPage: (parentId?: string, workspaceId?: string) => string;
-        getNotebooksState: () => { activeNotebookId: string | null };
-      };
-    }).__GOOSE_TEST__;
-    if (!bridge) throw new Error("Test bridge unavailable");
-    const notebookId =
-      bridge.getNotebooksState().activeNotebookId ?? "default-notebook";
-    const a = bridge.createPage(undefined, notebookId);
-    const b = bridge.createPage(undefined, notebookId);
+  await page.waitForFunction(() => Boolean(window.__gooseTest));
+  return page.evaluate(async () => {
+    const harness = window.__gooseTest;
+    if (!harness) throw new Error("Local test harness unavailable");
+    const { notebookId } = await harness.setupMockNotebook();
+    const a = await harness.stores.usePages.getState().createLocalPage(undefined, notebookId);
+    const b = await harness.stores.usePages.getState().createLocalPage(undefined, notebookId);
+    if (!a || !b) throw new Error("Could not create local test pages");
     return { a, b };
   });
 }
@@ -44,7 +40,7 @@ test.describe("VSCode-style tab navigation", () => {
     await page.addInitScript(() => {
       (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__ = true;
     });
-    await page.goto("/");
+    await page.goto("/?e2eLocalMock");
     await waitForHydration(page);
   });
 
@@ -259,7 +255,7 @@ test.describe("VSCode-style tab navigation", () => {
       `[data-tab-page-id="${a}"][data-tab-preview="true"]`,
     );
     await expect(previewTab).toBeVisible();
-    await expect(previewTab.locator("span.truncate")).toHaveClass(/italic/);
+    await expect(previewTab.getByRole("button", { name: "笔记标题" })).toHaveCSS("font-style", "italic");
   });
 
   test("notebook switch activates and scopes the tab bar to the selected notebook", async ({
@@ -279,11 +275,14 @@ test.describe("VSCode-style tab navigation", () => {
       if (!bridge) throw new Error("Test bridge unavailable");
 
       bridge.resetTabs();
-      const noteNotebookId =
-        bridge.getNotebooksState().activeNotebookId ?? "default-notebook";
-      const notePage = bridge.createPage(undefined, noteNotebookId);
-      const devNotebookId = bridge.createNotebook("Dev");
-      const devPage = bridge.createPage(undefined, devNotebookId);
+      const harness = window.__gooseTest;
+      if (!harness) throw new Error("Local test harness unavailable");
+      const { notebookId: noteNotebookId } = await harness.setupMockNotebook();
+      const notePage = await harness.stores.usePages.getState().createLocalPage(undefined, noteNotebookId);
+      const devNotebookId = harness.stores.useNotebooks.getState().createLocalFolderNotebook("Dev", "/mock-notes/sub");
+      await harness.stores.usePages.getState().loadLocalFolderPages(devNotebookId, "/mock-notes/sub");
+      const devPage = await harness.stores.usePages.getState().createLocalPage(undefined, devNotebookId);
+      if (!notePage || !devPage) throw new Error("Could not create local test pages");
 
       bridge.openPermanentTab(notePage);
       bridge.openPermanentTab(devPage);
@@ -415,7 +414,7 @@ test.describe("VSCode-style tab navigation", () => {
             code: "KeyK",
             ctrlKey: !isMac,
             metaKey: isMac,
-            shiftKey: true,
+            shiftKey: false,
             bubbles: true,
             cancelable: true,
           }),

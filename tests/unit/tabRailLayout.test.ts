@@ -3,7 +3,15 @@ import {
   getTabRailLayoutMode,
   tabRailItemClassName,
   tabRailListClassName,
+  tabRailSelectionClassName,
 } from "../../src/pages/workspace/components/page/tabRailLayout";
+
+test("单标签不显示强调色，多标签保留选中和悬停强调色", () => {
+  expect(tabRailSelectionClassName(1, true)).toBe("text-foreground");
+  expect(tabRailSelectionClassName(1, false)).toBe("text-foreground");
+  expect(tabRailSelectionClassName(2, true)).toContain("bg-[var(--goose-interactive-selected)]");
+  expect(tabRailSelectionClassName(2, false)).toContain("hover:bg-[var(--goose-interactive-hover)]");
+});
 
 test("1 个标签占满，不要 max-w-[120px]", () => {
   expect(getTabRailLayoutMode(1)).toBe("fill");

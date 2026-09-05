@@ -1246,7 +1246,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         return { emptied: true };
       }
 
-      let nextActiveId: string | null = null;
+      let nextActiveId: string | null;
       if (activeTabId === tabId) {
         nextActiveId =
           nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null;

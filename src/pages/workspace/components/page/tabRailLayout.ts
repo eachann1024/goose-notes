@@ -9,6 +9,13 @@ export function getTabRailLayoutMode(tabCount: number): TabRailLayoutMode {
   return "scroll";
 }
 
+export function tabRailSelectionClassName(tabCount: number, isActive: boolean): string {
+  if (tabCount <= 1) return "text-foreground";
+  return isActive
+    ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+    : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]";
+}
+
 export function tabRailListClassName(tabCount: number): string {
   const mode = getTabRailLayoutMode(tabCount);
   if (mode === "scroll") {

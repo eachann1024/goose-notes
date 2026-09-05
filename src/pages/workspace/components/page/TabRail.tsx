@@ -45,6 +45,7 @@ import { SingleTabTitle } from "./SingleTabTitle";
 import {
   tabRailItemClassName,
   tabRailListClassName,
+  tabRailSelectionClassName,
 } from "./tabRailLayout";
 import { useTabDocking } from "./useTabDocking";
 import {
@@ -209,10 +210,9 @@ function SortableTabItem({
           className={cn(
             "group relative @container flex items-center gap-1 px-2 text-sm",
             tabRailItemClassName(tabCount),
+            tab.preview && "italic",
             isDragging && "opacity-60",
-            isActive
-              ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+            tabRailSelectionClassName(tabCount, isActive),
           )}
         >
           {tab.pinned && (

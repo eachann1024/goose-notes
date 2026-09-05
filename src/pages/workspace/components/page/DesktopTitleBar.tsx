@@ -107,10 +107,7 @@ export function DesktopTitleBar({
 
   const titleBarRow = (
     <div
-      className={cn(
-        "flex min-w-0 items-center justify-between",
-        aiFullscreenOpen ? "h-8 min-h-8 w-full px-3" : "w-full flex-1",
-      )}
+      className="flex min-w-0 w-full flex-1 items-center justify-between"
     >
       <div
         className={cn(
@@ -184,27 +181,44 @@ export function DesktopTitleBar({
           </TooltipProvider>
         )}
 
-        {showPageIcon && page && !page.trashedAt ? (
+        {!aiFullscreenOpen && showPageIcon && page && !page.trashedAt ? (
           <div data-electron-no-drag className="shrink-0">
             <PageIconButton page={page} />
           </div>
         ) : null}
 
-        <TabRail
-          variant="electron-titlebar"
-          page={page}
-          onOpenSearch={onOpenSearch}
-          onBeforeActivateTab={onBeforeActivateTab}
-          aiPanelOpen={aiPanelOpen}
-          aiLayoutMode={aiLayoutMode}
-        />
+        {aiFullscreenOpen ? (
+          <div
+            className="tab-rail flex min-w-0 flex-1 items-center"
+            role="tablist"
+            aria-label="AI 会话"
+          >
+            <div
+              role="tab"
+              aria-selected="true"
+              tabIndex={0}
+              className="tab-rail-item flex min-w-0 flex-1 items-center px-2 text-foreground"
+            >
+              <ConversationTitle summary={aiHeaderTitle ?? "新会话"} muted={false} />
+            </div>
+          </div>
+        ) : (
+          <TabRail
+            variant="electron-titlebar"
+            page={page}
+            onOpenSearch={onOpenSearch}
+            onBeforeActivateTab={onBeforeActivateTab}
+            aiPanelOpen={aiPanelOpen}
+            aiLayoutMode={aiLayoutMode}
+          />
+        )}
 
-        {page?.isLocked && (
+        {!aiFullscreenOpen && page?.isLocked && (
           <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
             已锁定
           </span>
         )}
-        {page?.trashedAt && (
+        {!aiFullscreenOpen && page?.trashedAt && (
           <span className="rounded bg-[var(--goose-color-lock-bg)] px-1.5 py-0.5 text-xs text-[var(--goose-color-lock-text)]">
             页面已被删除
           </span>
@@ -261,22 +275,10 @@ export function DesktopTitleBar({
 
   return (
     <div
-      className={cn(
-        "electron-titlebar flex w-full shrink-0 pr-3",
-        aiFullscreenOpen ? "py-1" : "items-center gap-2",
-      )}
+      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-3"
       data-ai-conversation-header={aiFullscreenOpen || undefined}
     >
-      {aiFullscreenOpen ? (
-        <div className="notebook-ai-page-header-stack min-w-0 flex-1">
-          <div className="flex min-w-0 items-center px-3">
-            <ConversationTitle summary={aiHeaderTitle ?? "新会话"} />
-          </div>
-          {titleBarRow}
-        </div>
-      ) : (
-        titleBarRow
-      )}
+      {titleBarRow}
     </div>
   );
 }
