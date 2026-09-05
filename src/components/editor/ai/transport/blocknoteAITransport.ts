@@ -272,6 +272,7 @@ export function createGooseAITransport(
         if (isToolChoiceThinkingError(retryErr)) {
           throw new Error(
             "当前模型的思考模式不支持强制工具调用，请换非思考模型或关闭思考后再试",
+            { cause: retryErr },
           );
         }
         throw retryErr;

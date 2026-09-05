@@ -5,6 +5,8 @@ import {
   promptBarBeamRadius,
 } from "./promptBarBeamRadius";
 
+import { usePromptBarLayoutMotion } from "./usePromptBarLayoutMotion";
+
 const BEAM_INSET = 1;
 
 export function PromptBar({
@@ -20,6 +22,7 @@ export function PromptBar({
   className?: string;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
+  usePromptBarLayoutMotion(barRef);
   const [beamRadius, setBeamRadius] = useState(
     expanded ? PROMPT_BAR_EXPANDED_RADIUS - BEAM_INSET : 21,
   );

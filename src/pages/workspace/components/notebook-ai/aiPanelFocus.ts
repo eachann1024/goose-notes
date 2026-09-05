@@ -37,7 +37,7 @@ export function getFocusedAiPanelLayout(
   const el = elementFromTarget(target);
   if (!el) return null;
   const root = el.closest(`[${AI_PANEL_LAYOUT_ATTR}]`);
-  const layout = root?.getAttribute(AI_PANEL_LAYOUT_ATTR);
+  const layout = root?.getAttribute?.(AI_PANEL_LAYOUT_ATTR);
   if (layout === "side-panel" || layout === "fullscreen") return layout;
   return null;
 }

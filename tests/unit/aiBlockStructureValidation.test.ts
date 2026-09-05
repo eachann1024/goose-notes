@@ -160,3 +160,11 @@ test("标题校验包含级别，且拒绝混入其它新结构", () => {
   expect(mixed.ok).toBe(false);
   if (!mixed.ok) expect(mixed.reason).toContain("不一致");
 });
+
+test("复合勾选标记可识别，但独立 variation selector 不是列表标记", () => {
+  const blocks = [
+    { id: "checked", type: "paragraph", content: "☑️ 完成" },
+    { id: "selector", type: "paragraph", content: "\uFE0F普通文字" },
+  ] as BlockTypeTransformBlock[];
+  expect(findPseudoStructureMarkers(blocks).map((issue) => issue.blockId)).toEqual(["checked"]);
+});

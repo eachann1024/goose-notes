@@ -109,7 +109,7 @@ test("审批卡用整页计划文档展示全部改动，不用截断灰盒", ()
 
 test("embedded 模式只输出 footer 内容，不套 .bui-approval 外壳、不重复包 work-footer", () => {
   const embeddedMatch = approvalPlanCard.match(
-    /if \(embedded\) \{[\s\S]*?\n  \}/,
+    /if \(embedded\) \{[\s\S]*?\n {2}\}/,
   );
   expect(embeddedMatch).not.toBeNull();
   const embeddedBranch = embeddedMatch?.[0] ?? "";

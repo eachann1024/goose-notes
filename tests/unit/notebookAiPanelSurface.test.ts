@@ -33,6 +33,8 @@ test("焦点在 AI 侧栏或全屏面板内可判定", async () => {
   expect(getFocusedAiPanelLayout(composer)).toBe("side-panel");
   expect(getFocusedAiPanelLayout(message)).toBe("fullscreen");
   expect(getFocusedAiPanelLayout(editor)).toBeNull();
+  const targetWithoutAttributes = { closest: () => ({ closest: () => null }) };
+  expect(getFocusedAiPanelLayout(targetWithoutAttributes as unknown as EventTarget)).toBeNull();
 });
 
 test("关 AI 面板只收起 UI，不 stop 会话", () => {

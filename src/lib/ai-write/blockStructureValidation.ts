@@ -12,7 +12,7 @@ const NEGATED_PATTERN = /(?:不要|别|无需|不需要|禁止|do\s+not|don't)/i
 const ALLOWED_TARGET_PREFIX =
   /^(?:(?:请|帮我|为我)\s*)?(?:(?:一个|一份|一组|一些|几个|几条|几项|以下|上述|这些|[一二三四五六七八九十百]+(?:个|条|项|份|组)|\d+\s*(?:个|条|项|份|组)?|an?|the|some)\s*)*/i;
 const PSEUDO_MARKER_PATTERN =
-  /^\s*(?:[•·]\s+|\d+[)、）。]\s*|[□☐⬜☑✅☑️✔✓☒]\s*|【\s*[xX]?\s*】\s*)/;
+  /^\s*(?:[•·]\s+|\d+[)、）。]\s*|[□☐⬜☑✅✔✓☒]\uFE0F?\s*|【\s*[xX]?\s*】\s*)/;
 const STRUCTURED_BLOCK_TYPES = new Set([
   "heading",
   "bulletListItem",

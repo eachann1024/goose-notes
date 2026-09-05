@@ -1,7 +1,7 @@
 import { expect, test } from "playwright/test";
 import { shouldExpandComposer } from "../../src/components/editor/ai/composer/composerExpandLayout";
 
-test("空内容一律收回，占位 br 不算展开", () => {
+test("空内容中的硬换行展开，单行占位 br 不算展开", () => {
   expect(
     shouldExpandComposer({
       isEmpty: true,
@@ -9,7 +9,7 @@ test("空内容一律收回，占位 br 不算展开", () => {
       slotWidth: 200,
       scrollHeight: 48,
     }),
-  ).toBe(false);
+  ).toBe(true);
   expect(
     shouldExpandComposer({
       isEmpty: true,

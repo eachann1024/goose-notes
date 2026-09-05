@@ -11,6 +11,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
+import { flushSync } from "react-dom";
 import type { JSONContent } from "@/types";
 import {
   createImagePreviewPortal,
@@ -24,7 +25,6 @@ import {
   setDomFromJsonContent,
 } from "./composerTokens";
 import type { ComposerNativeHandlers } from "./composerInputTypes";
-import { isEditorDomEmpty } from "./composerChipDom";
 
 export function useComposerEditor(options: {
   editorHostRef: RefObject<HTMLDivElement | null>;
@@ -166,9 +166,7 @@ export function useComposerEditor(options: {
       variant === "panel"
         ? () => {
             el.style.height = "auto";
-            const next = isEditorDomEmpty(el)
-              ? 24
-              : Math.min(Math.max(el.scrollHeight, 24), 96);
+            const next = Math.min(Math.max(el.scrollHeight, 24), 96);
             el.style.height = "";
             el.style.setProperty("--ai-composer-h", `${next}px`);
             const multiline = next > 25;
@@ -181,7 +179,10 @@ export function useComposerEditor(options: {
     // chip 增删、换行、粘贴都走 DOM 变化；MutationObserver 一并覆盖，
     // IME composing 期间照测，不打断输入。
     const observer = measureHeight
-      ? new MutationObserver(measureHeight)
+      ? new MutationObserver(() => {
+          // 高度与 chrome 换排在同一次提交完成，ResizeObserver 只看到最终布局。
+          flushSync(measureHeight);
+        })
       : null;
     if (observer) {
       observer.observe(el, {
@@ -190,6 +191,18 @@ export function useComposerEditor(options: {
         characterData: true,
       });
     }
+
+    // 展开会改变编辑槽宽；只监听宽度，避免量高写回触发循环。
+    let measuredWidth = el.clientWidth;
+    const resizeObserver = measureHeight
+      ? new ResizeObserver(() => {
+          const width = el.clientWidth;
+          if (width === measuredWidth) return;
+          measuredWidth = width;
+          measureHeight();
+        })
+      : null;
+    resizeObserver?.observe(el);
 
     // 首次种子（若有）：同步空态给发送按钮，避免切回面板时草稿已在但按钮仍灰
     const seed = lastEmittedContentRef.current;
@@ -207,6 +220,7 @@ export function useComposerEditor(options: {
 
     return () => {
       observer?.disconnect();
+      resizeObserver?.disconnect();
       el.removeEventListener("beforeinput", onBeforeInput);
       el.removeEventListener("input", onInput);
       el.removeEventListener("keydown", onKeyDown);

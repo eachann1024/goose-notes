@@ -23,7 +23,7 @@ import {
 import { isEditorDomEmpty } from "@/components/editor/ai/composer/composerChipDom";
 import { isComposerPayloadEmpty } from "@/components/editor/ai/composer/composerTokens";
 import {
-  measureNowrapContentWidth,
+  measureNowrapContentSize,
   measureSingleLineSlot,
   shouldExpandComposer,
 } from "@/components/editor/ai/composer/composerExpandLayout";
@@ -165,22 +165,24 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     /**
      * 展开判断永远用「单行槽宽度」，不用展开后的全宽，避免
      * 「展开变宽 → 文字缩回一行 → 收起」来回振荡。
-     * 空内容（含占位 <br>）一律收回；宽度能放下时只认硬换行撑高。
+     * 空 payload 不等于单行：Shift+Enter 留下的空行也展开，单个占位 br 收回。
      */
     const recomputeExpanded = useCallback(() => {
       const shell = shellRef.current;
       const el = inputRef.current?.getEditorEl();
       if (!shell || !el) return;
+      const content = measureNowrapContentSize(el, shell);
       const next = shouldExpandComposer({
         isEmpty: isEditorDomEmpty(el),
-        contentWidth: measureNowrapContentWidth(el, shell),
+        contentWidth: content.width,
         slotWidth: measureSingleLineSlot({
           shell,
           plusWidth: plusWrapRef.current?.offsetWidth ?? 0,
           modelWidth: modelWrapRef.current?.offsetWidth ?? 0,
           sendWidth: sendWrapRef.current?.offsetWidth ?? 0,
         }),
-        scrollHeight: el.scrollHeight,
+        // 不读取受当前软换行/固定高度影响的 live scrollHeight。
+        scrollHeight: content.height,
       });
       if (expandedRef.current !== next) {
         expandedRef.current = next;
@@ -510,7 +512,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 onEscape={handleEscape}
                 onIsEmptyChange={(empty) => {
                   setIsEmpty(empty);
-                  if (empty) collapseChrome();
+                  if (empty) recomputeExpanded();
                 }}
                 onMultilineChange={setMultiline}
                 onLayoutMeasure={recomputeExpanded}

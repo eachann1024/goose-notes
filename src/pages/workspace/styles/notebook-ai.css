@@ -51,24 +51,14 @@ html.is-electron .notebook-ai-fullscreen-host {
  gap: 0.125rem;
 }
 
-.electron-titlebar[data-ai-conversation-header] .notebook-ai-page-header-stack {
- min-width: 0;
- flex: 1;
- border-radius: 12px;
- background: hsl(var(--goose-editor-bg));
- padding-top: 0.25rem;
- padding-bottom: 0.25rem;
- margin-right: 8px;
-}
-
-.workspace-divider[data-ai-conversation-header],
-.electron-titlebar[data-ai-conversation-header] {
+.workspace-divider[data-ai-conversation-header] {
  height: auto;
  min-height: 3rem;
 }
 
+/* Electron AI 会话沿用笔记标签的一行顶栏和系统拖动区域。 */
 html.is-electron .electron-titlebar[data-ai-conversation-header] {
- min-height: var(--electron-titlebar-height, 2.75rem);
+ height: var(--electron-titlebar-height, 2.75rem);
 }
 
 /*
@@ -109,32 +99,38 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  pointer-events: none;
 }
 
-/* 侧栏：输入条跟标题白块共用面板 p-2（8px），绝对定位不再贴满左右把标题挤偏 */
+/* 消息区外留 0.5rem，输入条在白色消息区内三边再留 0.5rem，随应用字号缩放。 */
 [data-ai-panel-layout="side-panel"] .notebook-ai-composer-dock {
- left: 0.5rem;
- right: 0.5rem;
+ left: 1rem;
+ right: 1rem;
+ bottom: 0.5rem;
 }
 
 /*
  * 输入条外壳：单行胶囊 → 多行 20px 圆角（与 .bui-approval 同圆角）。
- * 圆角/高度过渡统一 220ms 回弹曲线；颜色过渡沿用原 150ms。
- * 圆角值本身由 Composer 按 data-multiline 切 Tailwind 类，这里只管过渡。
+ * 高度与控件位移由 PromptBar 共用一次 180ms 布局过渡；编辑器立即完成重排。
+ * 圆角跟随同一时长，颜色过渡沿用原 150ms。
  */
 .notebook-ai-composer-shell {
  transition:
   color 150ms ease,
   background-color 150ms ease,
   border-color 150ms ease,
-  border-radius 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  border-radius 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .bui-prompt-bar {
- transition: border-radius 220ms cubic-bezier(0.23, 1, 0.32, 1);
+ overflow: hidden;
+ background: hsl(var(--goose-editor-bg));
+ transition: border-radius 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.bui-prompt-bar > .notebook-ai-composer-shell {
+ background: transparent;
 }
 /* panel 输入区：高度由 JS 写入 --ai-composer-h（24–96，4 行封顶），超出内部滚动 */
 [data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
  height: var(--ai-composer-h, 24px);
  max-height: 96px;
- transition: height 220ms cubic-bezier(0.23, 1, 0.32, 1);
+ /* 不单独过渡高度，避免外壳展开后输入内容才跟上。 */
 }
 @media (prefers-reduced-motion: reduce) {
  .notebook-ai-composer-shell,

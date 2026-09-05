@@ -30,7 +30,7 @@ test("AI 消息区跟随 --editor-scale 做 CSS zoom，输入条不包进去", (
   expect(css).toContain(".notebook-ai-composer-dock {");
 });
 
-test("侧栏输入条与标题白块共用 8px 内边，拖宽手柄落在缝上", () => {
+test("侧栏输入条在消息白块内三边留 8px，拖宽手柄落在缝上", () => {
   expect(panelSource).toContain("AiPanelResizeEdge");
   expect(panelSource).toContain("onDragHandlePointerDown");
   expect(panelSource).toContain("effectiveWidth");
@@ -38,8 +38,9 @@ test("侧栏输入条与标题白块共用 8px 内边，拖宽手柄落在缝上
   expect(css).toContain(
     '[data-ai-panel-layout="side-panel"] .notebook-ai-composer-dock',
   );
-  expect(css).toContain("left: 0.5rem");
-  expect(css).toContain("right: 0.5rem");
+  expect(css).toContain("left: 1rem");
+  expect(css).toContain("right: 1rem");
+  expect(css).toContain("bottom: 0.5rem");
 });
 
 test("zoom 面不做反比宽高补偿：zoom 已缩放布局盒，再补偿会缩两次", () => {

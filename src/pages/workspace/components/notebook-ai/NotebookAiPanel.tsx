@@ -518,7 +518,7 @@ export function NotebookAiPanel({
           "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden gap-2",
           isFullscreen
             ? "min-w-0 w-full flex-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-2 pt-0"
-            : "bg-[hsl(var(--goose-shell-bg))] px-2",
+            : "bg-[hsl(var(--goose-shell-bg))] px-2 pb-2",
         )}
       >
         {!isFullscreen ? (

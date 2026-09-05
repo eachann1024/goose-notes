@@ -141,7 +141,7 @@ export function wrapFetchToDisableThinking(
       return response;
     }
 
-    let errorText = "";
+    let errorText: string;
     try {
       errorText = await response.text();
     } catch {

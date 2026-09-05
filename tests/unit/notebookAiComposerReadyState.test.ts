@@ -130,7 +130,8 @@ test("面板输入区 4 行封顶，多行切 20px 圆角", () => {
   expect(nativeEditor).not.toContain("max-h-[144px]");
   expect(nativeEditor).toContain("--ai-composer-h");
   expect(nativeEditor).toContain("onMultilineChange");
-  expect(nativeEditor).toContain("isEditorDomEmpty(el)");
+  expect(nativeEditor).toContain("Math.min(Math.max(el.scrollHeight, 24), 96)");
+  expect(nativeEditor).not.toContain("const next = isEditorDomEmpty(el)");
   expect(composer).toContain("rounded-[20px]");
   expect(composer).toContain("rounded-full");
   expect(composer).toContain("notebook-ai-composer-shell");
@@ -172,7 +173,15 @@ test("测宽克隆必须去掉编辑器宽度类，不能只 clone 就量", () =
   expect(expandLayout).toContain("cloneNode(true)");
   expect(expandLayout).toContain('clone.className = ""');
   expect(expandLayout).toContain("clone.remove()");
-  expect(composer).toContain("measureNowrapContentWidth");
+  expect(composer).toContain("measureNowrapContentSize");
+  expect(expandLayout).toContain("white-space:pre;");
+  expect(composer).toContain("scrollHeight: content.height");
+});
+
+test("展开测量保留硬换行，不读取 live 编辑区固定高度", () => {
+  expect(composer).toContain("scrollHeight: content.height");
+  expect(expandLayout).toContain("height: clone.scrollHeight");
+  expect(expandLayout).toContain("white-space:pre;");
 });
 
 test("无文本、引用、图片、Skill 才视为输入为空", () => {
