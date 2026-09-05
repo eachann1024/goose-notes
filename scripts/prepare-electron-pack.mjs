@@ -25,7 +25,7 @@ try {
 // 最后给一个 GitHub-style no-reply 兜底，避免 deb/rpm 因缺 author 邮箱直接失败。
 const linuxMaintainer =
   process.env.LINUX_MAINTAINER ||
-  (typeof pkg.author === "string" ? pkg.author : undefined) ||
+  (typeof pkg.author === "string" && pkg.author.includes("@") ? pkg.author : undefined) ||
   (pkg.author?.email
     ? `${pkg.author.name} <${pkg.author.email}>`.trim()
     : undefined) ||
@@ -84,7 +84,7 @@ writeFileSync(
       version: pkg.version,
       description: pkg.description,
       author: pkg.author,
-      homepage: pkg.homepage,
+      homepage: pkg.homepage || "https://github.com/eachann1024/goose-note-app",
       license: pkg.license,
       private: true,
       type: "module",
@@ -172,6 +172,7 @@ linux:
     - AppImage
     - deb
     - rpm
+    - pacman
   desktop:
     entry:
       Name: Goose Note
@@ -179,6 +180,17 @@ linux:
       Categories: Office;Note;
       MimeType: text/markdown;text/x-markdown;
       StartupWMClass: goose-note
+pacman:
+  depends:
+    - gtk3
+    - nss
+    - alsa-lib
+    - libxss
+    - libxtst
+    - libnotify
+    - libsecret
+    - xdg-utils
+    - libappindicator-gtk3
 `,
 );
 console.log("[electron] packed app dir → dist-electron/app-pack");

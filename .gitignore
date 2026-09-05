@@ -85,3 +85,9 @@ scripts/*
 # PDF CJK font (downloaded at build; not committed)
 public/fonts/*.ttf
 public/fonts/*.otf
+
+# Private desktop CI configuration
+!/.github/
+!/.github/workflows/
+!/.github/workflows/desktop-build.yml
+!scripts/build-ci-installers.mjs
