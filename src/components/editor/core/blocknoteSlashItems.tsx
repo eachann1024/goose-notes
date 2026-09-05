@@ -220,12 +220,6 @@ export function getBlockNoteSlashMenuItems(
           });
         }
 
-        if (false) {
-          window.dispatchEvent(new CustomEvent("goose-note:native-ai-entry", {
-            detail: { source: "slash" },
-          }));
-          return;
-        }
         const ai = editor.getExtension(AIExtension);
         const blockId = editor.getTextCursorPosition().block.id;
         if (ai && blockId) {

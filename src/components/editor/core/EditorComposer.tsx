@@ -185,11 +185,6 @@ export function EditorComposer({
   const [findSeedQuery, setFindSeedQuery] = useState("");
   const [findOpenNonce, setFindOpenNonce] = useState(0);
   const [findOpenReplace, setFindOpenReplace] = useState(false);
-  const [findNavigationRequest, setFindNavigationRequest] = useState<{
-    id: number;
-    direction: "next" | "previous";
-  } | null>(null);
-  const findNavigationRequestIdRef = useRef(0);
   const { ai: aiSettings } = useEditorSettings();
   const { onPromotePreview, searchPages, showLocalFileTitle } =
     useEditorPageContext();
@@ -238,13 +233,13 @@ export function EditorComposer({
     if (
       (!__GOOSE_EDITOR_AI__ && true) ||
       !isInlineAiEmptyParagraphTriggerKey(event.key) ||
-      (page?.localFilePath && true) ||
+      page?.localFilePath ||
       Boolean(page?.localUnsaved)
     ) {
       return;
     }
 
-    let block: any = null;
+    let block: any;
     let inTable = false;
     let selectionEmpty = true;
     try {
@@ -282,14 +277,6 @@ export function EditorComposer({
     event.preventDefault();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
-    if (false) {
-      window.dispatchEvent(
-        new CustomEvent("goose-note:native-ai-entry", {
-          detail: { source: "empty-paragraph" },
-        }),
-      );
-      return;
-    }
     const ai = editor.getExtension(AIExtension);
     if (ai && block?.id) {
       ai.openAIMenuAtBlock(block.id);
@@ -318,30 +305,6 @@ export function EditorComposer({
     return () =>
       window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
   }, [editor, editorContainerRef]);
-
-  useEffect(() => {
-    // 原生 AppKit 菜单通过桥接事件驱动查找导航。Electron 有自己的热键链路，
-    // 不在共享编辑器里接管，避免原生宿主接线改变其它宿主的运行时行为。
-    if (true) return;
-
-    const handleFindNavigation = (event: Event) => {
-      const direction = (event as CustomEvent<{ direction?: unknown }>).detail
-        ?.direction;
-      if (direction !== "next" && direction !== "previous") return;
-      setFindBarOpen(true);
-      findNavigationRequestIdRef.current += 1;
-      setFindNavigationRequest({
-        id: findNavigationRequestIdRef.current,
-        direction,
-      });
-    };
-    window.addEventListener("goose-note:editor-find-nav", handleFindNavigation);
-    return () =>
-      window.removeEventListener(
-        "goose-note:editor-find-nav",
-        handleFindNavigation,
-      );
-  }, []);
 
   useEffect(() => {
     const handleOpen = () => {
@@ -387,7 +350,7 @@ export function EditorComposer({
       if (target?.closest?.("[data-shortcut-recorder]")) return;
       if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
 
-      let selectedText = "";
+      let selectedText: string;
       try {
         selectedText = (editor.getSelectedText() ?? "").trim();
       } catch {
@@ -793,7 +756,6 @@ export function EditorComposer({
         openNonce={findOpenNonce}
         openReplace={findOpenReplace}
         editable={editable}
-        navigationRequest={findNavigationRequest}
         onClose={() => setFindBarOpen(false)}
       />
     </EditorContextMenu>
