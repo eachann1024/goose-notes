@@ -135,7 +135,7 @@ export const usePages = create<PagesState>()((set, get) => ({
           source: isLocal ? "local-file" : "internal-page",
           id,
           content: updates.content ?? null,
-          baseSignature: getContentSignature(page?.content ?? null),
+          baseSignature: () => getContentSignature(page?.content ?? null),
           baseUpdatedAt: page?.updatedAt,
         })
       : null;

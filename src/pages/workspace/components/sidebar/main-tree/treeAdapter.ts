@@ -5,7 +5,7 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 export { getPageTitle };
 
 function sortPages(items: Page[], isLocalFolder: boolean): Page[] {
-  return items.slice().sort((a, b) => {
+  return items.sort((a, b) => {
     if (!!a.localPendingCreate !== !!b.localPendingCreate) {
       return a.localPendingCreate ? -1 : 1;
     }

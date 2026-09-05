@@ -102,13 +102,14 @@ export const hydrateFromStorageAction = async (set: StoreSet) => {
   for (const entry of listRecoveryEntries("internal-page")) {
     const current = recoveredPages[entry.id];
     if (!current) continue;
+    const currentSignature = getContentSignature(current.content);
     if (
-      getContentSignature(current.content) === getContentSignature(entry.content)
+      currentSignature === getContentSignature(entry.content)
     ) {
       acknowledgeRecoveryEntry("internal-page", entry.id, entry.revision);
       continue;
     }
-    if (!canApplyRecoveryEntry(entry, current.content, current.updatedAt)) {
+    if (!canApplyRecoveryEntry(entry, current.content, current.updatedAt, currentSignature)) {
       conflictCount += 1;
       continue;
     }

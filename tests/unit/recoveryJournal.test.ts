@@ -9,6 +9,7 @@ import {
   recordRecoveryEntry,
 } from "../../src/lib/storage/recoveryJournal";
 import { getContentSignature } from "../../src/components/editor/utils/blocknote-content";
+import { HostAdapter } from "../../src/lib/host/adapter";
 import { recoverQuickNoteDrafts } from "../../src/stores/useQuickNote";
 import { setDbStorageItem } from "../../src/lib/storage/localDbStorage";
 import { installElectronLocalStorageRuntime } from "./electronLocalStorageRuntime";
@@ -69,6 +70,104 @@ test("连续未 ACK 编辑固定使用首次持久化基线", () => {
   expect(latest?.baseUpdatedAt).toBe(10);
   expect(canApplyRecoveryEntry(latest!, persisted, 10)).toBe(true);
   expect(canApplyRecoveryEntry(latest!, firstEdit, 20)).toBe(false);
+});
+
+test("惰性基线首次求值、连续编辑跳过、ACK 后重新求值", () => {
+  installStorageRuntime();
+  let calls = 0;
+  const input = {
+    source: "internal-page" as const,
+    id: "lazy-baseline",
+    content: null,
+    baseSignature: () => `baseline-${++calls}`,
+  };
+  const first = recordRecoveryEntry(input)!;
+  expect(first.baseSignature).toBe("baseline-1");
+  expect(calls).toBe(1);
+  const second = recordRecoveryEntry(input)!;
+  expect(second.baseSignature).toBe("baseline-1");
+  expect(calls).toBe(1);
+  expect(acknowledgeRecoveryEntry(input.source, input.id, second.revision)).toBe(true);
+  const afterAck = recordRecoveryEntry(input)!;
+  expect(afterAck.baseSignature).toBe("baseline-2");
+  expect(afterAck.revision).toBe(second.revision + 1);
+  expect(calls).toBe(2);
+});
+
+for (const conflict of ["new-entry", "ack", "missing-baseline"] as const) {
+  test(`惰性基线 CAS 重试重读 previous：${conflict}`, () => {
+    installStorageRuntime();
+    const source = "internal-page" as const;
+    const id = "lazy-cas";
+    const existing = conflict === "ack"
+      ? recordRecoveryEntry({ source, id, content: null, baseSignature: "original" })!
+      : null;
+    const put = HostAdapter.db.put;
+    let attempts = 0;
+    let calls = 0;
+    let baseline = "before-conflict";
+    HostAdapter.db.put = (docId, data, rev) => {
+      attempts += 1;
+      if (attempts === 1) {
+        // 模拟并发窗口：首次写入前调用真实 record/ACK，再注入冲突让外层 CAS 重试。
+        HostAdapter.db.put = put;
+        try {
+          if (existing) {
+            expect(calls).toBe(0);
+            expect(acknowledgeRecoveryEntry(source, id, existing.revision)).toBe(true);
+          } else {
+            expect(calls).toBe(1);
+            recordRecoveryEntry({
+              source, id, content: null,
+              ...(conflict === "new-entry" ? { baseSignature: "concurrent" } : {}),
+            });
+          }
+          baseline = "after-conflict";
+        } finally {
+          HostAdapter.db.put = retryPut;
+        }
+        return { id: docId, ok: false, error: "conflict" };
+      }
+      return put(docId, data, rev);
+    };
+    const retryPut = HostAdapter.db.put;
+    try {
+      const entry = recordRecoveryEntry({
+        source, id, content: null,
+        baseSignature: () => { calls += 1; return baseline; },
+      });
+      expect(attempts).toBe(2);
+      expect(calls).toBe(conflict === "missing-baseline" ? 2 : 1);
+      expect(entry?.revision).toBe(2);
+      expect(entry?.baseSignature).toBe(
+        conflict === "new-entry" ? "concurrent" : "after-conflict",
+      );
+      expect(getRecoveryEntry(source, id)).toEqual(entry);
+    } finally {
+      HostAdapter.db.put = put;
+    }
+  });
+}
+
+test("空基线保留原 truthy 展开语义，字符串与工厂兼容", () => {
+  const { docs } = installStorageRuntime();
+  const input = { source: "internal-page" as const, id: "empty-baseline", content: null };
+  expect(recordRecoveryEntry({ ...input, baseSignature: "" })).not.toHaveProperty("baseSignature");
+  let calls = 0;
+  const empty = recordRecoveryEntry({
+    ...input, baseSignature: () => { calls += 1; return ""; },
+  });
+  expect(calls).toBe(1);
+  expect(empty).not.toHaveProperty("baseSignature");
+  // 兼容已有文档显式保存空串的情况：truthy 判断与 ?? 取值不能合并。
+  const docId = Array.from(docs.keys()).find((id) => id.startsWith("gn:recovery:v2:"))!;
+  const doc = docs.get(docId)!;
+  docs.set(docId, { ...doc, data: { version: 2, entry: { ...empty, baseSignature: "" } } });
+  expect(recordRecoveryEntry({ ...input, baseSignature: "fallback" })?.baseSignature).toBe("");
+  expect(recordRecoveryEntry({
+    ...input, baseSignature: () => { calls += 1; return "fallback"; },
+  })?.baseSignature).toBe("");
+  expect(calls).toBe(2);
 });
 
 test("不同 source+id 使用独立文档，不会整包覆盖", () => {
@@ -213,4 +312,88 @@ test("恢复日志写入故障会向调用方返回失败", () => {
       content: null,
     }),
   ).toBeNull();
+});
+
+test("canApplyRecoveryEntry 传入 currentSignature 避免重复访问正文且保持语义", () => {
+  const baseContent = [{ type: "paragraph", content: "baseline" }] as any;
+  const baseSignature = getContentSignature(baseContent);
+  const entry: RecoveryJournalEntry = {
+    source: "internal-page",
+    id: "p-sig-test",
+    revision: 1,
+    updatedAt: 100,
+    baseUpdatedAt: 50,
+    baseSignature,
+  };
+
+  // 1. 传入签名避免访问正文（可观测 Proxy reads 验证不触碰正文）
+  let reads = 0;
+  const trackedContent = new Proxy({}, {
+    get(target, key, receiver) {
+      reads++;
+      return Reflect.get(target, key, receiver);
+    },
+  }) as any;
+
+  expect(
+    canApplyRecoveryEntry(entry, trackedContent, 50, baseSignature),
+  ).toBe(true);
+  expect(reads).toBe(0);
+
+  // 2. 省略第四参依然正常计算并校验；独立 tracked 对象验证检测器确实被触发
+  let fallbackReads = 0;
+  const fallbackTrackedContent = new Proxy({}, {
+    get(target, key, receiver) {
+      fallbackReads++;
+      return Reflect.get(target, key, receiver);
+    },
+  }) as any;
+  expect(canApplyRecoveryEntry(entry, fallbackTrackedContent, 50)).toBe(false);
+  expect(fallbackReads).toBeGreaterThan(0);
+
+  expect(canApplyRecoveryEntry(entry, baseContent, 50)).toBe(true);
+  expect(
+    canApplyRecoveryEntry(
+      entry,
+      [{ type: "paragraph", content: "different" }] as any,
+      50,
+    ),
+  ).toBe(false);
+
+  // 3. 空字符串作为 currentSignature 时采用 ?? 语义（不降级到重新计算且不触碰正文）
+  expect(canApplyRecoveryEntry(entry, trackedContent, 50, "")).toBe(false);
+  expect(reads).toBe(0);
+
+  // 4. 基线冲突 / 时间超前依然拒绝且不触碰正文
+  expect(
+    canApplyRecoveryEntry(
+      entry,
+      trackedContent,
+      51, // currentUpdatedAt > entry.baseUpdatedAt
+      baseSignature,
+    ),
+  ).toBe(false);
+  expect(reads).toBe(0);
+
+  expect(
+    canApplyRecoveryEntry(
+      entry,
+      trackedContent,
+      50,
+      "mismatched-signature",
+    ),
+  ).toBe(false);
+  expect(reads).toBe(0);
+
+  // 5. 无基线旧日志正常恢复且不触碰正文
+  const legacyEntry: RecoveryJournalEntry = {
+    source: "internal-page",
+    id: "legacy",
+    revision: 1,
+    updatedAt: 100,
+  };
+  expect(
+    canApplyRecoveryEntry(legacyEntry, trackedContent, 200, "any-signature"),
+  ).toBe(true);
+  expect(reads).toBe(0);
 });

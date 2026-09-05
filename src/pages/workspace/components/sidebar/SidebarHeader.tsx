@@ -289,9 +289,6 @@ export function SidebarHeader({
         React.ComponentType<{ className?: string; strokeWidth?: number }>
       >;
       const SelectedIcon = iconName ? iconMap[iconName] : null;
-      const DefaultIcon = pageHasVisibleContent(page)
-        ? LucideIcons.FileText
-        : LucideIcons.File;
       // 选中态第二信号：只靠颜色不满足 WCAG 1.4.1，浅底对药丸轨道对比不足 3:1
       const strokeWidth = isActive ? 2.5 : 2;
 
@@ -320,6 +317,9 @@ export function SidebarHeader({
         );
       }
 
+      const DefaultIcon = pageHasVisibleContent(page)
+        ? LucideIcons.FileText
+        : LucideIcons.File;
       return (
         <DefaultIcon
           className="h-4 w-4 transition-transform duration-100"

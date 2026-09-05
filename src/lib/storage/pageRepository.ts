@@ -165,9 +165,10 @@ export const removeLocalPageMetaByWorkspaceId = (workspaceId: string): void => {
 };
 
 export const loadPagesFromStorage = (): HydratedPagesPayload => {
-  const pageDocs = HostAdapter.db.allDocs<PersistedPageDoc>(PAGE_DOC_PREFIX);
-  const localMetaDocs = HostAdapter.db.allDocs<PersistedLocalPageMetaDoc>(
-    LOCAL_PAGE_META_DOC_PREFIX,
+  const snapshot = HostAdapter.db.allDocs<unknown>("gn:");
+  const pageDocs = snapshot.filter((doc) => doc._id.startsWith(PAGE_DOC_PREFIX));
+  const localMetaDocs = snapshot.filter((doc) =>
+    doc._id.startsWith(LOCAL_PAGE_META_DOC_PREFIX),
   );
 
   const pages = cleanupExpiredPages(

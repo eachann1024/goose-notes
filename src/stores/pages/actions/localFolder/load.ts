@@ -312,14 +312,15 @@ const loadLocalFolderPagesOnce = async (
       const current = get().pages[entry.id];
       if (!current || current.workspaceId !== notebookId || current.isFolder)
         continue;
+      const currentSignature = getContentSignature(current.content);
       if (
-        getContentSignature(current.content) ===
+        currentSignature ===
         getContentSignature(entry.content)
       ) {
         acknowledgeRecoveryEntry("local-file", entry.id, entry.revision);
         continue;
       }
-      if (!canApplyRecoveryEntry(entry, current.content)) {
+      if (!canApplyRecoveryEntry(entry, current.content, undefined, currentSignature)) {
         conflictCount += 1;
         continue;
       }

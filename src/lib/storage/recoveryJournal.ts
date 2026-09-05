@@ -112,7 +112,7 @@ export const recordRecoveryEntry = (input: {
   source: RecoverySource;
   id: string;
   content: JSONContent | null;
-  baseSignature?: string;
+  baseSignature?: string | (() => string);
   baseUpdatedAt?: number;
   now?: number;
 }): RecoveryJournalEntry | null => {
@@ -120,6 +120,11 @@ export const recordRecoveryEntry = (input: {
   let written: RecoveryJournalEntry | null = null;
   const result = putDocWithCas(input.source, input.id, (current) => {
     const previous = current?.entry;
+    const baseSignature = previous?.baseSignature || (
+      typeof input.baseSignature === "function"
+        ? input.baseSignature()
+        : input.baseSignature
+    );
     const lastRevision = previous?.revision ?? current?.acknowledgedRevision ?? 0;
     written = {
       source: input.source,
@@ -128,8 +133,8 @@ export const recordRecoveryEntry = (input: {
       revision: lastRevision + 1,
       updatedAt: input.now ?? Date.now(),
       // WAL 未 ACK 前始终沿用首次持久化基线，不能随内存连续编辑漂移。
-      ...(previous?.baseSignature || input.baseSignature
-        ? { baseSignature: previous?.baseSignature ?? input.baseSignature }
+      ...(previous?.baseSignature || baseSignature
+        ? { baseSignature: previous?.baseSignature ?? baseSignature }
         : {}),
       ...(typeof (previous?.baseUpdatedAt ?? input.baseUpdatedAt) === "number"
         ? { baseUpdatedAt: previous?.baseUpdatedAt ?? input.baseUpdatedAt }
@@ -201,6 +206,7 @@ export const canApplyRecoveryEntry = (
   entry: RecoveryJournalEntry,
   currentContent: JSONContent | null | undefined,
   currentUpdatedAt?: number,
+  currentSignature?: string,
 ): boolean => {
   if (
     typeof entry.baseUpdatedAt === "number" &&
@@ -211,6 +217,7 @@ export const canApplyRecoveryEntry = (
   }
   return (
     !entry.baseSignature ||
-    entry.baseSignature === getContentSignature(currentContent ?? null)
+    entry.baseSignature ===
+      (currentSignature ?? getContentSignature(currentContent ?? null))
   );
 };

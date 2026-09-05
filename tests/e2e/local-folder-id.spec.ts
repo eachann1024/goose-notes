@@ -69,7 +69,7 @@ test.describe("local folder stable page ids", () => {
     await waitForLocalHarness(page);
   });
 
-  test("expanding a local folder selects it instead of leaving its child highlighted", async ({
+  test("expanding a local folder preserves the open child and does not create a folder tab", async ({
     page,
   }) => {
     const { folderId, nestedFileId } = await page.evaluate(async () => {
@@ -106,7 +106,7 @@ test.describe("local folder stable page ids", () => {
     const nestedFileRow = page.locator(`[data-rct-item-id="${nestedFileId}"]`);
     const folderDisclosure = folderRow
       .locator("..")
-      .locator("span[aria-hidden='true']")
+      .getByRole("button", { name: "折叠子项" })
       .first();
 
     await expect(folderRow).toBeVisible({ timeout: 15_000 });
@@ -131,140 +131,31 @@ test.describe("local folder stable page ids", () => {
       }),
     ).toBe(nestedFileId);
 
-    await page.evaluate(
-      ({ folderId, nestedFileId }) => {
-        const folderItem = document.querySelector(
-          `[data-rct-item-id="${CSS.escape(folderId)}"]`,
-        );
-        if (!folderItem) throw new Error("Folder tree item not found");
-        const tree =
-          folderItem.closest("[role='tree']") ?? folderItem.parentElement;
-        if (!tree) throw new Error("Folder tree root not found");
-
-        const selectionFrames: string[][] = [];
-        const recordSelection = () => {
-          const selectedIds = Array.from(
-            tree.querySelectorAll(".main-tree-row--selected"),
-          )
-            .map((row) =>
-              row
-                .closest("[data-rct-item-id]")
-                ?.getAttribute("data-rct-item-id"),
-            )
-            .filter((id): id is string => Boolean(id));
-          if (selectedIds.includes(nestedFileId)) {
-            selectionFrames.push(selectedIds);
-          }
-        };
-        const observer = new MutationObserver(recordSelection);
-        observer.observe(tree, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-          attributeFilter: ["class", "style", "hidden"],
-        });
-        (
-          window as LocalHarnessWindow & {
-            __localSelectionFlashProbe?: {
-              selectionFrames: string[][];
-              disconnect: () => void;
-            };
-          }
-        ).__localSelectionFlashProbe = {
-          selectionFrames,
-          disconnect: () => observer.disconnect(),
-        };
-      },
-      { folderId, nestedFileId },
-    );
-
+    // Electron 本地文件夹只控制展开，不作为页面打开。
     await folderRow.click({ position: { x: 100, y: 14 } });
     await expect(nestedFileRow).toBeVisible();
-
-    const selectionFlashFrames = await page.evaluate(
-      () =>
-        new Promise<string[][]>((resolve) => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              const probe = (
-                window as LocalHarnessWindow & {
-                  __localSelectionFlashProbe?: {
-                    selectionFrames: string[][];
-                    disconnect: () => void;
-                  };
-                }
-              ).__localSelectionFlashProbe;
-              probe?.disconnect();
-              resolve(probe?.selectionFrames ?? []);
-            });
-          });
-        }),
-    );
-    expect(selectionFlashFrames).toEqual([]);
-
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const harness = (window as LocalHarnessWindow).__gooseTest;
-          return harness?.stores.usePages.getState().activePageId;
-        }),
-      )
-      .toBe(folderId);
-
-    await expect
-      .poll(async () =>
-        folderRow.evaluate((element) =>
-          Boolean(element.closest(".main-tree-row--selected")),
-        ),
-      )
-      .toBe(true);
-    await expect
-      .poll(async () =>
-        nestedFileRow.evaluate((element) =>
-          Boolean(element.closest(".main-tree-row--selected")),
-        ),
-      )
-      .toBe(false);
-
     const afterExpand = await page.evaluate(() => {
       const harness = (window as LocalHarnessWindow).__gooseTest;
       if (!harness) throw new Error("Local folder harness unavailable");
-      const tabs = harness.stores.useTabs.getState();
-      const pages = harness.stores.usePages.getState();
       return {
-        openTabs: tabs.openTabs,
-        activeTabId: tabs.activeTabId,
-        activePageId: pages.activePageId,
+        activePageId: harness.stores.usePages.getState().activePageId,
+        tabs: harness.stores.useTabs.getState().openTabs,
       };
     });
-    expect(afterExpand.openTabs).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pageId: folderId })]),
-    );
-    expect(afterExpand.activeTabId).not.toBeNull();
-    expect(afterExpand.activePageId).toBe(folderId);
+    expect(afterExpand.activePageId).toBe(nestedFileId);
+    expect(afterExpand.tabs.some((tab) => tab.pageId === folderId)).toBe(false);
+    expect(afterExpand.tabs.some((tab) => tab.pageId === nestedFileId)).toBe(true);
 
     await folderRow.click({ position: { x: 100, y: 14 } });
     await expect(nestedFileRow).toBeHidden();
-
     const afterCollapse = await page.evaluate(() => {
       const harness = (window as LocalHarnessWindow).__gooseTest;
-      if (!harness) throw new Error("Local folder harness unavailable");
-      const tabs = harness.stores.useTabs.getState();
-      const pages = harness.stores.usePages.getState();
-      return {
-        openTabs: tabs.openTabs,
-        activeTabId: tabs.activeTabId,
-        activePageId: pages.activePageId,
-      };
+      return harness?.stores.usePages.getState().activePageId;
     });
-    expect(afterCollapse.openTabs).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pageId: folderId })]),
-    );
-    expect(afterCollapse.activeTabId).not.toBeNull();
-    expect(afterCollapse.activePageId).toBe(folderId);
+    expect(afterCollapse).toBe(nestedFileId);
   });
 
-  test("recreating 新页面 after renaming it keeps both files in the page list", async ({
+  test("recreating 未命名 after renaming it keeps both files in the page list", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -297,13 +188,13 @@ test.describe("local folder stable page ids", () => {
         secondPath: state.pages[secondId]?.localFilePath,
         localPages,
         renamedFile: harness.readMockFile("/mock-notes/Renamed Page.md"),
-        newFile: harness.readMockFile("/mock-notes/新页面.md"),
+        newFile: harness.readMockFile("/mock-notes/未命名.md"),
       };
     });
 
     expect(result.secondId).not.toBe(result.firstId);
     expect(result.firstPath).toBe("/mock-notes/Renamed Page.md");
-    expect(result.secondPath).toBe("/mock-notes/新页面.md");
+    expect(result.secondPath).toBe("/mock-notes/未命名.md");
     expect(result.renamedFile).not.toBeNull();
     expect(result.newFile).not.toBeNull();
     expect(result.localPages).toEqual(
@@ -314,7 +205,7 @@ test.describe("local folder stable page ids", () => {
         }),
         expect.objectContaining({
           id: result.secondId,
-          localFilePath: "/mock-notes/新页面.md",
+          localFilePath: "/mock-notes/未命名.md",
         }),
       ]),
     );

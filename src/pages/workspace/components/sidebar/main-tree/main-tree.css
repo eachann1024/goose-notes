@@ -83,6 +83,13 @@
   min-height: var(--main-tree-row-height, 32px);
   margin-bottom: 0;
   box-sizing: border-box;
+  /* 在固定行高内留出 4px 背景间隙，不改变树的拖拽行距计算。 */
+  border-block: 2px solid transparent !important;
+}
+
+/* 比各状态的 background 简写优先，避免裁切范围被重置回 border-box。 */
+.rct-main-tree .main-tree-row.main-tree-row {
+  background-clip: padding-box !important;
 }
 
 .rct-main-tree {

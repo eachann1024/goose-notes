@@ -33,7 +33,7 @@ import type { PartialBlock } from "@blocknote/core";
 import type { PageContent } from "./legacyMigration";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent } from "./emptyContent";
-import { simpleExtractText } from "./normalize";
+import { hasStructuredBlocks, simpleExtractText } from "./normalize";
 import { normalizePageContent } from "./legacyMigration";
 import type { LegacyPageContent } from "./legacyMigration";
 
@@ -95,6 +95,32 @@ export function extractBlockNoteTitle(
   content: PageContent | undefined,
 ): string {
   try {
+    const heading = Array.isArray(content) ? content[0] : undefined;
+    if (
+      heading?.type === "heading" &&
+      typeof heading === "object" &&
+      !Array.isArray(heading) &&
+      !("attrs" in heading) &&
+      (heading.children == null || Array.isArray(heading.children)) &&
+      (heading.props == null ||
+        (typeof heading.props === "object" && !Array.isArray(heading.props))) &&
+      (typeof heading.content === "string" ||
+        (Array.isArray(heading.content) && !hasStructuredBlocks(heading.content)))
+    ) {
+      // ponytail: 仅快速读取普通首标题，不校验正文或保证所有异常输入等价；复杂格式仍全文 normalize。
+      const inlineText = simpleExtractText({ content: heading.content }).trim();
+      if (
+        inlineText ||
+        heading.children == null ||
+        (Array.isArray(heading.children) && heading.children.length === 0)
+      ) {
+        // normalize 会丢弃顶层 text 并将标题 children 移到正文，不能直接读取整个 heading。
+        return (
+          simpleExtractText({ content: heading.content, props: heading.props }).trim() ||
+          "无标题"
+        );
+      }
+    }
     const blocks = normalizePageContent(content);
     const first = blocks[0] as any;
     if (first?.type === "heading") {
