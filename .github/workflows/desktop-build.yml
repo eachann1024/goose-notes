@@ -120,7 +120,8 @@ jobs:
                   if file.name == 'SHA256SUMS.txt':
                       continue
                   installer = file.suffix in ['.exe', '.dmg', '.zip', '.AppImage', '.deb', '.rpm', '.pacman'] or file.name.endswith('.tar.gz')
-                  target = out / (file.name if installer else prefix + '-' + file.name)
+                  name = file.name if installer else prefix + '-' + file.name
+                  target = out / name.replace(' ', '.')
                   if target.exists():
                       raise RuntimeError('Duplicate asset: ' + target.name)
                   shutil.copyfile(file, target)
