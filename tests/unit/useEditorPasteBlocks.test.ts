@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "../../src/components/editor/extensions/copyCurrentBlockExtension";
 import {
   finishPasteAtAnchor,
+  pasteClipboardHtmlAsBlocks,
   plainHasGooseMarkdownMarkers,
   resolvePasteAnchor,
   shouldPasteClipboardAsBlocks,
@@ -114,4 +115,21 @@ test("finishPasteAtAnchor：空目标单块走 updateBlock 并 focus", async () 
   expect(calls.filter((c) => c.method === "updateBlock")).toHaveLength(1);
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(calls.some((c) => c.method === "focus")).toBe(true);
+});
+
+test("HTML 块粘贴移除源块及子块 ID，保留样式与引用内容且不修改源对象", async () => {
+  const { editor, calls } = createFakeEditor();
+  const source = { id: "source", type: "bulletListItem", props: { textColor: "red" },
+    content: [{ type: "text", text: "加粗", styles: { bold: true } }],
+    children: [{ id: "child", type: "paragraph", content: "子项" }] };
+  const parser = { ...editor, tryParseHTMLToBlocks: async () => [source] };
+  await pasteClipboardHtmlAsBlocks(parser as unknown as Parameters<typeof pasteClipboardHtmlAsBlocks>[0], "<p>copy</p>",
+    { id: "target", type: "paragraph", content: "目标" });
+  const inserted = calls.find((call) => call.method === "insertBlocks")?.args[0] as Record<string, unknown>[];
+  expect(inserted[0]).not.toHaveProperty("id");
+  expect((inserted[0].children as unknown[])[0]).not.toHaveProperty("id");
+  expect(inserted[0].content).toEqual(source.content);
+  expect(inserted[0].props).toEqual(source.props);
+  expect(source.id).toBe("source");
+  expect(source.children[0].id).toBe("child");
 });

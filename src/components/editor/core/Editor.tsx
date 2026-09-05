@@ -128,7 +128,7 @@ import {
   shouldPreferVisibleSelectionText,
   stripMarkdownHardBreaks,
 } from "./EditorComposer";
-import { isLinkworthyText } from "@/components/editor/utils/clipboard";
+import { isLinkworthyText, normalizeClipboardListMarkers } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 import { pasteClipboardFilesFromClipboard } from "@/components/editor/utils/pasteClipboardFilesFromClipboard";
@@ -858,8 +858,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         clipboardData.getData("text/plain"),
       );
       // cut 时 PM 已写入剪贴板后才删选区；不拿 DOM 可见字覆盖 plain/html，
-      // 否则行内 code 会被拆成两段（复制正常、剪切异常）。只清理 markdown 软换行反斜杠。
-      const cleaned = stripMarkdownHardBreaks(clipboardText);
+      // 否则行内 code 会被拆成两段（复制正常、剪切异常）。清理软换行并统一列表标记。
+      const cleaned = stripMarkdownHardBreaks(
+        /<ul\b/i.test(clipboardData.getData("text/html"))
+          ? normalizeClipboardListMarkers(clipboardText)
+          : clipboardText,
+      );
       if (cleaned !== clipboardText) {
         clipboardData.setData("text/plain", cleaned);
         return;

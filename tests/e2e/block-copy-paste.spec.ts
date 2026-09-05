@@ -124,20 +124,14 @@ async function waitForHydration(page: Page) {
 }
 
 async function openEditorPage(page: Page) {
-  await page.evaluate(() => {
-    const bridge = (
-      window as Window & {
-        __GOOSE_TEST__?: {
-          createPage: (parentId?: string, workspaceId?: string) => string;
-          openPermanentTab: (pageId: string, pin?: boolean) => void;
-          getNotebooksState: () => { activeNotebookId: string | null };
-        };
-      }
-    ).__GOOSE_TEST__;
-    if (!bridge) throw new Error("Test bridge unavailable");
-    const notebookId =
-      bridge.getNotebooksState().activeNotebookId ?? "default-notebook";
-    const pageId = bridge.createPage(undefined, notebookId);
+  await page.waitForFunction(() => Boolean(window.__gooseTest));
+  await page.evaluate(async () => {
+    const harness = window.__gooseTest;
+    const bridge = window.__GOOSE_TEST__;
+    if (!harness || !bridge) throw new Error("Local test harness unavailable");
+    const { notebookId } = await harness.setupMockNotebook();
+    const pageId = await harness.stores.usePages.getState().createLocalPage(undefined, notebookId);
+    if (!pageId) throw new Error("Could not create a local test page");
     bridge.openPermanentTab(pageId, true);
   });
   await page.waitForFunction(() =>
@@ -221,6 +215,9 @@ async function copyCollapsedThenPaste(
   sourceText: string,
   targetText: string,
 ) {
+  // 系统剪贴板跨浏览器 context 保留；空选区复制不应粘贴上一条用例的内容。
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate(() => navigator.clipboard.writeText(""));
   await page.evaluate(
     `${HELPERS}
      (() => {
@@ -296,7 +293,7 @@ test.describe("block copy paste keeps formatting", () => {
     await page.addInitScript(() => {
       (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__ = true;
     });
-    await page.goto("/");
+    await page.goto("/?e2eLocalMock");
     await waitForHydration(page);
   });
 

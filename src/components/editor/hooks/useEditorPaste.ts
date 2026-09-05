@@ -95,6 +95,19 @@ export function finishPasteAtAnchor(
   return last !== null;
 }
 
+/** 剪贴板 HTML 带有源块 ID；粘贴是副本，需由编辑器重新分配块 ID。 */
+function withoutCopiedBlockIds(blocks: unknown[]): unknown[] {
+  return blocks.map((block) => {
+    if (!block || typeof block !== "object" || Array.isArray(block)) return block;
+    const copy = { ...(block as Record<string, unknown>) };
+    delete copy.id;
+    if (Array.isArray(copy.children)) {
+      copy.children = withoutCopiedBlockIds(copy.children);
+    }
+    return copy;
+  });
+}
+
 export async function pasteClipboardHtmlAsBlocks(
   editor: Editor,
   htmlText: string,
@@ -107,7 +120,7 @@ export async function pasteClipboardHtmlAsBlocks(
     blocks = [];
   }
   if (!blocks || blocks.length === 0) return false;
-  return finishPasteAtAnchor(editor, blocks, target);
+  return finishPasteAtAnchor(editor, withoutCopiedBlockIds(blocks), target);
 }
 
 export function tryPasteGooseMarkdownFragment(
@@ -297,7 +310,7 @@ export function useEditorPaste({
         const html = htmlText?.trim() ?? "";
         if (html && htmlHasInlineFormatting(html)) {
           void (async () => {
-            let blocks: unknown[] = [];
+            let blocks: unknown[];
             try {
               blocks = await editor.tryParseHTMLToBlocks(htmlText);
             } catch {

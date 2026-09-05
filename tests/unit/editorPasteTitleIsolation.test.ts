@@ -7,7 +7,7 @@ import { shouldIsolateTitleStructurePaste } from "../../src/components/editor/ho
 type ContentRange = { from: number; to: number };
 
 function contentRanges(editor: {
-  prosemirrorState: { doc: { descendants: Function } };
+  prosemirrorState: { doc: { descendants: (callback: (node: any, pos: number) => boolean) => void } };
 }) {
   const ranges = new Map<string, ContentRange>();
   editor.prosemirrorState.doc.descendants((node: any, pos: number) => {
