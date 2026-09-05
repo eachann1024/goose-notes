@@ -19,7 +19,7 @@ test("default desktop hotkeys convert to Electron accelerators", () => {
     "CommandOrControl+Alt+Q",
   );
   expect(toElectronAccelerator(DEFAULT_SEARCH_HOTKEY)).toBe(
-    "CommandOrControl+K",
+    "CommandOrControl+Shift+K",
   );
   expect(toElectronAccelerator("Mod+Alt+N")).toBe("CommandOrControl+Alt+N");
   expect(toElectronAccelerator("Meta+Alt+N")).toBe("Command+Alt+N");

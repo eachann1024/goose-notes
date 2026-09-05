@@ -2,6 +2,7 @@ import { SIDEBAR_FONT_SIZE_DEFAULT } from "./types";
 
 export function migrateSettingsPersistedState(
   persistedState: unknown,
+  version = 3,
 ): Record<string, unknown> {
   const state =
     persistedState && typeof persistedState === "object"
@@ -28,19 +29,12 @@ export function migrateSettingsPersistedState(
   delete state.globalEditorFullWidth;
   delete state.tableEvenColumnWidth;
 
-  // 旧默认全局搜索是 Mod+Shift+K；未改过的配置迁到 Mod+K（⌘K / Ctrl+K）。
-  const appShortcuts = state.appShortcuts;
-  if (appShortcuts && typeof appShortcuts === "object") {
-    const shortcuts = appShortcuts as Record<string, unknown>;
-    if (shortcuts.openSearch === "Mod+Shift+K") {
-      state.appShortcuts = { ...shortcuts, openSearch: "Mod+K" };
-    }
-  }
+  // v4 拆分应用内与系统全局搜索；只迁移旧全局默认，保留应用内自定义和禁用状态。
   const desktop = state.desktop;
   if (desktop && typeof desktop === "object") {
     const desktopSettings = desktop as Record<string, unknown>;
-    if (desktopSettings.searchHotkey === "CmdOrCtrl+Shift+K") {
-      state.desktop = { ...desktopSettings, searchHotkey: "CmdOrCtrl+K" };
+    if (version < 4 && desktopSettings.searchHotkey === "CmdOrCtrl+K") {
+      state.desktop = { ...desktopSettings, searchHotkey: "CmdOrCtrl+Shift+K" };
     }
   }
 

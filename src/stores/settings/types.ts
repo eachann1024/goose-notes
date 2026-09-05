@@ -159,7 +159,7 @@ export function normalizeSidebarFontSize(value: unknown): number {
   );
 }
 export const DEFAULT_WAKE_HOTKEY = "CmdOrCtrl+Alt+N";
-export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+K";
+export const DEFAULT_SEARCH_HOTKEY = "CmdOrCtrl+Shift+K";
 export const DEFAULT_QUICKNOTE_HOTKEY = "CmdOrCtrl+Alt+Q";
 export const DEFAULT_CLOSE_TAB_SHORTCUT = "";
 export const DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT = "";

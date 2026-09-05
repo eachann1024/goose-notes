@@ -7,7 +7,7 @@ import {
 } from "../../src/stores/settings/types";
 
 test("undefined stored desktop settings fall back to default hotkeys", () => {
-  expect(DEFAULT_SEARCH_HOTKEY).toBe("CmdOrCtrl+K");
+  expect(DEFAULT_SEARCH_HOTKEY).toBe("CmdOrCtrl+Shift+K");
   const merged = mergeDesktopSettings(undefined);
   expect(merged.wakeHotkey).toBe(DEFAULT_WAKE_HOTKEY);
   expect(merged.wakeHotkeyEnabled).toBe(true);

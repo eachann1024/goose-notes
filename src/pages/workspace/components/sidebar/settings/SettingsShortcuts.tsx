@@ -474,8 +474,8 @@ function DesktopGlobalHotkeysCard({
       <div className="mt-2">
         <ShortcutField
           id="search-hotkey"
-          title="唤出搜索面板"
-          description="全局聚焦主窗口并打开搜索面板（不隐藏主窗口）。"
+          title="唤出搜索面板（全局）"
+          description="在其他软件中也可唤出，默认 ⌘⇧K / Ctrl+Shift+K。点击输入框修改，清空即关闭，不影响应用内快捷键。"
           value={desktop.searchHotkeyEnabled ? desktop.searchHotkey : ""}
           onChange={makeDesktopSetter(
             "search-hotkey",
@@ -593,7 +593,7 @@ export function SettingsShortcuts({
         />
       )}
 
-      <SettingsSectionCard title="全局动作">
+      <SettingsSectionCard title="应用内动作">
         <ShortcutField
           id="shortcut-toggle-sidebar"
           title="收起 / 展开侧栏"
@@ -615,8 +615,8 @@ export function SettingsShortcuts({
         <div className="mt-2">
           <ShortcutField
             id="shortcut-open-search"
-            title="全局搜索"
-            description="打开全局搜索面板快速跳转页面。"
+            title="唤出搜索面板（应用内）"
+            description="仅在软件内生效，默认 ⌘K / Ctrl+K。点击输入框修改，清空即关闭，不影响全局快捷键。"
             value={appShortcuts.openSearch ?? DEFAULT_APP_SHORTCUTS.openSearch}
             onChange={safeSetAppShortcut("openSearch")}
             resetValue={DEFAULT_APP_SHORTCUTS.openSearch}

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
-import { ACCENT_COLORS } from "../../src/stores/settings/types";
+import { ACCENT_COLORS, DEFAULT_ACCENT_COLOR, normalizeAccentColor } from "../../src/stores/settings/types";
 
 const css = readFileSync(
   new URL("../../src/styles/goose-accent-colors.css", import.meta.url),
@@ -35,6 +35,13 @@ function getRule(selector: string): string {
   const bodyEnd = css.indexOf("}", bodyStart);
   return css.slice(bodyStart, bodyEnd);
 }
+
+test("默认强调色和缺失设置回退为海蓝，保留用户已有选择", () => {
+  expect(DEFAULT_ACCENT_COLOR).toBe("ocean");
+  expect(normalizeAccentColor(undefined)).toBe("ocean");
+  expect(normalizeAccentColor("invalid")).toBe("ocean");
+  expect(normalizeAccentColor("iris")).toBe("iris");
+});
 
 test("八组强调色都提供浅色完整令牌和深色覆盖", () => {
   expect(ACCENT_COLORS).toHaveLength(8);
@@ -148,7 +155,7 @@ test("深色 fallback 行内代码跟随选中表面，不再硬编码 iris", ()
     new URL("../../src/index.css", import.meta.url),
     "utf8",
   );
-  const darkSectionMatch = indexCss.match(/\.dark\s*\{([\s\S]*?)\n  \}/);
+  const darkSectionMatch = indexCss.match(/\.dark\s*\{([\s\S]*?)\n {2}\}/);
   expect(darkSectionMatch).not.toBeNull();
   const darkSection = darkSectionMatch?.[1] ?? "";
   expect(darkSection).toContain(

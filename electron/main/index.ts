@@ -16,6 +16,7 @@ import {
   createWorkspaceWindow,
   getMainWindow,
   markQuitting,
+  lookupWindowContext,
   requestCloseActiveTab,
   restoreWorkspaceWindows,
   shouldSuppressWorkspaceActivate,
@@ -23,7 +24,6 @@ import {
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
 const DEFAULT_QUICKNOTE = "CmdOrCtrl+Alt+Q";
-const DEFAULT_SEARCH = "CmdOrCtrl+K";
 
 app.setName("Goose Note");
 
@@ -135,7 +135,8 @@ function startApp(): void {
     registerHotkeys({
       wake: DEFAULT_WAKE,
       quicknote: DEFAULT_QUICKNOTE,
-      search: DEFAULT_SEARCH,
+      // 等待渲染进程设置水合，避免启动时抢占用户已关闭或改过的搜索键。
+      search: "",
     });
     if (pendingFocus) {
       pendingFocus = false;
