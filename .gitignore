@@ -86,6 +86,15 @@ scripts/*
 public/fonts/*.ttf
 public/fonts/*.otf
 
+# Local QA evidence and throwaway prototypes
+/artifacts/
+/screenshots/
+/prototypes/
+/.ego-qa/
+/output/
+/test-results/
+/src/**/_prototype/
+
 # Private desktop CI configuration
 !/.github/
 !/.github/workflows/
