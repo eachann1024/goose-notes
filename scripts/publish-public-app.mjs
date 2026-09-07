@@ -97,6 +97,54 @@ export function checkPlatformCoverage(installers) {
   }
 }
 
+export function selectMacDmgs(installers) {
+  const dmgs = installers.filter(f => f.ext === '.dmg' || f.name.endsWith('.dmg'));
+  const arm = dmgs.find(f => f.name.includes('-arm64.dmg'));
+  const intel = dmgs.find(f => f.name.endsWith('.dmg') && !f.name.includes('-arm64'));
+  const missing = [];
+  if (!arm) missing.push('arm64 DMG (filename contains -arm64.dmg)');
+  if (!intel) missing.push('Intel DMG (filename ends with .dmg and does not contain -arm64)');
+  if (missing.length > 0) {
+    throw new Error(`Missing macOS installer: ${missing.join('; ')}`);
+  }
+  return { arm, intel };
+}
+
+export function generateCask({ version, tag, armSha256, intelSha256, publicRepo }) {
+  const prefix = `v${version}-`;
+  const sha7 = tag.startsWith(prefix) ? tag.slice(prefix.length) : tag.replace(/^v/, '');
+  return `cask "goose-note" do
+  arch arm: "-arm64", intel: ""
+
+  version "${version},${sha7}"
+  sha256 arm:   "${armSha256}",
+         intel: "${intelSha256}"
+
+  url "https://github.com/${publicRepo}/releases/download/v#{version.csv.first}-#{version.csv.second}/Goose.Note-#{version.csv.first}#{arch}.dmg"
+  name "Goose Note"
+  desc "Local-first Markdown notes with AI"
+  homepage "https://github.com/${publicRepo}"
+
+  app "Goose Note.app"
+
+  zap trash: [
+    "~/Library/Application Support/Goose Note",
+    "~/Library/Logs/Goose Note",
+    "~/Library/Preferences/com.goosenote.desktop.plist",
+    "~/Library/Saved Application State/com.goosenote.desktop.savedState",
+  ]
+
+  caveats <<~EOS
+    Goose Note is currently unsigned and not notarized.
+    After installing, macOS Gatekeeper may block it. Allow it in
+    System Settings → Privacy & Security, or run:
+
+      xattr -cr "/Applications/Goose Note.app"
+  EOS
+end
+`;
+}
+
 export function runGit(args, cwd, token) {
   try {
     return execFileSync('git', args, {
@@ -140,6 +188,14 @@ export function runSelfTest() {
   assert.ok(transformed.includes('[LICENSE](LICENSE)'), 'Must retain LICENSE reference');
   assert.ok(transformed.includes('docs/showcase/01-writing-ai.png'), 'Must keep relative image paths');
   assert.ok(transformed.includes('https://github.com/eachann1024/goose-mark'), 'Must retain series links');
+  assert.ok(
+    transformed.includes('brew tap eachann1024/goose-note-app https://github.com/eachann1024/goose-note-app'),
+    'Must keep Homebrew tap with explicit GitHub URL',
+  );
+  assert.ok(
+    transformed.includes('brew install --cask eachann1024/goose-note-app/goose-note'),
+    'Must keep Homebrew cask install command and public tap path',
+  );
 
   // Verify installer scanner & exclusions
   const testTmp = mkdtempSync(join(tmpdir(), 'installer-test-'));
@@ -179,6 +235,44 @@ export function runSelfTest() {
     rmSync(testTmp, { recursive: true, force: true });
   }
 
+  const mixedInstallers = [
+    { name: 'Goose.Note.Setup.9.0.1.exe', ext: '.exe' },
+    { name: 'Goose.Note-9.0.1-arm64.dmg', ext: '.dmg' },
+    { name: 'Goose.Note-9.0.1.dmg', ext: '.dmg' },
+    { name: 'Goose.Note-9.0.1-arm64-mac.zip', ext: '.zip' },
+    { name: 'Goose.Note-9.0.1-mac.zip', ext: '.zip' },
+    { name: 'Goose-Note-9.0.1.AppImage', ext: '.AppImage' },
+    { name: 'goose-note-app_9.0.1_amd64.deb', ext: '.deb' },
+  ];
+  const selected = selectMacDmgs(mixedInstallers);
+  assert.equal(selected.arm.name, 'Goose.Note-9.0.1-arm64.dmg');
+  assert.equal(selected.intel.name, 'Goose.Note-9.0.1.dmg');
+  assert.throws(
+    () => selectMacDmgs(mixedInstallers.filter(f => f.name !== 'Goose.Note-9.0.1-arm64.dmg')),
+    /arm64/,
+  );
+  assert.throws(
+    () => selectMacDmgs(mixedInstallers.filter(f => f.name !== 'Goose.Note-9.0.1.dmg')),
+    /Intel/,
+  );
+
+  const cask = generateCask({
+    version: '9.0.1',
+    tag: 'v9.0.1-b96400a',
+    armSha256: 'aaa111arm',
+    intelSha256: 'bbb222intel',
+    publicRepo: 'eachann1024/goose-note-app',
+  });
+  assert.ok(cask.includes('cask "goose-note"'), 'Cask token must be goose-note');
+  assert.ok(cask.includes('Goose Note.app'), 'Cask must install Goose Note.app');
+  assert.ok(cask.includes('aaa111arm') && cask.includes('bbb222intel'), 'Cask must include both sha256 hashes');
+  assert.ok(
+    cask.includes('https://github.com/eachann1024/goose-note-app/releases/download/v#{version.csv.first}-#{version.csv.second}/Goose.Note-#{version.csv.first}#{arch}.dmg'),
+    'Cask download URL must use public tag and Goose.Note dmg name',
+  );
+  assert.ok(/unsigned/i.test(cask) && cask.includes('xattr'), 'Cask caveats must mention unsigned and xattr');
+  assert.ok(cask.includes('com.goosenote.desktop'), 'Cask zap must include appId');
+
   // Verify empty repo fallback & token masking
   const emptyRepoTmp = mkdtempSync(join(tmpdir(), 'empty-repo-test-'));
   try {
@@ -212,7 +306,7 @@ export function runSelfTest() {
     rmSync(emptyRepoTmp, { recursive: true, force: true });
   }
 
-  console.log('Self-check passed: README rewrite, installer filtering, platform checks, and empty repo fallback verified.');
+  console.log('Self-check passed: README rewrite, installer filtering, macOS cask, platform checks, and empty repo fallback verified.');
 }
 
 async function main() {
@@ -235,50 +329,6 @@ async function main() {
 
   console.log(`Publishing release v${version}-${sha7} to ${publicRepo}...`);
 
-  // 1. Sync public repository files
-  const cloneDir = mkdtempSync(join(tmpdir(), 'goose-public-repo-'));
-  try {
-    const authUrl = `https://x-access-token:${encodeURIComponent(token)}@github.com/${publicRepo}.git`;
-    cloneOrInitRepo(cloneDir, authUrl, token);
-
-    // Write updated README.md
-    const rawReadme = readFileSync(join(ROOT, 'README.md'), 'utf8');
-    const transformedReadme = transformReadme(rawReadme, publicRepo);
-    writeFileSync(join(cloneDir, 'README.md'), transformedReadme, 'utf8');
-
-    // Copy LICENSE
-    copyFileSync(join(ROOT, 'LICENSE'), join(cloneDir, 'LICENSE'));
-
-    // Copy logo and showcase images
-    mkdirSync(join(cloneDir, 'public'), { recursive: true });
-    if (existsSync(join(ROOT, 'public/logo.png'))) {
-      copyFileSync(join(ROOT, 'public/logo.png'), join(cloneDir, 'public/logo.png'));
-    }
-
-    mkdirSync(join(cloneDir, 'docs/showcase'), { recursive: true });
-    for (const img of ['01-writing-ai.png', '02-code-and-diagram-user.png', 'cover.png']) {
-      const srcPath = join(ROOT, 'docs/showcase', img);
-      if (existsSync(srcPath)) {
-        copyFileSync(srcPath, join(cloneDir, 'docs/showcase', img));
-      }
-    }
-
-    const status = runGit(['status', '--porcelain'], cloneDir, token).trim();
-    if (status) {
-      runGit(['config', 'user.name', 'github-actions[bot]'], cloneDir, token);
-      runGit(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], cloneDir, token);
-      runGit(['add', '-A'], cloneDir, token);
-      runGit(['commit', '-m', `Update download page for ${sha7}`], cloneDir, token);
-      runGit(['push', '-u', 'origin', 'main'], cloneDir, token);
-      console.log(`Synced README and assets to ${publicRepo} main branch.`);
-    } else {
-      console.log('No file changes in public repository download page, skipping commit.');
-    }
-  } finally {
-    rmSync(cloneDir, { recursive: true, force: true });
-  }
-
-  // 2. Scan and validate installers
   const searchCandidates = [
     join(ROOT, 'artifacts'),
     join(ROOT, 'release-assets'),
@@ -288,27 +338,77 @@ async function main() {
   const installers = findInstallers(searchCandidates);
   checkPlatformCoverage(installers);
 
-  // 3. Stage installers and compute SHA256SUMS.txt
   const stageDir = mkdtempSync(join(tmpdir(), 'goose-public-assets-'));
   try {
     const stagedPaths = [];
+    const hashesByName = new Map();
     for (const item of installers) {
       const targetPath = join(stageDir, item.name);
       copyFileSync(item.originalPath, targetPath);
       stagedPaths.push(targetPath);
+      hashesByName.set(item.name, createHash('sha256').update(readFileSync(targetPath)).digest('hex'));
     }
 
     const checksumLines = stagedPaths.map(filePath => {
-      const hash = createHash('sha256').update(readFileSync(filePath)).digest('hex');
-      return `${hash}  ${basename(filePath)}`;
+      const name = basename(filePath);
+      return `${hashesByName.get(name)}  ${name}`;
     }).sort().join('\n') + '\n';
 
     const sumsPath = join(stageDir, 'SHA256SUMS.txt');
     writeFileSync(sumsPath, checksumLines, 'utf8');
     stagedPaths.push(sumsPath);
 
-    // 4. Create public Release
+    const { arm, intel } = selectMacDmgs(installers);
     const tag = `v${version}-${sha7}`;
+    const caskText = generateCask({
+      version,
+      tag,
+      armSha256: hashesByName.get(arm.name),
+      intelSha256: hashesByName.get(intel.name),
+      publicRepo,
+    });
+
+    const cloneDir = mkdtempSync(join(tmpdir(), 'goose-public-repo-'));
+    try {
+      const authUrl = `https://x-access-token:${encodeURIComponent(token)}@github.com/${publicRepo}.git`;
+      cloneOrInitRepo(cloneDir, authUrl, token);
+
+      const rawReadme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+      const transformedReadme = transformReadme(rawReadme, publicRepo);
+      writeFileSync(join(cloneDir, 'README.md'), transformedReadme, 'utf8');
+      copyFileSync(join(ROOT, 'LICENSE'), join(cloneDir, 'LICENSE'));
+
+      mkdirSync(join(cloneDir, 'public'), { recursive: true });
+      if (existsSync(join(ROOT, 'public/logo.png'))) {
+        copyFileSync(join(ROOT, 'public/logo.png'), join(cloneDir, 'public/logo.png'));
+      }
+
+      mkdirSync(join(cloneDir, 'docs/showcase'), { recursive: true });
+      for (const img of ['01-writing-ai.png', '02-code-and-diagram-user.png', 'cover.png']) {
+        const srcPath = join(ROOT, 'docs/showcase', img);
+        if (existsSync(srcPath)) {
+          copyFileSync(srcPath, join(cloneDir, 'docs/showcase', img));
+        }
+      }
+
+      mkdirSync(join(cloneDir, 'Casks'), { recursive: true });
+      writeFileSync(join(cloneDir, 'Casks/goose-note.rb'), caskText, 'utf8');
+
+      const status = runGit(['status', '--porcelain'], cloneDir, token).trim();
+      if (status) {
+        runGit(['config', 'user.name', 'github-actions[bot]'], cloneDir, token);
+        runGit(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], cloneDir, token);
+        runGit(['add', '-A'], cloneDir, token);
+        runGit(['commit', '-m', `Update download page for ${sha7}`], cloneDir, token);
+        runGit(['push', '-u', 'origin', 'main'], cloneDir, token);
+        console.log(`Synced README, Cask, and assets to ${publicRepo} main branch.`);
+      } else {
+        console.log('No file changes in public repository download page, skipping commit.');
+      }
+    } finally {
+      rmSync(cloneDir, { recursive: true, force: true });
+    }
+
     const title = `Goose Note ${version}`;
     // ponytail: unsigned/unnotarized release assets; add codesign/notarization when signing certificates are configured.
     const notes = [

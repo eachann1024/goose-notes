@@ -17,6 +17,12 @@
   <a href="SECURITY.md">安全说明</a>
 </p>
 
+<p align="center">
+  macOS 可用 Homebrew 安装：<code>brew tap eachann1024/goose-note-app https://github.com/eachann1024/goose-note-app</code><br />
+  <code>brew install --cask eachann1024/goose-note-app/goose-note</code><br />
+  升级：<code>brew upgrade --cask goose-note</code>
+</p>
+
 <br />
 
 [![Goose Note：笔记编辑与 AI 助手并排，原文和整理结果随时对照](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
