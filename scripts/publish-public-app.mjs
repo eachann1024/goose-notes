@@ -124,6 +124,7 @@ export function generateCask({ version, tag, armSha256, intelSha256, publicRepo 
   name "Goose Note"
   desc "Local-first Markdown notes with AI"
   homepage "https://github.com/${publicRepo}"
+  depends_on :macos
 
   app "Goose Note.app"
 
@@ -188,6 +189,10 @@ export function runSelfTest() {
   assert.ok(transformed.includes('[LICENSE](LICENSE)'), 'Must retain LICENSE reference');
   assert.ok(transformed.includes('docs/showcase/01-writing-ai.png'), 'Must keep relative image paths');
   assert.ok(transformed.includes('https://github.com/eachann1024/goose-mark'), 'Must retain series links');
+  assert.ok(
+    transformed.includes('brew trust --cask eachann1024/goose-note-app/goose-note'),
+    'Must document Homebrew 6 tap trust before brew tap',
+  );
   assert.ok(
     transformed.includes('brew tap eachann1024/goose-note-app https://github.com/eachann1024/goose-note-app'),
     'Must keep Homebrew tap with explicit GitHub URL',
@@ -271,6 +276,7 @@ export function runSelfTest() {
     'Cask download URL must use public tag and Goose.Note dmg name',
   );
   assert.ok(/unsigned/i.test(cask) && cask.includes('xattr'), 'Cask caveats must mention unsigned and xattr');
+  assert.ok(cask.includes('depends_on :macos'), 'Cask must declare macOS-only so Linux sha256 is not audited as nil');
   assert.ok(cask.includes('com.goosenote.desktop'), 'Cask zap must include appId');
 
   // Verify empty repo fallback & token masking
