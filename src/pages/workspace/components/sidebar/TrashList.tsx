@@ -121,7 +121,7 @@ export function TrashList({
             <p className="text-sm">垃圾箱是空的</p>
           </div>
         ) : (
-          <div className="px-2 pb-10 pt-0.5 space-y-px">
+          <div className="px-2 pb-10 pt-0.5 space-y-1">
             {trashedPages.map((page) => {
               const iconName = page.icon;
               const DefaultPageIcon = pageHasVisibleContent(page)

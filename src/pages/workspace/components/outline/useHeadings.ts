@@ -5,6 +5,7 @@ export interface HeadingItem {
   id: string;
   level: number;
   text: string;
+  isCollapsed: boolean;
   children: HeadingItem[];
 }
 
@@ -36,6 +37,10 @@ function collectHeadings(doc: any[]): HeadingItem[] {
           id: block.id,
           level,
           text: extractTextFromBlock(block) || "无标题",
+          // 标题折叠的唯一数据来源是 BlockNote heading.props.collapsed。
+          // 兼容旧内容可能留下的字符串值，和编辑器折叠扩展保持一致。
+          isCollapsed:
+            block.props?.collapsed === true || block.props?.collapsed === "true",
           children: [],
         };
 
@@ -61,6 +66,20 @@ function collectHeadings(doc: any[]): HeadingItem[] {
   return roots;
 }
 
+function headingsEqual(left: HeadingItem[], right: HeadingItem[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((heading, index) => {
+    const other = right[index];
+    return (
+      heading.id === other.id &&
+      heading.level === other.level &&
+      heading.text === other.text &&
+      heading.isCollapsed === other.isCollapsed &&
+      headingsEqual(heading.children, other.children)
+    );
+  });
+}
+
 export function useHeadings(
   editor: BlockNoteEditor | null,
   pageId?: string | null,
@@ -73,7 +92,12 @@ export function useHeadings(
       return;
     }
     const doc = editor.document as any[];
-    setHeadings(collectHeadings(doc));
+    const nextHeadings = collectHeadings(doc);
+    // 非标题编辑同样会触发 editor.onChange；内容未变时沿用旧引用，
+    // 避免大纲面板的无关重渲染。标题文案、层级或收起状态变化仍会立即更新。
+    setHeadings((current) =>
+      headingsEqual(current, nextHeadings) ? current : nextHeadings,
+    );
   }, [editor]);
 
   useEffect(() => {

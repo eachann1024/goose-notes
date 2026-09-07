@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 import type { HeadingItem } from "./useHeadings";
+import "./outline.css";
 
 interface OutlinePanelProps {
   headings: HeadingItem[];
@@ -24,7 +25,7 @@ export function OutlinePanel({ headings, activeId, onHeadingClick }: OutlinePane
   return (
     <div className="w-full h-full flex flex-col bg-[hsl(var(--goose-shell-bg))]">
       <div className="flex-1 overflow-y-auto py-2 px-2">
-        <nav className="space-y-0.5">
+        <nav>
           {headings.map((heading) => (
             <OutlineTreeNode
               key={heading.id}
@@ -57,13 +58,18 @@ function OutlineTreeNode({
     <div>
       <button
         onClick={() => onHeadingClick(heading.id)}
+        aria-current={isActive ? "location" : undefined}
+        aria-label={
+          heading.isCollapsed ? `${heading.text}，已收起` : heading.text
+        }
         className={cn(
-          "w-full text-left text-xs leading-5 rounded-md px-2 py-1 transition-colors duration-150",
+          "outline-heading w-full text-left text-xs leading-5 rounded-md px-2 py-1 transition-colors duration-150",
           "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
           isActive
             ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] font-medium"
             : "text-muted-foreground/80",
         )}
+        data-collapsed={heading.isCollapsed ? "true" : undefined}
         style={{ paddingLeft: `${8 + depth * 14}px` }}
       >
         <span className="block truncate">{heading.text}</span>

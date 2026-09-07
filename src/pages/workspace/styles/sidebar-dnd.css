@@ -34,6 +34,16 @@
   z-index: 21;
 }
 
+/* 在既有虚拟行高内留出背景间隙，保持拖拽定位与点击区域不变。 */
+.sidebar-tree-row {
+  box-sizing: border-box;
+  border-block: 2px solid transparent;
+}
+
+.sidebar-tree-row.sidebar-tree-row {
+  background-clip: padding-box !important;
+}
+
 .sidebar-tree-row--selected,
 .sidebar-tree-row--hovered {
   color: var(--goose-interactive-selected-fg) !important;
