@@ -23,6 +23,9 @@ const BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"]';
 let fadeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getView(editor: BlockNoteEditor<any, any, any>) {
+  // Tiptap 在 unmount 后仍会返回一个延迟报错的 view proxy；读取 dom 才会抛错。
+  // isDestroyed 同时覆盖未挂载和已销毁，因此必须先做这个生命周期判断。
+  if (editor._tiptapEditor.isDestroyed) return null;
   return (editor.prosemirrorView as import("prosemirror-view").EditorView | undefined) ?? null;
 }
 
@@ -83,18 +86,11 @@ function scheduleFade(editor: BlockNoteEditor<any, any, any>) {
     if (marks && marks.length > 0) {
       marks.forEach((m) => m.classList.add("goose-find-match--fading"));
       setTimeout(() => {
-        try {
-          clearFind(editor);
-        } catch {
-          /* 编辑器可能已卸载，忽略 */
-        }
+        if (!getView(editor)) return;
+        clearFind(editor);
       }, FADE_DURATION);
     } else {
-      try {
-        clearFind(editor);
-      } catch {
-        /* ignore */
-      }
+      clearFind(editor);
     }
   }, HIGHLIGHT_FADE_DELAY);
 }
@@ -113,6 +109,7 @@ export function locateAndHighlight(
   const expanded = matchEl ? expandCollapsedHeadingSections(editor, matchEl) : false;
 
   const run = () => {
+    if (!getView(editor)) return;
     setFindQuery(editor, trimmed, false);
     settleScroll(editor);
     scheduleFade(editor);
