@@ -24,6 +24,8 @@ export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     splitFocusRight: 'Mod+Alt+ArrowRight',
     splitFocusUp: 'Mod+Alt+ArrowUp',
     splitFocusDown: 'Mod+Alt+ArrowDown',
+    splitFocusPrevious: 'Mod+Alt+[',
+    splitFocusNext: 'Mod+Alt+]',
     splitZoom: 'Mod+Shift+Enter',
     closeSplitPane: '',
 }

@@ -133,6 +133,74 @@ test("navigation bracket shortcuts use physical codes on localized layouts", () 
   }
 });
 
+test("split pane bracket shortcuts distinguish modifiers and accept macOS Option-composed keys", () => {
+  const g = globalThis as typeof globalThis & { window?: unknown };
+  const hadWindow = typeof g.window !== "undefined";
+  if (!hadWindow) {
+    Object.defineProperty(g, "window", {
+      configurable: true,
+      value: globalThis,
+    });
+  }
+  const realPlatform = navigator.platform;
+  Object.defineProperty(navigator, "platform", {
+    configurable: true,
+    value: "MacIntel",
+  });
+  try {
+    expect(
+      matchShortcut(
+        keyboardEvent({
+          key: "“",
+          code: "BracketLeft",
+          metaKey: true,
+          altKey: true,
+        }),
+        "Mod+Alt+[",
+      ),
+    ).toBe(true);
+    expect(
+      matchShortcut(
+        keyboardEvent({
+          key: "‘",
+          code: "BracketRight",
+          metaKey: true,
+          altKey: true,
+        }),
+        "Mod+Alt+]",
+      ),
+    ).toBe(true);
+    expect(
+      matchShortcut(
+        keyboardEvent({
+          key: "[",
+          code: "BracketLeft",
+          metaKey: true,
+        }),
+        "Mod+Alt+[",
+      ),
+    ).toBe(false);
+    expect(
+      matchShortcut(
+        keyboardEvent({
+          key: "[",
+          code: "BracketLeft",
+          altKey: true,
+        }),
+        "Mod+Alt+[",
+      ),
+    ).toBe(false);
+  } finally {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: realPlatform,
+    });
+    if (!hadWindow) {
+      delete g.window;
+    }
+  }
+});
+
 test("Mod+, 打开设置：mac meta 通过，中文逗号/Comma 归一后也通过", () => {
   const g = globalThis as typeof globalThis & { window?: unknown };
   const hadWindow = typeof g.window !== "undefined";

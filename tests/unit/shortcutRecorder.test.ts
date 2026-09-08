@@ -54,6 +54,35 @@ test("shortcut recorder keeps the plus key unambiguous", () => {
   ).toBe("Shift+Plus");
 });
 
+test("shortcut recorder restores physical bracket keys after macOS Option composition", () => {
+  expect(
+    getShortcutFromKeyEvent(
+      shortcutEvent({
+        key: "“",
+        code: "BracketLeft",
+        metaKey: true,
+        altKey: true,
+      }),
+    ),
+  ).toBe("Meta+Alt+[");
+  expect(
+    getShortcutFromKeyEvent(
+      shortcutEvent({
+        key: "‘",
+        code: "BracketRight",
+        metaKey: true,
+        altKey: true,
+      }),
+    ),
+  ).toBe("Meta+Alt+]");
+  // 未发生合成时仍保留输入法/布局提供的 event.key。
+  expect(
+    getShortcutFromKeyEvent(
+      shortcutEvent({ key: "[", code: "BracketLeft", metaKey: true }),
+    ),
+  ).toBe("Meta+[");
+});
+
 test("conflict normalization aligns Mod with the current platform primary modifier", () => {
   expect(normalizeShortcutForConflict("Mod+K", true)).toBe(
     normalizeShortcutForConflict("Meta+K", true),
@@ -180,6 +209,8 @@ test("fixed shortcuts adapt to the current operating system", () => {
   expect(DEFAULT_APP_SHORTCUTS.splitRight).toBe("Mod+D");
   expect(DEFAULT_APP_SHORTCUTS.splitDown).toBe("Mod+Shift+D");
   expect(DEFAULT_APP_SHORTCUTS.splitFocusLeft).toBe("Mod+Alt+ArrowLeft");
+  expect(DEFAULT_APP_SHORTCUTS.splitFocusPrevious).toBe("Mod+Alt+[");
+  expect(DEFAULT_APP_SHORTCUTS.splitFocusNext).toBe("Mod+Alt+]");
   expect(DEFAULT_APP_SHORTCUTS.splitZoom).toBe("Mod+Shift+Enter");
   expect(DEFAULT_APP_SHORTCUTS.closeSplitPane).toBe("");
 });
@@ -204,6 +235,12 @@ test("split shortcut defaults do not collide with close-tab or fixed keys", () =
   );
   expect(configured).toContain(
     normalizeShortcutForConflict("Mod+Alt+ArrowLeft", isMac),
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("Mod+Alt+[", isMac),
+  );
+  expect(configured).toContain(
+    normalizeShortcutForConflict("Mod+Alt+]", isMac),
   );
   expect(configured).toContain(
     normalizeShortcutForConflict("Mod+Shift+Enter", isMac),

@@ -46,10 +46,12 @@ function resolveMainKey(event: ShortcutInputEvent): string {
   const hasModifier = event.ctrlKey || event.metaKey || event.altKey
   const isAsciiPrintable = event.key.length === 1 && event.key.codePointAt(0)! < 128
   if (hasModifier && !isAsciiPrintable && event.code) {
-    // KeyX → X, Digit5 → 5, Space → Space, etc.
+    // KeyX → X, Digit5 → 5, BracketLeft → [, etc.
     const code = event.code
     if (code.startsWith("Key")) return code.slice(3)
     if (code.startsWith("Digit")) return code.slice(5)
+    if (code === "BracketLeft") return "["
+    if (code === "BracketRight") return "]"
     return code
   }
   return event.key

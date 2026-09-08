@@ -3,11 +3,15 @@ import { expect, test } from "playwright/test";
 import {
   closePaneOrTab,
   focusNeighbor,
+  focusNextSplitPane,
+  focusPreviousSplitPane,
+  focusSplitPane,
   splitRight,
   toggleZoom,
   tryShowPageInFocusedSplit,
 } from "../../src/lib/editor-split/commands";
 import { walkLeaves } from "../../src/lib/editor-split/tree";
+import { activateNotebook } from "../../src/lib/notebookNavigation";
 import {
   applyPersistedTabSplit,
   editorSplitPersistKey,
@@ -23,6 +27,7 @@ import { useTabs } from "../../src/stores/useTabs";
 import type { Page } from "../../src/types";
 
 const notebookId = "split-tabs-notebook";
+const otherNotebookId = "split-tabs-other-notebook";
 
 function makePage(id: string, extra?: Partial<Page>): Page {
   return {
@@ -66,6 +71,7 @@ function resetStores() {
       b: makePage("b"),
       c: makePage("c"),
       d: makePage("d"),
+      other: makePage("other", { workspaceId: otherNotebookId }),
     },
     activePageId: "a",
     hydrated: true,
@@ -76,6 +82,14 @@ function resetStores() {
       [notebookId]: {
         id: notebookId,
         name: "Split",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      [otherNotebookId]: {
+        id: otherNotebookId,
+        name: "Other",
+        source: "local-folder",
+        localPath: "/split-tabs-other",
         createdAt: 1,
         updatedAt: 1,
       },
@@ -169,7 +183,7 @@ test("openPermanentTab 命中其他 tab 的分屏叶时切 tab 并 focus 该叶"
   );
 });
 
-test("tryShowPageInFocusedSplit 先激活已展示该页的分屏 tab，不改当前格", () => {
+test("分屏内打开已在其他标签展示的页仍替换发起时聚焦格", () => {
   useTabs.getState().openPermanentTab("a");
   const tabA = useTabs.getState().activeTabId!;
   splitTab(tabA, "b");
@@ -180,13 +194,299 @@ test("tryShowPageInFocusedSplit 先激活已展示该页的分屏 tab，不改�
 
   const shown = tryShowPageInFocusedSplit("a");
   expect(shown).toBe(true);
-  expect(useTabs.getState().activeTabId).toBe(tabA);
-  expect(useEditorSplit.getState().focusedPageId(tabA)).toBe("a");
+  expect(useTabs.getState().activeTabId).toBe(tabC);
+  expect(useEditorSplit.getState().focusedPageId(tabC)).toBe("a");
+  expect(
+    useTabs.getState().openTabs.find((tab) => tab.id === tabC)?.pageId,
+  ).toBe("a");
+  expect(usePages.getState().activePageId).toBe("a");
+  expect(
+    walkLeaves(useEditorSplit.getState().getStateForTab(tabA)!.root).map(
+      (leaf) => leaf.pageId,
+    ),
+  ).toEqual(["a", "b"]);
   expect(
     walkLeaves(useEditorSplit.getState().getStateForTab(tabC)!.root).map(
       (leaf) => leaf.pageId,
     ),
-  ).toEqual(["c", "d"]);
+  ).toEqual(["c", "a"]);
+});
+
+test("分屏内选择新页面只替换聚焦格，并同步标签和活动页", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  useTabs.getState().syncTabPageId(tabId, "b");
+
+  const shown = tryShowPageInFocusedSplit("c");
+
+  expect(shown).toBe(true);
+  expect(useTabs.getState().openTabs).toHaveLength(1);
+  expect(
+    walkLeaves(useEditorSplit.getState().getStateForTab(tabId)!.root).map(
+      (leaf) => leaf.pageId,
+    ),
+  ).toEqual(["a", "c"]);
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("c");
+  expect(useTabs.getState().openTabs[0]?.pageId).toBe("c");
+  expect(usePages.getState().activePageId).toBe("c");
+});
+
+test("跨本地记事本的分屏导航保留目标叶并登记异步重扫目标", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  const activePageTransitions: Array<string | null> = [];
+  const unsubscribe = usePages.subscribe((state) => {
+    activePageTransitions.push(state.activePageId);
+  });
+
+  let shown: boolean;
+  try {
+    shown = tryShowPageInFocusedSplit("other");
+  } finally {
+    unsubscribe();
+  }
+
+  expect(shown).toBe(true);
+  expect(useTabs.getState().openTabs).toHaveLength(1);
+  expect(useTabs.getState().activeTabId).toBe(tabId);
+  expect(
+    walkLeaves(useEditorSplit.getState().getStateForTab(tabId)!.root).map(
+      (leaf) => leaf.pageId,
+    ),
+  ).toEqual(["a", "other"]);
+  expect(useNotebooks.getState().activeNotebookId).toBe(otherNotebookId);
+  expect(usePages.getState().activePageId).toBe("other");
+  expect(activePageTransitions).not.toContain(null);
+});
+
+test("没有明确目标时切入本地记事本仍进入首次加载空态", () => {
+  useNotebooks.getState().setActiveNotebook(otherNotebookId);
+
+  expect(usePages.getState().activePageId).toBeNull();
+});
+
+test("普通侧栏切入已加载本地记事本会复用上次缓存页且不经过空态", () => {
+  useNotebooks.getState().setLastActivePage(otherNotebookId, "other");
+  const activePageTransitions: Array<string | null> = [];
+  const unsubscribe = usePages.subscribe((state) => {
+    activePageTransitions.push(state.activePageId);
+  });
+
+  try {
+    useNotebooks.getState().setActiveNotebook(otherNotebookId);
+  } finally {
+    unsubscribe();
+  }
+
+  expect(usePages.getState().activePageId).toBe("other");
+  expect(activePageTransitions).not.toContain(null);
+});
+
+test("侧栏 activateNotebook 不会把本地缓存落点再次清回空态", async () => {
+  useNotebooks.getState().setLastActivePage(otherNotebookId, "other");
+  const activePageTransitions: Array<string | null> = [];
+  const unsubscribe = usePages.subscribe((state) => {
+    activePageTransitions.push(state.activePageId);
+  });
+
+  try {
+    await activateNotebook(otherNotebookId);
+  } finally {
+    unsubscribe();
+  }
+
+  expect(usePages.getState().activePageId).toBe("other");
+  expect(activePageTransitions).not.toContain(null);
+});
+
+test("新建本地文件夹在扫描完成前不会继续显示旧记事本页面", () => {
+  const activePageTransitions: Array<string | null> = [];
+  const unsubscribe = usePages.subscribe((state) => {
+    activePageTransitions.push(state.activePageId);
+  });
+
+  try {
+    useNotebooks
+      .getState()
+      .createLocalFolderNotebook("New local", "/split-tabs-new-local");
+  } finally {
+    unsubscribe();
+  }
+
+  expect(usePages.getState().activePageId).toBeNull();
+  expect(activePageTransitions.at(-1)).toBeNull();
+});
+
+test("重新打开已登记的本地文件夹会复用其缓存落点", () => {
+  useNotebooks.getState().setLastActivePage(otherNotebookId, "other");
+  const activePageTransitions: Array<string | null> = [];
+  const unsubscribe = usePages.subscribe((state) => {
+    activePageTransitions.push(state.activePageId);
+  });
+
+  try {
+    const id = useNotebooks
+      .getState()
+      .createLocalFolderNotebook("Other", "/split-tabs-other");
+    expect(id).toBe(otherNotebookId);
+  } finally {
+    unsubscribe();
+  }
+
+  expect(usePages.getState().activePageId).toBe("other");
+  expect(activePageTransitions).not.toContain(null);
+});
+
+test("同一本地记事本的后续分屏导航会覆盖迟到扫描的旧 pending 目标", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  useNotebooks.setState({
+    activeNotebookId: otherNotebookId,
+    localFolderLoadStates: { [otherNotebookId]: { status: "loading" } },
+  });
+  usePages.getState().setPendingNavigatePageId("a");
+
+  expect(tryShowPageInFocusedSplit("other")).toBe(true);
+
+  expect(usePages.getState().pendingNavigatePageId).toBe("other");
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("other");
+});
+
+test("扫描期间已保存的本地正文不会被迟到扫描的旧磁盘内容覆盖", async () => {
+  const pageId = `local-${otherNotebookId}-target.md`;
+  const initialContent = [{ type: "paragraph", content: "扫描开始时的正文" }];
+  const savedContent = [{ type: "paragraph", content: "扫描期间已保存的正文" }];
+  usePages.setState({
+    pages: {
+      ...usePages.getState().pages,
+      [pageId]: makePage(pageId, {
+        workspaceId: otherNotebookId,
+        content: initialContent,
+        localFilePath: "/split-tabs-other/old-target.md",
+      }),
+    },
+    dirtyLocalPageIds: {},
+  });
+  useNotebooks.setState({ activeNotebookId: otherNotebookId });
+
+  const g = globalThis as typeof globalThis & { window?: Window };
+  const previousWindow = g.window;
+  const memory = new Map<string, string>();
+  g.window = {
+    dispatchEvent: () => true,
+    localStorage: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value);
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+    },
+  } as unknown as Window;
+  let releaseScan!: () => void;
+  const scanGate = new Promise<void>((resolve) => {
+    releaseScan = resolve;
+  });
+  let signalScanStarted!: () => void;
+  const scanStarted = new Promise<void>((resolve) => {
+    signalScanStarted = resolve;
+  });
+  g.window.gooseFs = {
+    readDirAsync: async () => {
+      signalScanStarted();
+      await scanGate;
+      return [
+        {
+          name: "target.md",
+          path: "/split-tabs-other/target.md",
+          isFile: true,
+          isDirectory: false,
+        },
+      ];
+    },
+    readFileAsync: async () => "# 磁盘旧内容",
+  } as GooseFs;
+  try {
+    const loading = usePages
+      .getState()
+      .loadLocalFolderPages(otherNotebookId, "/split-tabs-other");
+    await scanStarted;
+    usePages.setState((state) => ({
+      pages: {
+        ...state.pages,
+        [pageId]: { ...state.pages[pageId], content: savedContent },
+      },
+      dirtyLocalPageIds: { ...state.dirtyLocalPageIds, [pageId]: false },
+    }));
+    releaseScan();
+    await loading;
+  } finally {
+    g.window = previousWindow;
+  }
+
+  const page = usePages.getState().getPage(pageId);
+  expect(page?.content).toEqual(savedContent);
+  expect(page?.localFilePath).toBe("/split-tabs-other/target.md");
+});
+
+test("分屏焦点快捷切换会立刻同步当前标签", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  useTabs.getState().syncTabPageId(tabId, "b");
+
+  expect(focusNeighbor("left")).toBeTruthy();
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
+  expect(useTabs.getState().openTabs[0]?.pageId).toBe("a");
+  expect(usePages.getState().activePageId).toBe("a");
+});
+
+test("指针激活分屏只同步状态，不派发会重置点击落点的编辑器聚焦事件", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  const paneId = useEditorSplit.getState().getStateForTab(tabId)!.focusedLeafId;
+
+  const g = globalThis as typeof globalThis & { window?: Window };
+  const previousWindow = g.window;
+  const dispatched: string[] = [];
+  g.window = {
+    dispatchEvent: (event: Event) => {
+      dispatched.push(event.type);
+      return true;
+    },
+    requestAnimationFrame: (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    },
+  } as unknown as Window;
+  try {
+    expect(focusSplitPane(tabId, paneId, { focusEditor: false })).toBe("b");
+    expect(dispatched).not.toContain("goose-note:focus-editor-body");
+
+    expect(focusSplitPane(tabId, paneId)).toBe("b");
+    expect(dispatched).toContain("goose-note:focus-editor-body");
+  } finally {
+    g.window = previousWindow;
+  }
+});
+
+test("前后分屏格按视觉顺序循环，并同步页面状态", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+
+  expect(focusNextSplitPane()).toBe("a");
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
+  expect(usePages.getState().activePageId).toBe("a");
+
+  expect(focusPreviousSplitPane()).toBe("b");
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("b");
+  expect(useTabs.getState().openTabs[0]?.pageId).toBe("b");
 });
 
 test("关格前 flush 当前聚焦页，有内容的 unsaved 不丢弃", () => {
@@ -282,7 +582,7 @@ test("分屏视觉是独立卡片，sash 不画纸缝线", () => {
   );
   expect(css).toContain('data-editor-split="true"');
   expect(css).toContain("border-radius: 12px");
-  expect(css).toContain("var(--goose-interactive-selected)");
+  expect(css).toContain("hsl(var(--ring))");
   expect(css).toContain("background: transparent");
   expect(css).not.toContain("blue-500");
   expect(layout).toContain('data-editor-split={isSplit ? "true" : undefined}');

@@ -55,7 +55,7 @@ export function CommandPalette() {
   const setSearchHighlightPageId = usePages((s) => s.setSearchHighlightPageId);
   const setSearchHighlightNonce = usePages((s) => s.setSearchHighlightNonce);
   const loadAllLocalFolderPages = usePages((s) => s.loadAllLocalFolderPages);
-  const { activeNotebookId, setActiveNotebook } = useNotebooks();
+  const { activeNotebookId } = useNotebooks();
   const {
     searchAllNotebooks,
     setSearchAllNotebooks,
@@ -297,14 +297,8 @@ export function CommandPalette() {
 
   const openPageInTab = useCallback(
     (page: SearchResultPage | Page, query: string | null) => {
-      const targetNotebookId = page.workspaceId;
-
       runCommand(() => {
         closeNotebookAiIfFullscreen();
-        if (targetNotebookId && targetNotebookId !== activeNotebookId) {
-          setActiveNotebook(targetNotebookId);
-        }
-
         if (!singleTabMode && openInNewTabRef.current) {
           openPermanentTab(page.id);
         } else if (!tryShowPageInFocusedSplit(page.id)) {
@@ -326,7 +320,6 @@ export function CommandPalette() {
       singleTabMode,
       openPreviewTab,
       openPermanentTab,
-      setActiveNotebook,
       setExpandPageId,
       setSearchHighlightNonce,
       setSearchHighlightPageId,
@@ -387,7 +380,7 @@ export function CommandPalette() {
       <Command.List
         ref={listRef}
         onScroll={handleListScroll}
-        className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50"
+        className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-items]]:space-y-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50"
       >
         <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
           {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}

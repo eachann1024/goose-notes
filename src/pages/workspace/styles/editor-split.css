@@ -23,6 +23,7 @@
 }
 
 .editor-split-pane {
+  position: relative;
   display: flex;
   height: 100%;
   width: 100%;
@@ -38,8 +39,16 @@
 }
 
 .editor-split-surface[data-editor-split="true"]
-  .editor-split-pane[data-focused="true"] {
-  box-shadow: 0 0 0 1.5px var(--goose-interactive-selected);
+  .editor-split-pane[data-focused="true"]::after {
+  /* 覆盖层不参与盒模型，且不拦截编辑器的点击或光标输入。 */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 2px solid hsl(var(--ring));
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .editor-split-pane-body {

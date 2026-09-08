@@ -727,6 +727,26 @@ export function SettingsShortcuts({
         </div>
         <div className="mt-2">
           <ShortcutField
+            id="shortcut-split-focus-previous"
+            title="切换到上一个分屏格"
+            description="按视觉顺序循环到上一个分屏格；不会占用笔记历史的 ⌘[ / ⌘]。"
+            value={appShortcuts.splitFocusPrevious ?? DEFAULT_APP_SHORTCUTS.splitFocusPrevious}
+            onChange={safeSetAppShortcut("splitFocusPrevious")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusPrevious}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
+            id="shortcut-split-focus-next"
+            title="切换到下一个分屏格"
+            description="按视觉顺序循环到下一个分屏格；不会占用笔记历史的 ⌘[ / ⌘]。"
+            value={appShortcuts.splitFocusNext ?? DEFAULT_APP_SHORTCUTS.splitFocusNext}
+            onChange={safeSetAppShortcut("splitFocusNext")}
+            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusNext}
+          />
+        </div>
+        <div className="mt-2">
+          <ShortcutField
             id="shortcut-split-zoom"
             title="最大化分屏格"
             description="让当前格占满编辑区，再按一次恢复。"

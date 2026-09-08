@@ -32,6 +32,8 @@ import {
 import {
   closePaneOrTab,
   focusNeighbor,
+  focusNextSplitPane,
+  focusPreviousSplitPane,
   splitDown,
   splitRight,
   toggleZoom,
@@ -527,6 +529,34 @@ export function useAppHotkeys() {
           event.preventDefault();
           event.stopPropagation();
           focusNeighbor("down");
+        },
+      },
+      {
+        id: "split-focus-previous",
+        shortcutId: "splitFocusPrevious",
+        allowRepeat: true,
+        match: (event) => {
+          const s = appShortcutsRef.current.splitFocusPrevious;
+          return !!s && matchesConfiguredShortcut(event, s);
+        },
+        handler: (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          focusPreviousSplitPane();
+        },
+      },
+      {
+        id: "split-focus-next",
+        shortcutId: "splitFocusNext",
+        allowRepeat: true,
+        match: (event) => {
+          const s = appShortcutsRef.current.splitFocusNext;
+          return !!s && matchesConfiguredShortcut(event, s);
+        },
+        handler: (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          focusNextSplitPane();
         },
       },
       {
