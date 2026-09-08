@@ -144,6 +144,16 @@ const loadLocalFolderPagesOnce = async (
     previousActivePage?.workspaceId === notebookId
       ? previousActivePageId
       : null;
+  const dirtyPageIdsAtLoadStart = new Set(
+    Object.entries(get().dirtyLocalPageIds)
+      .filter(([, dirty]) => dirty)
+      .map(([pageId]) => pageId),
+  );
+  const contentSignaturesAtLoadStart = new Map(
+    Object.values(get().pages)
+      .filter((page) => page.workspaceId === notebookId)
+      .map((page) => [page.id, getContentSignature(page.content)]),
+  );
   useNotebooks.getState().setLocalFolderLoadState(notebookId, {
     status: "loading",
     startedAt: Date.now(),
@@ -201,6 +211,7 @@ const loadLocalFolderPagesOnce = async (
         ...localPages.reduce(
           (acc, page) => {
             const existing = localPageMetadataCache.get(page.id);
+            const current = state.pages[page.id];
             if (existing) {
               // icon 等非 frontmatter 属性保留
               if (existing.icon) {
@@ -221,7 +232,27 @@ const loadLocalFolderPagesOnce = async (
               }
             }
 
-            acc[page.id] = page;
+            // 重扫不能覆盖仍在内存/写盘队列中的本地编辑。既保护扫描开始时
+            // 已 dirty 的页，也保护扫描期间内容发生过变化、但写盘刚成功清掉
+            // dirty 标记的页；同时采纳扫描得到的路径与父级元数据。
+            const contentChangedDuringScan =
+              current &&
+              contentSignaturesAtLoadStart.get(page.id) !==
+                getContentSignature(current.content);
+            const preserveCurrent =
+              current &&
+              (dirtyPageIdsAtLoadStart.has(page.id) || contentChangedDuringScan);
+            acc[page.id] = preserveCurrent
+              ? {
+                  ...page,
+                  ...current,
+                  workspaceId: page.workspaceId,
+                  parentId: page.parentId,
+                  localFilePath: page.localFilePath,
+                  localReadState: page.localReadState,
+                  localReadError: page.localReadError,
+                }
+              : page;
             return acc;
           },
           {} as Record<string, Page>,
@@ -285,8 +316,10 @@ const loadLocalFolderPagesOnce = async (
         }
       }
 
-      if (options?.showWelcome) {
+      if (options?.showWelcome && !hasExistingPages) {
         // 打开/切换到本地文件夹时保持空白入口，不自动打开首篇。
+        // 已缓存的文件夹复用上次活动页并后台刷新，不能在扫描完成后再把它
+        // 清回空白，否则会重现一次完整界面闪烁。
         result.activePageId = null;
         result.expandPageId = null;
         result.pendingNavigatePageId = null;

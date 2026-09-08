@@ -103,8 +103,20 @@ export function SidebarMainTree({
       : undefined,
   );
   const localLoadStatus = localLoadState?.status ?? "idle";
+  // 已经加载过的本地库会在激活时后台重扫。保留这份树，既避免侧栏
+  // 从完整内容闪成骨架屏，也让用户仍可在扫描期间看到上一次成功结果。
+  // 首次载入没有缓存页面时仍完整展示 loading；真正失败则走下方错误态。
+  const hasCachedLocalTree = Boolean(
+    activeNotebookId &&
+      Object.values(pages).some(
+        (page) =>
+          page.workspaceId === activeNotebookId &&
+          !page.trashedAt &&
+          !page.localUnsaved,
+      ),
+  );
   const shouldShowLocalSkeleton =
-    isLocalFolder && localLoadStatus === "loading";
+    isLocalFolder && localLoadStatus === "loading" && !hasCachedLocalTree;
   const localLoadError =
     isLocalFolder && localLoadStatus === "error"
       ? localLoadState?.error || "无法读取本地文件夹"
@@ -383,7 +395,9 @@ export function SidebarMainTree({
     }
     const timer = window.setTimeout(() => {
       if (isPageTitleAutoFocusProtected(expandPageId)) return;
-      treeRef.current?.focusItem(expandPageId);
+      // 同步树的当前项/滚动即可；不要把编辑器、表格或输入框的 DOM 焦点
+      // 强行夺到 react-complex-tree row overlay。
+      treeRef.current?.focusItem(expandPageId, false);
     }, 80);
     setExpandPageId(null);
     return () => window.clearTimeout(timer);
@@ -419,7 +433,9 @@ export function SidebarMainTree({
     }
     const timer = window.setTimeout(() => {
       if (isPageTitleAutoFocusProtected(activePageId)) return;
-      treeRef.current?.focusItem(activePageId);
+      // 80ms 内用户可能已点进正文/table/input；此时仍展开和选中即可。
+      // 第二参数 false 让 react-complex-tree 不抢回 DOM focus。
+      treeRef.current?.focusItem(activePageId, false);
     }, 80);
     return () => window.clearTimeout(timer);
   }, [activePageId, activeNotebookId, pages, expandedIds, setExpanded]);

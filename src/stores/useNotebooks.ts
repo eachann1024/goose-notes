@@ -5,6 +5,7 @@ import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 import { fs } from "@/lib/electron-platform/fs";
 import { persistPageSnapshots } from "./pages/persistence";
 import { useSettings } from "./useSettings";
+import { usePages } from "./usePages";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 
 export interface Notebook {
@@ -224,6 +225,7 @@ export const useNotebooks = create<NotebooksState>()(
       },
 
       createLocalFolderNotebook: (name, localPath) => {
+        const pagesStore = usePages.getState();
         const existing = Object.values(get().notebooks).find(
           (notebook) =>
             notebook.source === "local-folder" &&
@@ -242,6 +244,16 @@ export const useNotebooks = create<NotebooksState>()(
             },
             activeNotebookId: existing.id,
           }));
+          const lastActivePageId = get().lastActivePageByNotebook[existing.id];
+          const lastActivePage = lastActivePageId
+            ? pagesStore.pages[lastActivePageId]
+            : undefined;
+          void pagesStore.setActivePage(
+            lastActivePage?.workspaceId === existing.id &&
+              !lastActivePage.trashedAt
+              ? lastActivePage.id
+              : null,
+          );
           return existing.id;
         }
 
@@ -263,6 +275,9 @@ export const useNotebooks = create<NotebooksState>()(
           notebooks: nextNotebooks,
           activeNotebookId: id,
         });
+        // 新本尚没有可复用的页面缓存，必须立即离开旧本编辑器；不能等异步
+        // scan 的 showWelcome 收尾才清空，否则新库加载期间会短暂显示旧库正文。
+        void pagesStore.setActivePage(null);
         return id;
       },
 
@@ -395,10 +410,29 @@ export const useNotebooks = create<NotebooksState>()(
       },
 
       setActiveNotebook: (id) => {
-        set({ activeNotebookId: id });
+        const pagesStore = usePages.getState();
+        const pendingId = pagesStore.pendingNavigatePageId;
+        const pendingPage = pendingId ? pagesStore.pages[pendingId] : undefined;
         const notebook = get().notebooks[id];
-        if (notebook?.source === "local-folder") {
-          void usePages.getState().setActivePage(null);
+        const lastActivePageId = get().lastActivePageByNotebook[id];
+        const lastActivePage = lastActivePageId
+          ? pagesStore.pages[lastActivePageId]
+          : undefined;
+        // 已经打开过的本地库可立即回到其缓存的上次页面，再在后台重扫。
+        // 这条普通的侧栏切库路径没有 pending target，不能因此回退到空白页。
+        const cachedLocalLandingPageId =
+          notebook?.source === "local-folder" &&
+          lastActivePage?.workspaceId === id &&
+          !lastActivePage.trashedAt
+            ? lastActivePage.id
+            : null;
+        // 分屏/搜索的跨本导航已明确目标页时，目标页本来就在内存树中。
+        // 不能先清 activePage 再在同一链路写回，否则主区会短暂卸载为
+        // 空白页；真实重扫若发现目标不存在，loader 仍会在完成时清理它。
+        const keepsPendingTarget = pendingPage?.workspaceId === id;
+        set({ activeNotebookId: id });
+        if (notebook?.source === "local-folder" && !keepsPendingTarget) {
+          void pagesStore.setActivePage(cachedLocalLandingPageId);
         }
         if (
           notebook?.source === "local-folder" &&
@@ -429,10 +463,7 @@ export const useNotebooks = create<NotebooksState>()(
           });
         }
 
-        const pagesStore = usePages.getState();
-        const pendingId = pagesStore.pendingNavigatePageId;
         if (pendingId) {
-          const pendingPage = pagesStore.pages[pendingId];
           if (pendingPage && pendingPage.workspaceId === id) {
             pagesStore.setActivePage(pendingId);
             pagesStore.setExpandPageId(pendingId);
