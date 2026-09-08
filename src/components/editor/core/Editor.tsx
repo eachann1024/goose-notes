@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -20,6 +21,7 @@ import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
 import { commitPendingEditorChange } from "./editorPendingCommit";
+import { pageUndoHistory } from "./pageUndoHistory";
 import {
   useEditorSettings,
   useEditorPageContext,
@@ -545,8 +547,24 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   }, [readCurrentEditorContent]);
 
   const prevPageIdRef = useRef<string | null>(activePageId);
-  useEffect(() => {
-    if (activePageId === prevPageIdRef.current) return;
+  useLayoutEffect(() => {
+    if (activePageId === prevPageIdRef.current) {
+      if (activePageId) {
+        const view = editor.prosemirrorView;
+        const restored = pageUndoHistory.restore(
+          activePageId, view.state, getContentSignature(editor.document),
+        );
+        // 首次打开、且该页没有历史快照时 restore 原样返回 view.state。重复
+        // updateState 会强制 React NodeView 重建；嵌套 image 正在挂载时其 getPos
+        // 已失效，继而触发 Cannot find node position。
+        if (restored !== view.state) view.updateState(restored);
+      }
+      return;
+    }
+    if (prevPageIdRef.current) {
+      pageUndoHistory.save(prevPageIdRef.current, editor.prosemirrorState,
+        getContentSignature(editor.document));
+    }
     prevPageIdRef.current = activePageId;
 
     // 切页起点即重置：侧栏点击等切页前的 pointerdown 不应算进新页面的用户编辑。
@@ -598,14 +616,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       isLocalPage ? postReplaceRaw : normalizePageContent(postReplaceRaw),
     );
 
-    // Reset undo history so edits from the previous page don't leak
+    // 新笔记独立建栈；最近访问过且正文未在外部变化的笔记恢复自己的历史。
     const view = editor.prosemirrorView;
     if (view) {
       const newState = EditorState.create({
         doc: view.state.doc,
         plugins: view.state.plugins,
       });
-      view.updateState(newState);
+      view.updateState(activePageId
+        ? pageUndoHistory.restore(activePageId, newState, getContentSignature(editor.document))
+        : newState);
     }
 
     // normalize 改写了结构才回写（silent 路径：只同步内存，不触发写盘/标脏）。
@@ -624,6 +644,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     // 切页后 BlockNote 的异步 props 补全（折叠块/视频等）不应被算作用户编辑。
     userInteractedRef.current = false;
   }, [activePageId, debouncedUpdate, editor]);
+
+  useLayoutEffect(() => () => {
+    const pageId = prevPageIdRef.current;
+    if (pageId) {
+      pageUndoHistory.save(pageId, editor.prosemirrorState,
+        getContentSignature(editor.document));
+    }
+  }, [editor]);
+
+  useEffect(() => {
+    if (isActiveEditor && activePageId) pageUndoHistory.visit(activePageId);
+  }, [activePageId, isActiveEditor]);
 
   const getSlashItems = useCallback(
     async (query: string) => {
