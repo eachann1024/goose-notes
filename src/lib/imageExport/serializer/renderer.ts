@@ -63,6 +63,32 @@ function looksLikeImageUrl(src: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/.test(path);
 }
 
+/**
+ * 浏览器复制位图时通常会把文件名写成 image.png / image.webp。它不是用户
+ * 填写的说明，且在图片导出中被误渲染成 figcaption。只处理 data URL，避免
+ * 干预用户为本地或远程图片明确填写的同名说明。
+ */
+function isGeneratedDataImageName(value: string, src: string): boolean {
+  if (!/^data:image\//i.test(src)) return false;
+  return /^image(?:[-_ ]?\d+| \(\d+\))?\.(?:png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(
+    value.trim(),
+  );
+}
+
+function imageTextProp(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getImageTextForExport(props: Record<string, unknown>, src: string) {
+  const rawCaption = imageTextProp(props.caption) || imageTextProp(props.alt);
+  const name = imageTextProp(props.name);
+  const caption = isGeneratedDataImageName(rawCaption, src) ? "" : rawCaption;
+  // BlockNote 的 name 才是图片替代文本来源。即使是剪贴板默认文件名也继续
+  // 留在 alt 上；只是不把它升级为用户可见的 figcaption。
+  const alt = name || caption;
+  return { caption, alt };
+}
+
 function extractCodeText(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return content == null ? "" : String(content);
@@ -250,7 +276,7 @@ export function renderBlock(block: any, theme: CardTheme): string {
     case "image":
     case "imageResize": {
       const src = block.props?.url || block.props?.src || "";
-      const caption = block.props?.caption || block.props?.alt || "";
+      const { caption, alt } = getImageTextForExport(block.props ?? {}, src);
       if (!src) {
         return caption
           ? `<p class="media-fallback"${styleAttr}>${escapeHtml(caption)}</p>`
@@ -268,7 +294,7 @@ export function renderBlock(block: any, theme: CardTheme): string {
         Number.isFinite(previewWidth) && previewWidth > 0
           ? `max-width:${previewWidth}px;`
           : "";
-      const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}" style="${imgAlignStyle}${widthStyle}" />`;
+      const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="${imgAlignStyle}${widthStyle}" />`;
       if (caption) {
         return `<figure class="export-figure"${styleAttr}>${img}<figcaption>${escapeHtml(caption)}</figcaption></figure>`;
       }

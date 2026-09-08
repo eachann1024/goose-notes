@@ -10,6 +10,7 @@ import {
   MediaLoadingPreview,
   MediaPlaceholder,
 } from "@/components/editor/blocks/shared/MediaPlaceholder";
+import { normalizeParsedImageProps } from "./imageCaption";
 
 function CustomImageBlockContent({
   block,
@@ -53,7 +54,10 @@ export const customImageBlock = createReactBlockSpec(
     render: (props) => (
       <CustomImageBlockContent block={props.block} editor={props.editor} />
     ),
-    parse: imageParse(),
+    parse: (element) => {
+      const parsed = imageParse()(element);
+      return parsed ? normalizeParsedImageProps(parsed) : undefined;
+    },
     toExternalHTML: ImageToExternalHTML,
     runsBefore: ["file"],
   },

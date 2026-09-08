@@ -306,7 +306,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       // previewWidth → {width=N}，textAlignment(≠left) → {align=X}
       const p = block.props ?? block.attrs ?? {};
       const url = p.url || p.src || "";
-      const caption = p.caption || p.alt || "";
+      // name 是 BlockNote 图片的替代文本。无 caption 时也写入 Markdown alt，
+      // 才能让复制后的 data 图片在下一次解析时保留该字段。
+      const caption = p.caption || p.alt || p.name || "";
       const meta: string[] = [];
       const width = p.previewWidth ?? p.width;
       if (width != null && Number.isFinite(Number(width))) {

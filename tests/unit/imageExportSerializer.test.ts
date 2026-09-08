@@ -448,6 +448,41 @@ test("图片 caption 输出 figure；非图片 file 输出 file-card", () => {
   expect(file).not.toContain("<img");
 });
 
+test("base64 图片忽略剪贴板生成的 image.png，保留显式说明、替代文本和宽度", () => {
+  const theme = getCardTheme("github-light");
+  const generatedName = renderBlock(
+    {
+      type: "image",
+      props: {
+        url: "data:image/png;base64,AA==",
+        caption: "image.png",
+        name: "image.png",
+        previewWidth: 320,
+      },
+    },
+    theme,
+  );
+  expect(generatedName).not.toContain("figcaption");
+  expect(generatedName).toContain('alt="image.png"');
+  expect(generatedName).toContain("max-width:320px;");
+
+  const described = renderBlock(
+    {
+      type: "image",
+      props: {
+        url: "data:image/png;base64,AA==",
+        caption: "部署流程图",
+        name: "从客户端到服务端的部署流程",
+        previewWidth: 320,
+      },
+    },
+    theme,
+  );
+  expect(described).toContain("<figcaption>部署流程图</figcaption>");
+  expect(described).toContain('alt="从客户端到服务端的部署流程"');
+  expect(described).toContain("max-width:320px;");
+});
+
 test("codeBlock 输出 code-block 壳与语言标签", () => {
   const theme = getCardTheme("github-light");
   const html = renderBlock(
