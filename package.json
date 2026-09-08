@@ -162,5 +162,8 @@
     "concurrently": "^9.2.1",
     "wait-on": "^8.0.4"
   },
-  "main": "dist-electron/main/index.js"
+  "main": "dist-electron/main/index.js",
+  "patchedDependencies": {
+    "@blocknote/react@0.51.3": "patches/@blocknote%2Freact@0.51.3.patch"
+  }
 }

@@ -127,6 +127,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@blocknote/react@0.51.3": "patches/@blocknote%2Freact@0.51.3.patch",
+  },
   "overrides": {
     "@ai-sdk/provider-utils": "4.0.40",
     "ai": "6.0.195",
