@@ -1,4 +1,8 @@
 import type { EditorRef } from "@/components/editor/core/Editor";
+import {
+  isFoldableHeadingBlock,
+  toggleHeadingCollapsed,
+} from "@/components/editor/core/headingSectionFold";
 import { OutlinePanel } from "../outline/OutlinePanel";
 import { useHeadings } from "../outline/useHeadings";
 import type { HeadingItem } from "../outline/useHeadings";
@@ -54,11 +58,23 @@ export function SidebarOutline({
     [scrollContainerRef],
   );
 
+  const handleHeadingToggle = useCallback(
+    (blockId: string) => {
+      if (!editor) return;
+      const block = editor.getBlock(blockId);
+      if (!isFoldableHeadingBlock(block, editor.document[0]?.id)) return;
+      toggleHeadingCollapsed(editor, blockId);
+    },
+    [editor],
+  );
+
   return (
     <OutlinePanel
+      key={pageId ?? "outline"}
       headings={headings}
       activeId={activeId}
       onHeadingClick={handleHeadingClick}
+      onHeadingToggle={handleHeadingToggle}
     />
   );
 }

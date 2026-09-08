@@ -72,7 +72,14 @@ test("收藏行字号图标与主树列表一致", () => {
     ),
     "utf8",
   );
-  expect(mainTree).toContain("text-[13px] font-medium leading-none");
+  const mainTreeRow = readFileSync(
+    new URL(
+      "../../src/pages/workspace/components/sidebar/main-tree/MainTreeRowShell.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  expect(mainTreeRow).toContain("text-[13px] font-medium leading-none");
   expect(treeRow).toContain("text-[13px] font-medium leading-none");
   expect(treeRow).toContain('className="text-[13px] leading-snug"');
   expect(treeRow).not.toMatch(

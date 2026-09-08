@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
+import { isFoldableHeadingBlock } from "@/components/editor/core/headingSectionFold";
 
 export interface HeadingItem {
   id: string;
   level: number;
   text: string;
   isCollapsed: boolean;
+  isEditorFoldable: boolean;
   children: HeadingItem[];
 }
 
@@ -27,6 +29,7 @@ function extractTextFromBlock(block: any): string {
 function collectHeadings(doc: any[]): HeadingItem[] {
   const roots: HeadingItem[] = [];
   const stack: HeadingItem[] = [];
+  const firstBlockId = doc[0]?.id as string | undefined;
 
   const visit = (block: any) => {
     if (block.type === "heading" && block.props?.level) {
@@ -41,6 +44,7 @@ function collectHeadings(doc: any[]): HeadingItem[] {
           // 兼容旧内容可能留下的字符串值，和编辑器折叠扩展保持一致。
           isCollapsed:
             block.props?.collapsed === true || block.props?.collapsed === "true",
+          isEditorFoldable: isFoldableHeadingBlock(block, firstBlockId),
           children: [],
         };
 
@@ -75,6 +79,7 @@ function headingsEqual(left: HeadingItem[], right: HeadingItem[]): boolean {
       heading.level === other.level &&
       heading.text === other.text &&
       heading.isCollapsed === other.isCollapsed &&
+      heading.isEditorFoldable === other.isEditorFoldable &&
       headingsEqual(heading.children, other.children)
     );
   });

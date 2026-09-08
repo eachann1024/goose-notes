@@ -1,35 +1,11 @@
-/* 每个标题独立留白，父子标题与同级标题保持相同的背景间隔。 */
-.outline-heading {
-  display: block;
-  position: relative;
-  margin-bottom: 4px;
-}
-
-/* 收起态沿用编辑器的虚线语义，并为省略标记预留位置。 */
-.outline-heading[data-collapsed="true"] {
-  padding-right: 24px;
-  background-color: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
-}
-
-.outline-heading[data-collapsed="true"]::after {
-  content: "…";
+/* 行布局、背景和箭头均复用本地主树；大纲只增加收起标记。
+ * 绝对定位包含块已排除共享行的透明边框，虚线贴合整条背景。 */
+.outline-heading-row[data-collapsed="true"]::after {
+  content: "";
   position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  inset: 0;
+  z-index: 20;
+  border: 1px dashed var(--goose-interactive-selected-fg);
+  border-radius: var(--radius-lg) / calc(var(--radius-lg) - 2px);
   pointer-events: none;
-}
-
-/* 与全局 focus reset 同层，局部提高优先级，避免焦点抹掉收起标记。 */
-@layer base {
-  .outline-heading[data-collapsed="true"] {
-    outline: 1px dashed var(--goose-interactive-selected-fg) !important;
-    outline-offset: -1px !important;
-  }
-
-  .outline-heading:focus-visible {
-    outline: 2px solid hsl(var(--ring)) !important;
-    outline-offset: -2px !important;
-  }
 }

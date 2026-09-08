@@ -92,7 +92,7 @@ test("主树悬停用 --hovered 类而不是 :hover，才能压过 rct 的 trans
   );
   expect(css).toContain(".main-tree-row--hovered");
   expect(css).toContain(
-    "background: var(--goose-interactive-selected) !important;",
+    "background-color: var(--goose-interactive-selected) !important;",
   );
   expect(css).not.toMatch(/\.main-tree-row:hover\s*\{/);
   const item = readFileSync(

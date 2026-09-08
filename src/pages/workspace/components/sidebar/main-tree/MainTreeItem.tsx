@@ -37,6 +37,7 @@ import {
   MAIN_TREE_ROW_PADDING_LEFT,
   shouldHideSortLineForLocalFolder,
 } from "./mainTreeDragGeometry";
+import { MainTreeRowDisclosure, MainTreeRowShell } from "./MainTreeRowShell";
 import {
   captureLocalFolderDropParent,
   peekLocalFolderDropParent,
@@ -211,7 +212,7 @@ function MainTreeRow({
   }, [isDragging]);
 
   return (
-    <div
+    <MainTreeRowShell
       {...withoutChildren}
       onPointerEnter={() => {
         if (!isDragging) setHovered(true);
@@ -239,27 +240,19 @@ function MainTreeRow({
         withoutChildren.className,
         // 行高用 --main-tree-row-height 锁成整数，避免 margin/子像素让 rct
         // computeItemHeight 与真实行距不一致（Electron 越往下越拖不准）。
-        "main-tree-row group/main-row relative z-10 flex items-center gap-1 rounded-lg pl-0 pr-2",
-        "text-[13px] font-medium leading-none cursor-pointer select-none",
-        "transition-colors duration-150",
-        "outline-none",
         isPendingCreate
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-          : isActive
-            ? "main-tree-row--selected"
-            : "text-foreground",
-        !isActive &&
-          !isPendingCreate &&
-          !isDragging &&
-          hovered &&
-          "main-tree-row--hovered",
+          : "text-foreground",
+        !isPendingCreate && !isDragging && hovered && "main-tree-row--hovered",
         isOver && "main-tree-row--drop-target",
         isDragging && "main-tree-row--dragging",
       )}
+      active={!isPendingCreate && isActive}
+      hovered={false}
       style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
     >
       {children}
-    </div>
+    </MainTreeRowShell>
   );
 }
 
@@ -627,35 +620,13 @@ export function renderItemArrow({ item, context }: RenderArrowArgs) {
       />
     );
   }
-  const arrowProps = context.arrowProps as HTMLProps<HTMLSpanElement>;
   return (
-    <span
-      {...arrowProps}
-      className="relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-colors duration-150 ease-out hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer"
-      aria-hidden="true"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.button !== 0 || e.ctrlKey) return;
-        toggleSidebarFolder(page.workspaceId, String(item.index));
-      }}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // 库默认 arrow onClick 会 selectItem → 触发 onSelectItems 切页；展开/收起不应导航。
-        // 指针已在 pointerdown 翻转；这里只接键盘（detail=0）。
-        if (e.detail === 0) {
-          toggleSidebarFolder(page.workspaceId, String(item.index));
-        }
-      }}
-    >
-      <LucideIcons.ChevronRight
-        className={cn(
-          "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-150 ease-out",
-          context.isExpanded && "rotate-90",
-        )}
-      />
-    </span>
+    <MainTreeRowDisclosure
+      expanded={!!context.isExpanded}
+      label={context.isExpanded ? "折叠子项" : "展开子项"}
+      onToggle={() => toggleSidebarFolder(page.workspaceId, String(item.index))}
+      nativeProps={context.arrowProps as HTMLProps<HTMLButtonElement>}
+    />
   );
 }
 
