@@ -82,6 +82,16 @@ test("shouldPasteClipboardAsBlocks：读取 DataTransfer MIME", () => {
   expect(shouldPasteClipboardAsBlocks(clipboard, "")).toBe(true);
 });
 
+test("shouldPasteClipboardAsBlocks：原生 BlockNote MIME 不走 HTML 回退", () => {
+  const clipboard = {
+    getData: (type: string) =>
+      type === "blocknote/html" || type === GOOSE_BLOCKNOTE_BLOCK_COPY_MIME
+        ? "<div>native</div>"
+        : "",
+  } as DataTransfer;
+  expect(shouldPasteClipboardAsBlocks(clipboard, "<div>fallback</div>")).toBe(false);
+});
+
 test("plainHasGooseMarkdownMarkers：Goose 标记与 style span", () => {
   expect(
     plainHasGooseMarkdownMarkers(
@@ -132,4 +142,62 @@ test("HTML 块粘贴移除源块及子块 ID，保留样式与引用内容且不
   expect(inserted[0].props).toEqual(source.props);
   expect(source.id).toBe("source");
   expect(source.children[0].id).toBe("child");
+});
+
+test("BlockNote 内部 HTML 回退仍保留待办父子图片的宽度和 props", async () => {
+  const { editor, calls } = createFakeEditor();
+  const source = [{
+    id: "source-task",
+    type: "checkListItem",
+    props: { checked: true, textColor: "orange" },
+    content: "带图片的待办",
+    children: [{
+      id: "source-image",
+      type: "image",
+      props: {
+        url: "data:image/png;base64,AAAA",
+        name: "截图.png",
+        caption: "说明",
+        previewWidth: 286,
+        textAlignment: "center",
+      },
+    }],
+  }];
+  const parser = {
+    ...editor,
+    tryParseHTMLToBlocks: async () => source,
+  };
+
+  await pasteClipboardHtmlAsBlocks(
+    parser as unknown as Parameters<typeof pasteClipboardHtmlAsBlocks>[0],
+    '<div data-pm-slice="0 0 []">native BlockNote slice</div>',
+    { id: "target", type: "paragraph", content: "目标" },
+  );
+
+  const inserted = calls.find((call) => call.method === "insertBlocks")?.args[0] as Array<{
+    id?: string;
+    type: string;
+    props?: Record<string, unknown>;
+    children?: Array<{ id?: string; type: string; props?: Record<string, unknown> }>;
+  }>;
+  expect(inserted).toHaveLength(1);
+  expect(inserted[0]).not.toHaveProperty("id");
+  expect(inserted[0]).toMatchObject({
+    type: "checkListItem",
+    props: { checked: true, textColor: "orange" },
+  });
+  expect(inserted[0].children).toHaveLength(1);
+  expect(inserted[0].children?.[0]).not.toHaveProperty("id");
+  expect(inserted[0].children?.[0]).toMatchObject({
+    type: "image",
+    props: {
+      url: "data:image/png;base64,AAAA",
+      name: "截图.png",
+      caption: "说明",
+      previewWidth: 286,
+      textAlignment: "center",
+    },
+  });
+  expect(source[0].id).toBe("source-task");
+  expect(source[0].children[0].id).toBe("source-image");
 });

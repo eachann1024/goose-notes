@@ -16,6 +16,7 @@ import {
 } from "../utils/clipboard";
 import {
   inspectPasteContainer,
+  htmlHasRichPasteContent,
   planMultilinePaste,
   resolvePasteLines,
   shouldSplitMultilinePaste,
@@ -32,8 +33,12 @@ import {
   isEmptyInlineBlock,
   pasteBlocksAtCursor,
 } from "../utils/pasteAtCursor";
-import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "../extensions/copyCurrentBlockExtension";
+import {
+  GOOSE_BLOCKNOTE_BLOCK_COPY_MIME,
+  normalizeBlockNoteClipboardHtml,
+} from "../extensions/copyCurrentBlockExtension";
 import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
+import { normalizeParsedImageProps } from "../blocks/image/imageCaption";
 
 type Editor = ReturnType<typeof useCreateBlockNote>;
 
@@ -56,6 +61,10 @@ export function shouldPasteClipboardAsBlocks(
   clipboard: DataTransfer,
   htmlText: string,
 ): boolean {
+  // `blocknote/html` 是无损内部格式，交回 BlockNote 的默认 paste handler。
+  // 此处不能把它和旧 Goose MIME 一样转为普通 HTML，否则列表 children / 媒体 props
+  // 会经有损解析链路折返。
+  if (clipboard.getData("blocknote/html")) return false;
   if (clipboard.getData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) return true;
   return shouldPasteHtmlAsBlocks(htmlText);
 }
@@ -101,11 +110,29 @@ function withoutCopiedBlockIds(blocks: unknown[]): unknown[] {
     if (!block || typeof block !== "object" || Array.isArray(block)) return block;
     const copy = { ...(block as Record<string, unknown>) };
     delete copy.id;
+    if (copy.type === "image" && copy.props && typeof copy.props === "object") {
+      copy.props = normalizeParsedImageProps(
+        copy.props as Record<string, unknown>,
+      );
+    }
     if (Array.isArray(copy.children)) {
       copy.children = withoutCopiedBlockIds(copy.children);
     }
     return copy;
   });
+}
+
+/** 原生粘贴由我们接管时，与 UniqueID 默认 transformPasted 一样清空容器 ID。 */
+function withoutBlockNoteClipboardIds(html: string): string {
+  if (!html || typeof DOMParser === "undefined") return html;
+  const document = new DOMParser().parseFromString(html, "text/html");
+  for (const block of document.querySelectorAll<HTMLElement>(
+    '[data-node-type="blockContainer"]',
+  )) {
+    block.removeAttribute("data-id");
+    block.removeAttribute("id");
+  }
+  return document.body.innerHTML;
 }
 
 export async function pasteClipboardHtmlAsBlocks(
@@ -233,6 +260,10 @@ export function useEditorPaste({
         clipboard.getData("text/plain"),
       );
       const htmlText = clipboard.getData("text/html");
+      const blockNoteHtml = clipboard.getData("blocknote/html");
+      const normalizedBlockNoteHtml = normalizeBlockNoteClipboardHtml(
+        blockNoteHtml,
+      );
 
       if (looksLikeMermaidDiagram(plainText)) {
         event.preventDefault();
@@ -260,7 +291,11 @@ export function useEditorPaste({
           void (async () => {
             let blocks: any[] = [];
             try {
-              if (htmlText && htmlText.trim()) {
+              // 标题一不能接收结构块。这里仍从原生内部 HTML 解析为 Blocks，
+              // 再把完整树插到标题下方；普通位置则直接走下方无损原生粘贴。
+              if (normalizedBlockNoteHtml && normalizedBlockNoteHtml.trim()) {
+                blocks = await editor.tryParseHTMLToBlocks(normalizedBlockNoteHtml);
+              } else if (htmlText && htmlText.trim()) {
                 blocks = await editor.tryParseHTMLToBlocks(htmlText);
               } else if (plainText) {
                 blocks = await editor.tryParseMarkdownToBlocks(plainText);
@@ -272,12 +307,46 @@ export function useEditorPaste({
             const titleBlock = editor.document[0];
             if (!titleBlock) return;
             // 直接插到标题之后；原有正文顺移，不覆盖标题。
-            const inserted = editor.insertBlocks(blocks, titleBlock, "after");
+            const inserted = editor.insertBlocks(
+              withoutCopiedBlockIds(blocks),
+              titleBlock,
+              "after",
+            );
             const last = inserted[inserted.length - 1];
             if (last) focusPastedBlock(editor, last);
           })();
           return;
         }
+      }
+
+      // 笔记内复制的原生切片包含选区边界、嵌套 children 与全部 block props。
+      // 普通位置不拦截事件，让 BlockNote 直接粘贴；UniqueID 会为副本父子块分别分配 ID。
+      // 空段落沿用原有「原位替换」语义：BlockNote 默认会删掉目标块并新建 ID，
+      // 而此路径解析完整内部 HTML 后 updateBlock，可保留目标块 ID。
+      if (normalizedBlockNoteHtml) {
+        const target = cachePasteTarget(editor);
+        if (target && isEmptyInlineBlock(target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          void pasteClipboardHtmlAsBlocks(editor, normalizedBlockNoteHtml, target);
+          return;
+        }
+
+        // 仅在需要清除旧 data URL 默认 caption 时接管原生 MIME。直接保留内部
+        // slice，并清空 blockContainer ID 让 UniqueID appendTransaction 重新生成；
+        // 不把完整结构转写为 Markdown 或外部 HTML。
+        if (normalizedBlockNoteHtml !== blockNoteHtml) {
+          event.preventDefault();
+          event.stopPropagation();
+          editor.pasteHTML(
+            withoutBlockNoteClipboardIds(normalizedBlockNoteHtml),
+            true,
+          );
+          return;
+        }
+
+        // 未改写的原生切片由 BlockNote 默认 paste handler 处理。
+        return;
       }
 
       // GOOSE MIME 或 HTML 含块级属性：块级粘贴（async 前同步缓存锚点）。
@@ -394,8 +463,7 @@ export function useEditorPaste({
         return;
       }
 
-      // 2.6 多行文本：每行一个块。列表 / 待办 / 有序继承当前块类型。
-      // 含 ** 的碎片也拆，避免 pasteMarkdown 把单换行当成空格、CJK 粘成一段。
+      // 2.6 无格式的多行文本才拆块；Markdown 和富文本保留源格式。
       if (
         shouldSplitMultilinePaste({
           lines: pasteLines,
@@ -416,7 +484,8 @@ export function useEditorPaste({
       }
 
       // 空列表项单行：就地注入，避免默认 HTML 粘贴把空列表换成段落。
-      if (container.listEmpty && !plainText.includes("\n")) {
+      if (container.listEmpty && !plainText.includes("\n") &&
+          !looksLikeMarkdownFragment(plainText) && !htmlHasRichPasteContent(htmlText)) {
         event.preventDefault();
         event.stopPropagation();
         insertPlainInline(editor, plainText);
@@ -426,7 +495,7 @@ export function useEditorPaste({
       // 3. 其他 Markdown 内容
       if (!looksLikeMarkdownFragment(plainText)) return;
 
-      if (htmlText && htmlText.trim()) return;
+      if (htmlHasRichPasteContent(htmlText)) return;
 
       event.preventDefault();
       event.stopPropagation();

@@ -4,6 +4,7 @@ import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   buildInheritedPasteBlocks,
   htmlHasNonTextPasteBlocks,
+  htmlHasRichPasteContent,
   htmlToPlainTextForPaste,
   inspectPasteContainer,
   planMultilinePaste,
@@ -118,7 +119,7 @@ test("多行带可保留格式 HTML 不按纯文本拆行", () => {
       inTable: false,
       multiBlockSelection: false,
     }),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     shouldSplitMultilinePaste({
       lines,
@@ -150,6 +151,15 @@ test("多行无格式 HTML 仍按纯文本拆行", () => {
       multiBlockSelection: false,
     }),
   ).toBe(true);
+});
+
+test("Markdown 混合格式不按纯文本拆行，有 alt 的正文图片也保留", () => {
+  expect(shouldSplitMultilinePaste({
+    lines: ["**SAPI**", "", "- [ ] 任务", "![image.png](data:image/png;base64,AAAA)"],
+    htmlText: "", inSoftWrap: false, inTable: false, multiBlockSelection: false,
+  })).toBe(false);
+  expect(htmlHasRichPasteContent('<p>图片</p><img alt="image.png" src="data:image/png;base64,AAAA">')).toBe(true);
+  expect(htmlHasRichPasteContent('<p>图标<img alt="🔥" src="https://res.wx.qq.com/emoji.gif"></p>')).toBe(false);
 });
 
 test("callout / 表格 / 跨块选区不拆", () => {

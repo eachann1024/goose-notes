@@ -1,5 +1,6 @@
 import {
   htmlHasNonDefaultGooseBlockAttrs,
+  looksLikeMarkdownFragment,
   normalizeClipboardLineEndings,
 } from "./clipboard";
 
@@ -43,6 +44,21 @@ export function splitPlainTextPasteLines(text: string): string[] | null {
 
 export function htmlHasNonTextPasteBlocks(htmlText: string): boolean {
   return NON_TEXT_HTML_BLOCK.test(htmlText || "");
+}
+
+/** 有格式的 HTML 交给编辑器解析；仅带 alt 的表情图片可继续按文本拆行。 */
+export function htmlHasRichPasteContent(html: string): boolean {
+  const hasImage = [...html.matchAll(/<img\b[^>]*>/gi)].some(([tag]) => {
+    const alt = tag.match(/\balt\s*=\s*["']([^"']*)["']/i)?.[1];
+    return !alt || !/^\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}]*$/u.test(alt);
+  });
+  return (
+    htmlHasNonTextPasteBlocks(html) ||
+    htmlHasNonDefaultGooseBlockAttrs(html) ||
+    /<\s*(strong|b|em|i|u|s|del|code|a|h[1-6]|ul|ol|li|blockquote)\b/i.test(html) ||
+    /\bstyle\s*=\s*["'][^"']*(?:font-weight|font-style|text-decoration|color|text-align)\s*:/i.test(html) ||
+    hasImage
+  );
 }
 
 function decodeHtmlEntities(text: string): string {
@@ -148,8 +164,8 @@ export function shouldSplitMultilinePaste(input: {
   if (input.inSoftWrap || input.inTable || input.multiBlockSelection) {
     return false;
   }
-  if (htmlHasNonTextPasteBlocks(input.htmlText)) return false;
-  if (htmlHasNonDefaultGooseBlockAttrs(input.htmlText)) return false;
+  if (htmlHasRichPasteContent(input.htmlText)) return false;
+  if (looksLikeMarkdownFragment(input.lines.join("\n"))) return false;
   return true;
 }
 

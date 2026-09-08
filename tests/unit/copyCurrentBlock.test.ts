@@ -143,3 +143,46 @@ test("完整覆盖多块正文时 resolveCopyBlockSelection 返回 Slice", () =>
   expect(resolved?.content.firstChild?.attrs.id).toBe("heading");
   expect(resolved?.content.lastChild?.attrs.id).toBe("body");
 });
+
+test("跨选区命中待办及子图片时，Slice 只保留父块一次", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "复制粘贴测试" },
+      {
+        id: "task",
+        type: "checkListItem",
+        props: { checked: true },
+        content: "父待办",
+        children: [{
+          id: "task-image",
+          type: "image",
+          props: {
+            url: "data:image/png;base64,AAAA",
+            previewWidth: 286,
+          },
+        }],
+      },
+      { id: "tail", type: "paragraph", content: "尾块" },
+    ],
+  });
+  const taskPos = findBlockContainerPos(editor, "task");
+  const tailPos = findBlockContainerPos(editor, "tail");
+  const tailContent = editor.prosemirrorState.doc.nodeAt(tailPos + 1);
+  const from = taskPos + 2;
+  const to = tailPos + 2 + (tailContent?.content.size ?? 0);
+
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, from, to));
+  });
+
+  const resolved = resolveCopyBlockSelection(editor.prosemirrorState);
+  expect(resolved).not.toBeInstanceOf(NodeSelection);
+  expect(resolved?.content.childCount).toBe(2);
+  expect(resolved?.content.firstChild?.attrs.id).toBe("task");
+  expect(resolved?.content.firstChild?.lastChild?.type.name).toBe("blockGroup");
+  expect(resolved?.content.firstChild?.lastChild?.firstChild?.attrs.id).toBe(
+    "task-image",
+  );
+  expect(resolved?.content.lastChild?.attrs.id).toBe("tail");
+});

@@ -387,6 +387,7 @@ declare global {
   const htmlHasNonDefaultGooseBlockAttrs: typeof import('./components/editor/utils/clipboard').htmlHasNonDefaultGooseBlockAttrs
   const htmlHasNonTextPasteBlocks: typeof import('./components/editor/utils/multilinePaste').htmlHasNonTextPasteBlocks
   const htmlHasPreservableFormatting: typeof import('./components/editor/utils/clipboard').htmlHasPreservableFormatting
+  const htmlHasRichPasteContent: typeof import('./components/editor/utils/multilinePaste').htmlHasRichPasteContent
   const htmlToPlainTextForPaste: typeof import('./components/editor/utils/multilinePaste').htmlToPlainTextForPaste
   const importFile: typeof import('./lib/export/index').importFile
   const importFromJSON: typeof import('./lib/export/index').importFromJSON

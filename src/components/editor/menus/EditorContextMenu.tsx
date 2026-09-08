@@ -153,10 +153,20 @@ export function EditorContextMenu({
     if (!editable) return;
     try {
       let htmlText = "";
+      let blockNoteHtml = "";
       let hasGooseMime = false;
       try {
         const items = await navigator.clipboard.read();
         for (const item of items) {
+          if (!blockNoteHtml && item.types.includes("blocknote/html")) {
+            try {
+              blockNoteHtml = await (
+                await item.getType("blocknote/html")
+              ).text();
+            } catch {
+              // 有些浏览器不允许从异步 ClipboardItem 读取自定义类型，继续走兼容格式。
+            }
+          }
           if (item.types.includes(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) {
             hasGooseMime = true;
           }
@@ -166,6 +176,21 @@ export function EditorContextMenu({
         }
       } catch {
         // read() 不可用或权限不足时回退 readText
+      }
+
+      // 键盘复制写入的原生内部 HTML 优先于自定义 MIME / text/html。
+      // 右键粘贴没有原生 paste transaction，不能直接 pasteHTML(raw)，否则已有
+      // block ID 不会经过 UniqueID；解析后递归移除 ID 再插入，保留 props 和 children。
+      if (blockNoteHtml) {
+        const target = cachePasteTarget(editor);
+        if (target) {
+          const pasted = await pasteClipboardHtmlAsBlocks(
+            editor,
+            blockNoteHtml,
+            target,
+          );
+          if (pasted) return;
+        }
       }
 
       if (shouldPasteHtmlAsBlocks(htmlText, hasGooseMime)) {
