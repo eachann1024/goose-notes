@@ -417,7 +417,6 @@ export function WorkspaceLayout({
             */}
             {aiAvailableForNotebook && aiNotebookId ? (
               <NotebookAiSessionProvider
-                key={aiNotebookId}
                 notebookId={aiNotebookId}
                 editorRef={editorRef}
               >
@@ -546,7 +545,6 @@ function NotebookEditorSplitColumn({
   return (
     <div
       className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
-      data-font-family={page.fontFamily ?? "default"}
       data-local-file-page={isLocalFolderPage ? "true" : undefined}
     >
       <div

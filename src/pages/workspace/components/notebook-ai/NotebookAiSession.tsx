@@ -10,6 +10,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -148,24 +149,79 @@ interface NotebookAiSessionProviderProps {
   notebookId: string;
   editorRef?: RefObject<EditorRef | null>;
   children: ReactNode;
+  /** 单测注入：复现 SDK Chat 的跨 render 回调语义，不参与产品调用。 */
+  useChatHook?: typeof useChat;
+}
+
+interface NotebookAiSessionScope {
+  notebookId: string;
+  conversationId: string;
+  generation: number;
 }
 
 export function NotebookAiSessionProvider({
   notebookId,
   children,
+  useChatHook,
 }: NotebookAiSessionProviderProps) {
   const requestCurrentPageIdRef = useRef<string | null>(null);
   const compactAbortRef = useRef<AbortController | null>(null);
+  const [session, setSession] = useState<NotebookAiSessionScope>(() => ({
+    notebookId,
+    conversationId: useNotebookAiChats
+      .getState()
+      .ensureFreshActiveConversation(notebookId),
+    generation: 0,
+  }));
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [composerRevision, setComposerRevision] = useState(0);
   const [suppressDefaultPageSeed, setSuppressDefaultPageSeed] = useState(false);
   const [isCompacting, setIsCompacting] = useState(false);
+
+  // WorkspaceLayout 不再用 key 重挂整个 Provider。这里在 render 期间把新笔记本
+  // 的会话状态一次性换好，React 会立即重渲染，子节点不会拿到旧 notebook 的消息。
+  // 真正停止旧 Chat/压缩任务留给 layout effect，避免在 render 中执行副作用。
+  if (session.notebookId !== notebookId) {
+    const nextConversationId = useNotebookAiChats
+      .getState()
+      .ensureFreshActiveConversation(notebookId);
+    setSession({
+      notebookId,
+      conversationId: nextConversationId,
+      generation: session.generation + 1,
+    });
+    setPlaceholderIndex(0);
+    setSuppressDefaultPageSeed(false);
+    setIsCompacting(false);
+  }
+  const { conversationId, generation: sessionGeneration } = session;
+  const currentSessionScope = useMemo<NotebookAiSessionScope>(
+    () => ({
+      notebookId,
+      conversationId,
+      generation: sessionGeneration,
+    }),
+    [conversationId, notebookId, sessionGeneration],
+  );
+  const activeSessionScopeRef = useRef(currentSessionScope);
+  const isCurrentSession = useCallback(
+    (scope: NotebookAiSessionScope) =>
+      activeSessionScopeRef.current.notebookId === scope.notebookId &&
+      activeSessionScopeRef.current.conversationId === scope.conversationId &&
+      activeSessionScopeRef.current.generation === scope.generation,
+    [],
+  );
+  const setConversationId = useCallback(
+    (nextConversationId: string) =>
+      setSession((current) => ({
+        ...current,
+        conversationId: nextConversationId,
+      })),
+    [],
+  );
+
   const composerHasContent = useNotebookAiChats((s) =>
     composerDraftHasContent(s.composerDrafts[notebookId]),
-  );
-  // 打开会话时解析：6 小时未活跃的旧会话归档进历史，展示空白新会话。
-  const [conversationId, setConversationId] = useState(() =>
-    useNotebookAiChats.getState().ensureFreshActiveConversation(notebookId),
   );
 
   const modelCheck = buildLanguageModel();
@@ -210,6 +266,7 @@ export function NotebookAiSessionProvider({
     [notebookId],
   );
 
+  const useChatImpl = useChatHook ?? useChat;
   const {
     messages,
     sendMessage,
@@ -218,49 +275,100 @@ export function NotebookAiSessionProvider({
     setMessages,
     error,
     clearError,
-  } = useChat<NotebookAiMessage>({
+  } = useChatImpl<NotebookAiMessage>({
     transport,
     id: `notebook-ai-${notebookId}-${conversationId}`,
     messages: persistedMessages,
     // 流式 token 不节流会每字触发 messages → 全树 commit + Streamdown 重解析，整面板卡顿。
     // ~50ms ≈ 20fps UI 更新，观感仍流畅，React commit 次数大幅下降。
     experimental_throttle: 50,
-    onFinish: ({ messages: finishedMessages }) => {
-      const cleanedMessages = ensureNotebookAiMessageCreatedAt(
-        sanitizeNotebookAiMessages(finishedMessages),
-      );
-      // 先把 UI 状态对齐；Electron 同步落盘挪到空闲时段，避免和输入框 BorderBeam
-      // 抢主线程（长会话序列化 + 写盘时常见约 1s 掉帧）。
-      queueMicrotask(() => setMessages(cleanedMessages));
-      const persist = () => {
-        useNotebookAiChats
-          .getState()
-          .setMessages(notebookId, conversationId, cleanedMessages);
-      };
-      const ric = (
-        globalThis as typeof globalThis & {
-          requestIdleCallback?: (
-            cb: () => void,
-            opts?: { timeout: number },
-          ) => number;
-        }
-      ).requestIdleCallback;
-      if (typeof ric === "function") {
-        ric(() => persist(), { timeout: 700 });
-      } else {
-        setTimeout(persist, 48);
-      }
-    },
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
   const isBusy = isStreaming || isCompacting;
   const unavailableReason = !modelCheck.ok ? modelCheck.reason : undefined;
-  const stopRef = useRef(stop);
   const aiStatusActiveRef = useRef(false);
   const messagesRef = useRef(messages);
-  stopRef.current = stop;
-  messagesRef.current = messages;
+  const committedStopRef = useRef(stop);
+
+  useLayoutEffect(() => {
+    activeSessionScopeRef.current = currentSessionScope;
+    committedStopRef.current = stop;
+    messagesRef.current = messages;
+  }, [currentSessionScope, messages, stop]);
+
+  useLayoutEffect(() => {
+    requestCurrentPageIdRef.current = null;
+    return () => {
+      compactAbortRef.current?.abort();
+      void committedStopRef.current();
+      // 切换不是一次成功完成，不能在新笔记本上误触发 celebrate。
+      if (aiStatusActiveRef.current) {
+        aiStatusActiveRef.current = false;
+        useAiStatus.getState().reset();
+      }
+    };
+  }, [notebookId]);
+
+  const streamStateRef = useRef<{
+    scope: NotebookAiSessionScope;
+    wasStreaming: boolean;
+  } | null>(null);
+
+  // @ai-sdk/react 会把旧 Chat 的 onFinish 转发给最新 render 的 callback；笔记本
+  // 切换时该 callback 无法辨认消息来自哪个 Chat。改为只观察当前 Chat 的状态转变，
+  // 并按捕获的会话 scope 落盘，旧流即使迟到也不会触碰新会话。
+  useEffect(() => {
+    const scope = currentSessionScope;
+    const previous = streamStateRef.current;
+    streamStateRef.current = { scope, wasStreaming: isStreaming };
+    if (
+      !previous ||
+      previous.scope.notebookId !== scope.notebookId ||
+      previous.scope.conversationId !== scope.conversationId ||
+      previous.scope.generation !== scope.generation ||
+      !previous.wasStreaming ||
+      isStreaming ||
+      status !== "ready"
+    ) {
+      return;
+    }
+
+    const cleanedMessages = ensureNotebookAiMessageCreatedAt(
+      sanitizeNotebookAiMessages(messages),
+    );
+    if (isCurrentSession(scope)) {
+      setMessages(cleanedMessages);
+    }
+    const persist = () => {
+      useNotebookAiChats
+        .getState()
+        .setMessages(scope.notebookId, scope.conversationId, cleanedMessages);
+    };
+    const ric = (
+      globalThis as typeof globalThis & {
+        requestIdleCallback?: (
+          cb: () => void,
+          opts?: { timeout: number },
+        ) => number;
+      }
+    ).requestIdleCallback;
+    if (typeof ric === "function") {
+      ric(persist, { timeout: 700 });
+    } else {
+      setTimeout(persist, 48);
+    }
+  }, [
+    conversationId,
+    currentSessionScope,
+    isCurrentSession,
+    isStreaming,
+    messages,
+    notebookId,
+    sessionGeneration,
+    setMessages,
+    status,
+  ]);
 
   const stopAll = useCallback(() => {
     compactAbortRef.current?.abort();
@@ -270,7 +378,7 @@ export function NotebookAiSessionProvider({
   useEffect(() => {
     if (!isStreaming) return;
     const timer = window.setTimeout(() => {
-      void stopRef.current();
+      void committedStopRef.current();
       toast.error("AI 响应长时间没有更新，已停止本轮任务。", {
         id: "notebook-ai-stream-timeout",
         description: "已保留完成的步骤，可以直接重试。",
@@ -295,19 +403,6 @@ export function NotebookAiSessionProvider({
       .getState()
       .finishStreaming({ celebrate: status === "ready" && !error });
   }, [error, isCompacting, isStreaming, status]);
-
-  // 仅 Provider 卸载（换笔记本 / 关 AI 能力）时 stop + 复位图标
-  useEffect(
-    () => () => {
-      compactAbortRef.current?.abort();
-      void stopRef.current();
-      if (aiStatusActiveRef.current) {
-        aiStatusActiveRef.current = false;
-        useAiStatus.getState().reset();
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     setMessages(
@@ -449,7 +544,14 @@ export function NotebookAiSessionProvider({
       setConversationId(nextConversationId);
       setMessages([]);
     },
-    [isBusy, persistCurrentConversation, clearError, notebookId, setMessages],
+    [
+      isBusy,
+      persistCurrentConversation,
+      clearError,
+      notebookId,
+      setConversationId,
+      setMessages,
+    ],
   );
 
   const compactConversation = useCallback(() => {
@@ -468,6 +570,7 @@ export function NotebookAiSessionProvider({
     }
 
     compactAbortRef.current?.abort();
+    const scope = currentSessionScope;
     const abort = new AbortController();
     compactAbortRef.current = abort;
     setIsCompacting(true);
@@ -475,7 +578,7 @@ export function NotebookAiSessionProvider({
 
     void generateConversationCompactSummary(currentMessages, abort.signal)
       .then((summary) => {
-        if (abort.signal.aborted) return;
+        if (abort.signal.aborted || !isCurrentSession(scope)) return;
         const compacted = ensureNotebookAiMessageCreatedAt(
           buildCompactedConversation({
             summary,
@@ -489,7 +592,7 @@ export function NotebookAiSessionProvider({
         toast.success("会话已压缩");
       })
       .catch((error) => {
-        if (abort.signal.aborted) return;
+        if (abort.signal.aborted || !isCurrentSession(scope)) return;
         toast.error("压缩失败", {
           description: formatNotebookAiError(error, { phase: "chat" }),
         });
@@ -498,13 +601,17 @@ export function NotebookAiSessionProvider({
         if (compactAbortRef.current === abort) {
           compactAbortRef.current = null;
         }
-        setIsCompacting(false);
+        if (isCurrentSession(scope)) {
+          setIsCompacting(false);
+        }
       });
   }, [
     clearError,
     conversationId,
     isBusy,
+    isCurrentSession,
     notebookId,
+    currentSessionScope,
     setMessages,
     unavailableReason,
   ]);
@@ -534,6 +641,7 @@ export function NotebookAiSessionProvider({
       conversationId,
       notebookId,
       clearError,
+      setConversationId,
       setMessages,
       persistCurrentConversation,
     ],
@@ -583,7 +691,14 @@ export function NotebookAiSessionProvider({
       setMessages([]);
       return true;
     },
-    [isBusy, conversationId, notebookId, clearError, setMessages],
+    [
+      isBusy,
+      conversationId,
+      notebookId,
+      clearError,
+      setConversationId,
+      setMessages,
+    ],
   );
 
   const searchPages = useCallback(
@@ -593,6 +708,7 @@ export function NotebookAiSessionProvider({
 
   const onBatchApproval = useCallback(
     async (response: BatchApprovalResponse) => {
+      const scope = currentSessionScope;
       const replaceToolPart = (
         state:
           | "approval-responded"
@@ -601,6 +717,7 @@ export function NotebookAiSessionProvider({
           | "output-error",
         payload: { output?: unknown; errorText?: string } = {},
       ) => {
+        if (!isCurrentSession(scope)) return;
         const nextMessages = messages.map((message) => ({
           ...message,
           parts: (message.parts ?? []).map((part) => {
@@ -682,13 +799,24 @@ export function NotebookAiSessionProvider({
         });
       }
     },
-    [conversationId, messages, notebookId, setMessages],
+    [
+      conversationId,
+      currentSessionScope,
+      isCurrentSession,
+      messages,
+      notebookId,
+      setMessages,
+    ],
   );
 
   const onBatchUndo = useCallback(
     async (toolCallId: string, runId: string): Promise<BatchUndoResult> => {
+      const scope = currentSessionScope;
       try {
         const result = await undoBatchPlan(toolCallId, runId);
+        if (!isCurrentSession(scope)) {
+          return { ok: false, error: "会话已切换，已忽略过期结果" };
+        }
         if (!result.ok) {
           toast.error("无法完整撤回本批变更", {
             description: formatNotebookAiError(result.error, { phase: "undo" }),
@@ -744,12 +872,22 @@ export function NotebookAiSessionProvider({
             .length,
         };
       } catch (undoError) {
+        if (!isCurrentSession(scope)) {
+          return { ok: false, error: "会话已切换，已忽略过期结果" };
+        }
         const description = formatNotebookAiError(undoError, { phase: "undo" });
         toast.error("撤回失败", { description });
         return { ok: false, error: description };
       }
     },
-    [conversationId, messages, notebookId, setMessages],
+    [
+      conversationId,
+      currentSessionScope,
+      isCurrentSession,
+      messages,
+      notebookId,
+      setMessages,
+    ],
   );
 
   const value = useMemo<NotebookAiSessionValue>(

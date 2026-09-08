@@ -39,6 +39,16 @@
   caret-color: var(--goose-inline-code-fg);
 }
 
+/* 当前行底色可能接近代码底色，保留代码边界以免融入整行高亮。 */
+:is(.workspace-editor-surface, .quicknote-editor-surface)
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content
+  .bn-inline-content code {
+  border-color: var(--goose-inline-code-border-hover);
+}
+
 /* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
 .workspace-editor-surface
   .bn-inline-content
