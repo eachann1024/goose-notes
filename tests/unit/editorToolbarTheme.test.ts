@@ -22,14 +22,30 @@ test("块工具栏通过 pressed 状态统一使用强调色令牌", () => {
   expect(videoToolbar).not.toContain('"bg-accent text-foreground"');
 });
 
-test("页面菜单及导出子菜单接入编辑器 UI 缩放", () => {
+test("页面菜单保持视口尺寸及独立表面层次", () => {
   const pageMenu = readSource(
     "src/pages/workspace/components/page/PageMenu.tsx",
   );
-
-  expect(pageMenu).toContain(
-    'className="max-h-[calc(100vh-24px)] w-[272px]',
+  const surfaceCss = readSource(
+    "src/pages/workspace/components/page/page-menu.css",
   );
+  const menuClasses = pageMenu
+    .match(/<DropdownMenuContent\s+className="([^"]+)"/)?.[1]
+    .split(/\s+/);
+
+  expect(menuClasses).toEqual(expect.arrayContaining([
+    "goose-page-menu-surface",
+    "max-h-[calc(100vh-24px)]",
+    "w-[272px]",
+    "max-w-[calc(100vw-16px)]",
+    "border",
+    "border-border",
+    "shadow-md",
+    "rounded-lg",
+  ]));
+  expect(surfaceCss).toContain(".goose-page-menu-surface:focus");
+  expect(surfaceCss).toContain(".goose-page-menu-surface:focus-visible");
+  expect(surfaceCss).toContain("box-shadow: var(--shadow-md) !important");
   expect(pageMenu).toContain(
     'className="min-w-[144px]',
   );

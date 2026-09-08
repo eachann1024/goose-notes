@@ -1,0 +1,10 @@
+/* The menu shadow describes its surface, including when Radix focuses it.
+ * Keep this in the focus-reset layer so its scoped selector wins over *:focus.
+ * Use the shadow token directly for Electron's older CSS property support. */
+@layer properties {
+  .goose-page-menu-surface,
+  .goose-page-menu-surface:focus,
+  .goose-page-menu-surface:focus-visible {
+    box-shadow: var(--shadow-md) !important;
+  }
+}

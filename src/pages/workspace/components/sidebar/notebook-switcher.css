@@ -1,0 +1,8 @@
+/* Match PageMenu's surface and preserve its shadow through Radix autofocus. */
+@layer properties {
+  .goose-notebook-menu-surface,
+  .goose-notebook-menu-surface:focus,
+  .goose-notebook-menu-surface:focus-visible {
+    box-shadow: var(--shadow-md) !important;
+  }
+}

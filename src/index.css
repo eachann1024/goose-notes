@@ -249,6 +249,8 @@
 @layer base {
   :root {
     --goose-shell-bg: 0 0% 95.69%; /* #f4f4f4 */
+    --goose-search-overlay: rgba(0, 0, 0, 0.34);
+    --goose-search-overlay-fallback: rgba(0, 0, 0, 0.55);
     --goose-selected-bg: 60 6.67% 94.12%;
     /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，Electron 旧内核安全） */
     --goose-interactive-selected: #e0e7ff;
@@ -344,6 +346,8 @@
 
   .dark {
     --goose-shell-bg: 0 0% 12.55%;
+    --goose-search-overlay: rgba(0, 0, 0, 0.65);
+    --goose-search-overlay-fallback: var(--goose-search-overlay);
     --goose-selected-bg: 60 2.4% 16.1%;
     /* 暗色鸢尾靛蓝：浅底用 rgba 直写（Electron 旧内核安全） */
     --goose-interactive-selected: rgba(99, 102, 241, 0.2);
@@ -422,6 +426,8 @@
     @apply bg-background text-foreground;
     user-select: none;
     -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: 0.01em;
@@ -537,12 +543,17 @@
     -webkit-user-select: none;
   }
 
-  /* Restore selection for inputs */
+  /* 标签与编辑区域保留文本选择能力。 */
+  label,
   input,
   textarea,
-  [contenteditable="true"] {
+  [contenteditable="true"],
+  [contenteditable="plaintext-only"],
+  .bn-editor {
     user-select: text;
     -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
   }
 
   /*
@@ -681,7 +692,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background-color: rgba(0, 0, 0, 0.34);
+  background-color: var(--goose-search-overlay);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   transform: translateZ(0);
@@ -692,7 +703,7 @@
   (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
 ) {
   [cmdk-overlay] {
-    background-color: rgba(0, 0, 0, 0.55);
+    background-color: var(--goose-search-overlay-fallback);
   }
 }
 

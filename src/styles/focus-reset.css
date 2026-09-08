@@ -1,9 +1,17 @@
 /**
- * 全局去掉按钮/链接焦点框，不动输入框。
+ * 全局去掉焦点外框与投影，输入框保留自身边框。
  * 怎么用：放到全局 CSS 最前面，或 `@import "./focus-reset.css";`
  * 覆盖：失焦残留 outline、按钮键盘焦点、Firefox 内边框、Tailwind/Uno ring。
- * 不写全局 focus-within，不写 input/textarea 的 box-shadow: none，避免中文输入法和选中边框被清掉。
+ * 不改变边框宽度或文本选择，不以 focus 外框表达折叠状态。
  */
+@layer properties {
+  *:focus,
+  *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
+
 *,
 *::before,
 *::after {

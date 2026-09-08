@@ -1,4 +1,5 @@
 import { FontSelector } from "@/pages/workspace/components/shared/FontSelector";
+import "./page-menu.css";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
 import { useEffect, useRef, useState } from "react";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
@@ -183,7 +184,7 @@ export function PageMenu() {
           页面更多菜单走 viewport 坐标系，尺寸用真实 px。
         */}
         <DropdownMenuContent
-          className="max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-[12px] p-1.5"
+          className="goose-page-menu-surface max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-lg border border-border p-1.5 shadow-md"
           align="end"
           sideOffset={6}
           style={{

@@ -13,6 +13,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import "./notebook-switcher.css";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { CreateVaultDialog } from "./CreateVaultDialog";
@@ -67,9 +68,9 @@ function SortableNotebookItem({
       className={cn(
         "relative flex select-none items-center rounded-sm outline-none",
         "justify-between gap-2 group",
-        "min-h-11 py-2 mb-1 last:mb-0 px-2",
+        "min-h-8 mb-1 last:mb-0 py-1 px-2 text-xs",
         notebook.localPathMissing && "opacity-50",
-        // 选中行 hover 不要被 interactive-hover 盖掉，否则图标底又会糊进行底
+        // 选中仓库在 hover 时保持相同的高亮底色。
         isActive
           ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]"
           : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
@@ -96,20 +97,10 @@ function SortableNotebookItem({
       }}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span
-          className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-            // 图标底始终要比当前行底更抬一点：
-            // - 未选中 hover：亮色用 chip token；暗色勿用 interactive-hover（与行 hover 同色会“消失”）
-            // - 选中：亮色 chip token；暗色 white/20，hover 再抬一点
-            isActive
-              ? "bg-[var(--goose-icon-chip-on-selected)] dark:bg-white/20 dark:group-hover:bg-white/28"
-              : "group-hover:bg-[var(--goose-icon-chip-on-selected)] dark:group-hover:bg-white/14",
-          )}
-        >
-          {renderNotebookIcon(notebook.icon || "BookOpen", "h-4 w-4")}
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]">
+          {renderNotebookIcon(notebook.icon || "BookOpen", "h-3.5 w-3.5")}
         </span>
-        <span className="truncate text-sm font-medium leading-snug">
+        <span className="truncate text-xs leading-snug">
           {notebook.name}
         </span>
         {notebook.localPathMissing && (
@@ -398,11 +389,11 @@ export function NotebookSwitcher() {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] px-1 pb-1 pt-1.5 before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="goose-notebook-menu-surface w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           style={{ minWidth: 220 }}
           align="start"
           alignOffset={0}
-          sideOffset={4}
+          sideOffset={2}
           forceMount
           onMouseEnter={() => {
             if (!notebookDropdownHoverExpand) return;
@@ -451,29 +442,30 @@ export function NotebookSwitcher() {
               ))}
             </SortableContext>
           </DndContext>
-          <DropdownMenuGroup className="grid grid-cols-2 gap-2 px-0 pt-1.5 pb-1.5">
+          <div className="mx-1 my-1 h-px bg-border" />
+          <DropdownMenuGroup className="grid grid-cols-2 gap-1">
             {isElectronHost ? (
               <DropdownMenuItem
-                className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
+                className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
                 onClick={() => void handleCreateVault()}
               >
-                <LucideIcons.FolderPlus className="h-4 w-4" />
+                <LucideIcons.FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
                 新建仓库
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
-                className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
+                className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
                 onClick={handleCreate}
               >
-                <LucideIcons.BookPlus className="h-4 w-4" />
+                <LucideIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
                 新建记事本
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="h-10 w-full justify-start gap-1.5 rounded-[10px] px-2.5 text-xs font-medium whitespace-nowrap"
+              className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
-              <LucideIcons.FolderOpen className="h-4 w-4" />
+              <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
               打开文件夹
             </DropdownMenuItem>
           </DropdownMenuGroup>
