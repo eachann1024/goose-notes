@@ -19,7 +19,10 @@ import {
   type GooseWindowInitPayload,
   type GooseWindowTabSnapshot,
 } from "@/lib/electron/windowContext";
-import { findLoneVisibleWorkspaceTab } from "@/pages/workspace/components/page/visibleTabs";
+import {
+  findLoneVisibleWorkspaceTab,
+  isReusableEmptyWorkspaceTab,
+} from "@/pages/workspace/components/page/visibleTabs";
 import { walkLeaves } from "@/lib/editor-split/tree";
 import { normalizeAutoCloseInactiveTabsHours } from "./settings/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
@@ -396,6 +399,60 @@ export const useTabs = create<TabsState>()((set, get) => {
     if (tab) useFileNavHistory.getState().push(fileNavKeyForTab(tab));
   };
 
+  const discardReplacedEmptyPage = (previousPageId: string, nextPageId: string) => {
+    if (!previousPageId || previousPageId === nextPageId) return;
+    const previousPage = usePages.getState().getPage(previousPageId);
+    if (
+      isUnsavedLocalPage(previousPage) &&
+      !localPageHasPersistableContent(previousPage.content)
+    ) {
+      usePages.getState().discardUnsavedLocalPage(previousPageId);
+    }
+  };
+
+  /** 当前标签是加号新建的空编辑器时，打开其他页面填入该标签，而不是再开一个。 */
+  const adoptActiveEmptyWorkspaceTab = (
+    pageId: string,
+    preview: boolean,
+  ): boolean => {
+    const { openTabs, activeTabId } = get();
+    if (!activeTabId) return false;
+    const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+    if (!activeTab) return false;
+    if (useEditorSplit.getState().isSplit(activeTab.id)) return false;
+    if (
+      !isReusableEmptyWorkspaceTab(activeTab, (id) =>
+        usePages.getState().getPage(id),
+      )
+    ) {
+      return false;
+    }
+
+    commitActiveEditor();
+    const previousPageId = activeTab.pageId;
+    const now = Date.now();
+    const nextTab: TabItem = {
+      id: activeTab.id,
+      pageId,
+      workspaceId: getWorkspaceIdForPage(pageId),
+      pinned: activeTab.pinned,
+      preview,
+      lastAccessedAt: now,
+    };
+    set({
+      openTabs: openTabs.map((tab) =>
+        tab.id === activeTab.id ? nextTab : tab,
+      ),
+      activeTabId: nextTab.id,
+    });
+    ensureSplitForWorkspaceTab(nextTab);
+    pushTabHistory(nextTab.id);
+    get().syncNotebookForPage(pageId);
+    void scheduleSetActivePage(pageId);
+    discardReplacedEmptyPage(previousPageId, pageId);
+    return true;
+  };
+
   const restoreFileNavLocation = (key: string): boolean => {
     const location = parseFileNavKey(key);
     if (location.type === "ai-panel") {
@@ -630,6 +687,14 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
+      if (adoptActiveEmptyWorkspaceTab(pageId, false)) {
+        if (options?.pin) {
+          const adoptedId = get().activeTabId;
+          if (adoptedId) get().togglePinTab(adoptedId);
+        }
+        return;
+      }
+
       commitActiveEditor();
       const now = Date.now();
       const newTab: TabItem = {
@@ -670,6 +735,8 @@ export const useTabs = create<TabsState>()((set, get) => {
         get().setActiveTab(existingTab.id);
         return;
       }
+
+      if (adoptActiveEmptyWorkspaceTab(pageId, true)) return;
 
       const targetPage = usePages.getState().getPage(pageId);
       const loneTab = findLoneVisibleWorkspaceTab(

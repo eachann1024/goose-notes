@@ -6,6 +6,7 @@ import {
   listVisibleWorkspaceTabs,
   shouldEditTitleInTabPill,
   findLoneVisibleWorkspaceTab,
+  isReusableEmptyWorkspaceTab,
 } from "../../src/pages/workspace/components/page/visibleTabs";
 
 function page(id: string, extra: Partial<Page> = {}): Page {
@@ -89,6 +90,42 @@ test("已有欢迎页或第二个文档标签时不视为单独标签", () => {
   expect(
     findLoneVisibleWorkspaceTab(withTwo, getPageFrom(pages), "nb"),
   ).toBeNull();
+});
+
+test("欢迎页和空白未落盘页可以填入，有内容或固定标签不行", () => {
+  const pages = {
+    empty: page("empty", {
+      localUnsaved: true,
+      content: [{ type: "paragraph", content: "" }],
+    }),
+    draft: page("draft", {
+      localUnsaved: true,
+      content: [{ type: "paragraph", content: "草稿" }],
+    }),
+    a: page("a"),
+  };
+  const getPage = getPageFrom(pages);
+  expect(
+    isReusableEmptyWorkspaceTab(
+      { id: "w", pageId: "welcome", type: "welcome" },
+      getPage,
+    ),
+  ).toBe(true);
+  expect(
+    isReusableEmptyWorkspaceTab({ id: "e", pageId: "empty" }, getPage),
+  ).toBe(true);
+  expect(
+    isReusableEmptyWorkspaceTab({ id: "d", pageId: "draft" }, getPage),
+  ).toBe(false);
+  expect(
+    isReusableEmptyWorkspaceTab({ id: "a", pageId: "a" }, getPage),
+  ).toBe(false);
+  expect(
+    isReusableEmptyWorkspaceTab(
+      { id: "p", pageId: "empty", pinned: true },
+      getPage,
+    ),
+  ).toBe(false);
 });
 
 test("正文大标题只在多个文档标签时显示", () => {

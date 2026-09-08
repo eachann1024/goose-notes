@@ -1,4 +1,5 @@
 import { expect, test } from "playwright/test";
+import { createEmptyLocalPageContent } from "../../src/components/editor/utils/blocknote-content";
 import { useEditorSplit } from "../../src/stores/useEditorSplit";
 import { useFileNavHistory } from "../../src/stores/useFileNavHistory";
 import { useNotebooks } from "../../src/stores/useNotebooks";
@@ -158,4 +159,98 @@ test("其他笔记本的隐藏标签不阻止当前笔记本单标签切换", ()
   expect(tabs.find((tab) => tab.pageId === "a")).toBeUndefined();
   expect(tabs.find((tab) => tab.id === lone?.id)?.pageId).toBe("b");
   expect(tabs.find((tab) => tab.pageId === "other")).toBeTruthy();
+});
+
+test("点加号得到空白未落盘标签后再打开页面会填入该标签", () => {
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      empty: makePage("empty", {
+        localUnsaved: true,
+        content: createEmptyLocalPageContent(),
+      }),
+    },
+  }));
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("empty");
+  const emptyTabId = useTabs.getState().activeTabId;
+  expect(useTabs.getState().openTabs).toHaveLength(2);
+  expect(emptyTabId).toBeTruthy();
+
+  useTabs.getState().openPreviewTab("b");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(2);
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "b"]);
+  const filled = tabs.find((tab) => tab.id === emptyTabId);
+  expect(filled?.pageId).toBe("b");
+  expect(filled?.preview).toBe(true);
+  expect(usePages.getState().getPage("empty")).toBeUndefined();
+});
+
+test("空白未落盘标签上永久打开也会填入而不是新增", () => {
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      empty: makePage("empty", {
+        localUnsaved: true,
+        content: createEmptyLocalPageContent(),
+      }),
+    },
+  }));
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("empty");
+  const emptyTabId = useTabs.getState().activeTabId;
+
+  useTabs.getState().openPermanentTab("c");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(2);
+  expect(tabs.find((tab) => tab.id === emptyTabId)?.pageId).toBe("c");
+  expect(tabs.find((tab) => tab.id === emptyTabId)?.preview).toBeFalsy();
+  expect(usePages.getState().getPage("empty")).toBeUndefined();
+});
+
+test("空标签不是当前活动标签时不抢着用", () => {
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      empty: makePage("empty", {
+        localUnsaved: true,
+        content: createEmptyLocalPageContent(),
+      }),
+    },
+  }));
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("empty");
+  const aTab = useTabs.getState().openTabs.find((tab) => tab.pageId === "a");
+  expect(aTab).toBeTruthy();
+  useTabs.getState().setActiveTab(aTab!.id);
+
+  useTabs.getState().openPreviewTab("b");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(3);
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "empty", "b"]);
+});
+
+test("已有内容的未落盘草稿不会被打开页面替换", () => {
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      draft: makePage("draft", {
+        localUnsaved: true,
+        content: [{ type: "paragraph", content: "草稿" }],
+      }),
+    },
+  }));
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("draft");
+
+  useTabs.getState().openPreviewTab("b");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(3);
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "draft", "b"]);
+  expect(usePages.getState().getPage("draft")).toBeTruthy();
 });

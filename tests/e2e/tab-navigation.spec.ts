@@ -185,6 +185,65 @@ test.describe("VSCode-style tab navigation", () => {
     expect(state.openTabs[0].preview).toBeFalsy();
   });
 
+  test("sidebar click after plus reuses the empty untitled tab", async ({
+    page,
+  }) => {
+    const { a, b } = await seedTwoPages(page);
+    const emptyId = await page.evaluate(() => {
+      const harness = window.__gooseTest;
+      if (!harness) throw new Error("Local test harness unavailable");
+      const notebookId = harness.stores.useNotebooks.getState().activeNotebookId;
+      if (!notebookId) throw new Error("No active notebook");
+      return harness.stores.usePages.getState().createUnsavedLocalPage(notebookId);
+    });
+
+    const emptyTabId = await page.evaluate(
+      ({ pageA, emptyPageId }) => {
+        const bridge = (window as Window & {
+          __GOOSE_TEST__?: {
+            openPermanentTab: (pageId: string) => void;
+            getTabsState: () => { activeTabId: string | null };
+          };
+        }).__GOOSE_TEST__;
+        if (!bridge) throw new Error("Test bridge unavailable");
+        bridge.openPermanentTab(pageA);
+        bridge.openPermanentTab(emptyPageId);
+        return bridge.getTabsState().activeTabId;
+      },
+      { pageA: a, emptyPageId: emptyId },
+    );
+    expect(emptyTabId).toBeTruthy();
+
+    const rowB = page.locator(`[data-rct-item-id="${b}"]`).first();
+    await expect(rowB).toBeVisible({ timeout: 15_000 });
+    await rowB.click();
+
+    const state = await page.evaluate(() => {
+      const bridge = (window as Window & {
+        __GOOSE_TEST__?: {
+          getTabsState: () => {
+            openTabs: Array<{ id: string; pageId: string; preview?: boolean }>;
+            activeTabId: string | null;
+          };
+          getPagesState: () => { pages: Record<string, unknown> };
+        };
+      }).__GOOSE_TEST__;
+      if (!bridge) throw new Error("Test bridge unavailable");
+      return {
+        tabs: bridge.getTabsState(),
+        pages: bridge.getPagesState().pages,
+      };
+    });
+
+    expect(state.tabs.openTabs).toHaveLength(2);
+    expect(state.tabs.openTabs.map((tab) => tab.pageId)).toEqual([a, b]);
+    const filled = state.tabs.openTabs.find((tab) => tab.id === emptyTabId);
+    expect(filled?.pageId).toBe(b);
+    expect(filled?.preview).toBe(true);
+    expect(state.tabs.activeTabId).toBe(emptyTabId);
+    expect(state.pages[emptyId]).toBeUndefined();
+  });
+
   test("sidebar single click opens preview without replacing pinned tab", async ({
     page,
   }) => {
