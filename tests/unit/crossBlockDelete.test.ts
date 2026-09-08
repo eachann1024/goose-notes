@@ -5,12 +5,48 @@ import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   deleteSelectedBlocks,
+  deleteEmptyLineBackward,
+  deleteEmptyInlineLineBackward,
   hasPositiveBlockContentOverlap,
   isOvershootingSingleTextblockSelection,
+  preventForwardDeleteIntoStructureBlock,
 } from "../../src/components/editor/extensions/crossBlockDeleteExtension";
 import { deleteEmptyNestedListItem } from "../../src/components/editor/extensions/emptyBlockBackspaceExtension";
 
 type ContentRange = { from: number; to: number };
+
+for (const type of ["codeBlock", "paragraph"] as const) {
+  for (const [text, offset, expected, caret] of [
+    ["上一行\n\n下一行", 4, "上一行\n下一行", 3],
+    ["上一行\n", 4, "上一行", 3],
+    ["\n下一行", 0, "下一行", 0],
+    ["上一行\n  \n下一行", 5, "上一行\n下一行", 3],
+  ] as const) {
+    test(`${type} 块内空行删除 ${JSON.stringify(text)}`, () => {
+      const editor = BlockNoteEditor.create({ initialContent: [
+        { id: "line", type, content: text },
+      ] });
+      // 普通多行 block 使用 hardBreak，代码块使用文本换行。
+      if (type === "paragraph") {
+        const range = contentRanges(editor).get("line")!;
+        editor.transact((tr) => {
+          const nodes = text.split("\n").flatMap((line, index) => [
+            ...(index ? [tr.doc.type.schema.nodes.hardBreak.create()] : []),
+            ...(line ? [tr.doc.type.schema.text(line)] : []),
+          ]);
+          tr.replaceWith(range.from, range.to, nodes);
+        });
+      }
+      const start = contentRanges(editor).get("line")!.from;
+      editor.transact((tr) => tr.setSelection(TextSelection.create(tr.doc, start + offset)));
+      expect(deleteEmptyInlineLineBackward(editor)).toBe(true);
+      const state = editor.prosemirrorState;
+      expect(state.selection.$from.parent.textBetween(0, state.selection.$from.parent.content.size, "", "\n")).toBe(expected);
+      expect(state.selection.$from.parentOffset).toBe(caret);
+      expect(editor.getBlock("line")!.type).toBe(type);
+    });
+  }
+}
 
 function contentRanges(editor: { prosemirrorState: EditorState }) {
   const ranges = new Map<string, ContentRange>();
@@ -392,6 +428,100 @@ test("顶层空列表项继续交给原生退格逻辑", () => {
     false,
   );
   expect(editor.document.map((block) => block.id)).toEqual(["title", "empty"]);
+});
+
+test("空段落末尾按 Delete 不会删除紧随的表格", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "empty", type: "paragraph", content: "" },
+      {
+        id: "table",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [{ cells: [["生产环境账号"], ["权限"]] }],
+        },
+      },
+    ],
+  });
+  const empty = contentRanges(editor).get("empty")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, empty.to)),
+  );
+
+  expect(preventForwardDeleteIntoStructureBlock(editor)).toBe(true);
+  expect(editor.getBlock("table")).toBeDefined();
+});
+
+test("空行 Delete 删除自身并回上一行末尾，保留后面的表格", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", content: "标题" },
+      { id: "empty", type: "paragraph", content: "" },
+      { id: "table", type: "table", content: {
+        type: "tableContent", rows: [{ cells: [["保留"]] }],
+      } },
+    ],
+  });
+  editor.setTextCursorPosition("empty", "start");
+  expect(deleteEmptyLineBackward(editor)).toBe(true);
+  expect(editor.document.map((block) => block.id)).toEqual(["title", "table"]);
+  expect(editor.prosemirrorState.selection.head).toBe(contentRanges(editor).get("title")!.to);
+});
+
+test("嵌套空行 Delete 保留同级后续内容，回到父标题末尾", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [{ id: "title", type: "heading", content: "标题", children: [
+      { id: "empty", type: "paragraph", content: "" },
+      { id: "next", type: "paragraph", content: "保留" },
+    ] }],
+  });
+  editor.setTextCursorPosition("empty", "start");
+  expect(deleteEmptyLineBackward(editor)).toBe(true);
+  expect(editor.document[0].children.map((block) => block.id)).toEqual(["next"]);
+  expect(editor.prosemirrorState.selection.head).toBe(contentRanges(editor).get("title")!.to);
+});
+
+test("首个空段落后接 YAML 代码块时，删除空段落并进入代码块", () => {
+  const editor = BlockNoteEditor.create({ initialContent: [
+    { id: "empty", type: "paragraph", content: "" },
+    { id: "code", type: "codeBlock", props: { language: "yaml" }, content: "name: goose" },
+  ] });
+  editor.setTextCursorPosition("empty", "start");
+  expect(deleteEmptyLineBackward(editor)).toBe(true);
+  expect(editor.document.map((block) => block.id)).toEqual(["code"]);
+  expect(editor.prosemirrorState.selection.head).toBe(contentRanges(editor).get("code")!.from);
+  expect(editor.getBlock("code")!.content).toEqual([{ type: "text", text: "name: goose", styles: {} }]);
+});
+
+test("首行为空时 Delete 保留首行，非空行继续默认删除", () => {
+  const editor = BlockNoteEditor.create({ initialContent: [
+    { id: "title", type: "heading", content: "" },
+    { id: "next", type: "paragraph", content: "保留" },
+  ] });
+  editor.setTextCursorPosition("title", "start");
+  expect(deleteEmptyLineBackward(editor)).toBe(true);
+  expect(editor.document.map((block) => block.id)).toEqual(["title", "next"]);
+  editor.setTextCursorPosition("next", "end");
+  expect(deleteEmptyLineBackward(editor)).toBe(false);
+});
+
+test("文本块末尾紧随普通段落时，Delete 继续交给默认合并", () => {
+  const editor = BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "标题" },
+      { id: "first", type: "paragraph", content: "前置" },
+      { id: "second", type: "paragraph", content: "后续" },
+    ],
+  });
+  const first = contentRanges(editor).get("first")!;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, first.to)),
+  );
+
+  expect(preventForwardDeleteIntoStructureBlock(editor)).toBe(false);
 });
 
 test("跨行选中包含完整表格时，删除能把整个表格彻底删除并保留两端剩余内容", () => {
