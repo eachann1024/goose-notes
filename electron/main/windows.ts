@@ -15,6 +15,7 @@ import {
 } from "../../src/lib/electron/titlebarLayout";
 import {
   resolveWindowToggleAction,
+  shouldKeepWorkspaceHiddenAfterQuicknote,
   shouldRaiseMainWindow,
 } from "../../src/lib/electron/windowToggle";
 import { gooseWindowAdditionalArguments } from "../../src/lib/electron/windowContext";
@@ -24,9 +25,12 @@ import {
   computeOffsetBounds,
   DEFAULT_WORKSPACE_HEIGHT,
   DEFAULT_WORKSPACE_WIDTH,
+  MIN_QUICKNOTE_HEIGHT,
+  MIN_QUICKNOTE_WIDTH,
   parseWindowLayout,
   serializeWindowLayout,
   windowLayoutFilePath,
+  type QuicknoteLayout,
   type WindowBounds,
   type WindowLayout,
   type WindowTabSnapshot,
@@ -56,6 +60,8 @@ export type CreateWorkspaceWindowOpts = {
   windowId?: string;
   tab?: WindowTabSnapshot;
   bounds?: WindowBounds;
+  maximized?: boolean;
+  fullScreen?: boolean;
   restoredTabs?: WindowTabSnapshot[];
   sourceWindow?: BrowserWindow | null;
 };
@@ -63,6 +69,8 @@ export type CreateWorkspaceWindowOpts = {
 let lastTitleBarHeight = DEFAULT_TITLE_BAR_HEIGHT_PX;
 const registry = new WindowRegistry<BrowserWindow>();
 let persistTimer: NodeJS.Timeout | null = null;
+/** undefined = 尚未从 window-layout.json 灌入；关窗后仍保留上次几何。 */
+let rememberedQuicknote: QuicknoteLayout | null | undefined;
 let quicknoteDestroyTimer: NodeJS.Timeout | null = null;
 const QUICKNOTE_IDLE_DESTROY_MS = 5 * 60 * 1000;
 const LAYOUT_PERSIST_DEBOUNCE_MS = 300;
@@ -225,20 +233,53 @@ function readStoredLayout(): WindowLayout | null {
   }
 }
 
+function readWindowBounds(win: BrowserWindow): WindowBounds {
+  const raw =
+    (win.isMaximized() || win.isFullScreen()) &&
+    typeof win.getNormalBounds === "function"
+      ? win.getNormalBounds()
+      : win.getBounds();
+  return { x: raw.x, y: raw.y, width: raw.width, height: raw.height };
+}
+
+function readWindowChrome(
+  win: BrowserWindow,
+): { maximized?: boolean; fullScreen?: boolean } {
+  return {
+    ...(win.isMaximized() ? { maximized: true } : {}),
+    ...(win.isFullScreen() ? { fullScreen: true } : {}),
+  };
+}
+
+function hydrateRememberedQuicknote(): QuicknoteLayout | null {
+  if (rememberedQuicknote !== undefined) return rememberedQuicknote;
+  rememberedQuicknote = readStoredLayout()?.quicknote ?? null;
+  return rememberedQuicknote;
+}
+
+function rememberQuicknoteFromWindow(win: BrowserWindow): void {
+  if (win.isDestroyed()) return;
+  rememberedQuicknote = { bounds: readWindowBounds(win) };
+}
+
 export function persistWindowLayout(opts?: { evenIfQuitting?: boolean }): void {
   if (appQuitting() && !opts?.evenIfQuitting) return;
   try {
-    const layout = registry.snapshotLayout((win) => {
-      if (!win || win.isDestroyed()) return null;
-      const bounds = win.getBounds();
-      return {
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-      };
-    });
-    if (layout.windows.length === 0) return;
+    const liveQuicknote = getQuicknoteWindow();
+    if (liveQuicknote) rememberQuicknoteFromWindow(liveQuicknote);
+    const layout = registry.snapshotLayout(
+      (win) => {
+        if (!win || win.isDestroyed()) return null;
+        return readWindowBounds(win);
+      },
+      (win) => {
+        if (!win || win.isDestroyed()) return null;
+        return readWindowChrome(win);
+      },
+    );
+    const quicknote = hydrateRememberedQuicknote();
+    if (quicknote) layout.quicknote = quicknote;
+    if (layout.windows.length === 0 && !layout.quicknote) return;
     mkdirSync(app.getPath("userData"), { recursive: true });
     writeFileSync(layoutPath(), serializeWindowLayout(layout));
   } catch {
@@ -333,7 +374,14 @@ function bindCloseTabAccelerator(win: BrowserWindow): void {
   });
 }
 
-function attachWorkspaceChrome(win: BrowserWindow, id: string): void {
+/** 唤出速记时已 hide 的 workspace；macOS 随后 unhide 也必须再藏回去。 */
+const workspacesHeldHidden = new WeakSet<BrowserWindow>();
+
+function attachWorkspaceChrome(
+  win: BrowserWindow,
+  id: string,
+  restore?: { maximized?: boolean; fullScreen?: boolean },
+): void {
   applyTrafficLightPosition(win);
   denyWindowOpenHandler(win);
   bindOpenMarkdownWindow(win);
@@ -342,10 +390,16 @@ function attachWorkspaceChrome(win: BrowserWindow, id: string): void {
   win.once("ready-to-show", () => {
     applyTrafficLightPosition(win);
     setHiddenThrottle(win, false);
+    if (restore?.maximized) win.maximize();
+    if (restore?.fullScreen) win.setFullScreen(true);
     win.show();
   });
 
   win.on("show", () => {
+    if (workspacesHeldHidden.has(win)) {
+      win.hide();
+      return;
+    }
     applyTrafficLightPosition(win);
     setHiddenThrottle(win, false);
     emitVisibilityChange();
@@ -377,12 +431,15 @@ function attachWorkspaceChrome(win: BrowserWindow, id: string): void {
     emitVisibilityChange();
   });
 
-  win.on("leave-full-screen", () => {
-    applyTrafficLightPosition(win);
-  });
-
   win.on("moved", schedulePersistLayout);
   win.on("resized", schedulePersistLayout);
+  win.on("maximize", schedulePersistLayout);
+  win.on("unmaximize", schedulePersistLayout);
+  win.on("enter-full-screen", schedulePersistLayout);
+  win.on("leave-full-screen", () => {
+    applyTrafficLightPosition(win);
+    schedulePersistLayout();
+  });
 
   win.on("close", (event) => {
     const hide = shouldHideInsteadOfClose({
@@ -394,6 +451,7 @@ function attachWorkspaceChrome(win: BrowserWindow, id: string): void {
       event.preventDefault();
       win.hide();
       setHiddenThrottle(win, true);
+      persistWindowLayout();
     }
   });
 
@@ -446,7 +504,10 @@ export function createWorkspaceWindow(
       ? [opts.tab]
       : opts.restoredTabs;
   registry.register({ id, kind: "workspace", win, tabs });
-  attachWorkspaceChrome(win, id);
+  attachWorkspaceChrome(win, id, {
+    maximized: opts.maximized,
+    fullScreen: opts.fullScreen,
+  });
 
   const initPayload: { takeTab?: WindowTabSnapshot; restoredTabs?: WindowTabSnapshot[] } | null =
     opts.mode === "currentTab" && opts.tab
@@ -468,6 +529,9 @@ export function createMainWindow(): BrowserWindow {
 
 export function restoreWorkspaceWindows(): BrowserWindow[] {
   const layout = readStoredLayout();
+  if (rememberedQuicknote === undefined) {
+    rememberedQuicknote = layout?.quicknote ?? null;
+  }
   if (!layout || layout.windows.length === 0) {
     return [createWorkspaceWindow({ mode: "blank" })];
   }
@@ -476,9 +540,27 @@ export function restoreWorkspaceWindows(): BrowserWindow[] {
       mode: "blank",
       windowId: entry.id,
       bounds: entry.bounds,
+      maximized: entry.maximized,
+      fullScreen: entry.fullScreen,
       restoredTabs: entry.tabs,
     }),
   );
+}
+
+function resolveQuicknoteBounds(): Partial<WindowBounds> {
+  const stored = hydrateRememberedQuicknote();
+  if (!stored) {
+    return { width: QUICKNOTE_WIDTH, height: QUICKNOTE_HEIGHT };
+  }
+  try {
+    return clampBoundsToWorkArea(
+      stored.bounds,
+      workAreaNear({ x: stored.bounds.x, y: stored.bounds.y }),
+      { width: MIN_QUICKNOTE_WIDTH, height: MIN_QUICKNOTE_HEIGHT },
+    );
+  } catch {
+    return { width: QUICKNOTE_WIDTH, height: QUICKNOTE_HEIGHT };
+  }
 }
 
 export function createQuicknoteWindow(): BrowserWindow {
@@ -486,23 +568,37 @@ export function createQuicknoteWindow(): BrowserWindow {
   if (existing) return existing;
 
   const id = allocWindowId();
+  const isMac = process.platform === "darwin";
+  const bounds = resolveQuicknoteBounds();
   const win = new BrowserWindow({
     title: "速记",
-    width: QUICKNOTE_WIDTH,
-    height: QUICKNOTE_HEIGHT,
-    minWidth: 320,
-    minHeight: 240,
+    width: bounds.width ?? QUICKNOTE_WIDTH,
+    height: bounds.height ?? QUICKNOTE_HEIGHT,
+    ...(bounds.x != null && bounds.y != null ? { x: bounds.x, y: bounds.y } : {}),
+    minWidth: MIN_QUICKNOTE_WIDTH,
+    minHeight: MIN_QUICKNOTE_HEIGHT,
     show: false,
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     backgroundColor: "#ffffff",
     transparent: false,
+    // panel 浮在当前空间，show 时不激活整个应用，避免把已 hide 的 workspace 一起放出来。
+    ...(isMac
+      ? {
+          type: "panel" as const,
+          hiddenInMissionControl: true,
+        }
+      : {}),
     webPreferences: {
       ...windowWebPrefs(id, "quicknote"),
       backgroundThrottling: true,
     },
   });
+  if (isMac) {
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    win.setAlwaysOnTop(true, "floating");
+  }
 
   registry.register({ id, kind: "quicknote", win });
   denyWindowOpenHandler(win);
@@ -514,8 +610,19 @@ export function createQuicknoteWindow(): BrowserWindow {
     emitVisibilityChange();
   });
 
+  win.on("moved", () => {
+    rememberQuicknoteFromWindow(win);
+    schedulePersistLayout();
+  });
+  win.on("resized", () => {
+    rememberQuicknoteFromWindow(win);
+    schedulePersistLayout();
+  });
+
   win.on("hide", () => {
     if (!appQuitting()) markQuicknoteActivateSuppressed();
+    rememberQuicknoteFromWindow(win);
+    persistWindowLayout();
     setHiddenThrottle(win, true);
     scheduleQuicknoteIdleDestroy(win);
     emitVisibilityChange();
@@ -533,6 +640,8 @@ export function createQuicknoteWindow(): BrowserWindow {
 
   win.on("close", () => {
     if (!appQuitting()) markQuicknoteActivateSuppressed();
+    rememberQuicknoteFromWindow(win);
+    persistWindowLayout({ evenIfQuitting: true });
   });
 
   win.on("closed", () => {
@@ -708,6 +817,7 @@ function waitReadyToShow(win: BrowserWindow, timeoutMs = 8000): Promise<void> {
 /** 全局热键唤出时必须抢前台；macOS 不 steal 时 frameless 小窗常常不出现。 */
 function raiseWindow(win: BrowserWindow): void {
   if (win.isDestroyed()) return;
+  workspacesHeldHidden.delete(win);
   if (win.isMinimized()) win.restore();
   setHiddenThrottle(win, false);
   win.show();
@@ -718,10 +828,60 @@ function raiseWindow(win: BrowserWindow): void {
   }
 }
 
-/** 只抬速记窗。steal focus 触发的 activate 不得拉起 workspace。 */
+function listHiddenWorkspaceWindows(): BrowserWindow[] {
+  const hidden: BrowserWindow[] = [];
+  for (const record of registry.workspaces()) {
+    const workspace = record.win;
+    if (!workspace || workspace.isDestroyed()) continue;
+    if (
+      shouldKeepWorkspaceHiddenAfterQuicknote({ visible: workspace.isVisible() })
+    ) {
+      hidden.push(workspace);
+    }
+  }
+  return hidden;
+}
+
+function restoreHiddenWorkspaces(hidden: BrowserWindow[]): void {
+  for (const workspace of hidden) {
+    if (workspace.isDestroyed() || !workspace.isVisible()) continue;
+    workspace.hide();
+  }
+}
+
+/**
+ * 只抬速记窗，不激活整个应用。
+ * macOS 上 win.show() / app.focus({ steal }) 会 unhide 同 app 里已 hide 的 workspace。
+ */
 function raiseQuicknoteWindow(win: BrowserWindow): void {
   markQuicknoteActivateSuppressed();
-  raiseWindow(win);
+  const hiddenWorkspaces = listHiddenWorkspaceWindows();
+  for (const workspace of hiddenWorkspaces) {
+    workspacesHeldHidden.add(workspace);
+  }
+  if (win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  setHiddenThrottle(win, false);
+  if (process.platform === "darwin") {
+    win.showInactive();
+    win.moveTop();
+    win.focus();
+  } else {
+    win.show();
+    win.moveTop();
+    win.focus();
+  }
+  restoreHiddenWorkspaces(hiddenWorkspaces);
+  if (hiddenWorkspaces.length === 0) return;
+  setImmediate(() => {
+    markQuicknoteActivateSuppressed();
+    restoreHiddenWorkspaces(hiddenWorkspaces);
+  });
+  setTimeout(() => {
+    for (const workspace of hiddenWorkspaces) {
+      workspacesHeldHidden.delete(workspace);
+    }
+  }, 1_500);
 }
 
 export async function toggleWindow(win: BrowserWindow | null): Promise<void> {

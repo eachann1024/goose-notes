@@ -8,6 +8,8 @@ export const DEFAULT_WORKSPACE_HEIGHT = 800;
 export const NEW_WINDOW_OFFSET_PX = 32;
 export const MIN_WORKSPACE_WIDTH = 800;
 export const MIN_WORKSPACE_HEIGHT = 560;
+export const MIN_QUICKNOTE_WIDTH = 320;
+export const MIN_QUICKNOTE_HEIGHT = 240;
 
 export type WindowBounds = {
   x: number;
@@ -28,11 +30,18 @@ export type WindowLayoutEntry = {
   id: string;
   bounds: WindowBounds;
   tabs?: WindowTabSnapshot[];
+  maximized?: boolean;
+  fullScreen?: boolean;
+};
+
+export type QuicknoteLayout = {
+  bounds: WindowBounds;
 };
 
 export type WindowLayout = {
   version: typeof WINDOW_LAYOUT_VERSION;
   windows: WindowLayoutEntry[];
+  quicknote?: QuicknoteLayout;
 };
 
 export function windowLayoutFilePath(userDataPath: string): string {
@@ -88,7 +97,23 @@ function parseLayoutEntry(value: unknown): WindowLayoutEntry | null {
       .filter((tab): tab is WindowTabSnapshot => Boolean(tab));
     if (tabs.length > 0) entry.tabs = tabs;
   }
+  if (rec.maximized === true) entry.maximized = true;
+  if (rec.fullScreen === true) entry.fullScreen = true;
   return entry;
+}
+
+export function parseQuicknoteLayout(value: unknown): QuicknoteLayout | null {
+  if (!value || typeof value !== "object") return null;
+  const rec = value as Record<string, unknown>;
+  if (!isValidBounds(rec.bounds)) return null;
+  return {
+    bounds: {
+      x: rec.bounds.x,
+      y: rec.bounds.y,
+      width: rec.bounds.width,
+      height: rec.bounds.height,
+    },
+  };
 }
 
 export function parseWindowLayout(raw: string): WindowLayout | null {
@@ -105,7 +130,10 @@ export function parseWindowLayout(raw: string): WindowLayout | null {
   const windows = rec.windows
     .map(parseLayoutEntry)
     .filter((entry): entry is WindowLayoutEntry => Boolean(entry));
-  return { version: WINDOW_LAYOUT_VERSION, windows };
+  const layout: WindowLayout = { version: WINDOW_LAYOUT_VERSION, windows };
+  const quicknote = parseQuicknoteLayout(rec.quicknote);
+  if (quicknote) layout.quicknote = quicknote;
+  return layout;
 }
 
 export function serializeWindowLayout(layout: WindowLayout): string {
@@ -115,13 +143,17 @@ export function serializeWindowLayout(layout: WindowLayout): string {
 export function clampBoundsToWorkArea(
   bounds: WindowBounds,
   workArea: WindowBounds,
+  minSize: { width: number; height: number } = {
+    width: MIN_WORKSPACE_WIDTH,
+    height: MIN_WORKSPACE_HEIGHT,
+  },
 ): WindowBounds {
   const width = Math.min(
-    Math.max(MIN_WORKSPACE_WIDTH, bounds.width),
+    Math.max(minSize.width, bounds.width),
     Math.max(1, workArea.width),
   );
   const height = Math.min(
-    Math.max(MIN_WORKSPACE_HEIGHT, bounds.height),
+    Math.max(minSize.height, bounds.height),
     Math.max(1, workArea.height),
   );
   const maxX = workArea.x + workArea.width - width;

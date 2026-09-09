@@ -28,9 +28,13 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   expect(titleBar).toContain('variant="electron-titlebar"');
   expect(tabRail).toContain("idleWindowDrag");
   expect(tabRail).toContain('surface="tab-pill"');
+  expect(tabRail).toContain("bindIdleWindowDrag");
+  expect(tabRail).toContain("windowDragEnabled");
   expect(tabRail).toContain("data-electron-no-drag");
   expect(title).toContain("idleWindowDrag");
   expect(title).toContain("startWindowDragging");
+  expect(title).toContain("endWindowDragging");
+  expect(title).toContain("setPointerCapture");
   expect(title).toContain("data-electron-no-drag");
   expect(title).toContain("TITLE_SIZE_FILL");
   expect(title).toContain("data-page-title-field");
@@ -89,6 +93,8 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
   expect(css).toContain("width: 100%");
   expect(css).toContain("flex-basis 220ms");
   expect(css).toContain("prefers-reduced-motion");
+  expect(css).toContain("window-dragging");
+  expect(css).toContain("cursor: grabbing");
   expect(css).not.toContain('[data-tab-active="true"]::after');
 
   const sidebar = readFileSync(
@@ -99,4 +105,44 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
     "utf8",
   );
   expect(sidebar).toContain("--workspace-sidebar-width");
+});
+
+test("单标签拖窗走 start/end IPC，preload 与类型同步", () => {
+  const ipc = readFileSync(
+    new URL("../../electron/main/ipc.ts", import.meta.url),
+    "utf8",
+  );
+  const preload = readFileSync(
+    new URL("../../electron/preload/index.ts", import.meta.url),
+    "utf8",
+  );
+  const types = readFileSync(
+    new URL("../../src/vite-env.d.ts", import.meta.url),
+    "utf8",
+  );
+  const windowDrag = readFileSync(
+    new URL("../../src/lib/electron/windowDrag.ts", import.meta.url),
+    "utf8",
+  );
+  const windowMove = readFileSync(
+    new URL("../../electron/main/windowMove.ts", import.meta.url),
+    "utf8",
+  );
+  expect(ipc).toContain("desktop:startWindowDrag");
+  expect(ipc).toContain("desktop:endWindowDrag");
+  expect(ipc).toContain("startWindowMove");
+  expect(ipc).toContain("endWindowMove");
+  expect(preload).toContain("desktop:startWindowDrag");
+  expect(preload).toContain("desktop:endWindowDrag");
+  expect(preload).toContain("startWindowDrag");
+  expect(preload).toContain("endWindowDrag");
+  expect(types).toContain("startWindowDrag");
+  expect(types).toContain("endWindowDrag");
+  expect(windowDrag).toContain("startWindowDrag");
+  expect(windowDrag).toContain("endWindowDrag");
+  expect(windowDrag).toContain("WINDOW_DRAGGING_CLASS");
+  expect(windowDrag).not.toContain("无 startDragging IPC");
+  expect(windowMove).toContain("getCursorScreenPoint");
+  expect(windowMove).toContain("closed");
+  expect(windowMove).toContain("endWindowMove");
 });

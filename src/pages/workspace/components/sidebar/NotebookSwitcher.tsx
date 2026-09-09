@@ -68,7 +68,7 @@ function SortableNotebookItem({
       className={cn(
         "relative flex select-none items-center rounded-sm outline-none",
         "justify-between gap-2 group",
-        "min-h-8 mb-1 last:mb-0 py-1 px-2 text-xs",
+        "min-h-9 mb-0.5 last:mb-0 py-1.5 px-2 text-xs",
         notebook.localPathMissing && "opacity-50",
         // 选中仓库在 hover 时保持相同的高亮底色。
         isActive
@@ -446,7 +446,7 @@ export function NotebookSwitcher() {
           <DropdownMenuGroup className="grid grid-cols-2 gap-1">
             {isElectronHost ? (
               <DropdownMenuItem
-                className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
+                className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={() => void handleCreateVault()}
               >
                 <LucideIcons.FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -454,7 +454,7 @@ export function NotebookSwitcher() {
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
-                className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
+                className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={handleCreate}
               >
                 <LucideIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -462,7 +462,7 @@ export function NotebookSwitcher() {
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="min-h-8 w-full justify-start gap-1.5 rounded-sm px-2 text-xs whitespace-nowrap"
+              className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />

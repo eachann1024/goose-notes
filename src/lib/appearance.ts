@@ -48,7 +48,8 @@ function applyEditorUiScale(root: HTMLElement, scale: string): void {
 }
 
 export function computeSidebarRowHeight(sidebarFontSize: number): number {
-  return Math.round(normalizeSidebarFontSize(sidebarFontSize) * 2 + 2);
+  // +6：约 4px 垂直内边距余量（py +0.5）+ 2px 行间透明边。
+  return Math.round(normalizeSidebarFontSize(sidebarFontSize) * 2 + 6);
 }
 
 /**

@@ -36,6 +36,7 @@ import {
   finishTabDrag,
   previewTabDrag,
 } from "./tabDock";
+import { endWindowMove, startWindowMove } from "./windowMove";
 import {
   broadcast,
   closeQuicknote,
@@ -622,6 +623,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:tabDragCancel", async (event) => {
     cancelTabDrag(senderWindow(event));
+  });
+
+  ipcMain.handle("desktop:startWindowDrag", async (event) => {
+    startWindowMove(senderWindow(event));
+  });
+
+  ipcMain.handle("desktop:endWindowDrag", async (event) => {
+    endWindowMove(senderWindow(event));
   });
 
   ipcMain.handle("desktop:toggleMainWindow", async () => {

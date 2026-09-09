@@ -694,3 +694,60 @@ test("撕窗 persist 可把分屏树交给目标窗", () => {
     g.window = previousWindow;
   }
 });
+
+test("分屏里删除当前格的页面只关那一格，标签和另一篇笔记还在", () => {
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      empty: makePage("empty", {
+        localUnsaved: true,
+        content: [{ type: "paragraph", content: "" }],
+      }),
+    },
+    activePageId: "a",
+  }));
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "empty");
+  useTabs.getState().syncTabPageId(tabId, "empty");
+  usePages.setState({ activePageId: "empty" });
+
+  useTabs.getState().removeDeletedPage("empty");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(1);
+  expect(tabs[0].id).toBe(tabId);
+  expect(tabs[0].pageId).toBe("a");
+  expect(useEditorSplit.getState().isSplit(tabId)).toBe(false);
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
+});
+
+test("分屏里删除另一格的页面也只关那一格", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  useTabs.getState().syncTabPageId(tabId, "b");
+  usePages.setState({ activePageId: "b" });
+
+  useTabs.getState().removeDeletedPage("a");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs).toHaveLength(1);
+  expect(tabs[0].id).toBe(tabId);
+  expect(tabs[0].pageId).toBe("b");
+  expect(useEditorSplit.getState().isSplit(tabId)).toBe(false);
+});
+
+test("多标签删除某个已打开的页面只关对应标签", () => {
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("b");
+  useTabs.getState().openPermanentTab("c");
+  expect(useTabs.getState().openTabs).toHaveLength(3);
+
+  usePages.setState({ activePageId: "b" });
+  useTabs.getState().removeDeletedPage("b");
+
+  const tabs = useTabs.getState().openTabs;
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "c"]);
+  expect(tabs.every((tab) => tab.pageId !== "b")).toBe(true);
+});

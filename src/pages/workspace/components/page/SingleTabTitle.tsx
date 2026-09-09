@@ -22,6 +22,7 @@ import {
 import { useImeInput } from "@/hooks/useImeInput";
 import { splitFilePath } from "@/lib/local-title-binding";
 import {
+  endWindowDragging,
   shouldStartWindowDrag,
   startWindowDragging,
 } from "@/lib/electron/windowDrag";
@@ -257,7 +258,9 @@ export function SingleTabTitle({
 
   const onIdlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
+    event.stopPropagation();
     windowDragStartedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
     const startX = event.clientX;
     const startY = event.clientY;
     const onMove = (ev: PointerEvent) => {
@@ -271,6 +274,7 @@ export function SingleTabTitle({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      if (windowDragStartedRef.current) void endWindowDragging();
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);

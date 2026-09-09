@@ -37,23 +37,26 @@ test("quicknote is ignored when resolving last focused workspace", () => {
   expect(registry.lastFocusedWorkspace()?.id).toBe("w");
 });
 
-test("snapshotLayout serializes bounds and optional tabs", () => {
-  const registry = new WindowRegistry<{ x: number }>();
+test("snapshotLayout serializes bounds, chrome and optional tabs", () => {
+  const registry = new WindowRegistry<{ x: number; maximized?: boolean }>();
   registry.register({
     id: "w1",
     kind: "workspace",
-    win: { x: 40 },
+    win: { x: 40, maximized: true },
     tabs: [{ id: "t1", pageId: "p1", pinned: true }],
   });
   registry.register({ id: "q", kind: "quicknote", win: { x: 0 } });
 
   expect(
-    registry.snapshotLayout((win) => ({
-      x: win.x,
-      y: 10,
-      width: 1250,
-      height: 800,
-    })),
+    registry.snapshotLayout(
+      (win) => ({
+        x: win.x,
+        y: 10,
+        width: 1250,
+        height: 800,
+      }),
+      (win) => (win.maximized ? { maximized: true } : null),
+    ),
   ).toEqual({
     version: 1,
     windows: [
@@ -61,6 +64,7 @@ test("snapshotLayout serializes bounds and optional tabs", () => {
         id: "w1",
         bounds: { x: 40, y: 10, width: 1250, height: 800 },
         tabs: [{ id: "t1", pageId: "p1", pinned: true }],
+        maximized: true,
       },
     ],
   });

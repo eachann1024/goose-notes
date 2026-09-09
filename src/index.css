@@ -141,15 +141,45 @@
 [data-theme="default"] {
   --accent: 60 6.67% 94.12%;
   --border: 0 0% 86%;
+  --goose-menu-surface: var(--goose-shell-bg);
 }
 .dark,
 [data-theme="dark"] {
   --accent: 60 2.4% 16.1%;
   --border: 0 0% 24%;
+  --goose-menu-surface: 60 2.2% 19.5%;
 }
 
 /* class 模式暗色：等价 v3 darkMode: ["class"] */
 @custom-variant dark (&:is(.dark *));
+
+[role="menu"] {
+  background-color: hsl(var(--goose-menu-surface)) !important;
+}
+
+/* Radix initially focuses the menu surface, then transfers focus to the
+ * highlighted item. Keep the surface shadow through that handoff: the global
+ * focus reset removes box-shadow with !important, which otherwise makes an
+ * empty menu look like it has a different background from the same menu while
+ * an item is hovered. */
+@layer properties {
+  .goose-sidebar-context-menu,
+  .goose-sidebar-context-menu:focus,
+  .goose-sidebar-context-menu:focus-visible {
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16),
+      0 2px 8px rgba(15, 23, 42, 0.08) !important;
+  }
+}
+
+[role="menu"] [role="menuitem"][data-highlighted],
+[role="menu"] [role="menuitem"][data-state="open"],
+[role="menu"] [role="menuitem"]:focus,
+[role="menu"] [role="menuitemcheckbox"][data-highlighted],
+[role="menu"] [role="menuitemcheckbox"]:focus,
+[role="menu"] [role="menuitemradio"][data-highlighted],
+[role="menu"] [role="menuitemradio"]:focus {
+  background-color: hsl(var(--accent)) !important;
+}
 
 .goose-sidebar-context-menu [role="menuitem"],
 .goose-sidebar-context-menu [role="menuitemcheckbox"],
@@ -442,6 +472,10 @@
   /* Electron 桌面端：顶栏在文档流里（overlay 融合条），无额外安全区。 */
   html.is-electron {
     --goose-top-safe-area: 0px;
+    /* 正文区顶边距 pt-1 + 代码块工具栏 top:8px，与 YAML 元数据行对齐。 */
+    --goose-toast-offset-top: calc(
+      var(--electron-titlebar-height, 2.75rem) + 12px
+    );
   }
 
   [data-sonner-toaster][data-y-position="top"] {

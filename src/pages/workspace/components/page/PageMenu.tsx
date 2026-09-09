@@ -212,32 +212,6 @@ export function PageMenu() {
 
           <div className="mx-1 my-1 h-px bg-border" />
 
-          {canOpenInNewWindow && activeTab ? (
-            <DropdownMenuItem
-              className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
-              onSelect={() => {
-                void (async () => {
-                  const created = await createDesktopWindow({
-                    mode: "currentTab",
-                    tab: {
-                      id: activeTab.id,
-                      pageId: activeTab.pageId,
-                      type: activeTab.type,
-                      pinned: activeTab.pinned,
-                      workspaceId: activeTab.workspaceId,
-                    },
-                  });
-                  if (created?.windowId) {
-                    detachTabFromThisWindow(activeTab.id, created.windowId);
-                  }
-                })();
-              }}
-            >
-              <LucideIcons.AppWindow className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
-              <span className="min-w-0 truncate">在新窗口打开</span>
-            </DropdownMenuItem>
-          ) : null}
-
           <section aria-label="页面状态">
             <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
               页面状态
@@ -343,6 +317,32 @@ export function PageMenu() {
               />
             </div>
           </section>
+
+          {canOpenInNewWindow && activeTab ? (
+            <DropdownMenuItem
+              className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
+              onSelect={() => {
+                void (async () => {
+                  const created = await createDesktopWindow({
+                    mode: "currentTab",
+                    tab: {
+                      id: activeTab.id,
+                      pageId: activeTab.pageId,
+                      type: activeTab.type,
+                      pinned: activeTab.pinned,
+                      workspaceId: activeTab.workspaceId,
+                    },
+                  });
+                  if (created?.windowId) {
+                    detachTabFromThisWindow(activeTab.id, created.windowId);
+                  }
+                })();
+              }}
+            >
+              <LucideIcons.AppWindow className="h-3.5 w-3.5 text-muted-foreground group-data-[highlighted]:text-[var(--goose-interactive-selected-fg)]" />
+              <span className="min-w-0 truncate">在新窗口打开</span>
+            </DropdownMenuItem>
+          ) : null}
 
           {/* Import */}
           <DropdownMenuGroup>

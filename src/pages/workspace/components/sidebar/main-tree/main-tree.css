@@ -86,10 +86,10 @@
   box-sizing: border-box;
 }
 
-/* 高于 rct title-container 的 border 重置，固定行高内保留 4px 背景间隙。 */
+/* 高于 rct title-container 的 border 重置，固定行高内保留 2px 背景间隙。 */
 .main-tree-row.main-tree-row {
-  border-top: 2px solid transparent !important;
-  border-bottom: 2px solid transparent !important;
+  border-top: 1px solid transparent !important;
+  border-bottom: 1px solid transparent !important;
 }
 
 /* 比各状态的 background 简写优先，避免裁切范围被重置回 border-box。 */

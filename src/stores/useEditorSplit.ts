@@ -47,6 +47,7 @@ export type EditorSplitStore = {
   getStateForTab: (tabId: string) => SplitState | null;
   splitFocused: (input: SplitFocusedInput) => SplitFocusedResult;
   closeFocused: (tabId: string) => CloseFocusedResult;
+  closePane: (tabId: string, leafId: string) => CloseFocusedResult;
   focusPane: (tabId: string, paneId: string) => void;
   focusNeighbor: (
     tabId: string,
@@ -193,16 +194,28 @@ export const useEditorSplit = create<EditorSplitStore>()((set, get) => ({
     };
   },
 
-  closeFocused: (tabId) => {
+  closePane: (tabId, leafId) => {
     const current = get().byTabId[tabId];
     if (!current) return { kind: "last-pane" };
-    const result = closeLeaf(current);
+    const result = closeLeaf(current, leafId);
     if (result.kind === "last-pane") return { kind: "last-pane" };
+    if (result.state === current) {
+      return {
+        kind: "updated",
+        focusedPageId: focusedPageIdOf(current),
+      };
+    }
     set({ byTabId: patchTab(get().byTabId, tabId, result.state) });
     return {
       kind: "updated",
       focusedPageId: focusedPageIdOf(result.state),
     };
+  },
+
+  closeFocused: (tabId) => {
+    const current = get().byTabId[tabId];
+    if (!current) return { kind: "last-pane" };
+    return get().closePane(tabId, current.focusedLeafId);
   },
 
   focusPane: (tabId, paneId) => {

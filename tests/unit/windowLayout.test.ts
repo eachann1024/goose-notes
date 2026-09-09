@@ -5,6 +5,8 @@ import {
   computeOffsetBounds,
   DEFAULT_WORKSPACE_HEIGHT,
   DEFAULT_WORKSPACE_WIDTH,
+  MIN_QUICKNOTE_HEIGHT,
+  MIN_QUICKNOTE_WIDTH,
   NEW_WINDOW_OFFSET_PX,
   parseWindowLayout,
   serializeWindowLayout,
@@ -19,7 +21,7 @@ test("window-layout.json lives under userData", () => {
   );
 });
 
-test("parseWindowLayout keeps valid windows and optional tabs", () => {
+test("parseWindowLayout keeps valid windows, chrome flags and quicknote", () => {
   const parsed = parseWindowLayout(
     JSON.stringify({
       version: 1,
@@ -28,13 +30,17 @@ test("parseWindowLayout keeps valid windows and optional tabs", () => {
           id: "alpha",
           bounds: { x: 80, y: 60, width: 1250, height: 800 },
           tabs: [{ id: "tab-1", pageId: "page-1", type: "page", pinned: false }],
+          maximized: true,
+          fullScreen: false,
         },
         { id: "skip-me" },
         {
           id: "beta",
           bounds: { x: 112, y: 92, width: 1250, height: 800 },
+          fullScreen: true,
         },
       ],
+      quicknote: { bounds: { x: 40, y: 80, width: 480, height: 350 } },
     }),
   );
   expect(parsed).toEqual({
@@ -44,12 +50,15 @@ test("parseWindowLayout keeps valid windows and optional tabs", () => {
         id: "alpha",
         bounds: { x: 80, y: 60, width: 1250, height: 800 },
         tabs: [{ id: "tab-1", pageId: "page-1", type: "page", pinned: false }],
+        maximized: true,
       },
       {
         id: "beta",
         bounds: { x: 112, y: 92, width: 1250, height: 800 },
+        fullScreen: true,
       },
     ],
+    quicknote: { bounds: { x: 40, y: 80, width: 480, height: 350 } },
   });
 });
 
@@ -97,6 +106,18 @@ test("missing source window is centered in the work area", () => {
   expect(centered.x).toBe(
     workArea.x + Math.round((workArea.width - DEFAULT_WORKSPACE_WIDTH) / 2),
   );
+});
+
+test("clampBoundsToWorkArea can use quicknote min size", () => {
+  const clamped = clampBoundsToWorkArea(
+    { x: 10, y: 30, width: 200, height: 100 },
+    workArea,
+    { width: MIN_QUICKNOTE_WIDTH, height: MIN_QUICKNOTE_HEIGHT },
+  );
+  expect(clamped.width).toBe(MIN_QUICKNOTE_WIDTH);
+  expect(clamped.height).toBe(MIN_QUICKNOTE_HEIGHT);
+  expect(clamped.x).toBe(10);
+  expect(clamped.y).toBe(30);
 });
 
 test("clampBoundsToWorkArea never exceeds the display", () => {

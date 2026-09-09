@@ -140,6 +140,29 @@ function tabShowsPageId(tab: TabItem, pageId: string): boolean {
 const findTabByPageId = (tabs: TabItem[], pageId: string) =>
   tabs.find((tab) => tabShowsPageId(tab, pageId));
 
+/**
+ * 被删页如果只占分屏里的一部分格子，关掉这些格子并保留标签。
+ * 整页只剩这一页时交给调用方关标签。
+ */
+function closeSplitLeavesForDeletedPage(
+  tabId: string,
+  pageId: string,
+): "close-tab" | "closed-pane" | "none" {
+  const split = useEditorSplit.getState();
+  const state = split.getStateForTab(tabId);
+  if (!state) return "none";
+  const leaves = walkLeaves(state.root);
+  const matching = leaves.filter((leaf) => leaf.pageId === pageId);
+  if (matching.length === 0) return "none";
+  if (matching.length === leaves.length) return "close-tab";
+
+  for (const leaf of matching) {
+    const result = split.closePane(tabId, leaf.id);
+    if (result.kind === "last-pane") return "close-tab";
+  }
+  return "closed-pane";
+}
+
 /** 关 Tab 时把聚焦页和所有分屏叶一起落盘，避免只 flush tab.pageId。 */
 function collectTabPageIds(tab: TabItem): string[] {
   const ids = new Set<string>();
@@ -1529,44 +1552,71 @@ export const useTabs = create<TabsState>()((set, get) => {
 
     removeDeletedPage: (pageId: string) => {
       const { openTabs, activeTabId } = get();
-      const deletedIndex = openTabs.findIndex((tab) => tab.pageId === pageId);
       const deletedPage = usePages.getState().getPage(pageId);
       const preferredPageId = usePages.getState().activePageId;
-      const nextTabs = openTabs.filter((tab) => tab.pageId !== pageId);
-      if (nextTabs.length === openTabs.length) return;
+      const closedPaneTabIds: string[] = [];
+      const tabsToClose = new Set<string>();
+
+      for (const tab of openTabs) {
+        if (isSpecialTab(tab)) continue;
+        const paneResult = closeSplitLeavesForDeletedPage(tab.id, pageId);
+        if (paneResult === "closed-pane") {
+          closedPaneTabIds.push(tab.id);
+          const focusedPageId = useEditorSplit.getState().focusedPageId(tab.id);
+          if (focusedPageId) get().syncTabPageId(tab.id, focusedPageId);
+          continue;
+        }
+        if (paneResult === "close-tab" || tab.pageId === pageId) {
+          tabsToClose.add(tab.id);
+        }
+      }
+
+      if (closedPaneTabIds.length > 0 && tabsToClose.size === 0) {
+        const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+        const focusedPageId = activeTab
+          ? useEditorSplit.getState().focusedPageId(activeTab.id) ??
+            activeTab.pageId
+          : null;
+        if (
+          focusedPageId &&
+          focusedPageId !== pageId &&
+          (!preferredPageId || preferredPageId === pageId)
+        ) {
+          get().syncNotebookForPage(focusedPageId);
+          void scheduleSetActivePage(focusedPageId);
+        }
+        return;
+      }
+
+      if (tabsToClose.size === 0) return;
+
+      const deletedIndex = openTabs.findIndex((tab) => tabsToClose.has(tab.id));
+      const nextTabs = openTabs.filter((tab) => !tabsToClose.has(tab.id));
+      if (nextTabs.length === 0) {
+        set({ openTabs: [], activeTabId: null });
+        get().openWelcomeTab();
+        return;
+      }
 
       let finalTabs = nextTabs;
       let nextActiveId = activeTabId;
 
-      if (!nextActiveId || !nextTabs.some((tab) => tab.id === nextActiveId)) {
-        if (preferredPageId) {
-          const existingPreferredTab = nextTabs.find(
-            (tab) => tab.pageId === preferredPageId,
-          );
+      if (!nextActiveId || tabsToClose.has(nextActiveId)) {
+        const preferredPage =
+          preferredPageId && preferredPageId !== pageId
+            ? usePages.getState().getPage(preferredPageId)
+            : undefined;
+        const preferredStillOpen =
+          preferredPage && !preferredPage.trashedAt
+            ? nextTabs.find((tab) => tabShowsPageId(tab, preferredPage.id))
+            : undefined;
 
-          if (existingPreferredTab) {
-            nextActiveId = existingPreferredTab.id;
-          } else {
-            const insertionIndex =
-              deletedIndex === -1
-                ? nextTabs.length
-                : Math.min(deletedIndex, nextTabs.length);
-            const replacementTab: TabItem = {
-              id: createTabId(preferredPageId),
-              pageId: preferredPageId,
-              workspaceId: getWorkspaceIdForPage(preferredPageId),
-              lastAccessedAt: Date.now(),
-            };
-            finalTabs = [
-              ...nextTabs.slice(0, insertionIndex),
-              replacementTab,
-              ...nextTabs.slice(insertionIndex),
-            ];
-            nextActiveId = replacementTab.id;
-          }
+        if (preferredStillOpen) {
+          nextActiveId = preferredStillOpen.id;
         } else {
           nextActiveId =
-            nextTabs[Math.min(deletedIndex, nextTabs.length - 1)]?.id ?? null;
+            nextTabs[Math.min(Math.max(deletedIndex, 0), nextTabs.length - 1)]
+              ?.id ?? null;
         }
       }
 
@@ -1593,22 +1643,13 @@ export const useTabs = create<TabsState>()((set, get) => {
       const nextActiveTab = finalTabs.find(
         (tab) => tab.id === fallbackActiveId,
       );
-      if (deletedPage?.trashedAt) {
-        if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
-          const pageId = workspaceTabPageId(nextActiveTab);
-          if (pageId !== preferredPageId) {
-            get().syncNotebookForPage(pageId);
-            void scheduleSetActivePage(pageId);
-          }
-        }
-        return;
-      }
-
       if (nextActiveTab && !isSpecialTab(nextActiveTab)) {
-        const pageId = workspaceTabPageId(nextActiveTab);
-        get().syncNotebookForPage(pageId);
-        void scheduleSetActivePage(pageId);
-      } else {
+        const nextPageId = workspaceTabPageId(nextActiveTab);
+        if (nextPageId !== pageId) {
+          get().syncNotebookForPage(nextPageId);
+          void scheduleSetActivePage(nextPageId);
+        }
+      } else if (!deletedPage?.trashedAt) {
         get().syncNotebookForPage(null);
         void scheduleSetActivePage(null);
       }

@@ -15,7 +15,8 @@
      toast 会落在内容区中间。主窗始终钉在右上。 */
  left: auto !important;
  right: var(--offset-right, 22px) !important;
- top: var(--offset-top, 22px) !important;
+ /* Electron 用 --goose-toast-offset-top 避开标题栏，对齐正文首行工具栏。 */
+ top: var(--goose-toast-offset-top, var(--offset-top, 22px)) !important;
  bottom: auto !important;
  width: var(--width) !important;
  transform: none !important;

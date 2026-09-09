@@ -1,6 +1,7 @@
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -55,6 +56,7 @@ import {
 import { useEditorSplitSelector } from "@/stores/useEditorSplit";
 import { focusedPageIdOf } from "@/lib/editor-split/tree";
 import { detachTabFromThisWindow } from "@/lib/electron/detachTab";
+import { bindIdleWindowDrag } from "@/lib/electron/windowDrag";
 
 function sameFocusedPageMap(
   a: Record<string, string>,
@@ -158,6 +160,7 @@ function SortableTabItem({
     transition,
     isDragging,
   } = useSortable({ id: tab.id, disabled: !dragEnabled });
+  const windowDragStartedRef = useRef(false);
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -169,6 +172,11 @@ function SortableTabItem({
         ? getPageTitle(tabPage)
         : "";
   const electronNoDrag = variant === "electron-titlebar";
+  const windowDragEnabled = !dragEnabled && variant === "electron-titlebar";
+  const onWindowDragPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!windowDragEnabled) return;
+    bindIdleWindowDrag(event, windowDragStartedRef);
+  };
 
   return (
     <ContextMenu>
@@ -187,6 +195,7 @@ function SortableTabItem({
           data-tab-preview={tab.preview || undefined}
           data-tab-pinned={tab.pinned || undefined}
           data-electron-no-drag={electronNoDrag ? "" : undefined}
+          onPointerDown={onWindowDragPointerDown}
           onClick={onActivate}
           onDoubleClick={(event) => {
             if (!tab.preview) return;

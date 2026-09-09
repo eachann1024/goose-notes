@@ -135,6 +135,8 @@ declare global {
     >
     tabDragMove: (cursor: { x: number; y: number }) => Promise<void>
     tabDragCancel: () => Promise<void>
+    startWindowDrag: () => Promise<void>
+    endWindowDrag: () => Promise<void>
     onAcceptTab: (
       cb: (payload: {
         tab: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }

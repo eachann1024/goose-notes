@@ -185,6 +185,8 @@ const gooseDesktop = {
   tabDragMove: (cursor: { x: number; y: number }) =>
     invoke("desktop:tabDragMove", cursor) as Promise<void>,
   tabDragCancel: () => invoke("desktop:tabDragCancel") as Promise<void>,
+  startWindowDrag: () => invoke("desktop:startWindowDrag") as Promise<void>,
+  endWindowDrag: () => invoke("desktop:endWindowDrag") as Promise<void>,
   onAcceptTab: (cb: (payload: AcceptTabPayload) => void) => {
     const listener = (_event: unknown, payload: AcceptTabPayload) => cb(payload);
     ipcRenderer.on("desktop:accept-tab", listener);

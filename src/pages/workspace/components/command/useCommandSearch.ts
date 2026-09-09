@@ -4,6 +4,7 @@ import { getPageTitle } from "@/components/editor/utils/page-title";
 import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { isPinyinQuery, pinyinMatchIndices } from "@/lib/pinyin-search";
+import { compareTitleMatchRank } from "./commandSearchRank";
 import { searchIndex } from "./pageSearchIndex";
 import {
   filterCatalogByScope,
@@ -197,7 +198,8 @@ export function useCommandSearch({
     }
 
     // 倒排索引查询，返回按相关度排序的 id 列表
-    const indexHitIds = new Set(searchIndex(deferredQuery.trim()));
+    const indexHitOrder = searchIndex(deferredQuery.trim());
+    const indexHitIds = new Set(indexHitOrder);
 
     // pinyin 补充命中（倒排索引不含拼音，需额外一轮）
     const pinyinHitIds = new Set<string>();
@@ -215,8 +217,8 @@ export function useCommandSearch({
     // 合并命中集（索引在前，拼音补充在后）
     const matched: SearchResultPage[] = [];
 
-    // 先按索引顺序添加
-    for (const id of indexHitIds) {
+    // 先按索引相关度顺序添加
+    for (const id of indexHitOrder) {
       const page = filteredSet.get(id);
       if (!page) continue;
       const resultPage: SearchResultPage = { ...page };
@@ -241,11 +243,10 @@ export function useCommandSearch({
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5);
 
-    const all = [...matched].sort((a, b) => {
-      const titleA = getPageTitle(a);
-      const titleB = getPageTitle(b);
-      return titleA.localeCompare(titleB, "zh-CN");
-    });
+    // 标题全匹配 / 前缀优先，同档保持 MiniSearch 相关度（不要按字母序重排）
+    const all = [...matched].sort((a, b) =>
+      compareTitleMatchRank(getPageTitle(a), getPageTitle(b), query),
+    );
 
     const allDisplay = all.slice(0, displayLimit);
     return {

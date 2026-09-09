@@ -125,9 +125,9 @@ test("侧栏字号与编辑器字号各自写入，互不影响", () => {
 });
 
 test("侧栏行高跟随侧栏字号，不跟随编辑器字号", () => {
-  expect(computeSidebarRowHeight(13)).toBe(28);
-  expect(computeSidebarRowHeight(15)).toBe(32);
-  expect(computeSidebarRowHeight(18)).toBe(38);
+  expect(computeSidebarRowHeight(13)).toBe(32);
+  expect(computeSidebarRowHeight(15)).toBe(36);
+  expect(computeSidebarRowHeight(18)).toBe(42);
 });
 
 test("启动过渡禁用标记可写入并幂等清除", () => {

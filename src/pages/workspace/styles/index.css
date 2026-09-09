@@ -146,6 +146,10 @@ html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electr
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
+html.is-electron.window-dragging,
+html.is-electron.window-dragging * {
+  cursor: grabbing !important;
+}
 /* 拖窗口后 Chromium 会丢掉 input 的 size 固有宽；标题必须吃满主栏剩余宽。 */
 html.is-electron .electron-titlebar [data-page-title-field] {
   width: 100%;

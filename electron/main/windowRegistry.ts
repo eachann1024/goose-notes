@@ -105,7 +105,12 @@ export class WindowRegistry<T = unknown> {
     record.tabs = tabs && tabs.length > 0 ? tabs : undefined;
   }
 
-  snapshotLayout(getBounds: (win: T) => WindowBounds | null): WindowLayout {
+  snapshotLayout(
+    getBounds: (win: T) => WindowBounds | null,
+    getChrome?: (
+      win: T,
+    ) => { maximized?: boolean; fullScreen?: boolean } | null,
+  ): WindowLayout {
     const windows: WindowLayoutEntry[] = [];
     for (const record of this.workspaces()) {
       const bounds = getBounds(record.win) ?? {
@@ -116,6 +121,9 @@ export class WindowRegistry<T = unknown> {
       };
       const entry: WindowLayoutEntry = { id: record.id, bounds };
       if (record.tabs && record.tabs.length > 0) entry.tabs = record.tabs;
+      const chrome = getChrome?.(record.win);
+      if (chrome?.maximized) entry.maximized = true;
+      if (chrome?.fullScreen) entry.fullScreen = true;
       windows.push(entry);
     }
     return { version: WINDOW_LAYOUT_VERSION, windows };
