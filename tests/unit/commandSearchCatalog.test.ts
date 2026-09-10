@@ -85,3 +85,39 @@ test("当前记事本范围过滤保持标题排序", () => {
   );
   expect(scoped.map((page) => page.id)).toEqual(["page-1", "page-2"]);
 });
+
+test("所有记事本范围始终包含当前本，即使当前本排除了全局搜索", () => {
+  const pages = {
+    "page-current": pageWithTitle("page-current", "页面1", {
+      workspaceId: "notebook-a",
+    }),
+    "page-other": pageWithTitle("page-other", "页面2", {
+      workspaceId: "notebook-b",
+    }),
+    "page-hidden": pageWithTitle("page-hidden", "页面3", {
+      workspaceId: "notebook-c",
+    }),
+  };
+  const notebooks = {
+    "notebook-a": {
+      source: "default" as const,
+      excludeFromGlobalSearch: true,
+    },
+    "notebook-b": { source: "default" as const },
+    "notebook-c": {
+      source: "default" as const,
+      excludeFromGlobalSearch: true,
+    },
+  };
+  const catalog = syncSearchCatalog(pages, notebooks);
+  const allScoped = filterCatalogByScope(
+    catalog.sortedByTitle,
+    notebooks,
+    true,
+    "notebook-a",
+  );
+  expect(allScoped.map((page) => page.id).sort()).toEqual([
+    "page-current",
+    "page-other",
+  ]);
+});

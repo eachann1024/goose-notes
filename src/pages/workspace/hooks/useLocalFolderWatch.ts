@@ -13,7 +13,10 @@ import {
 import { wasRecentlySelfMoved } from "@/stores/pages/actions/localFolder/move";
 import { useSettings } from "@/stores/useSettings";
 import { shouldIgnoreLocalRelativePath } from "@/lib/local-folder-scanner";
-import { discardPendingLocalSave } from "@/stores/pages/folderSync";
+import {
+  confirmRecoveredLocalSave,
+  discardPendingLocalSave,
+} from "@/stores/pages/folderSync";
 import { wasRecentlyInteracting } from "@/lib/editor-interaction-signal";
 
 interface Notebook {
@@ -136,6 +139,9 @@ function conflictHandlers(filePath: string, pageId: string) {
         void usePages
           .getState()
           .saveLocalPageContent(pageId, pg.content as any, { force: true })
+          .then((saved) => {
+            if (saved) confirmRecoveredLocalSave(pageId);
+          })
           .catch((error) => {
             console.error("[local-folder] conflict force-save failed", error);
           });

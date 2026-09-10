@@ -95,7 +95,12 @@ export function filterCatalogByScope(
   const result: Page[] = [];
   for (const page of sortedByTitle) {
     if (
-      !shouldIncludePageInCommandScope(page, notebooks, searchAllNotebooks)
+      !shouldIncludePageInCommandScope(
+        page,
+        notebooks,
+        searchAllNotebooks,
+        currentNotebookId,
+      )
     ) {
       continue;
     }

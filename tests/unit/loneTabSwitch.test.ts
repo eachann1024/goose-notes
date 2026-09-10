@@ -6,6 +6,10 @@ import { useNotebooks } from "../../src/stores/useNotebooks";
 import { usePages } from "../../src/stores/usePages";
 import { useSettings } from "../../src/stores/useSettings";
 import { useTabs } from "../../src/stores/useTabs";
+import {
+  discardPendingLocalSave,
+  restorePendingLocalSave,
+} from "../../src/stores/pages/folderSync";
 import type { Page } from "../../src/types";
 
 const notebookId = "lone-tab-notebook";
@@ -25,6 +29,7 @@ function makePage(id: string, extra?: Partial<Page>): Page {
 }
 
 test.beforeEach(() => {
+  discardPendingLocalSave("a");
   useFileNavHistory.getState().reset();
   useEditorSplit.setState({ byTabId: {} });
   usePages.setState({
@@ -70,6 +75,10 @@ test.beforeEach(() => {
   }
 });
 
+test.afterEach(() => {
+  discardPendingLocalSave("a");
+});
+
 test("只有一个标签时列表打开是切换而不是新增", () => {
   useTabs.getState().openPermanentTab("a");
   const firstId = useTabs.getState().openTabs[0]?.id;
@@ -83,6 +92,30 @@ test("只有一个标签时列表打开是切换而不是新增", () => {
   expect(tabs[0].pageId).toBe("b");
   expect(tabs[0].preview).toBeFalsy();
   expect(useEditorSplit.getState().focusedPageId(firstId!)).toBe("b");
+});
+
+test("待确认恢复稿不会被误判为保存失败而阻止单标签切换", async () => {
+  useSettings.setState({ singleTabMode: true });
+  usePages.setState((state) => ({
+    pages: {
+      ...state.pages,
+      a: makePage("a", { localFilePath: "/vault/a.md" }),
+    },
+    activePageId: "a",
+    dirtyLocalPageIds: { a: true },
+    flushPendingLocalSaveByPageId: async () => undefined,
+  }));
+  useTabs.setState({
+    openTabs: [{ id: "tab-a", pageId: "a" }],
+    activeTabId: "tab-a",
+    tabHistory: ["tab-a"],
+    tabHistoryIndex: 0,
+  });
+  restorePendingLocalSave("a", makePage("a").content, 1);
+
+  useTabs.getState().openPreviewTab("b");
+
+  await expect.poll(() => useTabs.getState().openTabs[0]?.pageId).toBe("b");
 });
 
 test("单标签切页后 focusedPageId 跟着换，不会被布局回写旧页", () => {

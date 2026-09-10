@@ -23,13 +23,16 @@ export function isCommandSearchablePage(
 
 /**
  * 「所有记事本」搜索时，排除设置了 excludeFromGlobalSearch 的笔记本页面。
+ * 当前正在看的记事本始终纳入，避免「当前本能搜到、切到所有反而没有」。
  * 当前本搜索不在这里拦截（由 activeNotebook 范围过滤负责）。
  */
 export function shouldIncludePageInCommandScope(
   page: Page,
   notebooks: Record<string, SearchNotebook | undefined>,
   searchAllNotebooks: boolean,
+  currentNotebookId?: string | null,
 ): boolean {
   if (!searchAllNotebooks) return true;
+  if (currentNotebookId && page.workspaceId === currentNotebookId) return true;
   return !notebooks[page.workspaceId]?.excludeFromGlobalSearch;
 }

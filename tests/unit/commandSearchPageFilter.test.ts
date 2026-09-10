@@ -59,6 +59,12 @@ test("开启 excludeFromGlobalSearch 后仅在所有记事本搜索中隐藏", (
     shouldIncludePageInCommandScope(pageBase, notebooks, true),
   ).toBe(false);
   expect(
+    shouldIncludePageInCommandScope(pageBase, notebooks, true, "notebook-other"),
+  ).toBe(false);
+  expect(
+    shouldIncludePageInCommandScope(pageBase, notebooks, true, "notebook-1"),
+  ).toBe(true);
+  expect(
     shouldIncludePageInCommandScope(pageBase, notebooks, false),
   ).toBe(true);
 });

@@ -1,5 +1,32 @@
 export type TabRailLayoutMode = "fill" | "split" | "scroll";
 
+export const TAB_RAIL_TITLE_FIELD_SELECTOR =
+  "input, textarea, [data-page-title-field]";
+
+function asClosestHost(
+  target: EventTarget | null,
+): Pick<Element, "closest"> | null {
+  if (typeof target !== "object" || target === null) return null;
+  if ("closest" in target && typeof target.closest === "function") {
+    return target as Pick<Element, "closest">;
+  }
+  return null;
+}
+
+export function isTabRailTitleFieldTarget(target: EventTarget | null): boolean {
+  return Boolean(
+    asClosestHost(target)?.closest(TAB_RAIL_TITLE_FIELD_SELECTOR),
+  );
+}
+
+export function shouldHandleTabActivationKey(
+  key: string,
+  target: EventTarget | null,
+): boolean {
+  if (key !== "Enter" && key !== " ") return false;
+  return !isTabRailTitleFieldTarget(target);
+}
+
 /** 4 个及以上标签开始横向滚动，单个下限 140px。 */
 export const TAB_RAIL_SCROLL_MIN_COUNT = 4;
 

@@ -18,6 +18,9 @@ export const pendingLocalSaveContents = new Map<string, JSONContent>();
 export const pendingLocalSaveRevisions = new Map<string, number>();
 export const localSaveWriteChains = new Map<string, Promise<void>>();
 const discardedPendingLocalSavePageIds = new Set<string>();
+// 崩溃恢复稿已回填编辑器，但用户尚未确认覆盖磁盘。它必须留在内存供用户查看，
+// 不能因为切后台/切页等生命周期 flush 被当成这次会话的自动保存。
+const localSaveConfirmationRequiredPageIds = new Set<string>();
 const localPageFileOperationTails = new Map<string, Promise<void>>();
 
 /**
@@ -70,6 +73,7 @@ export const clearLocalSaveTimers = (pageId: string) => {
  */
 export const discardPendingLocalSave = (pageId: string) => {
   clearLocalSaveTimers(pageId);
+  localSaveConfirmationRequiredPageIds.delete(pageId);
   pendingLocalSaveContents.delete(pageId);
   const recoveryRevision = pendingLocalSaveRevisions.get(pageId);
   if (typeof recoveryRevision === "number") {
@@ -104,13 +108,33 @@ export const restorePendingLocalSave = (
 ): void => {
   pendingLocalSaveContents.set(pageId, cloneJSONContent(content));
   pendingLocalSaveRevisions.set(pageId, recoveryRevision);
+  localSaveConfirmationRequiredPageIds.add(pageId);
 };
+
+/** 用户显式保存恢复稿后，移除仅用于防止后台自动写盘的内存待确认项。 */
+export const confirmRecoveredLocalSave = (pageId: string): void => {
+  if (!localSaveConfirmationRequiredPageIds.delete(pageId)) return;
+
+  pendingLocalSaveContents.delete(pageId);
+  const recoveryRevision = pendingLocalSaveRevisions.get(pageId);
+  if (typeof recoveryRevision !== "number") return;
+  if (acknowledgeRecoveryEntry("local-file", pageId, recoveryRevision)) {
+    pendingLocalSaveRevisions.delete(pageId);
+  }
+};
+
+export const isRecoveredLocalSaveConfirmationRequired = (
+  pageId: string,
+): boolean => localSaveConfirmationRequiredPageIds.has(pageId);
 
 export const flushPendingLocalSaveByPageIdInternal = (
   pageId: string,
   getState: () => PagesState,
 ) => {
   clearLocalSaveTimers(pageId);
+  if (localSaveConfirmationRequiredPageIds.has(pageId)) {
+    return Promise.resolve();
+  }
   const chain = localSaveWriteChains.get(pageId) ?? Promise.resolve();
   const next = chain
     .catch(() => {})
@@ -189,6 +213,7 @@ export const queueLocalPageSave = (
 ) => {
   // discard 只针对用户明确放弃的旧快照；后续真实编辑应恢复正常自动保存。
   discardedPendingLocalSavePageIds.delete(pageId);
+  localSaveConfirmationRequiredPageIds.delete(pageId);
   pendingLocalSaveContents.set(pageId, content);
   if (typeof recoveryRevision === "number") {
     pendingLocalSaveRevisions.set(pageId, recoveryRevision);
@@ -264,7 +289,6 @@ export const flushAllPendingLocalSavesInternal = async (
     ...localSaveDebounceTimers.keys(),
     ...localSaveMaxWaitTimers.keys(),
     ...localSaveWriteChains.keys(),
-    ...pendingLocalSaveRevisions.keys(),
   ]);
 
   await Promise.all(

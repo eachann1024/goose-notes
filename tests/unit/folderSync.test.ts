@@ -3,6 +3,7 @@ import type { JSONContent } from "../../src/types";
 import type { PagesState } from "../../src/stores/pages/types";
 import {
   clearLocalSaveTimers,
+  confirmRecoveredLocalSave,
   discardPendingLocalSave,
   flushAllPendingLocalSavesInternal,
   flushPendingLocalSaveByPageIdInternal,
@@ -13,6 +14,8 @@ import {
   pendingLocalSaveRevisions,
   queueLocalPageSave,
   migratePendingLocalSave,
+  isRecoveredLocalSaveConfirmationRequired,
+  restorePendingLocalSave,
 } from "../../src/stores/pages/folderSync";
 import {
   getRecoveryEntry,
@@ -37,6 +40,7 @@ function stateWithSave(
 }
 
 function resetFolderSyncState() {
+  discardPendingLocalSave(PAGE_ID);
   for (const pageId of new Set([
     ...localSaveDebounceTimers.keys(),
     ...localSaveMaxWaitTimers.keys(),
@@ -69,6 +73,80 @@ test("false save result keeps pending content and rejects explicit flush", async
 
   expect(pendingLocalSaveContents.get(PAGE_ID)).toBe(draft);
   expect(localSaveWriteChains.has(PAGE_ID)).toBe(false);
+});
+
+test("恢复稿在未确认前不会被后台 flush 写盘", async () => {
+  const recovered = content("recovered-draft");
+  let attempts = 0;
+  restorePendingLocalSave(PAGE_ID, recovered, 1);
+
+  await flushAllPendingLocalSavesInternal(
+    stateWithSave(async () => {
+      attempts += 1;
+      return true;
+    }),
+  );
+
+  expect(attempts).toBe(0);
+  expect(pendingLocalSaveContents.get(PAGE_ID)).toEqual(recovered);
+});
+
+test("恢复稿只在用户编辑或放弃后解除待确认状态", () => {
+  restorePendingLocalSave(PAGE_ID, content("recovered-draft"), 1);
+  expect(isRecoveredLocalSaveConfirmationRequired(PAGE_ID)).toBe(true);
+
+  queueLocalPageSave(PAGE_ID, content("edited"), stateWithSave(async () => true));
+  expect(isRecoveredLocalSaveConfirmationRequired(PAGE_ID)).toBe(false);
+
+  restorePendingLocalSave(PAGE_ID, content("recovered-again"), 2);
+  discardPendingLocalSave(PAGE_ID);
+  expect(isRecoveredLocalSaveConfirmationRequired(PAGE_ID)).toBe(false);
+});
+
+test("显式保存恢复稿后清理待确认内容和恢复日志", () => {
+  installRecoveryRuntime();
+  const recovery = recordRecoveryEntry({
+    source: "local-file",
+    id: PAGE_ID,
+    content: content("recovered-draft"),
+  })!;
+  restorePendingLocalSave(PAGE_ID, content("recovered-draft"), recovery.revision);
+
+  confirmRecoveredLocalSave(PAGE_ID);
+
+  expect(isRecoveredLocalSaveConfirmationRequired(PAGE_ID)).toBe(false);
+  expect(pendingLocalSaveContents.has(PAGE_ID)).toBe(false);
+  expect(getRecoveryEntry("local-file", PAGE_ID)).toBeNull();
+});
+
+test("恢复稿在后续真实编辑后恢复正常自动保存", async () => {
+  installRecoveryRuntime();
+  const recovery = recordRecoveryEntry({
+    source: "local-file",
+    id: PAGE_ID,
+    content: content("recovered-draft"),
+  })!;
+  restorePendingLocalSave(
+    PAGE_ID,
+    content("recovered-draft"),
+    recovery.revision,
+  );
+  queueLocalPageSave(
+    PAGE_ID,
+    content("edited-after-recovery"),
+    stateWithSave(async () => true),
+    recovery.revision,
+  );
+
+  await flushAllPendingLocalSavesInternal(stateWithSave(async () => true));
+
+  expect(pendingLocalSaveContents.has(PAGE_ID)).toBe(false);
+});
+
+test("仅剩恢复日志确认时，后台 flush 不会伪报磁盘写入失败", async () => {
+  pendingLocalSaveRevisions.set(PAGE_ID, 7);
+
+  await flushAllPendingLocalSavesInternal(stateWithSave(async () => false));
 });
 
 test("flush 保留磁盘权限错误，而不是吞成通用保存未完成", async () => {

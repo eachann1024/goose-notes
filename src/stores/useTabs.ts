@@ -4,6 +4,7 @@ import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { usePages } from "./usePages";
 import { useNotebooks } from "./useNotebooks";
 import { useSettings } from "./useSettings";
+import { isRecoveredLocalSaveConfirmationRequired } from "./pages/folderSync";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { isElectronRuntime } from "@/lib/electron/runtime";
 import {
@@ -258,7 +259,7 @@ const flushClosedPageSaves = (pageIds: string[]): void => {
         console.error("[tabs] closed page flush failed", pageId, error);
       }
       const stillDirty = usePages.getState().dirtyLocalPageIds[pageId];
-      if (stillDirty) {
+      if (stillDirty && !isRecoveredLocalSaveConfirmationRequired(pageId)) {
         const page = usePages.getState().getPage(pageId);
         const title = page ? getPageTitle(page) : pageId;
         toast.warning(`「${title}」未能保存到磁盘`, {
@@ -567,7 +568,10 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
       if (token !== singleTabSwitchToken) return;
-      if (usePages.getState().dirtyLocalPageIds[currentPageId]) {
+      if (
+        usePages.getState().dirtyLocalPageIds[currentPageId] &&
+        !isRecoveredLocalSaveConfirmationRequired(currentPageId)
+      ) {
         const currentPage = usePages.getState().getPage(currentPageId);
         toast.error("当前笔记保存失败，未切换", {
           description: currentPage
@@ -621,7 +625,10 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
       if (token !== singleTabSwitchToken) return;
-      if (usePages.getState().dirtyLocalPageIds[currentPageId]) {
+      if (
+        usePages.getState().dirtyLocalPageIds[currentPageId] &&
+        !isRecoveredLocalSaveConfirmationRequired(currentPageId)
+      ) {
         toast.error("当前笔记保存失败，未切换", {
           description: describeDiskWriteError(
             new Error(`本地页面保存未完成：${currentPageId}`),

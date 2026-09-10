@@ -9,6 +9,7 @@ import {
 import { migrateLocalPageIdMapEntry, toRelativePath } from "@/lib/local-page-idmap";
 import {
   acquireLocalPageFileOperation,
+  confirmRecoveredLocalSave,
   flushPendingLocalSaveByPageIdInternal,
   migratePendingLocalSave,
 } from "../../folderSync";
@@ -327,6 +328,7 @@ export const saveDirtyLocalPageAction = async (
     cloneLocalPageContent(latest.content),
   );
   if (ok) {
+    confirmRecoveredLocalSave(effectivePageId);
     set((s) => ({
       dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [effectivePageId]: false },
     }));

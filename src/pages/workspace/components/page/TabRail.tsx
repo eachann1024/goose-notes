@@ -44,6 +44,8 @@ import {
 import { cn, formatShortcut } from "@/lib/utils";
 import { SingleTabTitle } from "./SingleTabTitle";
 import {
+  isTabRailTitleFieldTarget,
+  shouldHandleTabActivationKey,
   tabRailItemClassName,
   tabRailListClassName,
   tabRailSelectionClassName,
@@ -211,7 +213,7 @@ function SortableTabItem({
             }
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
+            if (shouldHandleTabActivationKey(event.key, event.target)) {
               event.preventDefault();
               onActivate();
             }
@@ -538,8 +540,7 @@ export function TabRail({
 
   const handleTabListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("input, textarea, [data-page-title-field]")) return;
+    if (isTabRailTitleFieldTarget(event.target)) return;
     if (visibleTabs.length < 2) return;
     const currentIndex = visibleTabs.findIndex((tab) => tab.id === activeTabId);
     if (currentIndex === -1) return;
