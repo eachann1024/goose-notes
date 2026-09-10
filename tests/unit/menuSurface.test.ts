@@ -22,7 +22,7 @@ test("单选菜单项为绝对定位指示器预留左侧空间", () => {
   expect(source).toContain("Dropdown.ItemIndicator");
 });
 
-test("右键菜单 hover 使用中性浅灰，不继承强调色", () => {
+test("右键菜单 hover 用中性浅灰底，文字跟随强调色", () => {
   const indexCss = readFileSync("src/index.css", "utf8");
   const hoverRule = indexCss.match(
     /\.goose-menu-surface \[role="menuitem"\]\[data-highlighted\],[\s\S]*?\{[\s\S]*?\}/,
@@ -31,8 +31,10 @@ test("右键菜单 hover 使用中性浅灰，不继承强调色", () => {
   expect(hoverRule).toMatch(
     /background-color:\s*hsl\(var\(--goose-menu-hover\)\)\s*!important;/,
   );
-  expect(hoverRule).toContain("color: hsl(var(--foreground))");
-  expect(hoverRule).not.toContain("--goose-interactive-selected");
+  expect(hoverRule).toContain("color: var(--goose-interactive-selected-fg)");
+  expect(hoverRule).not.toMatch(
+    /background-color:\s*var\(--goose-interactive-selected\)/,
+  );
 });
 
 test("设置类下拉 hover 使用强调色，不被右键菜单灰底覆盖", () => {

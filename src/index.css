@@ -202,7 +202,7 @@
 .goose-menu-surface [role="menuitemradio"][data-focused],
 .goose-menu-surface [role="menuitemradio"]:focus {
   background-color: hsl(var(--goose-menu-hover)) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--goose-interactive-selected-fg) !important;
 }
 
 [data-slot="menu-item"]:hover,

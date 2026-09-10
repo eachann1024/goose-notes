@@ -109,6 +109,11 @@ function useMenuState(
     enabled: open,
   });
   React.useEffect(() => {
+    // 关闭后清空高亮，再次打开时由 floating-ui 重新聚焦第一可用项，
+    // 不会残留上次打开时的高亮项。
+    if (!open) setActiveIndex(null);
+  }, [open]);
+  React.useEffect(() => {
     const close = () => onOpenChange(false);
     tree?.events.on("context-menu-select", close);
     return () => tree?.events.off("context-menu-select", close);
