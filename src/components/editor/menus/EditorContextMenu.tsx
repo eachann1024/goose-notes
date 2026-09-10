@@ -27,6 +27,7 @@ import {
 } from "@/components/editor/hooks/useEditorPaste";
 import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "@/components/editor/extensions/copyCurrentBlockExtension";
 import {
+  getEditorSelectionPlainText,
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
 } from "@/components/editor/utils/clipboard";
@@ -127,16 +128,9 @@ export function EditorContextMenu({
   const handleContextMenuOpen = () => {
     let text = "";
     try {
-      text = editor.getSelectedText() || "";
+      text = getEditorSelectionPlainText(editor.prosemirrorState);
     } catch {
       /* ignore */
-    }
-    if (!text.trim()) {
-      try {
-        text = document.getSelection()?.toString() || "";
-      } catch {
-        /* ignore */
-      }
     }
     const trimmedText = text.trim();
     setSelectedText(trimmedText);
@@ -244,13 +238,23 @@ export function EditorContextMenu({
   }, [editable, editor]);
 
   const handleCopySelection = useCallback(() => {
-    const text = selectedTextRef.current || editor.getSelectedText() || "";
+    let text = selectedTextRef.current;
+    try {
+      text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
+    } catch {
+      /* ignore */
+    }
     void platform.clipboard.copyText(text);
   }, [editor, platform]);
 
   const handleCutSelection = useCallback(() => {
     if (!editable) return;
-    const text = selectedTextRef.current || editor.getSelectedText() || "";
+    let text = selectedTextRef.current;
+    try {
+      text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
+    } catch {
+      /* ignore */
+    }
     void platform.clipboard.copyText(text);
     editor.exec((state: any, dispatch: any) => {
       dispatch?.(state.tr.deleteSelection());

@@ -37,6 +37,7 @@ export function FontSelector({
   const { customFonts } = useSettings();
 
   const selectFont = (fontFamily: Page["fontFamily"]) => {
+    if (fontFamily === value) return;
     onChange(fontFamily);
     void ensureEditorFontAvailable(fontFamily, customFonts);
   };
@@ -47,11 +48,13 @@ export function FontSelector({
         const customFont = customFonts[font.value];
         const label = customFont.label || font.label;
         const fontName = customFont.font || font.defaultFont;
+        const selected = value === font.value;
 
         return (
           <button
             key={font.value}
             type="button"
+            aria-pressed={selected}
             onPointerDown={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -60,14 +63,14 @@ export function FontSelector({
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
+              selectFont(font.value);
             }}
             className={cn(
-              "flex-1 rounded-md transition-all duration-200",
+              "flex-1 rounded-md shadow-none outline-none",
               compact ? "px-2 py-1.5" : "px-3 py-2",
-              "flex flex-col items-center justify-center border border-transparent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "flex flex-col items-center justify-center border-2 border-transparent",
               "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
-              value === font.value &&
-                "bg-background ring-2 ring-primary text-primary shadow-sm",
+              selected && "border-primary bg-background text-primary",
             )}
           >
             <span

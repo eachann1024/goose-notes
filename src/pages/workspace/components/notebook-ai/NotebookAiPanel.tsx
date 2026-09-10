@@ -1,3 +1,9 @@
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAction,
+} from "@/components/ui/popover";
 /**
  * NotebookAiPanel — AI 聊天面板 UI（侧栏并排 / 全屏）
  *
@@ -43,7 +49,12 @@ import type {
   NotebookAiPanelSelectionCapture,
 } from "./useNotebookAiPanel";
 import { isFullscreenAiLayout } from "./useNotebookAiPanel";
-import { clearAiHeaderActions, clearAiHeaderTitle, setAiHeaderActions, setAiHeaderTitle } from "./aiHeaderSlot";
+import {
+  clearAiHeaderActions,
+  clearAiHeaderTitle,
+  setAiHeaderActions,
+  setAiHeaderTitle,
+} from "./aiHeaderSlot";
 import { ConversationTitle } from "./ConversationTitle";
 import {
   getConversationSummary,
@@ -71,17 +82,6 @@ import {
   dismissAiFloatingLayers,
   setAiPanelSurface,
 } from "./aiPanelSurface";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface NotebookAiPanelProps {
   notebookId: string;
@@ -111,12 +111,8 @@ export function NotebookAiPanel({
   const isFullscreen = variant === "fullscreen";
   const layoutIsFullscreen = isFullscreenAiLayout(layoutMode);
 
-  const {
-    width,
-    isResizing,
-    onDragHandleMouseDown,
-    onDragHandlePointerDown,
-  } = usePanelWidth();
+  const { width, isResizing, onDragHandleMouseDown, onDragHandlePointerDown } =
+    usePanelWidth();
   const panelRootRef = useRef<HTMLDivElement | null>(null);
   const composerDockRef = useRef<HTMLDivElement | null>(null);
   // 展示宽度：随父级 flex 行可用空间收缩，避免 minWidth=stored 把面板裁出视口
@@ -271,9 +267,8 @@ export function NotebookAiPanel({
       return;
     }
     const timer = setTimeout(() => {
-      const result = composerRef.current?.replaceDefaultPageReference(
-        initialReference,
-      );
+      const result =
+        composerRef.current?.replaceDefaultPageReference(initialReference);
       if (result === "skipped") return;
       useNotebookAiChats
         .getState()
@@ -394,8 +389,8 @@ export function NotebookAiPanel({
           <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Popover>
+          <PopoverTrigger asChild>
             <button
               type="button"
               className={iconBtn}
@@ -404,27 +399,38 @@ export function NotebookAiPanel({
             >
               <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={6} className="w-56">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <HistoryIcon className="h-4 w-4" strokeWidth={1.75} />
-                <span>历史会话</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-72 max-w-72 overflow-hidden p-0">
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} className="w-56">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-sm hover:bg-[var(--goose-interactive-selected)]"
+                >
+                  <HistoryIcon className="h-4 w-4" strokeWidth={1.75} />
+                  <span>历史会话</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="right"
+                align="start"
+                className="w-72 max-w-72 overflow-hidden p-0"
+              >
                 <ConversationHistoryList
                   notebookId={notebookId}
                   onSelectConversation={handleSelectConversation}
                   onDeleteConversation={handleDeleteConversation}
                 />
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+              </PopoverContent>
+            </Popover>
 
             {onLayoutModeChange ? (
               <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>打开方式</DropdownMenuLabel>
-                <DropdownMenuItem
+                <div role="separator" className="my-1 h-px bg-border" />
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  打开方式
+                </div>
+                <PopoverAction
                   onSelect={() => onLayoutModeChange("side-panel")}
                   className="gap-2"
                 >
@@ -433,8 +439,8 @@ export function NotebookAiPanel({
                   {!layoutIsFullscreen ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                   ) : null}
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                </PopoverAction>
+                <PopoverAction
                   onSelect={() => onLayoutModeChange("fullscreen")}
                   className="gap-2"
                 >
@@ -443,11 +449,11 @@ export function NotebookAiPanel({
                   {layoutIsFullscreen ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                   ) : null}
-                </DropdownMenuItem>
+                </PopoverAction>
               </>
             ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </PopoverContent>
+        </Popover>
 
         <button
           type="button"
@@ -492,9 +498,7 @@ export function NotebookAiPanel({
       data-ai-panel-layout={isFullscreen ? "fullscreen" : "side-panel"}
       className={cn(
         "relative flex h-full min-h-0 flex-col",
-        isFullscreen
-          ? "min-w-0 w-full flex-1"
-          : "z-[50] shrink-0",
+        isFullscreen ? "min-w-0 w-full flex-1" : "z-[50] shrink-0",
       )}
       style={
         isFullscreen ? undefined : { width: effectiveWidth, maxWidth: "100%" }
@@ -503,9 +507,7 @@ export function NotebookAiPanel({
       {!isFullscreen ? (
         <AiPanelResizeEdge
           isResizing={isResizing}
-          onMouseDown={(event) =>
-            onDragHandleMouseDown(event, effectiveWidth)
-          }
+          onMouseDown={(event) => onDragHandleMouseDown(event, effectiveWidth)}
           onPointerDown={(event) =>
             onDragHandlePointerDown(event, effectiveWidth)
           }

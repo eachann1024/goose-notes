@@ -5,6 +5,10 @@ const sidebarDndCss = readFileSync(
   new URL("../../src/pages/workspace/styles/sidebar-dnd.css", import.meta.url),
   "utf8",
 );
+const workspaceStyles = readFileSync(
+  new URL("../../src/pages/workspace/styles/index.css", import.meta.url),
+  "utf8",
+);
 const treeRow = readFileSync(
   new URL(
     "../../src/pages/workspace/components/sidebar/tree/TreeRow.tsx",
@@ -19,10 +23,10 @@ test("收藏树 hover 与选中共用强调蓝，不用黑色前景", () => {
     /\.sidebar-tree-row--hovered[\s\S]{0,120}color:\s*var\(--goose-interactive-selected-fg\)/,
   );
   expect(sidebarDndCss).toMatch(
-    /\.sidebar-tree-row--selected[\s\S]{0,160}background:\s*var\(--goose-interactive-selected\)/,
+    /\.sidebar-tree-row--selected[\s\S]{0,240}background:\s*var\(--goose-interactive-selected\)/,
   );
   expect(sidebarDndCss).toMatch(
-    /\.sidebar-tree-row--hovered[\s\S]{0,120}background:\s*var\(--goose-interactive-selected\)/,
+    /\.sidebar-tree-row--hovered[\s\S]{0,240}background:\s*var\(--goose-interactive-selected\)/,
   );
   const cssWithoutComments = sidebarDndCss.replace(/\/\*[\s\S]*?\*\//g, "");
   expect(cssWithoutComments).not.toContain(".sidebar-tree-row:hover");
@@ -62,6 +66,41 @@ test("收藏平铺树不渲染展开箭头槽", () => {
   expect(treeRow).toContain("showExpandControls");
   expect(treeViewport).toContain("shouldRenderExpandArrowSlot");
   expect(treeViewport).toContain("showExpandControls");
+});
+
+test("侧栏收藏标题与树行高亮使用圆角", () => {
+  const favorites = readFileSync(
+    new URL(
+      "../../src/pages/workspace/components/sidebar/FavoritesSection.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const mainTreeRow = readFileSync(
+    new URL(
+      "../../src/pages/workspace/components/sidebar/main-tree/MainTreeRowShell.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  expect(workspaceStyles).not.toMatch(
+    /\.workspace-shell \.workspace-sidebar-pane \.sidebar-favorites-label[\s\S]{0,400}border-radius: 0 !important/,
+  );
+  expect(workspaceStyles).not.toMatch(
+    /\.workspace-shell \.workspace-sidebar-pane \.main-tree-row[\s\S]{0,120}border-radius: 0 !important/,
+  );
+  expect(workspaceStyles).not.toMatch(
+    /\.workspace-shell \.workspace-sidebar-pane \.sidebar-tree-row[\s\S]{0,120}border-radius: 0 !important/,
+  );
+  expect(favorites).toContain("sidebar-favorites-label");
+  expect(favorites).toContain("h-8");
+  expect(favorites).toContain("rounded-lg");
+  expect(favorites).toContain("pr-2");
+  expect(favorites).toContain('className="py-1"');
+  expect(favorites).toContain("hover:bg-[var(--goose-interactive-hover)]");
+  expect(favorites).not.toContain("rounded-none");
+  expect(mainTreeRow).toMatch(/main-tree-row[\s\S]{0,120}rounded-lg/);
+  expect(treeRow).toMatch(/sidebar-tree-row[\s\S]{0,120}rounded-lg/);
 });
 
 test("收藏行字号图标与主树列表一致", () => {

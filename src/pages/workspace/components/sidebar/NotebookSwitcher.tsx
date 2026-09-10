@@ -14,6 +14,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import "./notebook-switcher.css";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAction,
+} from "@/components/ui/popover";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { CreateVaultDialog } from "./CreateVaultDialog";
@@ -100,9 +106,7 @@ function SortableNotebookItem({
         <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]">
           {renderNotebookIcon(notebook.icon || "BookOpen", "h-3.5 w-3.5")}
         </span>
-        <span className="truncate text-xs leading-snug">
-          {notebook.name}
-        </span>
+        <span className="truncate text-xs leading-snug">{notebook.name}</span>
         {notebook.localPathMissing && (
           <span className="text-xs text-destructive">路径失效</span>
         )}
@@ -342,8 +346,8 @@ export function NotebookSwitcher() {
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
-        <DropdownMenuTrigger asChild>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
           <div
             className="w-full"
             onMouseEnter={() => {
@@ -387,9 +391,9 @@ export function NotebookSwitcher() {
               )}
             </Button>
           </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="goose-notebook-menu-surface w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+        </PopoverTrigger>
+        <PopoverContent
+          className="goose-notebook-menu-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           style={{ minWidth: 220 }}
           align="start"
           alignOffset={0}
@@ -443,34 +447,34 @@ export function NotebookSwitcher() {
             </SortableContext>
           </DndContext>
           <div className="mx-1 my-1 h-px bg-border" />
-          <DropdownMenuGroup className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-1">
             {isElectronHost ? (
-              <DropdownMenuItem
+              <PopoverAction
                 className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={() => void handleCreateVault()}
               >
                 <LucideIcons.FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
                 新建仓库
-              </DropdownMenuItem>
+              </PopoverAction>
             ) : (
-              <DropdownMenuItem
+              <PopoverAction
                 className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={handleCreate}
               >
                 <LucideIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
                 新建记事本
-              </DropdownMenuItem>
+              </PopoverAction>
             )}
-            <DropdownMenuItem
+            <PopoverAction
               className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
               打开文件夹
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            </PopoverAction>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {editDialog.open && (
         <NotebookEditDialog
@@ -515,9 +519,7 @@ export function NotebookSwitcher() {
         <CreateVaultDialog
           open={vaultDialog.open}
           parentDir={vaultDialog.parentDir}
-          onOpenChange={(open) =>
-            setVaultDialog((prev) => ({ ...prev, open }))
-          }
+          onOpenChange={(open) => setVaultDialog((prev) => ({ ...prev, open }))}
           onCreated={(id) => void activateNotebook(id)}
         />
       )}

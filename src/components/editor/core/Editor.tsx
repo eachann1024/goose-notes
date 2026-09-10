@@ -122,15 +122,14 @@ import {
   clearEditorSelectedBlocksCache,
   getSelectedCellPlainText,
   getSelectedImageUrl,
-  getSelectedPlainTextContext,
   isBottomEditorBlankClick,
-  normalizeClipboardLineEndings,
   readLiveEditorSelectedBlocks,
   rememberEditorSelectedBlocks,
-  shouldPreferVisibleSelectionText,
-  stripMarkdownHardBreaks,
 } from "./EditorComposer";
-import { isLinkworthyText, normalizeClipboardListMarkers } from "@/components/editor/utils/clipboard";
+import {
+  getEditorSelectionPlainText,
+  isLinkworthyText,
+} from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
 import { pasteClipboardFilesFromClipboard } from "@/components/editor/utils/pasteClipboardFilesFromClipboard";
@@ -886,32 +885,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         return;
       }
 
-      const clipboardText = normalizeClipboardLineEndings(
-        clipboardData.getData("text/plain"),
-      );
-      // cut 时 PM 已写入剪贴板后才删选区；不拿 DOM 可见字覆盖 plain/html，
-      // 否则行内 code 会被拆成两段（复制正常、剪切异常）。清理软换行并统一列表标记。
-      const cleaned = stripMarkdownHardBreaks(
-        /<ul\b/i.test(clipboardData.getData("text/html"))
-          ? normalizeClipboardListMarkers(clipboardText)
-          : clipboardText,
-      );
-      if (cleaned !== clipboardText) {
-        clipboardData.setData("text/plain", cleaned);
-        return;
-      }
-
-      const selectionContext = getSelectedPlainTextContext(container);
-      if (!selectionContext) return;
-
-      if (
-        shouldPreferVisibleSelectionText(
-          clipboardText,
-          selectionContext.selectedText,
-          selectionContext.withinCodeBlock,
-        )
-      ) {
-        clipboardData.setData("text/plain", selectionContext.selectedText);
+      const { selection } = editor.prosemirrorState;
+      if (!selection.empty) {
+        clipboardData.setData(
+          "text/plain",
+          getEditorSelectionPlainText(editor.prosemirrorState),
+        );
       }
     };
 

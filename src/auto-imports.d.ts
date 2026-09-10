@@ -32,14 +32,11 @@ declare global {
   const CommandItem: typeof import('./components/ui/command').CommandItem
   const CommandList: typeof import('./components/ui/command').CommandList
   const ContextMenu: typeof import('./components/ui/context-menu').ContextMenu
-  const ContextMenuCheckboxItem: typeof import('./components/ui/context-menu').ContextMenuCheckboxItem
   const ContextMenuContent: typeof import('./components/ui/context-menu').ContextMenuContent
   const ContextMenuGroup: typeof import('./components/ui/context-menu').ContextMenuGroup
   const ContextMenuItem: typeof import('./components/ui/context-menu').ContextMenuItem
   const ContextMenuLabel: typeof import('./components/ui/context-menu').ContextMenuLabel
   const ContextMenuPortal: typeof import('./components/ui/context-menu').ContextMenuPortal
-  const ContextMenuRadioGroup: typeof import('./components/ui/context-menu').ContextMenuRadioGroup
-  const ContextMenuRadioItem: typeof import('./components/ui/context-menu').ContextMenuRadioItem
   const ContextMenuSeparator: typeof import('./components/ui/context-menu').ContextMenuSeparator
   const ContextMenuShortcut: typeof import('./components/ui/context-menu').ContextMenuShortcut
   const ContextMenuSub: typeof import('./components/ui/context-menu').ContextMenuSub
@@ -67,25 +64,15 @@ declare global {
   const DialogFooter: typeof import('./components/ui/dialog').DialogFooter
   const DialogHeader: typeof import('./components/ui/dialog').DialogHeader
   const DialogOverlay: typeof import('./components/ui/dialog').DialogOverlay
-  const DialogPortal: typeof import('./components/ui/dialog').DialogPortal
   const DialogShell: typeof import('./components/ui/dialog-shell').DialogShell
   const DialogTitle: typeof import('./components/ui/dialog').DialogTitle
   const DialogTrigger: typeof import('./components/ui/dialog').DialogTrigger
   const DiskWriteError: typeof import('./lib/diskWriteError').DiskWriteError
   const DropdownMenu: typeof import('./components/ui/dropdown-menu').DropdownMenu
-  const DropdownMenuCheckboxItem: typeof import('./components/ui/dropdown-menu').DropdownMenuCheckboxItem
   const DropdownMenuContent: typeof import('./components/ui/dropdown-menu').DropdownMenuContent
-  const DropdownMenuGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuGroup
   const DropdownMenuItem: typeof import('./components/ui/dropdown-menu').DropdownMenuItem
-  const DropdownMenuLabel: typeof import('./components/ui/dropdown-menu').DropdownMenuLabel
-  const DropdownMenuPortal: typeof import('./components/ui/dropdown-menu').DropdownMenuPortal
   const DropdownMenuRadioGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioGroup
   const DropdownMenuRadioItem: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioItem
-  const DropdownMenuSeparator: typeof import('./components/ui/dropdown-menu').DropdownMenuSeparator
-  const DropdownMenuShortcut: typeof import('./components/ui/dropdown-menu').DropdownMenuShortcut
-  const DropdownMenuSub: typeof import('./components/ui/dropdown-menu').DropdownMenuSub
-  const DropdownMenuSubContent: typeof import('./components/ui/dropdown-menu').DropdownMenuSubContent
-  const DropdownMenuSubTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuSubTrigger
   const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
   const EDITOR_CONTEXT_UI_GAP: typeof import('./components/editor/utils/editorContextUi').EDITOR_CONTEXT_UI_GAP
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
@@ -137,6 +124,7 @@ declare global {
   const ORB_PHASE_HOLD_MS: typeof import('./components/ui/ai-motion').ORB_PHASE_HOLD_MS
   const ORB_VISIBLE_MIN_MS: typeof import('./components/ui/ai-motion').ORB_VISIBLE_MIN_MS
   const Popover: typeof import('./components/ui/popover').Popover
+  const PopoverAction: typeof import('./components/ui/popover').PopoverAction
   const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
   const PopoverContent: typeof import('./components/ui/popover').PopoverContent
   const PopoverTrigger: typeof import('./components/ui/popover').PopoverTrigger
@@ -158,20 +146,8 @@ declare global {
   const SIDEBAR_FONT_SIZE_MAX: typeof import('./stores/settings/index').SIDEBAR_FONT_SIZE_MAX
   const SIDEBAR_FONT_SIZE_MIN: typeof import('./stores/settings/index').SIDEBAR_FONT_SIZE_MIN
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
-  const ScrollBar: typeof import('./components/ui/scroll-area').ScrollBar
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
   const Separator: typeof import('./components/ui/separator').Separator
-  const Sheet: typeof import('./components/ui/sheet').Sheet
-  const SheetClose: typeof import('./components/ui/sheet').SheetClose
-  const SheetContent: typeof import('./components/ui/sheet').SheetContent
-  const SheetDescription: typeof import('./components/ui/sheet').SheetDescription
-  const SheetFooter: typeof import('./components/ui/sheet').SheetFooter
-  const SheetHeader: typeof import('./components/ui/sheet').SheetHeader
-  const SheetOverlay: typeof import('./components/ui/sheet').SheetOverlay
-  const SheetPortal: typeof import('./components/ui/sheet').SheetPortal
-  const SheetTitle: typeof import('./components/ui/sheet').SheetTitle
-  const SheetTrigger: typeof import('./components/ui/sheet').SheetTrigger
-  const Slider: typeof import('./components/ui/slider').Slider
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
   const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
@@ -191,11 +167,11 @@ declare global {
   const TabsTrigger: typeof import('./components/ui/tabs').TabsTrigger
   const Textarea: typeof import('./components/ui/textarea').Textarea
   const Toaster: typeof import('./components/ui/sonner').Toaster
-  const Toggle: typeof import('./components/ui/toggle').Toggle
   const Tooltip: typeof import('./components/ui/tooltip').Tooltip
   const TooltipContent: typeof import('./components/ui/tooltip').TooltipContent
   const TooltipProvider: typeof import('./components/ui/tooltip').TooltipProvider
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
+  const TriggerChild: typeof import('./components/ui/trigger-child').TriggerChild
   const UI_FONT_SIZE_MAP: typeof import('./lib/appearance').UI_FONT_SIZE_MAP
   const UNTITLED_PAGE_TITLE: typeof import('./components/editor/utils/page-title').UNTITLED_PAGE_TITLE
   const VALID_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').VALID_BLOCK_TYPES
@@ -352,6 +328,7 @@ declare global {
   const getDefaultCustomAIBaseURL: typeof import('./lib/ai-provider/index').getDefaultCustomAIBaseURL
   const getEditorFontFamilies: typeof import('./lib/fontLoader').getEditorFontFamilies
   const getEditorSelectedBlocksForExport: typeof import('./components/editor/utils/selection').getEditorSelectedBlocksForExport
+  const getEditorSelectionPlainText: typeof import('./components/editor/utils/clipboard').getEditorSelectionPlainText
   const getEditorUiScale: typeof import('./components/editor/utils/editorContextUi').getEditorUiScale
   const getElementFromNode: typeof import('./components/editor/utils/selection').getElementFromNode
   const getFileUploadAvailability: typeof import('./lib/fileUploadAvailability').getFileUploadAvailability
@@ -586,7 +563,9 @@ declare global {
   const selectFavoritesCollapsed: typeof import('./stores/useSidebarView').selectFavoritesCollapsed
   const selectFocusedId: typeof import('./stores/useSidebarView').selectFocusedId
   const selectSelectedId: typeof import('./stores/useSidebarView').selectSelectedId
+  const serializeDocRangePlainText: typeof import('./components/editor/utils/clipboard').serializeDocRangePlainText
   const serializeQuickNoteSlotNames: typeof import('./stores/useQuickNote').serializeQuickNoteSlotNames
+  const serializeSlicePlainText: typeof import('./components/editor/utils/clipboard').serializeSlicePlainText
   const serializeWikiLinkMarkdown: typeof import('./lib/wikiLink').serializeWikiLinkMarkdown
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setLocalFolderFileDropTarget: typeof import('./lib/local-folder-file-drop-target').setLocalFolderFileDropTarget
@@ -627,7 +606,6 @@ declare global {
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toast: typeof import('./components/ui/sonner').toast
   const toggleSidebarFolder: typeof import('./stores/useSidebarView').toggleSidebarFolder
-  const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
   const transcodeVideo: typeof import('./lib/videoProcessor').transcodeVideo
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const tryPasteGooseMarkdownFragment: typeof import('./components/editor/hooks/useEditorPaste').tryPasteGooseMarkdownFragment
@@ -801,6 +779,9 @@ declare global {
   // @ts-ignore
   export type { ButtonProps } from './components/ui/button'
   import('./components/ui/button')
+  // @ts-ignore
+  export type { DialogProps } from './components/ui/dialog'
+  import('./components/ui/dialog')
   // @ts-ignore
   export type { IconButtonProps } from './components/ui/icon-button'
   import('./components/ui/icon-button')

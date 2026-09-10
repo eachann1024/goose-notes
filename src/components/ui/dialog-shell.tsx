@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from "react";
 import {
   Dialog,
   DialogClose,
@@ -7,19 +7,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 interface DialogShellProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  layout?: "center" | "fullscreen"
-  title?: React.ReactNode
-  description?: React.ReactNode
-  hideClose?: boolean
-  contentClassName?: string
-  overlayClassName?: string
-  bodyClassName?: string
-  footer?: React.ReactNode
-  children: React.ReactNode
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  layout?: "center" | "fullscreen";
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  hideClose?: boolean;
+  contentClassName?: string;
+  overlayClassName?: string;
+  bodyClassName?: string;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
 }
 
 export function DialogShell({
@@ -35,14 +35,14 @@ export function DialogShell({
   footer,
   children,
 }: DialogShellProps) {
-  const isFullscreen = layout === "fullscreen"
+  const isFullscreen = layout === "fullscreen";
   const resolvedOverlayClassName =
     overlayClassName ??
-    (isFullscreen ? "bg-transparent backdrop-blur-0" : undefined)
-  const hasTitle = Boolean(title)
-  const hasDescription = Boolean(description)
-  const accessibleTitle = hasTitle ? title : "对话框"
-  const accessibleDescription = hasDescription ? description : "对话框内容"
+    (isFullscreen ? "bg-transparent backdrop-blur-0" : undefined);
+  const hasTitle = Boolean(title);
+  const hasDescription = Boolean(description);
+  const accessibleTitle = hasTitle ? title : "对话框";
+  const accessibleDescription = hasDescription ? description : "对话框内容";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,26 +54,25 @@ export function DialogShell({
           isFullscreen
             ? "left-0 top-[var(--goose-top-safe-area,0px)] h-[calc(100dvh-var(--goose-top-safe-area,0px))] w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 p-0 shadow-none"
             : "sm:max-w-lg",
-          contentClassName
+          contentClassName,
         )}
       >
         {!hideClose && (
-          <DialogClose asChild>
-            <button
-              type="button"
-              className={cn(
-                "absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
-                isFullscreen ? "top-4 right-4" : "top-4 right-4"
-              )}
-              aria-label="关闭"
-              onPointerDown={(e) => { e.preventDefault(); onOpenChange(false); }}
-            >
-              <LucideIcons.X className="h-7 w-7" />
-            </button>
+          <DialogClose
+            type="button"
+            className={cn(
+              "absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+              isFullscreen ? "top-4 right-4" : "top-4 right-4",
+            )}
+            aria-label="关闭"
+          >
+            <LucideIcons.X className="h-7 w-7" />
           </DialogClose>
         )}
 
-        <DialogHeader className={cn(hasTitle || hasDescription ? "p-6 pb-0" : "sr-only")}>
+        <DialogHeader
+          className={cn(hasTitle || hasDescription ? "p-6 pb-0" : "sr-only")}
+        >
           <DialogTitle className={hasTitle ? undefined : "sr-only"}>
             {accessibleTitle}
           </DialogTitle>
@@ -84,8 +83,10 @@ export function DialogShell({
 
         <div className={cn("min-h-0", bodyClassName)}>{children}</div>
 
-        {footer ? <DialogFooter className="px-6 pb-6 pt-0">{footer}</DialogFooter> : null}
+        {footer ? (
+          <DialogFooter className="px-6 pb-6 pt-0">{footer}</DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -94,7 +94,7 @@
   --ring: 0 0% 32%;
   --goose-primary-hover-bg: #262626;
   --goose-primary-active-bg: #0a0a0a;
-  --goose-interactive-selected: #e5e5e5;
+  --goose-interactive-selected: #c4c4c4;
   --goose-interactive-selected-fg: #171717;
   --goose-interactive-hover: var(--goose-interactive-selected);
   --goose-icon-chip-on-selected: var(--goose-interactive-selected);

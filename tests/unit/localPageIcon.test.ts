@@ -94,6 +94,10 @@ test("主树悬停用 --hovered 类而不是 :hover，才能压过 rct 的 trans
   expect(css).toContain(
     "background-color: var(--goose-interactive-selected) !important;",
   );
+  expect(css).toContain(
+    ".main-tree-row :where(button, [role=\"button\"])",
+  );
+  expect(css).toContain("cursor: pointer;");
   expect(css).not.toMatch(/\.main-tree-row:hover\s*\{/);
   const item = readFileSync(
     resolve("src/pages/workspace/components/sidebar/main-tree/MainTreeItem.tsx"),

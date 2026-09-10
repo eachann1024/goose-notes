@@ -438,18 +438,7 @@ export function SettingsAI({
         AI 助手
       </h3>
 
-      <SettingsSectionCard
-        title={
-          <span className="flex items-center gap-2">
-            <LucideIcons.Sparkles
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            AI 开关
-          </span>
-        }
-        description="开启后页头出现 AI 入口；空白段落按回车可唤起行内 AI。"
-      >
+      <SettingsSectionCard>
         <div
           className={cn(
             "flex items-center justify-between gap-4 p-4",
@@ -578,8 +567,7 @@ export function SettingsAI({
                           align="end"
                           className="w-[280px]"
                           style={{
-                            maxHeight:
-                              "min(360px, var(--radix-dropdown-menu-content-available-height))",
+                            maxHeight: "min(360px, var(--available-height))",
                           }}
                         >
                           <DropdownMenuRadioGroup

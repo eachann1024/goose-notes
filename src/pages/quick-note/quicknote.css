@@ -497,7 +497,7 @@ body,
 /* 说明层受 Radix 计算出的可用高度约束。标题和改名入口固定，正文在矮窗中滚动。 */
 .quicknote-help-popover {
   display: flex;
-  max-height: var(--radix-popover-content-available-height);
+  max-height: var(--goose-popover-available-height);
   flex-direction: column;
   gap: 8px;
   overflow: hidden;

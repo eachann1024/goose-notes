@@ -25,7 +25,6 @@ import {
 } from "@blocknote/react";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -539,7 +538,7 @@ export function GooseTableHandle({
         {isRow ? (
           <>
             <DropdownMenuItem
-              onClick={() =>
+              onSelect={() =>
                 tableHandles?.addRowOrColumn(index!, {
                   orientation: "row",
                   side: "above",
@@ -549,7 +548,7 @@ export function GooseTableHandle({
               <LucideIcons.ArrowUp className="mr-2 h-4 w-4" /> 上方添加行
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() =>
+              onSelect={() =>
                 tableHandles?.addRowOrColumn(index!, {
                   orientation: "row",
                   side: "below",
@@ -562,20 +561,22 @@ export function GooseTableHandle({
               <>
                 {isHeaderRow ? (
                   <DropdownMenuItem
-                    onClick={() => handleToggleHeaderRow(false)}
+                    onSelect={() => handleToggleHeaderRow(false)}
                     className="bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                   >
                     <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
                     取消标题行
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => handleToggleHeaderRow(true)}>
+                  <DropdownMenuItem
+                    onSelect={() => handleToggleHeaderRow(true)}
+                  >
                     <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
                     设为标题行
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  onClick={() => runMenuAction(handleEvenColumnWidth)}
+                  onSelect={() => runMenuAction(handleEvenColumnWidth)}
                 >
                   <LucideIcons.AlignJustify className="mr-2 h-4 w-4" />
                   两端对齐
@@ -589,14 +590,14 @@ export function GooseTableHandle({
         ) : (
           <>
             <DropdownMenuItem
-              onClick={() =>
+              onSelect={() =>
                 runMenuAction(() => updateTableColumns("add-left"))
               }
             >
               <LucideIcons.ArrowLeft className="mr-2 h-4 w-4" /> 左侧添加列
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() =>
+              onSelect={() =>
                 runMenuAction(() => updateTableColumns("add-right"))
               }
             >

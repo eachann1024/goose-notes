@@ -86,6 +86,17 @@
   box-sizing: border-box;
 }
 
+/* 原生 button 的 UA 光标是 default，且不继承父级 cursor-pointer。
+ * 大纲标题、展开箭头、隐藏箭头图标都是 button，悬停文字区就会变回箭头。 */
+.main-tree-row,
+.main-tree-row :where(button, [role="button"]) {
+  cursor: pointer;
+}
+
+.main-tree-row :is(input, textarea) {
+  cursor: text;
+}
+
 /* 高于 rct title-container 的 border 重置，固定行高内保留 2px 背景间隙。 */
 .main-tree-row.main-tree-row {
   border-top: 1px solid transparent !important;

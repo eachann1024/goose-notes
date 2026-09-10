@@ -17,12 +17,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/editor/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverAction,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useFormatCode } from "@/components/editor/hooks/useFormatCode";
 import { useEditorPlatform } from "@/components/editor/platform/context";
@@ -250,7 +249,7 @@ export function CodeBlockToolbar({
       >
         <div className="flex shrink-0 items-center gap-1">
           {editable && !isMathOrMermaid ? (
-            <DropdownMenu
+            <Popover
               open={isOpen}
               onOpenChange={(open) => {
                 setIsOpen(open);
@@ -267,7 +266,7 @@ export function CodeBlockToolbar({
                 }
               }}
             >
-              <DropdownMenuTrigger asChild>
+              <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -279,8 +278,8 @@ export function CodeBlockToolbar({
                 >
                   {displayLanguage}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
+              </PopoverTrigger>
+              <PopoverContent
                 align="end"
                 editorContext
                 className="w-48 max-h-64 overflow-y-auto text-xs"
@@ -307,11 +306,7 @@ export function CodeBlockToolbar({
                     className="h-7 text-xs"
                   />
                 </div>
-                {!search && (
-                  <DropdownMenuLabel className="text-xs">
-                    常用语言
-                  </DropdownMenuLabel>
-                )}
+                {!search && <div className="text-xs">常用语言</div>}
                 <div id={languageListId} role="listbox" aria-label="代码语言">
                   {filteredLanguages.length === 0 ? (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -319,7 +314,7 @@ export function CodeBlockToolbar({
                     </div>
                   ) : null}
                   {filteredLanguages.map((lang, index) => (
-                    <DropdownMenuItem
+                    <PopoverAction
                       key={lang}
                       id={`${languageListId}-opt-${index}`}
                       role="option"
@@ -344,11 +339,11 @@ export function CodeBlockToolbar({
                       {lang.toLowerCase() === language.toLowerCase() && (
                         <span className="ml-auto">✓</span>
                       )}
-                    </DropdownMenuItem>
+                    </PopoverAction>
                   ))}
                 </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </PopoverContent>
+            </Popover>
           ) : (
             !hasVisualPreview && (
               <div className="inline-flex h-6 cursor-default items-center rounded-md bg-[var(--goose-block-subtle-bg)] px-1.5 font-mono text-[11px] text-muted-foreground">
@@ -403,7 +398,9 @@ export function CodeBlockToolbar({
                     variant="ghost"
                     size="sm"
                     onClick={() => void handleCopy()}
-                    disabled={copyingImage || (Boolean(onCopyPreview) && !canPreview)}
+                    disabled={
+                      copyingImage || (Boolean(onCopyPreview) && !canPreview)
+                    }
                     className={cn("h-7 w-7 p-0", chipClass)}
                     aria-label={
                       copied
@@ -414,9 +411,7 @@ export function CodeBlockToolbar({
                     }
                   >
                     {copyingImage ? (
-                      <LucideIcons.Loader2
-                        className="h-3.5 w-3.5 animate-spin"
-                      />
+                      <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : copied ? (
                       <LucideIcons.Check
                         className={cn(
@@ -430,11 +425,7 @@ export function CodeBlockToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {copied
-                    ? "已复制"
-                    : onCopyPreview
-                      ? "复制图片"
-                      : "复制代码"}
+                  {copied ? "已复制" : onCopyPreview ? "复制图片" : "复制代码"}
                 </TooltipContent>
               </Tooltip>
 

@@ -30,28 +30,38 @@ test("页面菜单保持视口尺寸及独立表面层次", () => {
     "src/pages/workspace/components/page/page-menu.css",
   );
   const menuClasses = pageMenu
-    .match(/<DropdownMenuContent\s+className="([^"]+)"/)?.[1]
+    .match(/<PopoverContent\s+className="([^"]+)"/)?.[1]
     .split(/\s+/);
 
-  expect(menuClasses).toEqual(expect.arrayContaining([
-    "goose-page-menu-surface",
-    "max-h-[calc(100vh-24px)]",
-    "w-[272px]",
-    "max-w-[calc(100vw-16px)]",
-    "border",
-    "border-border",
-    "shadow-md",
-    "rounded-lg",
-  ]));
+  expect(menuClasses).toEqual(
+    expect.arrayContaining([
+      "goose-page-menu-surface",
+      "max-h-[calc(100vh-24px)]",
+      "w-[272px]",
+      "max-w-[calc(100vw-16px)]",
+      "border",
+      "border-border",
+      "shadow-md",
+      "rounded-lg",
+    ]),
+  );
   expect(surfaceCss).toContain(".goose-page-menu-surface:focus");
   expect(surfaceCss).toContain(".goose-page-menu-surface:focus-visible");
   expect(surfaceCss).toContain("box-shadow: var(--shadow-md) !important");
-  expect(pageMenu).toContain(
-    'className="min-w-[144px]',
-  );
-  expect(pageMenu).toContain(
-    "sideOffset={6}",
-  );
+  expect(pageMenu).toContain('className="min-w-[144px]');
+  expect(pageMenu).toContain("sideOffset={6}");
   expect(pageMenu).toContain("<FontSelector");
   expect(pageMenu).toContain("compact");
+});
+
+test("页面字体选项用边框表达选中，避免 focus 清掉 ring 时闪框", () => {
+  const fontSelector = readSource(
+    "src/pages/workspace/components/shared/FontSelector.tsx",
+  );
+
+  expect(fontSelector).toContain("border-2");
+  expect(fontSelector).toContain("border-primary");
+  expect(fontSelector).toContain("aria-pressed={selected}");
+  expect(fontSelector).not.toContain("ring-2");
+  expect(fontSelector).not.toContain("transition-all");
 });

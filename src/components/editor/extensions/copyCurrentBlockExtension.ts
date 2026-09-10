@@ -13,6 +13,7 @@ import {
   type BlockHit,
 } from "./crossBlockDeleteExtension";
 import { isGeneratedDataImageName } from "../blocks/image/imageCaption";
+import { serializeDocRangePlainText } from "../utils/clipboard";
 
 const PLUGIN_KEY = new PluginKey("goose-copy-current-block");
 
@@ -184,7 +185,7 @@ export const gooseCopyCurrentBlockExtension = createExtension({
               blockSelection instanceof NodeSelection
                 ? blockSelection.content()
                 : blockSelection;
-            const { dom, text } = view.serializeForClipboard(slice);
+            const { dom } = view.serializeForClipboard(slice);
             normalizeDataImageCaptionInClipboardDom(dom);
             event.preventDefault();
             clipboard.clearData();
@@ -193,7 +194,14 @@ export const gooseCopyCurrentBlockExtension = createExtension({
             // 分别生成新 ID；不能只靠 text/html 再解析，否则会丢掉结构化 props。
             clipboard.setData("blocknote/html", dom.innerHTML);
             clipboard.setData("text/html", dom.innerHTML);
-            clipboard.setData("text/plain", text);
+            clipboard.setData(
+              "text/plain",
+              serializeDocRangePlainText(
+                state.doc,
+                state.selection.from,
+                state.selection.to,
+              ),
+            );
             clipboard.setData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME, "1");
             return true;
           },

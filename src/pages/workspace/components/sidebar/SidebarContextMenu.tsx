@@ -188,7 +188,7 @@ export function SidebarContextMenu({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent
-          className="goose-sidebar-context-menu w-60 !border-0"
+          className="goose-sidebar-context-menu w-60"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           {(() => {
@@ -217,9 +217,7 @@ export function SidebarContextMenu({
             if (showCreate) {
               sections.push(
                 <ContextMenuGroup key="create">
-                  <ContextMenuLabel className="px-1.5 py-1">
-                    新建
-                  </ContextMenuLabel>
+                  <ContextMenuLabel>新建</ContextMenuLabel>
                   {onCreateLocalFile ? (
                     <ContextMenuItem
                       onSelect={() =>
@@ -250,10 +248,8 @@ export function SidebarContextMenu({
 
             if (showOpen) {
               sections.push(
-                <ContextMenuGroup key="open">
-                  <ContextMenuLabel className="px-1.5 py-1">
-                    打开
-                  </ContextMenuLabel>
+                <ContextMenuGroup key="open" className="mt-2">
+                  <ContextMenuLabel>打开</ContextMenuLabel>
                   {showOpenTab ? (
                     <ContextMenuItem
                       onSelect={() => {
@@ -314,10 +310,8 @@ export function SidebarContextMenu({
 
             if (showOrganize) {
               sections.push(
-                <ContextMenuGroup key="organize">
-                  <ContextMenuLabel className="px-1.5 py-1">
-                    整理
-                  </ContextMenuLabel>
+                <ContextMenuGroup key="organize" className="mt-2">
+                  <ContextMenuLabel>整理</ContextMenuLabel>
                   <ContextMenuItem onSelect={toggleFavorite}>
                     <LucideIcons.Star
                       className={cn(
@@ -348,7 +342,10 @@ export function SidebarContextMenu({
 
             if (showMove) {
               sections.push(
-                <ContextMenuGroup key="move">
+                <ContextMenuGroup
+                  key="move"
+                  className={showOrganize ? undefined : "mt-2"}
+                >
                   {showMoveTop ? (
                     <ContextMenuItem onSelect={handleMoveToTopLevel}>
                       <LucideIcons.ArrowUpToLine className="h-4 w-4" />
@@ -357,7 +354,7 @@ export function SidebarContextMenu({
                   ) : null}
                   {showMoveNotebook ? (
                     <ContextMenuSub>
-                      <ContextMenuSubTrigger className="gap-2 rounded-[6px] px-1.5 py-1.5 text-[13px]">
+                      <ContextMenuSubTrigger>
                         <LucideIcons.FolderOutput className="h-4 w-4" />
                         <span>移动到笔记本</span>
                       </ContextMenuSubTrigger>
@@ -366,7 +363,7 @@ export function SidebarContextMenu({
                           sideOffset={8}
                           alignOffset={-4}
                           collisionPadding={12}
-                          className="w-56 max-h-72 overflow-y-auto !border-0"
+                          className="w-56 max-h-[min(18rem,calc(100dvh-16px))]"
                         >
                           {movableNotebooks.map((item) => (
                             <ContextMenuItem
@@ -459,13 +456,12 @@ export function SidebarContextMenu({
               </ContextMenuGroup>,
             );
 
+            // 保留「新建 / 打开 / 整理」的语义标题；常规组用留白区分，避免
+            // 本地目录里的每个动作组都再切一条线。危险操作仍单独成组。
             return sections.flatMap((section, index) =>
-              index === 0
-                ? [section]
-                : [
-                    <ContextMenuSeparator key={`sep-${index}`} />,
-                    section,
-                  ],
+              index === sections.length - 1 && index > 0
+                ? [<ContextMenuSeparator key="sep-danger" />, section]
+                : [section],
             );
           })()}
         </ContextMenuContent>

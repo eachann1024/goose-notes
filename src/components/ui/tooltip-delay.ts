@@ -1,4 +1,4 @@
-/** 应用内 Radix/shadcn Tooltip 的全局默认悬停延迟。 */
+/** 应用内 Tooltip 的全局默认悬停延迟。 */
 export const TOOLTIP_DELAY_MS = 400;
 
 /**

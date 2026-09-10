@@ -1,10 +1,7 @@
 import { CellSelection } from "prosemirror-tables";
 import { NodeSelection, type EditorState } from "prosemirror-state";
 
-import {
-  clonePageContent,
-  type BlockNoteContent,
-} from "./blocknote-content";
+import { clonePageContent, type BlockNoteContent } from "./blocknote-content";
 import { normalizeClipboardLineEndings } from "./clipboard";
 
 const SELECTED_BLOCKS_CACHE_KEY = "__gooseNoteSelectedBlocks";
@@ -169,7 +166,7 @@ export function isInteractiveEditorTarget(target: HTMLElement): boolean {
         "a",
         "[role='button']",
         "[contenteditable='false']",
-        "[data-radix-popper-content-wrapper]",
+        "[data-goose-floating-content]",
         "[data-notion-slash-root='true']",
         ".bn-side-menu",
         "[data-formatting-toolbar]",
@@ -208,7 +205,8 @@ export function getSelectedPlainTextContext(container: HTMLElement): {
   withinCodeBlock: boolean;
 } | null {
   const selection = window.getSelection();
-  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0)
+    return null;
 
   const range = selection.getRangeAt(0);
   const commonAncestor =
@@ -235,8 +233,10 @@ export function getSelectedPlainTextContext(container: HTMLElement): {
 
 export function getActiveGooseNoteEditor(): EditorSelectedBlocksSource | null {
   if (typeof window === "undefined") return null;
-  const editor = (window as Window & {
-    __gooseNoteEditor?: EditorSelectedBlocksSource | null;
-  }).__gooseNoteEditor;
+  const editor = (
+    window as Window & {
+      __gooseNoteEditor?: EditorSelectedBlocksSource | null;
+    }
+  ).__gooseNoteEditor;
   return editor ?? null;
 }

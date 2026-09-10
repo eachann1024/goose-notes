@@ -3,7 +3,6 @@ import { expect, test } from "playwright/test";
 
 const MENU_SOURCES = [
   "src/components/ui/dropdown-menu.tsx",
-  "src/components/editor/ui/dropdown-menu.tsx",
   "src/components/ui/context-menu.tsx",
 ] as const;
 
@@ -14,18 +13,28 @@ const SUGGESTION_SOURCES = [
 
 const CLOSE_BUTTON_SOURCES = [
   "src/components/ui/dialog.tsx",
-  "src/components/ui/sheet.tsx",
+  "src/components/ui/dialog-shell.tsx",
 ] as const;
 
 const HOVER_SELECTED_FG = "hover:text-[var(--goose-interactive-selected-fg)]";
 const HOVER_NESTED_SELECTED_FG =
   "hover:[&_*]:text-[var(--goose-interactive-selected-fg)]";
 
+test("下拉 hover 与 focused 用强调色背景", () => {
+  const source = readFileSync("src/components/ui/dropdown-menu.tsx", "utf8");
+  expect(source).toContain("hover:bg-[var(--goose-interactive-selected)]");
+  expect(source).toContain(
+    "data-[focused]:bg-[var(--goose-interactive-selected)]",
+  );
+});
+
 test("下拉与右键 highlighted 用强调色前景，不用 text-foreground", () => {
   for (const path of MENU_SOURCES) {
     const source = readFileSync(path, "utf8");
     expect(source, path).toContain(
-      "data-[highlighted]:text-[var(--goose-interactive-selected-fg)]",
+      path.includes("dropdown-menu")
+        ? "data-[focused]:text-[var(--goose-interactive-selected-fg)]"
+        : "data-[highlighted]:text-[var(--goose-interactive-selected-fg)]",
     );
     expect(source, path).not.toContain("data-[highlighted]:text-foreground");
   }
@@ -46,14 +55,16 @@ test("思考折叠 hover 用强调色背景，不用 --bui-hover-2", () => {
 
 test("Composer / Skill 建议项 hover 嵌套文字用强调色前景", () => {
   for (const path of SUGGESTION_SOURCES) {
-    expect(readFileSync(path, "utf8"), path).toContain(HOVER_NESTED_SELECTED_FG);
+    expect(readFileSync(path, "utf8"), path).toContain(
+      HOVER_NESTED_SELECTED_FG,
+    );
   }
 });
 
 test("斜杠菜单常规项 hover 嵌套文字用强调色前景", () => {
-  expect(readFileSync("src/components/editor/core/CustomSlashMenu.tsx", "utf8")).toContain(
-    HOVER_NESTED_SELECTED_FG,
-  );
+  expect(
+    readFileSync("src/components/editor/core/CustomSlashMenu.tsx", "utf8"),
+  ).toContain(HOVER_NESTED_SELECTED_FG);
 });
 
 test("侧栏重新加载 hover 用强调色前景", () => {
@@ -73,7 +84,10 @@ test("对话框与抽屉关闭钮 hover 用强调色前景", () => {
 
 test("Callout 图标与单标签标题 hover 用强调色前景", () => {
   expect(
-    readFileSync("src/components/editor/blocks/callout/calloutBlock.tsx", "utf8"),
+    readFileSync(
+      "src/components/editor/blocks/callout/calloutBlock.tsx",
+      "utf8",
+    ),
   ).toContain(HOVER_SELECTED_FG);
   expect(
     readFileSync(

@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const iconButtonVariants = cva(
@@ -35,17 +34,14 @@ const iconButtonVariants = cva(
 );
 
 export interface IconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof iconButtonVariants> {
-  asChild?: boolean;
-}
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof iconButtonVariants> {}
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ className, tone, size, active, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-
+  ({ className, tone, size, active, ...props }, ref) => {
     return (
-      <Comp
+      <button
         ref={ref}
         className={cn(iconButtonVariants({ tone, size, active, className }))}
         {...props}

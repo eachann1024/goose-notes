@@ -40,12 +40,11 @@ test("仓库切换菜单宽度跟随触发条", () => {
     ),
     "utf8",
   );
-  expect(switcher).toContain(
-    "w-[var(--radix-dropdown-menu-trigger-width)]",
+  expect(switcher).toContain("w-[var(--goose-popover-trigger-width)]");
+  expect(readFileSync("src/components/ui/popover.tsx", "utf8")).toMatch(
+    /style\.setProperty\(\s*"--goose-popover-trigger-width",\s*`\$\{rects\.reference\.width\}px`/,
   );
   expect(switcher).toContain("min-w-[13.75rem]");
   expect(switcher).toContain("minWidth: 220");
-  expect(switcher).not.toContain(
-    "min-w-[var(--radix-dropdown-menu-trigger-width)]",
-  );
+  expect(switcher).not.toContain("min-w-[var(--goose-popover-trigger-width)]");
 });

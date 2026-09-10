@@ -51,7 +51,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   mono: {
     light: {
-      "--goose-interactive-selected": "#e5e5e5",
+      "--goose-interactive-selected": "#c4c4c4",
       "--goose-interactive-selected-fg": "#171717",
       "--goose-inline-code-bg": "#f5f5f5",
       "--goose-inline-code-fg": "#171717",

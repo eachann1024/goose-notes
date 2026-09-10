@@ -22,6 +22,7 @@ test("全局 TooltipProvider 默认延迟 400ms，瞬间与 600 特例收入默�
   const editorProvider = readSource("src/components/editor/ui/tooltip.tsx");
   expect(uiProvider).toContain("delayDuration = TOOLTIP_DELAY_MS");
   expect(uiProvider).toContain("resolveTooltipDelayDuration(delayDuration)");
-  expect(editorProvider).toContain("delayDuration = TOOLTIP_DELAY_MS");
-  expect(editorProvider).toContain("resolveTooltipDelayDuration(delayDuration)");
+  expect(editorProvider).toMatch(
+    /export\s*\{\s*Tooltip,\s*TooltipTrigger,\s*TooltipProvider,?\s*\}\s*from "@\/components\/ui\/tooltip"/,
+  );
 });

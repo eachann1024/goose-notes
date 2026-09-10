@@ -197,7 +197,7 @@ export function NotebookEditDialog({
                   不在全局搜索中展示
                 </Label>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  开启后，该记事本页面不会出现在「所有记事本」搜索；切换到该记事本后仍可搜索。
+                  开启后，从其他记事本搜「所有记事本」时不会出现该记事本页面；正在该记事本内仍可搜索。
                 </p>
               </div>
               <Switch

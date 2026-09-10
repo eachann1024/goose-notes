@@ -1,6 +1,5 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
 const selectableCardVariants = cva(
   "w-full rounded-lg border text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
@@ -8,7 +7,8 @@ const selectableCardVariants = cva(
     variants: {
       selected: {
         true: "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
-        false: "border-transparent hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+        false:
+          "border-transparent hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
       },
       tone: {
         default: "",
@@ -19,29 +19,26 @@ const selectableCardVariants = cva(
       selected: false,
       tone: "default",
     },
-  }
-)
+  },
+);
 
 export interface SelectableCardProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof selectableCardVariants> {
-  asChild?: boolean
-}
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof selectableCardVariants> {}
 
 const SelectableCard = React.forwardRef<HTMLButtonElement, SelectableCardProps>(
-  ({ className, selected, tone, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-
+  ({ className, selected, tone, ...props }, ref) => {
     return (
-      <Comp
+      <button
         ref={ref}
         className={cn(selectableCardVariants({ selected, tone, className }))}
         {...props}
       />
-    )
-  }
-)
+    );
+  },
+);
 
-SelectableCard.displayName = "SelectableCard"
+SelectableCard.displayName = "SelectableCard";
 
-export { SelectableCard }
+export { SelectableCard };

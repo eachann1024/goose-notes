@@ -511,7 +511,7 @@ export function SidebarMainTree({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent
-          className="goose-sidebar-context-menu w-48 !border-0"
+          className="goose-sidebar-context-menu w-48"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           <ContextMenuGroup>
@@ -846,7 +846,7 @@ export function SidebarMainTree({
         </ContextMenuTrigger>
         {isLocalFolder && activeNotebookId && (
           <ContextMenuContent
-            className="goose-sidebar-context-menu w-48 !border-0"
+            className="goose-sidebar-context-menu w-48"
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
             <ContextMenuGroup>

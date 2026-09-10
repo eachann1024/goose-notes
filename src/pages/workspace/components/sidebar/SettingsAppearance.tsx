@@ -61,7 +61,7 @@ const accentOptions: AccentOption[] = [
     label: "黑白",
     previewLight: "#171717",
     previewDark: "#f5f5f5",
-    lightSurface: "#e5e5e5",
+    lightSurface: "#c4c4c4",
     lightForeground: "#171717",
     darkSurface: "rgba(255, 255, 255, 0.16)",
     darkForeground: "#f5f5f5",

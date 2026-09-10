@@ -9,7 +9,7 @@
 @import "tw-animate-css";
 
 /* HeroUI v3（React Aria 内核）样式。v3 无 Provider，仅需一行 import。
- * 被替换的外壳基础控件（Input/Textarea/Switch/Badge）走 @heroui/react，
+ * 基础控件使用 HeroUI 与原生元素；有特殊焦点契约的浮层使用 Floating UI，
  * 视觉仍由各组件 className 还原 shadcn token，HeroUI 自身的 --accent*
  * 运行时令牌在下方 :root/.dark 映射到项目主色（neutral primary），
  * 保证任何 HeroUI 默认上色面（focus/selection 等）与品牌一致、不漏默认蓝。
@@ -141,20 +141,41 @@
 [data-theme="default"] {
   --accent: 60 6.67% 94.12%;
   --border: 0 0% 86%;
-  --goose-menu-surface: var(--goose-shell-bg);
+  --goose-menu-surface: var(--goose-editor-bg);
+  --goose-menu-hover: 0 0% 94.5%;
+  --goose-menu-border: 0 0% 86%;
+  --goose-menu-radius: 16px;
+  --goose-menu-item-radius: 8px;
+  --goose-menu-item-height: 30px;
+  --goose-menu-item-font-size: 14px;
+  --goose-menu-item-line-height: 20px;
+  --goose-menu-shadow: 0 14px 34px rgba(15, 23, 42, 0.16),
+    0 2px 8px rgba(15, 23, 42, 0.08);
 }
 .dark,
 [data-theme="dark"] {
   --accent: 60 2.4% 16.1%;
   --border: 0 0% 24%;
   --goose-menu-surface: 60 2.2% 19.5%;
+  --goose-menu-hover: 0 0% 24%;
+  --goose-menu-border: 0 0% 28%;
+  --goose-menu-radius: 16px;
+  --goose-menu-item-radius: 8px;
+  --goose-menu-item-height: 30px;
+  --goose-menu-item-font-size: 14px;
+  --goose-menu-item-line-height: 20px;
+  --goose-menu-shadow: 0 14px 34px rgba(0, 0, 0, 0.32),
+    0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 /* class 模式暗色：等价 v3 darkMode: ["class"] */
 @custom-variant dark (&:is(.dark *));
 
-[role="menu"] {
-  background-color: hsl(var(--goose-menu-surface)) !important;
+.goose-menu-surface {
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: var(--goose-menu-radius);
+  background-color: hsl(var(--goose-menu-surface));
+  box-shadow: var(--goose-menu-shadow);
 }
 
 /* Radix initially focuses the menu surface, then transfers focus to the
@@ -163,32 +184,53 @@
  * empty menu look like it has a different background from the same menu while
  * an item is hovered. */
 @layer properties {
-  .goose-sidebar-context-menu,
-  .goose-sidebar-context-menu:focus,
-  .goose-sidebar-context-menu:focus-visible {
-    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16),
-      0 2px 8px rgba(15, 23, 42, 0.08) !important;
+  .goose-menu-surface,
+  .goose-menu-surface:focus,
+  .goose-menu-surface:focus-visible {
+    box-shadow: var(--goose-menu-shadow) !important;
   }
 }
 
-[role="menu"] [role="menuitem"][data-highlighted],
-[role="menu"] [role="menuitem"][data-state="open"],
-[role="menu"] [role="menuitem"]:focus,
-[role="menu"] [role="menuitemcheckbox"][data-highlighted],
-[role="menu"] [role="menuitemcheckbox"]:focus,
-[role="menu"] [role="menuitemradio"][data-highlighted],
-[role="menu"] [role="menuitemradio"]:focus {
-  background-color: hsl(var(--accent)) !important;
+.goose-menu-surface [role="menuitem"][data-highlighted],
+.goose-menu-surface [role="menuitem"][data-focused],
+.goose-menu-surface [role="menuitem"][data-state="open"],
+.goose-menu-surface [role="menuitem"]:focus,
+.goose-menu-surface [role="menuitemcheckbox"][data-highlighted],
+.goose-menu-surface [role="menuitemcheckbox"][data-focused],
+.goose-menu-surface [role="menuitemcheckbox"]:focus,
+.goose-menu-surface [role="menuitemradio"][data-highlighted],
+.goose-menu-surface [role="menuitemradio"][data-focused],
+.goose-menu-surface [role="menuitemradio"]:focus {
+  background-color: hsl(var(--goose-menu-hover)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
-.goose-sidebar-context-menu [role="menuitem"],
-.goose-sidebar-context-menu [role="menuitemcheckbox"],
-.goose-sidebar-context-menu [role="menuitemradio"] {
-  column-gap: 12px;
+[data-slot="menu-item"]:hover,
+[data-slot="menu-item"][data-hovered],
+[data-slot="menu-item"][data-focused],
+[data-slot="menu-item"]:focus {
+  background-color: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
 }
 
-.goose-sidebar-context-menu [role="separator"] {
-  background-color: hsl(var(--border));
+.goose-menu-item:hover,
+.goose-menu-item:focus,
+.goose-menu-item[data-highlighted],
+.goose-menu-item[data-state="open"] {
+  background-color: hsl(var(--goose-menu-hover));
+  color: hsl(var(--foreground));
+}
+
+.goose-menu-item {
+  min-height: var(--goose-menu-item-height);
+  border-radius: var(--goose-menu-item-radius);
+  font-size: var(--goose-menu-item-font-size);
+  line-height: var(--goose-menu-item-line-height);
+}
+
+.goose-menu-separator {
+  margin: 6px 8px;
+  background-color: hsl(var(--goose-menu-border));
 }
 
 /* ── Tailwind v4 CSS-first 主题映射 ──────────────────────────────
@@ -234,26 +276,7 @@
   --font-serif: var(--font-serif), serif;
   --font-mono: var(--font-mono), monospace;
 
-  /* accordion 动画（原 tailwindcss-animate 之外的项目自定义 keyframes） */
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
 
-  @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
-  }
-  @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
-  }
 }
 
 /* v4 默认 ring 宽度为 1px、ring 颜色为 currentColor；
@@ -1276,13 +1299,8 @@ svg.lucide {
   stroke-width: 1.75;
 }
 
-/* ── Electron 旧内核兜底：模态菜单/弹层打开期间静默其余悬浮层 ──
-   Radix 模态层（右键菜单/下拉菜单/对话框）打开时 body 会带 data-scroll-locked。
-   旧内核可能丢失 pointerleave 等事件，导致 tooltip 等浮层卡住不关、
-   悬在菜单旁形成"幽灵阴影"。菜单打开期间这些浮层本就不该出现，直接隐藏。 */
-body[data-scroll-locked] [role="tooltip"],
-body[data-scroll-locked]
-  [data-radix-popper-content-wrapper]:has([role="tooltip"]) {
+/* 打开菜单或对话框时隐藏残留提示，兼容第三方与自有浮层。 */
+body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden])) [role="tooltip"] {
   display: none !important;
 }
 

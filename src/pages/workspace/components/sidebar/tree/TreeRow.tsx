@@ -317,7 +317,7 @@ export function SortablePageRow({
         <div
           {...sortableHandlers}
           className={cn(
-            "sidebar-tree-row relative z-20 flex items-center h-full pl-0 pr-2 rounded-lg overflow-hidden cursor-pointer transition-colors text-[13px] font-medium leading-none",
+            "sidebar-tree-row relative z-20 flex items-center h-full rounded-lg pl-0 pr-2 overflow-hidden cursor-pointer transition-colors text-[13px] font-medium leading-none",
             isNestDropTarget && "sidebar-drop-parent-target",
             isDragging && "sidebar-tree-source-placeholder cursor-grabbing",
             !isActive && "text-foreground",
