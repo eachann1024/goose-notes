@@ -25,7 +25,7 @@ jobs:
         run: |
           tag="ci-${GITHUB_RUN_ID}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --draft --latest=false
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --prerelease --latest=false
 
   source:
     name: Source archive
@@ -206,7 +206,7 @@ jobs:
       group: public-app-publish-${{ github.ref }}
       cancel-in-progress: false
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
