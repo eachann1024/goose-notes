@@ -66,6 +66,8 @@ import {
   isInlineAiEmptyParagraphTriggerKey,
   shouldOpenInlineAiOnEmptyParagraph,
 } from "@/components/editor/ai/emptyParagraphAiShortcut";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
+import { showDesktopMainWindow } from "@/lib/electron/windowToggle";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -230,9 +232,10 @@ export function EditorComposer({
       }
     }
 
+    const allowEnterAi = !isQuickNoteEditorPage(page);
     if (
       (!__GOOSE_EDITOR_AI__ && true) ||
-      !isInlineAiEmptyParagraphTriggerKey(event.key) ||
+      !isInlineAiEmptyParagraphTriggerKey(event.key, allowEnterAi) ||
       page?.localFilePath ||
       Boolean(page?.localUnsaved)
     ) {
@@ -256,6 +259,7 @@ export function EditorComposer({
     if (
       !shouldOpenInlineAiOnEmptyParagraph({
         key: event.key,
+        allowEnter: allowEnterAi,
         defaultPrevented: event.defaultPrevented,
         repeat: event.repeat,
         altKey: event.altKey,
@@ -349,6 +353,13 @@ export function EditorComposer({
       const target = event.target as HTMLElement | null;
       if (target?.closest?.("[data-shortcut-recorder]")) return;
       if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
+
+      if (isQuickNoteEditorPage(page)) {
+        event.preventDefault();
+        event.stopPropagation();
+        void showDesktopMainWindow("ai-panel");
+        return;
+      }
 
       let selectedText: string;
       try {

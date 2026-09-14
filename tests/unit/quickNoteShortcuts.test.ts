@@ -1,6 +1,9 @@
 import { expect, test } from "playwright/test";
 import {
   getQuickNoteSlotShortcut,
+  getQuickNoteWorkspaceAction,
+  QUICKNOTE_MAIN_WINDOW_SLASH_TITLES,
+  rewriteQuickNoteSlashItemForMainWindow,
   shouldQuickNoteEditableTargetOwnShortcut,
 } from "../../src/pages/quick-note/quickNoteShortcuts";
 
@@ -115,4 +118,75 @@ test("quick-note editor body keeps persistent undo and slot shortcuts", () => {
       closest: (selector) => (selector === ".bn-editor" ? {} : null),
     }),
   ).toBe(false);
+});
+
+function workspaceKeyEvent(
+  overrides: Partial<KeyboardEvent> = {},
+): KeyboardEvent {
+  return {
+    key: "",
+    code: "",
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    repeat: false,
+    defaultPrevented: false,
+    ...overrides,
+  } as KeyboardEvent;
+}
+
+test("quick-note workspace shortcuts open the main window", () => {
+  expect(
+    getQuickNoteWorkspaceAction(
+      workspaceKeyEvent({ key: ",", code: "Comma", metaKey: true }),
+      { openSettings: "Meta+," },
+    ),
+  ).toBe("settings");
+  expect(
+    getQuickNoteWorkspaceAction(
+      workspaceKeyEvent({ key: "k", code: "KeyK", metaKey: true }),
+      { openSearch: "Meta+K" },
+    ),
+  ).toBe("search");
+  expect(
+    getQuickNoteWorkspaceAction(
+      workspaceKeyEvent({ key: "j", code: "KeyJ", metaKey: true }),
+      { toggleAIPanel: "Meta+J" },
+    ),
+  ).toBe("ai-panel");
+  expect(
+    getQuickNoteWorkspaceAction(
+      workspaceKeyEvent({ key: "n", code: "KeyN", metaKey: true }),
+      { newNote: "Meta+N" },
+    ),
+  ).toBe("new-note");
+});
+
+test("quick-note slash items that need the main window rewrite their click", () => {
+  expect(QUICKNOTE_MAIN_WINDOW_SLASH_TITLES.has("表格")).toBe(true);
+  let opened = 0;
+  const rewritten = rewriteQuickNoteSlashItemForMainWindow(
+    {
+      title: "表格",
+      description: "插入一个简单的表格",
+      onItemClick: () => {
+        opened = -1;
+      },
+    },
+    () => {
+      opened += 1;
+    },
+  );
+  expect(rewritten.description).toBe("需在主窗口使用");
+  rewritten.onItemClick?.();
+  expect(opened).toBe(1);
+
+  const kept = rewriteQuickNoteSlashItemForMainWindow(
+    { title: "一级标题", onItemClick: () => {} },
+    () => {
+      opened = 9;
+    },
+  );
+  expect(kept.description).toBeUndefined();
 });

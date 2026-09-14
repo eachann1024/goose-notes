@@ -1,5 +1,14 @@
 import { expect, test } from "playwright/test";
-import { shouldUseRawEditorContent } from "../../src/pages/workspace/components/editor-host/editorContentMode";
+import {
+  isQuickNoteEditorPage,
+  shouldUseRawEditorContent,
+} from "../../src/pages/workspace/components/editor-host/editorContentMode";
+
+test("quicknote draft page is recognized as the compact host", () => {
+  expect(isQuickNoteEditorPage({ id: "__quicknote_draft__" })).toBe(true);
+  expect(isQuickNoteEditorPage({ id: "internal-page" })).toBe(false);
+  expect(isQuickNoteEditorPage(null)).toBe(false);
+});
 
 test("quicknote drafts and local files keep raw editor content when syncing", () => {
   expect(

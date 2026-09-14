@@ -77,6 +77,7 @@ declare global {
     fsReadDir: (p: string) => Promise<{ name: string; isDirectory: boolean; path: string }[]>
     fsMkdir: (p: string) => Promise<void>
     fsExists: (p: string) => Promise<boolean>
+    fsRealpath: (p: string) => Promise<string>
     fsStat: (p: string) => Promise<{ size: number; isDirectory: boolean; mtimeMs: number }>
     fsRename: (from: string, to: string) => Promise<void>
     fsRemove: (p: string) => Promise<void>
@@ -93,7 +94,31 @@ declare global {
     showItemInFolder: (p: string) => Promise<void>
     listOpenApps: () => Promise<{ name: string; path: string }[]>
     openWithApp: (app: string, p: string) => Promise<void>
-    openTerminalAtPath: (p: string) => Promise<void>
+    openTerminalAtPath: (p: string, terminal?: string) => Promise<void>
+    getAppVersion: () => Promise<string>
+    checkForUpdate: () => Promise<
+      | {
+          status: "up-to-date"
+          currentVersion: string
+          latestVersion: string
+          releaseUrl: string
+        }
+      | {
+          status: "available"
+          currentVersion: string
+          latestVersion: string
+          assetName: string
+          downloadUrl: string
+          releaseUrl: string
+        }
+      | {
+          status: "unavailable"
+          currentVersion: string
+          reason: string
+          releaseUrl: string
+        }
+    >
+    downloadUpdate: (downloadUrl: string, filename: string) => Promise<{ path: string }>
     writeText: (t: string) => Promise<void>
     writeImage: (dataUrl: string) => Promise<void>
     readText: () => Promise<string>
@@ -104,6 +129,7 @@ declare global {
     setAlwaysOnTop: (on: boolean) => Promise<boolean>
     syncTitleBarHeight: (height: number) => Promise<void>
     toggleMainWindow: () => Promise<void>
+    showMainWindow: (action?: "none" | "search" | "settings" | "ai-panel" | "new-note") => Promise<void>
     toggleQuicknote: () => Promise<void>
     closeQuicknote: () => Promise<void>
     registerHotkeys: (k: { wake: string; quicknote: string; search: string }) => Promise<{ wakeOk: boolean; quicknoteOk: boolean; searchOk: boolean }>
@@ -112,6 +138,7 @@ declare global {
     getAccessibilityStatus: () => Promise<{ platform: string; trusted: boolean }>
     requestAccessibility: () => Promise<boolean>
     onOpenSearch: (cb: () => void) => () => void
+    onWorkspaceAction: (cb: (action: "search" | "settings" | "ai-panel" | "new-note") => void) => () => void
     onCloseActiveTab: (cb: () => void) => () => void
     takePendingOpenMarkdownFiles: () => Promise<string[]>
     onOpenMarkdownFiles: (cb: (files: string[]) => void) => () => void

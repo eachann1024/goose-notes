@@ -36,8 +36,11 @@ import { getContentSignature } from "@/components/editor/utils/blocknote-content
 import { QuickNoteSlotSwitcher } from "./QuickNoteSlotSwitcher";
 import {
   getQuickNoteSlotShortcut,
+  getQuickNoteWorkspaceAction,
   shouldQuickNoteEditableTargetOwnShortcut,
 } from "./quickNoteShortcuts";
+import { showDesktopMainWindow } from "@/lib/electron/windowToggle";
+import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { formatShortcut, getPlatformKind } from "@/lib/utils";
 import { QuickNoteCollectPreview } from "./QuickNoteCollectPreview";
@@ -346,6 +349,20 @@ export function QuickNoteApp() {
         e.preventDefault();
         e.stopPropagation();
         handleSwitchSlot(shortcutSlot, "shortcut");
+        return;
+      }
+
+      const appShortcuts = useSettings.getState().appShortcuts;
+      const workspaceAction = getQuickNoteWorkspaceAction(e, {
+        openSearch: appShortcuts.openSearch,
+        openSettings: getFixedAppShortcuts().openSettings,
+        toggleAIPanel: appShortcuts.toggleAIPanel,
+        newNote: getFixedAppShortcuts().newNote,
+      });
+      if (workspaceAction) {
+        e.preventDefault();
+        e.stopPropagation();
+        void showDesktopMainWindow(workspaceAction);
         return;
       }
 

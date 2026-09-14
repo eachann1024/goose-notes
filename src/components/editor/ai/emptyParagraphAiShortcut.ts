@@ -1,10 +1,15 @@
 /**
- * 空白段落按回车（或空格）唤起行内 AI。
+ * 空白段落唤起行内 AI。
+ * 主窗口：回车或空格；速记小窗：只认空格，回车继续换行。
  * 表格单元格、非空段落、修饰键、IME 合成中都不抢。
  */
 
-export function isInlineAiEmptyParagraphTriggerKey(key: string): boolean {
-  return key === "Enter" || key === " ";
+export function isInlineAiEmptyParagraphTriggerKey(
+  key: string,
+  allowEnter = true,
+): boolean {
+  if (key === " ") return true;
+  return allowEnter && key === "Enter";
 }
 
 function isEmptyParagraphContent(content: unknown): boolean {
@@ -33,6 +38,7 @@ export function isEmptyParagraphBlock(block: {
 
 export function shouldOpenInlineAiOnEmptyParagraph(input: {
   key: string;
+  allowEnter?: boolean;
   defaultPrevented?: boolean;
   repeat?: boolean;
   altKey?: boolean;
@@ -51,7 +57,11 @@ export function shouldOpenInlineAiOnEmptyParagraph(input: {
     children?: unknown[];
   } | null;
 }): boolean {
-  if (!isInlineAiEmptyParagraphTriggerKey(input.key)) return false;
+  if (
+    !isInlineAiEmptyParagraphTriggerKey(input.key, input.allowEnter !== false)
+  ) {
+    return false;
+  }
   if (input.defaultPrevented || input.repeat) return false;
   if (input.altKey || input.ctrlKey || input.metaKey || input.shiftKey) {
     return false;

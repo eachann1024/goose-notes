@@ -14,6 +14,14 @@ import { getGooseDesktop } from "./runtime";
 
 export type DesktopWindowToggleTarget = "main" | "quicknote";
 
+/** 小窗里没有对应 UI 的动作：先唤出主窗，再在主窗执行。 */
+export type DesktopWorkspaceAction =
+  | "none"
+  | "search"
+  | "settings"
+  | "ai-panel"
+  | "new-note";
+
 export type WindowToggleAction = "hide" | "focus" | "show";
 
 export function resolveWindowToggleAction(state: {
@@ -54,5 +62,18 @@ export async function toggleDesktopWindow(
     else await api.toggleMainWindow();
   } catch (error) {
     console.warn(`[electron] 切换窗口 ${label} 失败`, error);
+  }
+}
+
+/** 只显示并聚焦主窗，不走三态隐藏。小窗前台或功能需要主窗时用。 */
+export async function showDesktopMainWindow(
+  action: DesktopWorkspaceAction = "none",
+): Promise<void> {
+  const api = getGooseDesktop();
+  if (!api?.showMainWindow) return;
+  try {
+    await api.showMainWindow(action);
+  } catch (error) {
+    console.warn("[electron] 显示主窗口失败", error);
   }
 }

@@ -35,6 +35,7 @@ import {
   createTableDeletionSnapshot,
   isCellSelectionInsideBlock,
 } from "./tableDeletion";
+import { isTableExtendPointerClick } from "./tableExtendClick";
 
 type TableExtendButtonProps = {
   orientation: "addOrRemoveRows" | "addOrRemoveColumns";
@@ -110,11 +111,12 @@ export function GooseTableExtendButton({
     if (!editingState || !block) return;
 
     const handleMouseMove = (event: MouseEvent) => {
-      movedMouse.current = true;
-
       const diff =
         (isColumnHandle ? event.clientX : event.clientY) -
         editingState.startPos;
+      if (isTableExtendPointerClick(diff)) return;
+
+      movedMouse.current = true;
       const croppedCount = isColumnHandle
         ? (editingState.originalCroppedContent.rows[0]?.cells.length ?? 0)
         : editingState.originalCroppedContent.rows.length;

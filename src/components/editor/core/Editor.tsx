@@ -71,6 +71,9 @@ import {
   filterSlashMenuItems,
   warmupSlashMenuIcons,
 } from "./blocknoteSlashItems";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
+import { rewriteQuickNoteSlashItemForMainWindow } from "@/pages/quick-note/quickNoteShortcuts";
+import { showDesktopMainWindow } from "@/lib/electron/windowToggle";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { gooseTableCellSelectionExtension } from "@/components/editor/extensions/tableCellSelectionExtension";
 import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
@@ -80,6 +83,7 @@ import {
   shouldArmLinkOpenHint,
 } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
+import { gooseTableEnterExtension } from "@/components/editor/extensions/tableEnterExtension";
 import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
@@ -363,6 +367,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseActiveHeadingCaretExtension,
         gooseActiveLineExtension,
         gooseTabBehaviorExtension,
+        gooseTableEnterExtension,
         gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
         gooseTableCellSelectionExtension,
@@ -690,9 +695,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         }
         items = collapsed;
       }
+      if (isQuickNoteEditorPage(page)) {
+        items = items.map((item) =>
+          rewriteQuickNoteSlashItemForMainWindow(item, () => {
+            void showDesktopMainWindow("none");
+          }),
+        );
+      }
       return filterSlashMenuItems(items, query);
     },
-    [editor, hiddenSlashItemTitles],
+    [editor, hiddenSlashItemTitles, page],
   );
 
   const { handleEditorPasteCapture } = useEditorPaste({

@@ -1,9 +1,44 @@
 import { createExtension } from "@blocknote/core";
+import type { BlockNoteEditor } from "@blocknote/core";
 import {
   getSectionInsertAnchorId,
   isFoldableHeadingBlock,
   readHeadingCollapsed,
 } from "@/components/editor/core/headingSectionFold";
+
+const EMPTY_PARAGRAPH = { type: "paragraph" as const, content: [] };
+
+function blockContainerIdAt($from: {
+  depth: number;
+  node: (depth: number) => { type: { name: string }; attrs?: { id?: unknown } };
+}): string | null {
+  for (let depth = $from.depth; depth >= 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "blockContainer") {
+      const id = node.attrs?.id;
+      return typeof id === "string" && id.length > 0 ? id : null;
+    }
+  }
+  return null;
+}
+
+function insertEmptyParagraphBeforeHeading(
+  editor: BlockNoteEditor<any, any, any>,
+  headingBlock: { id: string },
+): boolean {
+  editor.insertBlocks([EMPTY_PARAGRAPH], headingBlock, "before");
+  editor.setTextCursorPosition(headingBlock, "start");
+  return true;
+}
+
+function insertEmptyParagraphAfter(
+  editor: BlockNoteEditor<any, any, any>,
+  anchor: { id: string },
+): boolean {
+  const [inserted] = editor.insertBlocks([EMPTY_PARAGRAPH], anchor, "after");
+  if (inserted) editor.setTextCursorPosition(inserted, "start");
+  return true;
+}
 
 /**
  * 文档首块是「文档标题」（恒为 H1，见 ensureFirstTitleHeading / titleHeadingBlock）。
@@ -15,125 +50,88 @@ import {
  *
  * 1. **标题一（物理首块）**：无论光标在开头 / 中间 / 末尾，都保证在标题**下方**
  *    产生可写的正文空行，绝不在标题上方拆块。
- *    - 开头：在标题后插入空 paragraph，光标进入正文
- *    - 末尾：在标题后插入空 paragraph，光标进入正文
- *    - 中间：标题保留光标前文本，光标后文本落到下方新 paragraph
  *
- * 2. **非首块 heading**（正文里另起的 H1/H2…）：光标在开头时，默认 splitBlock 会在
- *    前面拆出同类型空 heading。改为在它**前面插入空 paragraph**，光标仍留在原 heading。
+ * 2. **非首块 heading**：光标在开头时，默认 splitBlock 会在前面拆出同类型空 heading。
+ *    改为在它**前面插入空 paragraph**，光标仍留在原 heading。折叠标题的行首同样走这条，
+ *    不能先插到 section 尾部，否则看起来像按了回车却没在标题前空出一行。
  */
+function applyHeadingEnter(
+  editor: BlockNoteEditor<any, any, any>,
+): boolean {
+  const state = editor.prosemirrorState;
+  const { selection } = state;
+  if (!selection.empty) return false;
+
+  const $from = selection.$from;
+  const containerId = blockContainerIdAt($from);
+  let headingBlock = containerId ? editor.getBlock(containerId) : null;
+  if (!headingBlock || headingBlock.type !== "heading") {
+    try {
+      headingBlock = editor.getTextCursorPosition().block;
+    } catch {
+      return false;
+    }
+  }
+  if (!headingBlock || headingBlock.type !== "heading") return false;
+
+  const offset = $from.parentOffset;
+  const contentSize = $from.parent.content.size;
+  const atStart = offset === 0;
+  const atEnd = offset >= contentSize;
+  const firstBlockId = editor.document[0]?.id;
+  const isFirstTitle = headingBlock.id === firstBlockId;
+
+  // 正文标题行首：在前面插空段落。必须先于折叠节尾插入，否则行首回车会跑到章节末尾。
+  if (atStart && !isFirstTitle) {
+    return insertEmptyParagraphBeforeHeading(editor, headingBlock);
+  }
+
+  if (
+    readHeadingCollapsed(headingBlock) &&
+    isFoldableHeadingBlock(headingBlock, firstBlockId)
+  ) {
+    const anchorId = getSectionInsertAnchorId(
+      editor.document as any,
+      headingBlock.id,
+    );
+    const anchor = editor.getBlock(anchorId) ?? headingBlock;
+    const handled = insertEmptyParagraphAfter(editor, anchor);
+    editor.focus();
+    return handled;
+  }
+
+  if (!isFirstTitle) return false;
+
+  if (atStart || atEnd) {
+    return insertEmptyParagraphAfter(editor, headingBlock);
+  }
+
+  const textAfter = $from.parent.textBetween(offset, contentSize, undefined, "");
+  const [inserted] = editor.insertBlocks(
+    [
+      {
+        type: "paragraph",
+        content: textAfter ? [{ type: "text", text: textAfter }] : [],
+      },
+    ],
+    headingBlock,
+    "after",
+  );
+
+  const textBefore = $from.parent.textBetween(0, offset, undefined, "");
+  editor.updateBlock(headingBlock, {
+    content: textBefore ? [{ type: "text", text: textBefore }] : [],
+  } as any);
+
+  if (inserted) editor.setTextCursorPosition(inserted, "start");
+  return true;
+}
+
 export const gooseFirstTitleEnterExtension = createExtension({
   key: "goose-first-title-enter",
+  // 不要 runsBefore: ["default"]：那会把 TipTap priority 压到默认 keymap 之下，
+  // 标题行首 Enter 被 splitBlock 先吃掉，扩展永远不跑。
   keyboardShortcuts: {
-    Enter: ({ editor }) => {
-      const state = editor.prosemirrorState;
-      const { selection } = state;
-      if (!selection.empty) return false;
-
-      const $from = selection.$from;
-      if ($from.parent.type.name !== "heading") return false;
-
-      // 文档结构是 doc > blockGroup > blockContainer*，
-      // 比较当前 blockContainer 与文档第一个 blockContainer 的位置。
-      let firstContainerPos: number | null = null;
-      state.doc.descendants((node, pos) => {
-        if (firstContainerPos !== null) return false;
-        if (node.type.name === "blockContainer") {
-          firstContainerPos = pos;
-          return false;
-        }
-        return true;
-      });
-      let curContainerPos: number | null = null;
-      for (let d = $from.depth; d >= 0; d--) {
-        if ($from.node(d).type.name === "blockContainer") {
-          curContainerPos = $from.before(d);
-          break;
-        }
-      }
-
-      const headingBlock = editor.getTextCursorPosition().block;
-      const offset = $from.parentOffset;
-      const contentSize = $from.parent.content.size;
-      const atStart = offset === 0;
-      const atEnd = offset >= contentSize;
-
-      // ── 折叠中的可折叠 heading：一律在 section 尾部后插空段落。
-      // 不能走 splitBlock（会插进 heading 正后方），插在快照外也保证可见。
-      if (
-        readHeadingCollapsed(headingBlock) &&
-        isFoldableHeadingBlock(headingBlock, editor.document[0]?.id)
-      ) {
-        const anchorId = getSectionInsertAnchorId(
-          editor.document as any,
-          headingBlock.id,
-        );
-        const anchor = editor.getBlock(anchorId) ?? headingBlock;
-        const [inserted] = editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          anchor,
-          "after",
-        );
-        if (inserted) editor.setTextCursorPosition(inserted, "start");
-        editor.focus();
-        return true;
-      }
-
-      // ── 非首块 heading：仅拦截「光标在开头」避免拆出空标题 ──
-      if (firstContainerPos === null || curContainerPos !== firstContainerPos) {
-        if (!atStart) return false;
-        editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          headingBlock,
-          "before",
-        );
-        editor.setTextCursorPosition(headingBlock, "start");
-        return true;
-      }
-
-      // ── 标题一：始终在下方产生正文空行，绝不前置 ──
-      if (atStart || atEnd) {
-        const [inserted] = editor.insertBlocks(
-          [{ type: "paragraph", content: "" }],
-          headingBlock,
-          "after",
-        );
-        if (inserted) editor.setTextCursorPosition(inserted, "start");
-        return true;
-      }
-
-      // 中间：把光标后文本移到下方 paragraph，标题保留前半段。
-      const textAfter = $from.parent.textBetween(
-        offset,
-        contentSize,
-        undefined,
-        "",
-      );
-      const [inserted] = editor.insertBlocks(
-        [
-          {
-            type: "paragraph",
-            content: textAfter ? [{ type: "text", text: textAfter }] : "",
-          },
-        ],
-        headingBlock,
-        "after",
-      );
-
-      // 截断标题到光标前（保留 marks 较复杂，用 updateBlock 纯文本近似；
-      // 标题通常无复杂 marks，足够覆盖主路径）。
-      const textBefore = $from.parent.textBetween(
-        0,
-        offset,
-        undefined,
-        "",
-      );
-      editor.updateBlock(headingBlock, {
-        content: textBefore ? [{ type: "text", text: textBefore }] : "",
-      } as any);
-
-      if (inserted) editor.setTextCursorPosition(inserted, "start");
-      return true;
-    },
+    Enter: ({ editor }) => applyHeadingEnter(editor),
   },
 });

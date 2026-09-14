@@ -25,6 +25,20 @@ test("空段落按空格仍可唤起行内 AI", () => {
   expect(shouldOpenInlineAiOnEmptyParagraph(base({ key: " " }))).toBe(true);
 });
 
+test("速记小窗空段落按回车不唤起 AI", () => {
+  expect(
+    shouldOpenInlineAiOnEmptyParagraph(base({ allowEnter: false })),
+  ).toBe(false);
+});
+
+test("速记小窗空段落按空格仍唤起 AI", () => {
+  expect(
+    shouldOpenInlineAiOnEmptyParagraph(
+      base({ key: " ", allowEnter: false }),
+    ),
+  ).toBe(true);
+});
+
 test("未启用 AI 时不抢回车", () => {
   expect(
     shouldOpenInlineAiOnEmptyParagraph(base({ aiEnabled: false })),
