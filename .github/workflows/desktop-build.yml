@@ -9,10 +9,31 @@ permissions:
   contents: read
 
 jobs:
+  prepare:
+    name: Prepare staging release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.staging.outputs.tag }}
+    steps:
+      - name: Create staging draft
+        id: staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="ci-${GITHUB_RUN_ID}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --draft --latest=false
+
   source:
     name: Source archive
+    needs: [prepare]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -24,17 +45,16 @@ jobs:
           printf '%s\n' "$GITHUB_SHA" > source-artifact/COMMIT.txt
           cp BUILD-ARTIFACTS.md LICENSE SOURCE-CODE.md THIRD-PARTY-NOTICES.txt source-artifact/
           cd source-artifact
-          sha256sum *.tar.gz > SHA256SUMS.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: source-${{ github.sha }}
-          path: source-artifact/
-          retention-days: 30
-          compression-level: 0
-          if-no-files-found: error
+          sha256sum *.tar.gz > source-${GITHUB_SHA}-SHA256SUMS.txt
+      - name: Upload source to staging release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release upload "$STAGE_TAG" source-artifact/* --clobber
 
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
+    needs: [prepare]
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +73,8 @@ jobs:
             runner: ubuntu-24.04
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    permissions:
+      contents: write
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
@@ -84,47 +106,70 @@ jobs:
             pacman -Q goose-note-app
             test -f "/opt/Goose Note/resources/app.asar"
           '
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: goose-note-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.sha }}
-          path: dist-desktop/ci/
-          retention-days: 30
-          compression-level: 0
-          if-no-files-found: error
+      - name: Upload installers to staging release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          PYTHON=python3
+          command -v python3 >/dev/null || PYTHON=python
+          "$PYTHON" - <<'PY'
+          import os, shutil, pathlib
+          src = pathlib.Path('dist-desktop/ci')
+          dest = pathlib.Path('staging-upload')
+          dest.mkdir()
+          prefix = f"goose-note-{os.environ['PLATFORM']}-{os.environ['ARCH']}"
+          for file in src.iterdir():
+              if not file.is_file():
+                  continue
+              name = file.name.replace(' ', '.')
+              if name in {'SHA256SUMS.txt', 'BUILD.json', 'COMMIT.txt'}:
+                  name = f"{prefix}-{name}"
+              shutil.copyfile(file, dest / name)
+          files = list(dest.iterdir())
+          if not files:
+              raise SystemExit('No installer files to upload')
+          print('\n'.join(file.name for file in files))
+          PY
+          gh release upload "$STAGE_TAG" staging-upload/* --clobber
 
   release:
     name: Publish development release
-    needs: [source, build]
+    needs: [prepare, source, build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          path: artifacts
+      - name: Download staging assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          mkdir -p artifacts/staging
+          gh release download "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts/staging
       - name: Verify and prepare release assets
         shell: bash
         run: |
-          for directory in artifacts/*; do
-            (cd "$directory" && sha256sum --check SHA256SUMS.txt)
-          done
           python3 - <<'PY'
           import pathlib, shutil, hashlib
+          staging = pathlib.Path('artifacts/staging')
           out = pathlib.Path('release-assets')
           out.mkdir()
-          for directory in pathlib.Path('artifacts').iterdir():
-              prefix = directory.name.removesuffix('-' + '${{ github.sha }}')
-              for file in directory.iterdir():
-                  if file.name == 'SHA256SUMS.txt':
-                      continue
-                  installer = file.suffix in ['.exe', '.dmg', '.zip', '.AppImage', '.deb', '.rpm', '.pacman'] or file.name.endswith('.tar.gz')
-                  name = file.name if installer else prefix + '-' + file.name
-                  target = out / name.replace(' ', '.')
-                  if target.exists():
-                      raise RuntimeError('Duplicate asset: ' + target.name)
-                  shutil.copyfile(file, target)
+          checksum_names = {'SHA256SUMS.txt'}
+          for file in staging.iterdir():
+              if not file.is_file():
+                  continue
+              if file.name in checksum_names or file.name.endswith('-SHA256SUMS.txt'):
+                  continue
+              target = out / file.name.replace(' ', '.')
+              if target.exists():
+                  raise RuntimeError('Duplicate asset: ' + target.name)
+              shutil.copyfile(file, target)
           (out / 'SHA256SUMS.txt').write_text(''.join(
               hashlib.sha256(file.read_bytes()).hexdigest() + '  ' + file.name + '\n'
               for file in sorted(out.iterdir())
@@ -153,23 +198,43 @@ jobs:
 
   publish-public:
     name: Publish public release
-    needs: [build]
+    needs: [prepare, build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     concurrency:
       group: public-app-publish-${{ github.ref }}
       cancel-in-progress: false
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          path: artifacts
+      - name: Download staging installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          mkdir -p artifacts
+          gh release download "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts
       - name: Publish to public repository
         env:
           PUBLIC_APP_TOKEN: ${{ secrets.PUBLIC_APP_TOKEN }}
           PUBLIC_APP_REPO: eachann1024/goose-note-app
         run: node scripts/publish-public-app.mjs
 
+  cleanup-staging:
+    name: Delete staging release
+    needs: [prepare, release, publish-public]
+    if: github.ref == 'refs/heads/main' && needs.release.result == 'success' && needs.publish-public.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete staging draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release delete "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
