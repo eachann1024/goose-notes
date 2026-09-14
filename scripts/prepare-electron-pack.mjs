@@ -131,11 +131,13 @@ fileAssociations:
     description: Markdown 文档
     mimeType: text/markdown
     role: Editor
+    icon: icon.icns
   - ext: markdown
     name: Markdown
     description: Markdown 文档
     mimeType: text/markdown
     role: Editor
+    icon: icon.icns
 mac:
   icon: icon.icns
   category: public.app-category.productivity

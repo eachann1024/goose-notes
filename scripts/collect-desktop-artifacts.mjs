@@ -2,9 +2,58 @@
 // 把桌面端最终产物收集到顶层 dist-desktop/（不再套 mac/arm64、win、linux 子目录）：
 //   dist-desktop/Goose Note.app
 //   dist-desktop/*.exe
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { execSync } from "node:child_process";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { platform } from "node:process";
 import { fileURLToPath } from "node:url";
+
+const LSREGISTER =
+  "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+
+const MARKDOWN_DOCUMENT_TYPE = {
+  CFBundleTypeName: "Markdown",
+  CFBundleTypeExtensions: ["md", "markdown"],
+  CFBundleTypeRole: "Editor",
+  CFBundleTypeIconFile: "icon",
+  LSItemContentTypes: ["net.daringfireball.markdown"],
+  LSHandlerRank: "Default",
+};
+
+function patchMacAppInfoPlist(appPath) {
+  const plistPath = join(appPath, "Contents/Info.plist");
+  if (!existsSync(plistPath)) return;
+
+  const json = execSync(`plutil -convert json -o - "${plistPath}"`, {
+    encoding: "utf8",
+  });
+  const info = JSON.parse(json);
+  info.CFBundleDocumentTypes = [MARKDOWN_DOCUMENT_TYPE];
+
+  const tmpJson = join(tmpdir(), `goose-info-${Date.now()}.json`);
+  writeFileSync(tmpJson, JSON.stringify(info));
+  try {
+    execSync(`plutil -convert xml1 -o "${plistPath}" "${tmpJson}"`, {
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(tmpJson, { force: true });
+  }
+}
+
+function registerMacAppWithLaunchServices(appPath) {
+  if (!existsSync(LSREGISTER)) return;
+  execSync(`"${LSREGISTER}" -f "${appPath}"`, { stdio: "inherit" });
+}
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packagedRoot = resolve(root, "dist-electron/packaged");
@@ -40,6 +89,10 @@ function collectMac() {
       const dest = join(outRoot, app);
       rmSync(dest, { recursive: true, force: true });
       cpSync(join(entry.src, app), dest, { recursive: true, verbatimSymlinks: true });
+      if (platform === "darwin") {
+        patchMacAppInfoPlist(dest);
+        registerMacAppWithLaunchServices(dest);
+      }
     }
     console.log(`  mac ${entry.label} → dist-desktop/${entry.apps.join(", ")}`);
   }
