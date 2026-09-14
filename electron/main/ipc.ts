@@ -8,7 +8,16 @@ import {
   Notification,
   shell,
 } from "electron";
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { watch, type FSWatcher, type WatchEventType } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -23,6 +32,12 @@ import {
 } from "./allowlist";
 import { registerOpenMarkdownIpc } from "./openMarkdownFiles";
 import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
+import {
+  checkForAppUpdate,
+  downloadAppUpdate,
+  getAppVersion,
+  revealDownloadedUpdate,
+} from "./appUpdate";
 import { registerHotkeys, pauseGlobalHotkeys, resumeGlobalHotkeys } from "./hotkeys";
 import {
   getAccessibilityStatus,
@@ -47,6 +62,7 @@ import {
   lookupWindowContext,
   onWindowVisibilityChange,
   setMainWindowTitleBarHeight,
+  showOrCreateMainWindow,
   toggleQuicknoteWindow,
   toggleWindow,
   type CreateWorkspaceWindowOpts,
@@ -353,6 +369,20 @@ export function registerIpcHandlers(): void {
     await withSelfWriteMark([target], () => mkdir(target, { recursive: true }));
   });
 
+  ipcMain.handle("desktop:fsRealpath", async (_event, p: string) => {
+    if (hasUnsafeSegments(p)) return p;
+    try {
+      const target = assertAllowed(p);
+      return await realpath(target);
+    } catch {
+      try {
+        return await realpath(p);
+      } catch {
+        return p;
+      }
+    }
+  });
+
   ipcMain.handle("desktop:fsExists", async (_event, p: string) => {
     if (hasUnsafeSegments(p)) return false;
     let target: string;
@@ -490,12 +520,25 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle("desktop:openTerminalAtPath", async (_event, p: string) => {
+  ipcMain.handle("desktop:openTerminalAtPath", async (_event, p: string, terminal?: string) => {
     const target = assertAllowed(p);
-    if (!openTerminalAtPath(target)) {
+    if (!openTerminalAtPath(target, typeof terminal === "string" ? terminal : undefined)) {
       throw new Error("无法在该路径打开终端");
     }
   });
+
+  ipcMain.handle("desktop:getAppVersion", async () => getAppVersion());
+
+  ipcMain.handle("desktop:checkForUpdate", async () => checkForAppUpdate());
+
+  ipcMain.handle(
+    "desktop:downloadUpdate",
+    async (_event, downloadUrl: string, filename: string) => {
+      const result = await downloadAppUpdate(String(downloadUrl ?? ""), String(filename ?? ""));
+      revealDownloadedUpdate(result.path);
+      return result;
+    },
+  );
 
   ipcMain.handle("desktop:writeText", async (_event, t: string) => {
     clipboard.writeText(t ?? "");
@@ -636,6 +679,18 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("desktop:toggleMainWindow", async () => {
     await toggleWindow(getMainWindow());
   });
+
+  ipcMain.handle(
+    "desktop:showMainWindow",
+    async (
+      _event,
+      action?: "none" | "search" | "settings" | "ai-panel" | "new-note",
+    ) => {
+      const win = showOrCreateMainWindow();
+      if (!action || action === "none" || win.isDestroyed()) return;
+      win.webContents.send("desktop:workspace-action", action);
+    },
+  );
 
   ipcMain.handle("desktop:toggleQuicknote", async () => {
     await toggleQuicknoteWindow();

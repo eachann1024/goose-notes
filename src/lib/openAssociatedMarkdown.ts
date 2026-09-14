@@ -1,34 +1,29 @@
 import { toast } from "@/components/ui/sonner";
-import { isPathInsideNotebookRoot, pageDirectory } from "@/lib/currentLocalPagePath";
+import {
+  comparisonLocalPath,
+  isCanonicalPathInside,
+  localPathsAreCaseInsensitive,
+} from "@/lib/canonicalLocalPath";
+import { pageDirectory } from "@/lib/currentLocalPagePath";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { getGooseDesktop } from "@/lib/electron/runtime";
+import { markAssociatedMarkdownOpened } from "@/lib/workspaceStartup";
 import type { Notebook } from "@/stores/useNotebooks";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 
-function localPathsAreCaseInsensitive(): boolean {
-  if (typeof process !== "undefined" && typeof process.platform === "string") {
-    return process.platform === "win32" || process.platform === "darwin";
-  }
-  if (typeof navigator !== "undefined") {
-    return /Win/i.test(navigator.platform) || /Mac/i.test(navigator.platform);
-  }
-  return false;
-}
-
 function comparisonPath(filePath: string): string {
-  const normalized = filePath.replace(/\\/g, "/").replace(/\/+/g, "/");
-  return localPathsAreCaseInsensitive() ? normalized.toLowerCase() : normalized;
+  return comparisonLocalPath(filePath, localPathsAreCaseInsensitive());
 }
 
 function isFileInsideRoot(filePath: string, rootPath: string): boolean {
-  if (isPathInsideNotebookRoot(filePath, rootPath)) return true;
-  if (!localPathsAreCaseInsensitive()) return false;
-  const file = comparisonPath(filePath);
-  const root = comparisonPath(rootPath).replace(/\/$/, "");
-  return file === root || file.startsWith(`${root}/`);
+  return isCanonicalPathInside(
+    filePath,
+    rootPath,
+    localPathsAreCaseInsensitive(),
+  );
 }
 
 export function findContainingLocalFolderNotebook(
@@ -105,7 +100,16 @@ export async function openAssociatedMarkdownFile(
 
   if (!notebook) return false;
 
-  const pageId = findPageIdByLocalFilePath(trimmed, notebook.id);
+  let pageId = findPageIdByLocalFilePath(trimmed, notebook.id);
+  if (!pageId && notebook.localPath) {
+    await usePages
+      .getState()
+      .addSingleLocalPage(notebook.id, notebook.localPath, trimmed, {
+        force: true,
+      });
+    pageId = findPageIdByLocalFilePath(trimmed, notebook.id);
+  }
+
   if (!pageId) {
     toast.error("无法打开该 Markdown 文件", {
       description: "文件不在当前仓库的可见笔记中。",
@@ -137,6 +141,10 @@ export async function openAssociatedMarkdownFiles(
       firstPageId = afterActive;
       firstNotebookId = usePages.getState().pages[afterActive]?.workspaceId ?? null;
     }
+  }
+
+  if (opened > 0) {
+    markAssociatedMarkdownOpened();
   }
 
   if (opened > 1 && firstPageId && firstNotebookId) {

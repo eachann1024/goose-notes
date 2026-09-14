@@ -282,7 +282,10 @@ export async function deleteWebdavBackup(
   }
 }
 
+let autoBackupInFlight = false;
+
 export async function triggerAutoWebdavBackup(): Promise<void> {
+  if (autoBackupInFlight) return;
   const settings = useSettings.getState();
   const {
     webdavUrl,
@@ -306,11 +309,13 @@ export async function triggerAutoWebdavBackup(): Promise<void> {
     }
   }
 
+  autoBackupInFlight = true;
   try {
     const notebooksStore = useNotebooks.getState();
     const pagesStore = usePages.getState();
-    const notebookList = Object.values(notebooksStore.notebooks);
-    const notebookIds = notebookList.map(n => n.id);
+    const notebookIds = Object.values(notebooksStore.notebooks)
+      .filter((notebook) => notebook.source !== "local-folder")
+      .map((n) => n.id);
     if (notebookIds.length === 0) return;
 
     const zipBlob = await generateExportZip(
@@ -342,5 +347,7 @@ export async function triggerAutoWebdavBackup(): Promise<void> {
     }
   } catch (err) {
     console.warn("[AutoBackup] WebDAV auto backup failed silently:", err);
+  } finally {
+    autoBackupInFlight = false;
   }
 }

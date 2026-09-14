@@ -59,6 +59,7 @@ const gooseDesktop = {
     >,
   fsMkdir: (p: string) => invoke("desktop:fsMkdir", p) as Promise<void>,
   fsExists: (p: string) => invoke("desktop:fsExists", p) as Promise<boolean>,
+  fsRealpath: (p: string) => invoke("desktop:fsRealpath", p) as Promise<string>,
   fsStat: (p: string) =>
     invoke("desktop:fsStat", p) as Promise<{
       size: number;
@@ -93,8 +94,36 @@ const gooseDesktop = {
     invoke("desktop:listOpenApps") as Promise<{ name: string; path: string }[]>,
   openWithApp: (app: string, p: string) =>
     invoke("desktop:openWithApp", app, p) as Promise<void>,
-  openTerminalAtPath: (p: string) =>
-    invoke("desktop:openTerminalAtPath", p) as Promise<void>,
+  openTerminalAtPath: (p: string, terminal?: string) =>
+    invoke("desktop:openTerminalAtPath", p, terminal) as Promise<void>,
+  getAppVersion: () => invoke("desktop:getAppVersion") as Promise<string>,
+  checkForUpdate: () =>
+    invoke("desktop:checkForUpdate") as Promise<
+      | {
+          status: "up-to-date";
+          currentVersion: string;
+          latestVersion: string;
+          releaseUrl: string;
+        }
+      | {
+          status: "available";
+          currentVersion: string;
+          latestVersion: string;
+          assetName: string;
+          downloadUrl: string;
+          releaseUrl: string;
+        }
+      | {
+          status: "unavailable";
+          currentVersion: string;
+          reason: string;
+          releaseUrl: string;
+        }
+    >,
+  downloadUpdate: (downloadUrl: string, filename: string) =>
+    invoke("desktop:downloadUpdate", downloadUrl, filename) as Promise<{
+      path: string;
+    }>,
   writeText: (t: string) => invoke("desktop:writeText", t) as Promise<void>,
   writeImage: (dataUrl: string) =>
     invoke("desktop:writeImage", dataUrl) as Promise<void>,
@@ -117,6 +146,9 @@ const gooseDesktop = {
   syncTitleBarHeight: (height: number) =>
     invoke("desktop:syncTitleBarHeight", height) as Promise<void>,
   toggleMainWindow: () => invoke("desktop:toggleMainWindow") as Promise<void>,
+  showMainWindow: (
+    action?: "none" | "search" | "settings" | "ai-panel" | "new-note",
+  ) => invoke("desktop:showMainWindow", action) as Promise<void>,
   toggleQuicknote: () => invoke("desktop:toggleQuicknote") as Promise<void>,
   closeQuicknote: () => invoke("desktop:closeQuicknote") as Promise<void>,
   registerHotkeys: (k: { wake: string; quicknote: string; search: string }) =>
@@ -144,6 +176,18 @@ const gooseDesktop = {
     ipcRenderer.on("desktop:open-search", listener);
     return () => {
       ipcRenderer.removeListener("desktop:open-search", listener);
+    };
+  },
+  onWorkspaceAction: (
+    cb: (action: "search" | "settings" | "ai-panel" | "new-note") => void,
+  ) => {
+    const listener = (
+      _event: unknown,
+      action: "search" | "settings" | "ai-panel" | "new-note",
+    ) => cb(action);
+    ipcRenderer.on("desktop:workspace-action", listener);
+    return () => {
+      ipcRenderer.removeListener("desktop:workspace-action", listener);
     };
   },
   onCloseActiveTab: (cb: () => void) => {

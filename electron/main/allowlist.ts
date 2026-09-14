@@ -1,6 +1,7 @@
 import { app } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { canonicalLocalPath } from "../../src/lib/canonicalLocalPath";
 
 const ROOTS_FILE = "vault-roots.json";
 
@@ -8,7 +9,7 @@ const vaultRoots = new Set<string>();
 const sessionAllowed = new Set<string>();
 
 export function normalizePath(p: string): string {
-  return path.resolve(p);
+  return canonicalLocalPath(path.resolve(p));
 }
 
 function rootsFilePath(): string {
@@ -68,13 +69,15 @@ export function hasUnsafeSegments(p: string): boolean {
 }
 
 function isUnder(root: string, target: string): boolean {
-  let from = root;
-  let to = target;
+  const from = normalizePath(root);
+  const to = normalizePath(target);
+  let relFrom = from;
+  let relTo = to;
   if (process.platform === "win32" || process.platform === "darwin") {
-    from = from.toLowerCase();
-    to = to.toLowerCase();
+    relFrom = from.toLowerCase();
+    relTo = to.toLowerCase();
   }
-  const rel = path.relative(from, to);
+  const rel = path.relative(relFrom, relTo);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 

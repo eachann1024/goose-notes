@@ -79,6 +79,68 @@ test("opens a markdown file already inside a mounted vault", async () => {
   expect(useTabs.getState().openTabs[0]?.pageId).toBe("page-readme");
 });
 
+test("opens a file when vault path uses /Users but file uses /System/Volumes/Data", async () => {
+  useNotebooks.setState({
+    notebooks: {
+      [nested.id]: {
+        ...nested,
+        localPath: "/Users/notes/project",
+      },
+    },
+    activeNotebookId: nested.id,
+    setActiveNotebook: (id: string) => {
+      useNotebooks.setState({ activeNotebookId: id });
+    },
+  });
+  usePages.setState({
+    pages: {
+      [page.id]: {
+        ...page,
+        localFilePath: "/Users/notes/project/readme.md",
+      },
+    },
+    loadLocalFolderPages: async () => undefined,
+  });
+
+  const opened = await openAssociatedMarkdownFile(
+    "/System/Volumes/Data/Users/notes/project/readme.md",
+  );
+  expect(opened).toBe(true);
+  expect(usePages.getState().activePageId).toBe("page-readme");
+});
+
+test("falls back to addSingleLocalPage when scan missed the file", async () => {
+  let addSingleCalled = false;
+  usePages.setState({
+    pages: {},
+    loadLocalFolderPages: async () => undefined,
+    addSingleLocalPage: async (
+      notebookId: string,
+      basePath: string,
+      filePath: string,
+      options?: { force?: boolean },
+    ) => {
+      addSingleCalled = true;
+      expect(options?.force).toBe(true);
+      usePages.setState({
+        pages: {
+          "page-fallback": {
+            ...page,
+            id: "page-fallback",
+            workspaceId: notebookId,
+            localFilePath: filePath,
+          },
+        },
+      });
+    },
+  });
+
+  const opened = await openAssociatedMarkdownFile("/notes/project/hidden.md");
+  expect(opened).toBe(true);
+  expect(addSingleCalled).toBe(true);
+  expect(usePages.getState().activePageId).toBe("page-fallback");
+});
+
 test("mounts the parent folder when the file is outside existing vaults", async () => {
   useNotebooks.setState({
     notebooks: {},

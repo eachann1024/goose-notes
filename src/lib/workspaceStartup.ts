@@ -25,6 +25,11 @@ export function shouldPreserveStartupSelection(): boolean {
   return preserveStartupSelection;
 }
 
+/** 关联 Markdown 已打开时调用，避免 restore 盖掉用户刚打开的文件。 */
+export function markAssociatedMarkdownOpened(): void {
+  preserveStartupSelection = true;
+}
+
 type WorkspaceStartupGateOptions = {
   prepare: () => Promise<unknown> | unknown;
   render: () => void;

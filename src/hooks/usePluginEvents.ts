@@ -10,12 +10,27 @@ export function usePluginEvents() {
   useEffect(() => {
     const api = getGooseDesktop();
     if (!api?.onOpenMarkdownFiles) return;
-    return api.onOpenMarkdownFiles((files) => {
+
+    const openFiles = (files: string[]) => {
       if (!Array.isArray(files) || files.length === 0) return;
       void import("@/lib/openAssociatedMarkdown").then(({ openAssociatedMarkdownFiles }) => {
         void openAssociatedMarkdownFiles(files);
       });
-    });
+    };
+
+    const unsubscribe = api.onOpenMarkdownFiles(openFiles);
+
+    void (async () => {
+      if (!api.takePendingOpenMarkdownFiles) return;
+      try {
+        const pending = await api.takePendingOpenMarkdownFiles();
+        openFiles(pending);
+      } catch (error) {
+        console.error("[open-md] takePending 失败", error);
+      }
+    })();
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {

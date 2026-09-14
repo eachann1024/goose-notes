@@ -1,3 +1,5 @@
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
 /**
  * dev-only e2e harness — activated when:
  *   import.meta.env.DEV && location.search contains "e2eLocalMock"
@@ -459,6 +461,8 @@ type GooseTestHandle = {
     useNotebooks: typeof import("@/stores/useNotebooks").useNotebooks;
     useTabs: typeof import("@/stores/useTabs").useTabs;
   };
+  React: typeof React;
+  ReactDOM: typeof ReactDOM;
 };
 
 // ---------------------------------------------------------------------------
@@ -551,6 +555,8 @@ export async function installE2ELocalMock(): Promise<void> {
     },
 
     stores: { usePages, useNotebooks, useTabs },
+    React,
+    ReactDOM,
   };
 
   (window as any).__gooseTest = handle;

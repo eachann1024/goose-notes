@@ -106,3 +106,95 @@ export function electronAcceleratorsMatch(
     rightAliases.has(item),
   );
 }
+
+export type AcceleratorKeyInput = {
+  type?: string;
+  key?: string;
+  code?: string;
+  control?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+};
+
+function acceleratorKeyMatches(
+  input: AcceleratorKeyInput,
+  acceleratorKey: string,
+): boolean {
+  const target = acceleratorKey.toLowerCase();
+  const key = (input.key ?? "").toLowerCase();
+  const code = input.code ?? "";
+  if (target === "space") {
+    return key === " " || key === "space" || code === "Space";
+  }
+  if (target === "enter") {
+    return key === "enter" || code === "Enter";
+  }
+  if (target === "escape") {
+    return key === "escape" || code === "Escape";
+  }
+  if (target === "tab") {
+    return key === "tab" || code === "Tab";
+  }
+  if (target === "plus") {
+    return key === "+" || key === "=" || code === "Equal" || code === "NumpadAdd";
+  }
+  if (target.length === 1 && /[a-z]/.test(target)) {
+    return key === target || code === `Key${target.toUpperCase()}`;
+  }
+  if (target.length === 1 && /[0-9]/.test(target)) {
+    return key === target || code === `Digit${target}` || code === `Numpad${target}`;
+  }
+  return key === target || code.toLowerCase() === target.toLowerCase();
+}
+
+function inputMatchesExactAccelerator(
+  input: AcceleratorKeyInput,
+  accelerator: string,
+  platform: AcceleratorPlatform,
+): boolean {
+  const parts = accelerator
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return false;
+  const key = parts[parts.length - 1] ?? "";
+  const modifiers = new Set(parts.slice(0, -1).map((part) => part.toLowerCase()));
+  if (!key || modifiers.has(key.toLowerCase())) return false;
+
+  const commandOrControl =
+    modifiers.has("commandorcontrol") || modifiers.has("cmdorctrl");
+  const wantMeta =
+    modifiers.has("command") ||
+    modifiers.has("cmd") ||
+    modifiers.has("meta") ||
+    (commandOrControl && platform === "darwin");
+  const wantControl =
+    modifiers.has("control") ||
+    modifiers.has("ctrl") ||
+    (commandOrControl && platform !== "darwin");
+  const wantAlt = modifiers.has("alt") || modifiers.has("option");
+  const wantShift = modifiers.has("shift");
+  const wantSuper =
+    modifiers.has("super") || modifiers.has("win") || modifiers.has("windows");
+
+  if (Boolean(input.meta) !== wantMeta) return false;
+  if (Boolean(input.control) !== wantControl) return false;
+  if (Boolean(input.alt) !== wantAlt) return false;
+  if (Boolean(input.shift) !== wantShift) return false;
+  if (wantSuper && !input.meta) return false;
+  return acceleratorKeyMatches(input, key);
+}
+
+/** 主进程 before-input-event 与已注册 accelerator 对齐，供前台窗补全局热键。 */
+export function inputMatchesAccelerator(
+  input: AcceleratorKeyInput,
+  accelerator: string,
+  platform: AcceleratorPlatform = "darwin",
+): boolean {
+  if (!accelerator) return false;
+  if (input.type && input.type !== "keyDown") return false;
+  return electronAcceleratorAliases(accelerator, platform).some((alias) =>
+    inputMatchesExactAccelerator(input, alias, platform),
+  );
+}

@@ -142,6 +142,7 @@ export interface PagesState {
     notebookId: string,
     basePath: string,
     filePath: string,
+    options?: { force?: boolean },
   ) => Promise<void>;
   // 预加载所有尚未加载的 local-folder 记事本页面（供「所有记事本」全局搜索覆盖全量）。
   loadAllLocalFolderPages: () => Promise<void>;

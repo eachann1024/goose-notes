@@ -58,6 +58,29 @@ export function useDesktopHotkeys(): void {
 
   useEffect(() => {
     if (__HOST_TARGET__ !== "electron" || !hydrated) return;
+    const api = getGooseDesktop();
+    if (!api?.onWorkspaceAction) return;
+    return api.onWorkspaceAction((action) => {
+      if (action === "search") {
+        window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+        return;
+      }
+      if (action === "settings") {
+        window.dispatchEvent(new CustomEvent("goose-note:open-settings"));
+        return;
+      }
+      if (action === "ai-panel") {
+        window.dispatchEvent(new CustomEvent("goose-note:open-ai-panel"));
+        return;
+      }
+      if (action === "new-note") {
+        window.dispatchEvent(new CustomEvent("goose-note:new-note"));
+      }
+    });
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (__HOST_TARGET__ !== "electron" || !hydrated) return;
     let cancelled = false;
 
     void (async () => {

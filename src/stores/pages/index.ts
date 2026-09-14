@@ -485,8 +485,8 @@ export const usePages = create<PagesState>()((set, get) => ({
   removeSingleLocalPage: (filePath) =>
     removeSingleLocalPageAction(set, get, filePath),
 
-  addSingleLocalPage: (notebookId, basePath, filePath) =>
-    addSingleLocalPageAction(set, get, notebookId, basePath, filePath),
+  addSingleLocalPage: (notebookId, basePath, filePath, options) =>
+    addSingleLocalPageAction(set, get, notebookId, basePath, filePath, options),
 
   loadAllLocalFolderPages: () => loadAllLocalFolderPagesAction(set, get),
 

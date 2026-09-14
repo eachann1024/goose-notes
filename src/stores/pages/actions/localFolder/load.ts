@@ -13,10 +13,10 @@ import {
   updateSnapshotStat,
   deleteLocalMdSnapshot,
 } from "@/lib/local-md-snapshot";
+import { canonicalRelativePath } from "@/lib/canonicalLocalPath";
 import {
   readLocalPageIdMap,
   resolveOrCreateStableId,
-  toRelativePath,
   writeLocalPageIdMap,
 } from "@/lib/local-page-idmap";
 import { resolveHistoryBackend } from "@/lib/history/backend";
@@ -515,6 +515,7 @@ export const addSingleLocalPageAction = async (
   notebookId: string,
   basePath: string,
   filePath: string,
+  options?: { force?: boolean },
 ): Promise<void> => {
   if (typeof window === "undefined" || !window.gooseFs) return;
 
@@ -524,8 +525,10 @@ export const addSingleLocalPageAction = async (
   if (!/\.(md|markdown)$/i.test(filePath)) return;
 
   const fallbackTitle = localFileTitleFromPath(filePath);
-  const relativePath = toRelativePath(basePath, filePath);
+  const relativePath = canonicalRelativePath(basePath, filePath);
+  if (!relativePath) return;
   if (
+    !options?.force &&
     shouldIgnoreLocalRelativePath(
       relativePath,
       useSettings.getState().localFolderHiddenFolders,

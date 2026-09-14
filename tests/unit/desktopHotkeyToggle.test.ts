@@ -97,6 +97,8 @@ test("速记快捷键再次触发会关闭窗口且不复用主窗三态逻辑",
   expect(windowsSource).toContain('type: "panel"');
   expect(raiseQuicknote).toContain("showInactive");
   expect(raiseQuicknote).toContain("restoreHiddenWorkspaces");
+  expect(raiseQuicknote).toContain("focusedWorkspaceWindow");
+  expect(raiseQuicknote).toContain("workspace.moveTop()");
   expect(raiseQuicknote).not.toContain("app.focus");
   expect(quicknoteToggle).toContain("if (win.isVisible())");
   expect(quicknoteToggle).toContain("closeQuicknote();");
@@ -104,5 +106,7 @@ test("速记快捷键再次触发会关闭窗口且不复用主窗三态逻辑",
   expect(quicknoteToggle).not.toContain("toggleWindow(win)");
   expect(closeQuicknote).toContain("win.close();");
   expect(windowsSource).toContain("markQuicknoteActivateSuppressed();");
+  expect(windowsSource).toContain("export function showOrCreateMainWindow");
+  expect(windowsSource).toContain("onBrowserWindowCreated");
   expect(indexSource).toContain("shouldSuppressWorkspaceActivate()");
 });

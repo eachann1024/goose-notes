@@ -36,7 +36,16 @@ function loadHotkeys() {
       if (id.endsWith("/accelerator")) return accelerator;
       if (id === "./windows") return {
         getMainWindow: () => ({ isDestroyed: () => destroyed, webContents: { send: (channel: string) => sent.push(channel) } }),
+        getQuicknoteWindow: () => null,
+        onBrowserWindowCreated: () => () => {},
         showAndFocusMainWindow: () => { focused++; },
+        showOrCreateMainWindow: () => {
+          focused++;
+          return {
+            isDestroyed: () => destroyed,
+            webContents: { send: (channel: string) => sent.push(channel) },
+          };
+        },
         toggleQuicknoteWindow: () => {},
         toggleWindow: () => {},
       };

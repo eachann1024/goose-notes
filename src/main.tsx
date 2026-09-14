@@ -582,8 +582,12 @@ export const bootstrap = async (
       } catch (err) {
         console.error("预加载本地文件夹页面失败", err);
       }
-      // Electron 桌面端（仅本地模式）：WebDAV 自动备份默认不触发（设置 UI 保留，仍可手动备份）。
-
+      try {
+        const { triggerAutoWebdavBackup } = await import("@/lib/webdavSync");
+        void triggerAutoWebdavBackup();
+      } catch (err) {
+        console.error("加载 webdavSync 模块失败", err);
+      }
     };
     if (typeof requestIdleCallback === "function") {
       requestIdleCallback(preloadAll, { timeout: 4000 });

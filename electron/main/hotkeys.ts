@@ -1,12 +1,15 @@
-import { globalShortcut } from "electron";
+import { globalShortcut, type BrowserWindow } from "electron";
 import {
   electronAcceleratorAliases,
   electronAcceleratorsMatch,
+  inputMatchesAccelerator,
   toElectronAccelerator,
 } from "../../src/lib/electron/accelerator";
 import {
   getMainWindow,
-  showAndFocusMainWindow,
+  getQuicknoteWindow,
+  onBrowserWindowCreated,
+  showOrCreateMainWindow,
   toggleQuicknoteWindow,
   toggleWindow,
 } from "./windows";
@@ -21,6 +24,90 @@ const registered = {
 
 type HotkeySlot = "wake" | "quicknote" | "search";
 type HotkeyRequest = { wake: string; quicknote: string; search: string };
+type HotkeySourceKind = "workspace" | "quicknote";
+
+const HOTKEY_DEDUP_MS = 80;
+let lastHotkeyAt = 0;
+let lastHotkeySlot: HotkeySlot | "" = "";
+
+function acceptHotkey(slot: HotkeySlot): boolean {
+  const now = Date.now();
+  if (slot === lastHotkeySlot && now - lastHotkeyAt < HOTKEY_DEDUP_MS) {
+    return false;
+  }
+  lastHotkeyAt = now;
+  lastHotkeySlot = slot;
+  return true;
+}
+
+function focusedWindowKind(): HotkeySourceKind {
+  const quicknote = getQuicknoteWindow();
+  if (quicknote && !quicknote.isDestroyed() && quicknote.isFocused()) {
+    return "quicknote";
+  }
+  return "workspace";
+}
+
+export function matchRegisteredGlobalHotkey(input: {
+  type?: string;
+  key?: string;
+  code?: string;
+  control?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+}): HotkeySlot | null {
+  if (paused) return null;
+  for (const slot of ["wake", "quicknote", "search"] as const) {
+    const requested = lastRequested[slot];
+    if (!requested.trim()) continue;
+    const accelerator = toElectronAccelerator(requested);
+    if (inputMatchesAccelerator(input, accelerator, process.platform)) {
+      return slot;
+    }
+  }
+  return null;
+}
+
+export function dispatchRegisteredGlobalHotkey(
+  slot: HotkeySlot,
+  sourceKind: HotkeySourceKind = focusedWindowKind(),
+): void {
+  if (!acceptHotkey(slot)) return;
+  if (slot === "quicknote") {
+    void toggleQuicknoteWindow();
+    return;
+  }
+  if (slot === "search") {
+    const win = showOrCreateMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("desktop:open-search");
+    }
+    return;
+  }
+  if (sourceKind === "quicknote") {
+    showOrCreateMainWindow();
+    return;
+  }
+  void toggleWindow(getMainWindow());
+}
+
+function bindGlobalHotkeyInput(
+  win: BrowserWindow,
+  kind: HotkeySourceKind,
+): void {
+  win.webContents.on("before-input-event", (event, input) => {
+    if (win.webContents.isDevToolsFocused()) return;
+    const slot = matchRegisteredGlobalHotkey(input);
+    if (!slot) return;
+    event.preventDefault();
+    dispatchRegisteredGlobalHotkey(slot, kind);
+  });
+}
+
+onBrowserWindowCreated((win, kind) => {
+  bindGlobalHotkeyInput(win, kind);
+});
 
 const lastRequested: HotkeyRequest = {
   wake: "",
@@ -124,17 +211,13 @@ function applyRegistration(keys: HotkeyRequest): {
 
   return {
     wakeOk: bindSlot("wake", wakeAcc, keys.wake, () => {
-      void toggleWindow(getMainWindow());
+      dispatchRegisteredGlobalHotkey("wake");
     }),
     quicknoteOk: bindSlot("quicknote", quickAcc, keys.quicknote, () => {
-      void toggleQuicknoteWindow();
+      dispatchRegisteredGlobalHotkey("quicknote");
     }),
     searchOk: bindSlot("search", searchAcc, keys.search, () => {
-      showAndFocusMainWindow();
-      const win = getMainWindow();
-      if (win && !win.isDestroyed()) {
-        win.webContents.send("desktop:open-search");
-      }
+      dispatchRegisteredGlobalHotkey("search");
     }),
   };
 }

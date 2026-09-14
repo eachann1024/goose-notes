@@ -183,6 +183,30 @@ export function useAppHotkeys() {
       void usePages.getState().setActivePage(null);
     };
 
+    const createNewNoteFromHotkey = () => {
+      closeNotebookAiIfFullscreen();
+      void (async () => {
+        const pagesStore = usePages.getState();
+        const notebooksStore = useNotebooks.getState();
+        const { activeNotebookId, notebooks } = notebooksStore;
+        if (!activeNotebookId) return;
+
+        const notebook = notebooks[activeNotebookId];
+        const newPageId =
+          notebook?.source === "local-folder"
+            ? await pagesStore.createLocalPage(undefined, activeNotebookId)
+            : pagesStore.createPage(undefined, activeNotebookId);
+        if (!newPageId) return;
+        useTabs.getState().openTab(newPageId);
+        toast.success(
+          notebook?.source === "local-folder"
+            ? "已创建新文件"
+            : "已创建新笔记",
+          { duration: 1500 },
+        );
+      })();
+    };
+
     const entries: HotkeyEntry[] = [
       // F3 → editor find navigation
       {
@@ -344,27 +368,7 @@ export function useAppHotkeys() {
           matchesConfiguredShortcut(event, fixedShortcuts.newNote),
         handler: (event) => {
           event.preventDefault();
-          closeNotebookAiIfFullscreen();
-          void (async () => {
-            const pagesStore = usePages.getState();
-            const notebooksStore = useNotebooks.getState();
-            const { activeNotebookId, notebooks } = notebooksStore;
-            if (!activeNotebookId) return;
-
-            const notebook = notebooks[activeNotebookId];
-            const newPageId =
-              notebook?.source === "local-folder"
-                ? await pagesStore.createLocalPage(undefined, activeNotebookId)
-                : pagesStore.createPage(undefined, activeNotebookId);
-            if (!newPageId) return;
-            useTabs.getState().openTab(newPageId);
-            toast.success(
-              notebook?.source === "local-folder"
-                ? "已创建新文件"
-                : "已创建新笔记",
-              { duration: 1500 },
-            );
-          })();
+          createNewNoteFromHotkey();
         },
       },
       {
@@ -870,6 +874,10 @@ export function useAppHotkeys() {
     window.addEventListener("mousedown", handleMouseSideButton, true);
     window.addEventListener("mouseup", suppressMouseSideButton, true);
     window.addEventListener("auxclick", suppressMouseSideButton, true);
+    const handleNewNoteEvent = () => {
+      createNewNoteFromHotkey();
+    };
+    window.addEventListener("goose-note:new-note", handleNewNoteEvent);
     const unsubscribeCloseActiveTab = getGooseDesktop()?.onCloseActiveTab?.(
       runUnifiedClose,
     );
@@ -881,6 +889,7 @@ export function useAppHotkeys() {
       window.removeEventListener("mousedown", handleMouseSideButton, true);
       window.removeEventListener("mouseup", suppressMouseSideButton, true);
       window.removeEventListener("auxclick", suppressMouseSideButton, true);
+      window.removeEventListener("goose-note:new-note", handleNewNoteEvent);
     };
   }, []);
 }

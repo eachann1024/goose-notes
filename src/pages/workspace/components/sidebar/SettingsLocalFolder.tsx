@@ -85,6 +85,9 @@ const DEFAULT_HIDDEN_FOLDERS = ["assets"];
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
+const SYSTEM_FILE_MANAGER_IDS = new Set(["finder", "explorer", "nautilus"]);
+const SYSTEM_TERMINAL_IDS = new Set(["terminal", "cmd", "x-terminal-emulator"]);
+
 function getSystemDefaultLabels() {
   const platform = navigator.platform || navigator.userAgent;
   if (/Win/i.test(platform)) {
@@ -782,7 +785,7 @@ export function SettingsLocalFolder({
     const cached = getCachedAvailableOpenApps(
       LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
     );
-    return cached ? cached.filter((item) => item.id !== "finder") : [];
+    return cached ? cached.filter((item) => !SYSTEM_FILE_MANAGER_IDS.has(item.id)) : [];
   });
   const [editorOptions, setEditorOptions] = useState<
     LocalFolderOpenAppCandidate[]
@@ -791,7 +794,7 @@ export function SettingsLocalFolder({
     LocalFolderOpenAppCandidate[]
   >(() => {
     const cached = getCachedAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES);
-    return cached ? cached.filter((item) => item.id !== "terminal") : [];
+    return cached ? cached.filter((item) => !SYSTEM_TERMINAL_IDS.has(item.id)) : [];
   });
   const systemDefaultLabels = useMemo(() => getSystemDefaultLabels(), []);
   const hiddenFoldersRefreshNonceRef = useRef(0);
@@ -938,10 +941,12 @@ export function SettingsLocalFolder({
       terminals: LocalFolderOpenAppCandidate[],
     ) => {
       setFileManagerOptions(
-        fileManagers.filter((item) => item.id !== "finder"),
+        fileManagers.filter((item) => !SYSTEM_FILE_MANAGER_IDS.has(item.id)),
       );
       setEditorOptions(editors);
-      setTerminalOptions(terminals.filter((item) => item.id !== "terminal"));
+      setTerminalOptions(
+        terminals.filter((item) => !SYSTEM_TERMINAL_IDS.has(item.id)),
+      );
     };
 
     const cachedFileManagers = getCachedAvailableOpenApps(

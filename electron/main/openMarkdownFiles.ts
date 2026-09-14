@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain } from "electron";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { canonicalLocalPath } from "../../src/lib/canonicalLocalPath";
 import {
   allowAssociatedMarkdownFile,
   hasUnsafeSegments,
@@ -44,22 +45,70 @@ function toFilesystemPath(raw: string): string | null {
   return trimmed;
 }
 
-function acceptMarkdownFile(raw: string): string | null {
-  const filesystemPath = toFilesystemPath(raw);
-  if (!filesystemPath) return null;
+function resolveOpenMarkdownPath(filesystemPath: string): string {
   let resolved: string;
   try {
     resolved = path.resolve(filesystemPath);
-  } catch {
-    return null;
+  } catch (error) {
+    console.warn("[open-md] path.resolve 失败", filesystemPath, error);
+    return canonicalLocalPath(filesystemPath);
   }
-  if (hasUnsafeSegments(resolved)) return null;
-  if (!isMarkdownDocumentPath(resolved)) return null;
+
   try {
-    if (!existsSync(resolved) || !statSync(resolved).isFile()) return null;
-  } catch {
+    resolved = realpathSync.native(resolved);
+  } catch (error) {
+    console.warn("[open-md] realpath 失败，使用 resolve 结果", resolved, error);
+  }
+
+  return canonicalLocalPath(resolved);
+}
+
+function markdownFileExists(resolved: string): boolean {
+  try {
+    if (existsSync(resolved) && statSync(resolved).isFile()) {
+      return true;
+    }
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return false;
+    try {
+      const info = statSync(resolved);
+      return info.isFile();
+    } catch (statError) {
+      const statCode = (statError as NodeJS.ErrnoException).code;
+      if (statCode === "ENOENT") return false;
+      try {
+        readdirSync(path.dirname(resolved));
+        return true;
+      } catch (readError) {
+        return (readError as NodeJS.ErrnoException).code !== "ENOENT";
+      }
+    }
+  }
+  return false;
+}
+
+function acceptMarkdownFile(raw: string): string | null {
+  const filesystemPath = toFilesystemPath(raw);
+  if (!filesystemPath) {
+    console.warn("[open-md] 无法解析路径", raw);
     return null;
   }
+
+  const resolved = resolveOpenMarkdownPath(filesystemPath);
+  if (hasUnsafeSegments(resolved)) {
+    console.warn("[open-md] 路径含不安全片段", resolved);
+    return null;
+  }
+  if (!isMarkdownDocumentPath(resolved)) {
+    console.warn("[open-md] 不是 Markdown 文件", resolved);
+    return null;
+  }
+  if (!markdownFileExists(resolved)) {
+    console.warn("[open-md] 文件不存在或不可读", resolved);
+    return null;
+  }
+
   return allowAssociatedMarkdownFile(resolved);
 }
 
@@ -118,6 +167,10 @@ export function bindOpenMarkdownWindow(win: BrowserWindow): void {
     if (deliveryWindow() === win) {
       markOpenMarkdownRendererUnavailable();
     }
+  });
+  win.webContents.on("did-finish-load", () => {
+    if (deliveryWindow() !== win) return;
+    processQueuedRaw();
   });
 }
 

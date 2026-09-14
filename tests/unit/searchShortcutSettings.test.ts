@@ -80,9 +80,10 @@ test("search waits for hydration at startup and remains a focus/open action", ()
   expect(hook).toContain('return api.onOpenSearch(');
   const hotkeys = source("../../electron/main/hotkeys.ts");
   const searchAction = hotkeys.slice(hotkeys.indexOf('searchOk: bindSlot("search"'), hotkeys.indexOf("export function registerHotkeys"));
-  expect(searchAction).toContain("showAndFocusMainWindow()");
-  expect(searchAction).toContain("!win.isDestroyed()");
-  expect(searchAction).toContain('"desktop:open-search"');
+  expect(searchAction).toContain('dispatchRegisteredGlobalHotkey("search")');
   expect(searchAction).not.toContain("toggleWindow");
+  expect(hotkeys).toContain("showOrCreateMainWindow");
+  expect(hotkeys).toContain('"desktop:open-search"');
+  expect(hotkeys).toContain("before-input-event");
   expect(source("../../src/stores/settings/index.ts")).toContain("version: 4");
 });

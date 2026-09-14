@@ -269,14 +269,14 @@ export function SidebarContextMenu({
                   {showLocalOpen ? (
                     <ContextMenuItem
                       onSelect={() => {
-                        void shell
-                          .openWithEditor(
-                            page.localFilePath!,
-                            localFolderExternalEditor,
-                          )
-                          .then((ok) => {
-                            if (!ok) toast.error("打开失败，请检查外部应用设置");
-                          });
+                        void (async () => {
+                          const target = page.localFilePath!;
+                          const editor = localFolderExternalEditor.trim();
+                          const ok = editor
+                            ? await shell.openWithEditor(target, editor)
+                            : await shell.openPath(target);
+                          if (!ok) toast.error("打开失败，请检查外部应用设置");
+                        })();
                       }}
                     >
                       <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />

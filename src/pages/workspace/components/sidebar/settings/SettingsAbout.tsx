@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 import { getGooseDesktop } from "@/lib/electron/runtime";
+import {
+  checkAppUpdate,
+  downloadAppUpdate,
+  openReleasePage,
+  readAppVersion,
+  type AppUpdateCheck,
+} from "@/lib/electron/appUpdate";
 import licenseText from "/LICENSE?raw";
 import sourceInfo from "/SOURCE-CODE.md?raw";
 
@@ -13,6 +20,19 @@ export function SettingsAbout() {
   const [notices, setNotices] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [version, setVersion] = useState("");
+  const [updateBusy, setUpdateBusy] = useState<"check" | "download" | null>(
+    null,
+  );
+  const [update, setUpdate] = useState<AppUpdateCheck | null>(null);
+  const [downloadedPath, setDownloadedPath] = useState("");
+  const [updateError, setUpdateError] = useState("");
+
+  useEffect(() => {
+    void readAppVersion().then((value) => {
+      setVersion(value || "未知");
+    });
+  }, []);
 
   async function loadNotices() {
     setLoading(true);
@@ -29,11 +49,97 @@ export function SettingsAbout() {
     }
   }
 
+  async function handleCheckUpdate() {
+    setUpdateBusy("check");
+    setUpdateError("");
+    setDownloadedPath("");
+    try {
+      const result = await checkAppUpdate();
+      if (!result) {
+        setUpdateError("当前环境无法检查更新");
+        return;
+      }
+      setUpdate(result);
+      if (result.status === "unavailable") {
+        setUpdateError(result.reason ?? "无法检查更新");
+      }
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : "检查更新失败");
+    } finally {
+      setUpdateBusy(null);
+    }
+  }
+
+  async function handleDownloadUpdate() {
+    if (!update || update.status !== "available") return;
+    setUpdateBusy("download");
+    setUpdateError("");
+    try {
+      const saved = await downloadAppUpdate(update.downloadUrl, update.assetName);
+      if (!saved) {
+        setUpdateError("下载失败");
+        return;
+      }
+      setDownloadedPath(saved);
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : "下载失败");
+    } finally {
+      setUpdateBusy(null);
+    }
+  }
+
+  const updateStatusText = downloadedPath
+    ? "安装包已保存到下载文件夹。当前构建未签名，需要在系统设置里允许打开后再替换正在使用的应用。"
+    : update?.status === "up-to-date"
+      ? "已是最新版本"
+      : update?.status === "available"
+        ? `发现新版本 ${update.latestVersion}`
+        : "";
+
   return (
     <div className="min-w-0 space-y-6">
       <h3 className="text-xl font-semibold tracking-tight text-foreground">
         关于与许可
       </h3>
+      <SettingsSectionCard
+        title="版本与更新"
+        description="安装包来自公开发布页。当前构建未签名，下载后需在系统里允许打开，再替换正在使用的应用。"
+      >
+        <p className="text-sm text-foreground">
+          当前版本 {version || "读取中…"}
+        </p>
+        {updateStatusText ? (
+          <p className="text-sm text-muted-foreground">{updateStatusText}</p>
+        ) : null}
+        {updateError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {updateError}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => void handleCheckUpdate()}
+            disabled={updateBusy !== null}
+          >
+            {updateBusy === "check" ? "正在检查…" : "检查更新"}
+          </Button>
+          {update?.status === "available" ? (
+            <Button
+              onClick={() => void handleDownloadUpdate()}
+              disabled={updateBusy !== null}
+            >
+              {updateBusy === "download" ? "正在下载…" : "下载安装包"}
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            onClick={() => openReleasePage(update?.releaseUrl)}
+          >
+            打开发布页
+          </Button>
+        </div>
+      </SettingsSectionCard>
       <SettingsSectionCard title="Goose Note · 鹅的笔记">
         <p className="text-sm text-foreground">
           Copyright © 2026 eachann 与贡献者

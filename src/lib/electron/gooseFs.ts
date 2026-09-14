@@ -307,7 +307,15 @@ export const electronGooseFs = {
     }
   },
 
-  realpathAsync: async (path: string) => path,
+  realpathAsync: async (path: string) => {
+    const api = getGooseDesktop();
+    if (!api?.fsRealpath) return path;
+    try {
+      return await api.fsRealpath(path);
+    } catch {
+      return path;
+    }
+  },
 
   watch: watchImpl,
   unwatch: unwatchImpl,
@@ -394,17 +402,23 @@ export const electronGooseFs = {
     }
   },
 
-  listAvailableOpenApps: async <T extends { appName: string; aliases?: string[] }>(
+  listAvailableOpenApps: async <T extends { appName: string; aliases?: string[]; commands?: string[] }>(
     candidates: T[],
   ): Promise<T[]> => {
     const api = getGooseDesktop();
     if (!api) return [];
     try {
       const installed = await api.listOpenApps();
-      const names = new Set(installed.map((app) => normalizeAppName(app.name)));
+      const names = new Set<string>();
+      for (const app of installed) {
+        names.add(normalizeAppName(app.name));
+        const base = app.path.split(/[\\/]/).pop() ?? "";
+        names.add(normalizeAppName(base.replace(/\.(exe|app)$/i, "")));
+      }
       return candidates.filter((candidate) => {
         const aliases = candidate.aliases ?? [];
-        const options = [candidate.appName, ...aliases].map(normalizeAppName);
+        const commands = candidate.commands ?? [];
+        const options = [candidate.appName, ...aliases, ...commands].map(normalizeAppName);
         return options.some((name) => names.has(name));
       });
     } catch (err) {
@@ -422,11 +436,11 @@ export const electronGooseFs = {
       return false;
     }
   },
-  openTerminalAtPath: async (path: string, _terminal?: string) => {
+  openTerminalAtPath: async (path: string, terminal?: string) => {
     const api = getGooseDesktop();
     if (!api) return false;
     try {
-      await api.openTerminalAtPath(path);
+      await api.openTerminalAtPath(path, terminal);
       return true;
     } catch {
       return false;

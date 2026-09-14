@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   electronAcceleratorAliases,
   electronAcceleratorsMatch,
+  inputMatchesAccelerator,
   toElectronAccelerator,
 } from "../../src/lib/electron/accelerator";
 import {
@@ -61,4 +62,48 @@ test("main process keeps an already-registered accelerator instead of unregister
   expect(source).toContain("electronAcceleratorsMatch");
   expect(source).toContain("tryRegisterAccelerator");
   expect(source).toContain("键没变就别卸");
+});
+
+test("before-input matches default wake and search accelerators", () => {
+  const wake = {
+    type: "keyDown",
+    key: "n",
+    code: "KeyN",
+    meta: true,
+    alt: true,
+    control: false,
+    shift: false,
+  };
+  expect(
+    inputMatchesAccelerator(wake, "CommandOrControl+Alt+N", "darwin"),
+  ).toBe(true);
+  expect(
+    inputMatchesAccelerator(wake, "CommandOrControl+Alt+N", "win32"),
+  ).toBe(false);
+  expect(
+    inputMatchesAccelerator(
+      { ...wake, meta: false, control: true },
+      "CommandOrControl+Alt+N",
+      "win32",
+    ),
+  ).toBe(true);
+  expect(
+    inputMatchesAccelerator({ ...wake, type: "keyUp" }, "CommandOrControl+Alt+N", "darwin"),
+  ).toBe(false);
+
+  const search = {
+    type: "keyDown",
+    key: "k",
+    code: "KeyK",
+    meta: true,
+    alt: false,
+    control: false,
+    shift: true,
+  };
+  expect(
+    inputMatchesAccelerator(search, "CommandOrControl+Shift+K", "darwin"),
+  ).toBe(true);
+  expect(
+    inputMatchesAccelerator({ ...search, shift: false }, "CommandOrControl+Shift+K", "darwin"),
+  ).toBe(false);
 });

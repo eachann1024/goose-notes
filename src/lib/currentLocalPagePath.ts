@@ -30,15 +30,18 @@ export async function currentLocalNotebookRoot(): Promise<string | null> {
     : null;
 }
 
-function normalizeComparisonPath(filePath: string): string {
-  return filePath.replace(/\\/g, "/").replace(/\/+/g, "/");
-}
+import {
+  isCanonicalPathInside,
+  localPathsAreCaseInsensitive,
+} from "@/lib/canonicalLocalPath";
 
 export function isPathInsideNotebookRoot(
   filePath: string,
   rootPath: string,
 ): boolean {
-  const file = normalizeComparisonPath(filePath);
-  const root = normalizeComparisonPath(rootPath).replace(/\/$/, "");
-  return file === root || file.startsWith(`${root}/`);
+  return isCanonicalPathInside(
+    filePath,
+    rootPath,
+    localPathsAreCaseInsensitive(),
+  );
 }

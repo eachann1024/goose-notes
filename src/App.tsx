@@ -76,10 +76,10 @@ function App() {
     if (!hydrated) return;
 
     const { privacy } = useSettings.getState();
+    if (shouldPreserveStartupSelection()) return;
+
     if (!privacy.autoOpenLastNote) {
-      if (!shouldPreserveStartupSelection()) {
-        clearActivePageForBlankEntry();
-      }
+      clearActivePageForBlankEntry();
       return;
     }
 

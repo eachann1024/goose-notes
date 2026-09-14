@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import {
+  comparisonLocalPath,
+  localPathsAreCaseInsensitive,
+} from "@/lib/canonicalLocalPath";
 import { localStorageAdapter } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
 import { fs } from "@/lib/electron-platform/fs";
@@ -226,10 +230,14 @@ export const useNotebooks = create<NotebooksState>()(
 
       createLocalFolderNotebook: (name, localPath) => {
         const pagesStore = usePages.getState();
+        const caseInsensitive = localPathsAreCaseInsensitive();
+        const targetPath = comparisonLocalPath(localPath, caseInsensitive);
         const existing = Object.values(get().notebooks).find(
           (notebook) =>
             notebook.source === "local-folder" &&
-            notebook.localPath === localPath,
+            typeof notebook.localPath === "string" &&
+            comparisonLocalPath(notebook.localPath, caseInsensitive) ===
+              targetPath,
         );
         if (existing) {
           set((state) => ({
