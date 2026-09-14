@@ -8,6 +8,32 @@ import { getGooseDesktop } from "./runtime";
 
 export const TITLE_WINDOW_DRAG_THRESHOLD_PX = 4;
 export const WINDOW_DRAGGING_CLASS = "window-dragging";
+export const OPTION_WINDOW_DRAG_CLASS = "option-window-drag";
+
+/** ponytail: Option 须在按下鼠标前启用；中途接管拖动需要原生桥接。 */
+export function bindOptionWindowDrag(): () => void {
+  const root = document.documentElement;
+  const syncKey = (event: KeyboardEvent) => {
+    if (root.classList.contains(WINDOW_DRAGGING_CLASS)) return;
+    root.classList.toggle(OPTION_WINDOW_DRAG_CLASS, event.altKey);
+  };
+  const syncPointer = (event: PointerEvent) => {
+    if (event.buttons !== 0) return;
+    root.classList.toggle(OPTION_WINDOW_DRAG_CLASS, event.altKey);
+  };
+  const clear = () => root.classList.remove(OPTION_WINDOW_DRAG_CLASS);
+  window.addEventListener("keydown", syncKey);
+  window.addEventListener("keyup", syncKey);
+  window.addEventListener("pointermove", syncPointer);
+  window.addEventListener("blur", clear);
+  return () => {
+    window.removeEventListener("keydown", syncKey);
+    window.removeEventListener("keyup", syncKey);
+    window.removeEventListener("pointermove", syncPointer);
+    window.removeEventListener("blur", clear);
+    clear();
+  };
+}
 
 function setWindowDraggingCursor(on: boolean): void {
   const root =

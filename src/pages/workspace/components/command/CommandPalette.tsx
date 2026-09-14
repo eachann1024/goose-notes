@@ -349,7 +349,7 @@ export function CommandPalette() {
             搜索和快速访问页面
           </DialogDescription>
           <div
-            className="flex items-center h-14 px-4 shadow-[inset_0_-1px_0_hsl(var(--foreground)/0.07)]"
+            className="flex items-center h-14 px-4"
             cmdk-input-wrapper=""
           >
             <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />

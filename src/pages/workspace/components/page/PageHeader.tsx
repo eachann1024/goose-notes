@@ -6,6 +6,7 @@ import { ConversationTitle } from "@/pages/workspace/components/notebook-ai/Conv
 import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
+import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
 import { PageMenu } from "./PageMenu";
 import { PageIconButton } from "./PageIconButton";
 import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
@@ -57,7 +58,8 @@ export function PageHeader({
   const singleTabMode = useEffectiveSingleTabMode();
   const aiHeaderActions = useAiHeaderActions();
   const aiHeaderTitle = useAiHeaderTitle();
-  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const sidebarCollapsed = useEffectiveSidebarCollapsed();
+  const userSidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useSidebarView(
     (s) => s.toggleSidebarCollapsed,
   );
@@ -67,20 +69,20 @@ export function PageHeader({
   const toggleAiPanelShortcutLabel = appShortcuts.toggleAIPanel
     ? formatShortcut(appShortcuts.toggleAIPanel)
     : "";
-  const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
+  const prevSidebarCollapsedRef = useRef(userSidebarCollapsed);
   const [sidebarExpandAttention, setSidebarExpandAttention] = useState(false);
 
   useEffect(() => {
-    if (!prevSidebarCollapsedRef.current && sidebarCollapsed) {
+    if (!prevSidebarCollapsedRef.current && userSidebarCollapsed) {
       setSidebarExpandAttention(true);
       const timer = window.setTimeout(() => {
         setSidebarExpandAttention(false);
       }, 4000);
-      prevSidebarCollapsedRef.current = sidebarCollapsed;
+      prevSidebarCollapsedRef.current = userSidebarCollapsed;
       return () => window.clearTimeout(timer);
     }
-    prevSidebarCollapsedRef.current = sidebarCollapsed;
-  }, [sidebarCollapsed]);
+    prevSidebarCollapsedRef.current = userSidebarCollapsed;
+  }, [userSidebarCollapsed]);
 
   const showAiOnTabRail =
     Boolean(onToggleAiPanel) && isFullscreenAiLayout(aiLayoutMode);

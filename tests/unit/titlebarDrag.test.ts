@@ -55,7 +55,7 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
     titleBar.indexOf("<PageIconButton"),
   );
   expect(titleBar).toContain("data-electron-no-drag");
-  expect(titleBar).not.toContain("LucideIcons.Pin");
+  expect(titleBar).toContain("LucideIcons.Pin");
   expect(titleBar).not.toContain("置顶页面");
   expect(titleBar).not.toContain("LucideIcons.Star");
   expect(titleBar).not.toContain("收藏页面");

@@ -93,7 +93,7 @@ const DialogContent = React.forwardRef<HTMLElement, DialogContentProps>(
             {!hideClose && (
               <DialogClose
                 aria-label="关闭"
-                className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-sm bg-transparent text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <LucideIcons.X className="h-4 w-4" />
               </DialogClose>

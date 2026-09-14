@@ -1,11 +1,61 @@
 import { expect, test } from "playwright/test";
 import {
+  bindOptionWindowDrag,
   computeWindowDragOrigin,
   endWindowDragging,
+  OPTION_WINDOW_DRAG_CLASS,
   shouldStartWindowDrag,
   startWindowDragging,
   WINDOW_DRAGGING_CLASS,
 } from "../../src/lib/electron/windowDrag";
+
+test("Option switches native drag before a press and clears on blur/unmount", () => {
+  const prevWindow = globalThis.window;
+  const prevDocument = globalThis.document;
+  const target = new EventTarget();
+  const classes = new Set<string>();
+  const classList = {
+    contains: (name: string) => classes.has(name),
+    remove: (name: string) => { classes.delete(name); },
+    toggle: (name: string, on: boolean) => {
+      if (on) classes.add(name);
+      else classes.delete(name);
+    },
+  };
+  Object.assign(globalThis, {
+    window: target,
+    document: { documentElement: { classList } },
+  });
+  const send = (type: string, altKey = false, buttons = 0) => {
+    target.dispatchEvent(Object.assign(new Event(type), { altKey, buttons }));
+  };
+  const unbind = bindOptionWindowDrag();
+  try {
+    send("keydown", true);
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(true);
+    send("keyup");
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+    send("pointermove", true, 1);
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+    send("pointermove", true);
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(true);
+    send("blur");
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+    classes.add(WINDOW_DRAGGING_CLASS);
+    send("keydown", true);
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+    classes.delete(WINDOW_DRAGGING_CLASS);
+    send("keydown", true);
+    unbind();
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+    send("keydown", true);
+    send("pointermove", true);
+    expect(classes.has(OPTION_WINDOW_DRAG_CLASS)).toBe(false);
+  } finally {
+    unbind();
+    Object.assign(globalThis, { window: prevWindow, document: prevDocument });
+  }
+});
 
 test("title pointer stays a click within the drag threshold", () => {
   expect(shouldStartWindowDrag(10, 10, 12, 11)).toBe(false);

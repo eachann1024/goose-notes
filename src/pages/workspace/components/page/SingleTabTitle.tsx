@@ -286,6 +286,7 @@ export function SingleTabTitle({
       <button
         type="button"
         data-electron-no-drag
+        data-electron-option-drag
         aria-label="笔记标题"
         title="点击编辑笔记标题"
         className={`${idleClass} ${sizeClass} truncate text-left ${inTab ? "cursor-text" : "cursor-default"}`}

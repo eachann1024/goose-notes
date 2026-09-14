@@ -10,6 +10,7 @@ import { useHistoryRecorder } from "@/hooks/useHistoryRecorder";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import { WorkspaceLayout } from "./WorkspaceLayout";
 import { isElectronRuntime } from "@/lib/electron/runtime";
+import { bindOptionWindowDrag } from "@/lib/electron/windowDrag";
 import {
   EditorPaneRegistryProvider,
   createEditorPaneRegistry,
@@ -49,6 +50,9 @@ export function WorkspacePage() {
     root.classList.add("is-electron");
     if (isElectronRuntime() && /Win/i.test(navigator.platform)) {
       root.classList.add("is-win");
+    }
+    if (isElectronRuntime() && /Mac/i.test(navigator.platform)) {
+      return bindOptionWindowDrag();
     }
   }, []);
 

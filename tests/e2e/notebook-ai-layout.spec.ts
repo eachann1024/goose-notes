@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 
-for (const width of [1440, 900]) {
+for (const width of [1440, 1200]) {
   for (const layout of ["side-panel", "fullscreen"] as const) {
     test(`AI ${layout} geometry at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });

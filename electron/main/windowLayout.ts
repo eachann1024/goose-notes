@@ -1,4 +1,8 @@
 import path from "node:path";
+import {
+  WORKSPACE_MIN_WINDOW_HEIGHT,
+  WORKSPACE_MIN_WINDOW_WIDTH,
+} from "../../src/lib/workspaceViewport";
 
 export const WINDOW_LAYOUT_FILE = "window-layout.json";
 export const WINDOW_LAYOUT_VERSION = 1 as const;
@@ -6,8 +10,8 @@ export const WINDOW_LAYOUT_VERSION = 1 as const;
 export const DEFAULT_WORKSPACE_WIDTH = 1250;
 export const DEFAULT_WORKSPACE_HEIGHT = 800;
 export const NEW_WINDOW_OFFSET_PX = 32;
-export const MIN_WORKSPACE_WIDTH = 800;
-export const MIN_WORKSPACE_HEIGHT = 560;
+export const MIN_WORKSPACE_WIDTH = WORKSPACE_MIN_WINDOW_WIDTH;
+export const MIN_WORKSPACE_HEIGHT = WORKSPACE_MIN_WINDOW_HEIGHT;
 export const MIN_QUICKNOTE_WIDTH = 320;
 export const MIN_QUICKNOTE_HEIGHT = 240;
 

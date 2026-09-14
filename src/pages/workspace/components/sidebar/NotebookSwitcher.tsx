@@ -14,6 +14,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import "./notebook-switcher.css";
+import type { SidebarFooterProps } from "./SidebarFooter";
+import { useSidebarView } from "@/stores/useSidebarView";
 import {
   Popover,
   PopoverTrigger,
@@ -159,7 +161,18 @@ function SortableNotebookItem({
   );
 }
 
-export function NotebookSwitcher() {
+export function NotebookSwitcher({
+  currentView,
+  isSettingsOpen,
+  hideTrash = false,
+  onSwitchToTrash,
+  onOpenSettings,
+}: SidebarFooterProps) {
+  const toggleDarkMode = useSettings((s) => s.toggleDarkMode);
+
+  const toggleSidebarCollapsed = useSidebarView(
+    (s) => s.toggleSidebarCollapsed,
+  );
   const {
     notebooks,
     activeNotebookId,
@@ -393,8 +406,9 @@ export function NotebookSwitcher() {
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="goose-notebook-menu-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 before:-top-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="goose-notebook-menu-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 data-[side=bottom]:before:-top-2 data-[side=top]:before:-bottom-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           style={{ minWidth: 220 }}
+          side="top"
           align="start"
           alignOffset={0}
           sideOffset={2}
@@ -419,33 +433,35 @@ export function NotebookSwitcher() {
             if (isDraggingRef.current) e.preventDefault();
           }}
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-          >
-            <SortableContext
-              items={notebookList.map((nb) => nb.id)}
-              strategy={verticalListSortingStrategy}
+          <div className="max-h-[max(4rem,calc(var(--goose-popover-available-height,80vh)-15rem))] overflow-y-auto">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
             >
-              {notebookList.map((notebook) => (
-                <SortableNotebookItem
-                  key={notebook.id}
-                  notebook={notebook}
-                  isActive={activeNotebookId === notebook.id}
-                  canDeleteNotebook={canDeleteNotebook}
-                  onActivate={(id) => {
-                    void activateNotebook(id);
-                    setIsOpen(false);
-                  }}
-                  onEdit={handleEdit}
-                  onDeleteLocal={deleteNotebook}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+              <SortableContext
+                items={notebookList.map((nb) => nb.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {notebookList.map((notebook) => (
+                  <SortableNotebookItem
+                    key={notebook.id}
+                    notebook={notebook}
+                    isActive={activeNotebookId === notebook.id}
+                    canDeleteNotebook={canDeleteNotebook}
+                    onActivate={(id) => {
+                      void activateNotebook(id);
+                      setIsOpen(false);
+                    }}
+                    onEdit={handleEdit}
+                    onDeleteLocal={deleteNotebook}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
           <div className="mx-1 my-1 h-px bg-border" />
           <div className="grid grid-cols-2 gap-1">
             {isElectronHost ? (
@@ -473,6 +489,54 @@ export function NotebookSwitcher() {
               打开文件夹
             </PopoverAction>
           </div>
+
+          {!isElectronHost && (
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="切换外观"
+                onClick={toggleDarkMode}
+              >
+                <LucideIcons.Sun className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="设置"
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenSettings();
+                }}
+              >
+                <LucideIcons.Settings className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {!hideTrash && (
+            <PopoverAction
+              aria-pressed={!isSettingsOpen && currentView === "trash"}
+              className="aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)]"
+              onClick={() => {
+                setIsOpen(false);
+                onSwitchToTrash();
+              }}
+            >
+              <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground" />
+              垃圾箱
+            </PopoverAction>
+          )}
+          {!isElectronHost && (
+            <PopoverAction
+              onClick={() => {
+                setIsOpen(false);
+                toggleSidebarCollapsed();
+              }}
+            >
+              <LucideIcons.PanelLeft className="h-4 w-4 text-muted-foreground" />
+              收起侧栏
+            </PopoverAction>
+          )}
         </PopoverContent>
       </Popover>
 

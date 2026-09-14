@@ -197,6 +197,7 @@ function SortableTabItem({
           data-tab-preview={tab.preview || undefined}
           data-tab-pinned={tab.pinned || undefined}
           data-electron-no-drag={electronNoDrag ? "" : undefined}
+          data-electron-option-drag={windowDragEnabled ? "" : undefined}
           onPointerDown={onWindowDragPointerDown}
           onClick={onActivate}
           onDoubleClick={(event) => {

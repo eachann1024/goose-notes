@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import { isEffectiveSidebarCollapsed } from "@/lib/workspaceViewport";
+import { useWorkspaceViewport } from "./useWorkspaceViewport";
 
 const EMPTY_ARRAY: string[] = [];
 const SIDEBAR_VIEW_PERSIST_DEBOUNCE_MS = 80;
@@ -97,11 +99,30 @@ export const useSidebarView = create<State>()(
       favoritesCollapsed: false,
       sidebarCollapsed: false,
       setSidebarCollapsed: (collapsed) => {
-        if (get().sidebarCollapsed === collapsed) return;
-        set({ sidebarCollapsed: collapsed });
+        const vp = useWorkspaceViewport.getState();
+        if (!collapsed) {
+          if (get().sidebarCollapsed) set({ sidebarCollapsed: false });
+          vp.setLeftExpandOverride(vp.forceCollapseLeft);
+          return;
+        }
+        if (!get().sidebarCollapsed) set({ sidebarCollapsed: true });
+        vp.setLeftExpandOverride(false);
       },
-      toggleSidebarCollapsed: () =>
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      toggleSidebarCollapsed: () => {
+        const vp = useWorkspaceViewport.getState();
+        const userCollapsed = get().sidebarCollapsed;
+        if (vp.forceCollapseLeft) {
+          const hidden = isEffectiveSidebarCollapsed(
+            userCollapsed,
+            vp.forceCollapseLeft,
+            vp.leftExpandOverride,
+          );
+          vp.setLeftExpandOverride(hidden);
+          return;
+        }
+        set({ sidebarCollapsed: !userCollapsed });
+        vp.setLeftExpandOverride(false);
+      },
       setExpanded: (notebookId, ids) => {
         const current = get().expandedByNotebook[notebookId];
         if (current && current.length === ids.length && current.every((v, i) => v === ids[i])) {

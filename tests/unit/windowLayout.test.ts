@@ -7,6 +7,8 @@ import {
   DEFAULT_WORKSPACE_WIDTH,
   MIN_QUICKNOTE_HEIGHT,
   MIN_QUICKNOTE_WIDTH,
+  MIN_WORKSPACE_HEIGHT,
+  MIN_WORKSPACE_WIDTH,
   NEW_WINDOW_OFFSET_PX,
   parseWindowLayout,
   serializeWindowLayout,
@@ -106,6 +108,17 @@ test("missing source window is centered in the work area", () => {
   expect(centered.x).toBe(
     workArea.x + Math.round((workArea.width - DEFAULT_WORKSPACE_WIDTH) / 2),
   );
+});
+
+test("workspace clamp uses Chrome-like 500 min width", () => {
+  expect(MIN_WORKSPACE_WIDTH).toBe(500);
+  expect(MIN_WORKSPACE_HEIGHT).toBe(560);
+  const clamped = clampBoundsToWorkArea(
+    { x: 10, y: 30, width: 200, height: 100 },
+    workArea,
+  );
+  expect(clamped.width).toBe(MIN_WORKSPACE_WIDTH);
+  expect(clamped.height).toBe(MIN_WORKSPACE_HEIGHT);
 });
 
 test("clampBoundsToWorkArea can use quicknote min size", () => {

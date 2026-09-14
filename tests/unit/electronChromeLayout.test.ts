@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 
-test("Electron 窗口置顶在侧栏左下角，不在顶栏", () => {
+test("C 布局：窗口控制在顶栏，仓库入口在底部", () => {
   const footer = readFileSync(
     new URL(
       "../../src/pages/workspace/components/sidebar/SidebarFooter.tsx",
@@ -20,14 +20,18 @@ test("Electron 窗口置顶在侧栏左下角，不在顶栏", () => {
     new URL("../../electron/main/ipc.ts", import.meta.url),
     "utf8",
   );
-  expect(footer).toContain("useWindowAlwaysOnTop");
-  expect(footer).toContain("窗口置顶");
-  expect(footer).toContain("LucideIcons.Pin");
-  expect(footer.indexOf("LucideIcons.Pin")).toBeLessThan(
-    footer.indexOf("LucideIcons.PanelLeft"),
-  );
-  expect(titleBar).not.toContain("LucideIcons.Pin");
-  expect(titleBar).not.toContain("useWindowAlwaysOnTop");
+  expect(footer).toContain("<NotebookSwitcher {...props}");
+  expect(footer).not.toContain("useWindowAlwaysOnTop");
+  expect(titleBar).toContain("LucideIcons.Pin");
+  expect(titleBar).toContain("useWindowAlwaysOnTop");
+  expect(titleBar).toContain('sidebarCollapsed ? "展开侧栏" : "收起侧栏"');
+  expect(titleBar.match(/\{windowControls\}/g)).toHaveLength(2);
+  expect(
+    readFileSync(
+      "src/pages/workspace/components/sidebar/SidebarHeader.tsx",
+      "utf8",
+    ),
+  ).not.toContain("NotebookSwitcher");
   expect(ipc).toContain("desktop:getAlwaysOnTop");
   expect(ipc).toContain("desktop:setAlwaysOnTop");
 });
@@ -46,5 +50,21 @@ test("仓库切换菜单宽度跟随触发条", () => {
   );
   expect(switcher).toContain("min-w-[13.75rem]");
   expect(switcher).toContain("minWidth: 220");
+  expect(switcher).toContain('side="top"');
+  expect(switcher).toContain("data-[side=top]:before:-bottom-2");
+  expect(switcher).toContain("onOpenSettings()");
+  expect(switcher).toContain("onClick={toggleDarkMode}");
+  const titleBar = readFileSync(
+    "src/pages/workspace/components/page/DesktopTitleBar.tsx",
+    "utf8",
+  );
+  expect(titleBar.indexOf("<PageMenu />")).toBeLessThan(
+    titleBar.indexOf("<ThemeIcon"),
+  );
+  expect(titleBar.indexOf("<ThemeIcon")).toBeLessThan(
+    titleBar.indexOf("<LucideIcons.Settings"),
+  );
+  expect(titleBar).toContain('"goose-note:open-settings"');
+  expect(switcher).toContain("!hideTrash &&");
   expect(switcher).not.toContain("min-w-[var(--goose-popover-trigger-width)]");
 });

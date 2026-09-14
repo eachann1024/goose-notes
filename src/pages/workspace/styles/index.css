@@ -120,6 +120,7 @@
   padding-top: 0;
 }
 .workspace-shell[data-electron-chrome] .electron-titlebar {
+  position: relative;
   background: var(--workspace-sidebar-surface);
   padding-left: max(
     var(--electron-traffic-inset, 78px),
@@ -130,8 +131,18 @@
   );
 }
 
+.electron-window-controls {
+  position: absolute;
+  left: var(--electron-traffic-inset, 78px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"] {
+  padding-left: calc(var(--electron-traffic-inset, 78px) + 76px);
+}
+
 html.is-electron {
-  --electron-traffic-inset: 78px;
+  --electron-traffic-inset: 96px;
 }
 html.is-electron.is-win {
   --electron-traffic-inset: 12px;
@@ -145,6 +156,11 @@ html.is-electron .electron-titlebar {
 html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electron-no-drag], [role="button"]) {
   -webkit-app-region: no-drag;
   app-region: no-drag;
+}
+/* 仅闲置标题/单标签切换；输入框、关闭按钮仍保留 no-drag。 */
+html.is-electron.option-window-drag .electron-titlebar [data-electron-option-drag] {
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 html.is-electron.window-dragging,
 html.is-electron.window-dragging * {

@@ -6,6 +6,7 @@ import { SettingsDialog } from "./SettingsDialog";
 import { TrashList } from "./TrashList";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
+import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useSidebarResize } from "./hooks/useSidebarResize";
 import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
@@ -51,7 +52,7 @@ export function Sidebar({
   const { activeNotebookId, notebooks } = useNotebooks();
   const { openInCurrentTab } = useTabs();
   const setExpanded = useSidebarView((s) => s.setExpanded);
-  const sidebarCollapsed = useSidebarView((s) => s.sidebarCollapsed);
+  const sidebarCollapsed = useEffectiveSidebarCollapsed();
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
   // Electron 仅本地模式：没有仓库时不露出「新建页面」入口与内置本语义

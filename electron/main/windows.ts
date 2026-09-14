@@ -27,6 +27,8 @@ import {
   DEFAULT_WORKSPACE_WIDTH,
   MIN_QUICKNOTE_HEIGHT,
   MIN_QUICKNOTE_WIDTH,
+  MIN_WORKSPACE_HEIGHT,
+  MIN_WORKSPACE_WIDTH,
   parseWindowLayout,
   serializeWindowLayout,
   windowLayoutFilePath,
@@ -77,6 +79,28 @@ const LAYOUT_PERSIST_DEBOUNCE_MS = 300;
 
 const visibilityListeners = new Set<() => void>();
 let lastEmittedVisible = false;
+
+type WindowCreatedListener = (
+  win: BrowserWindow,
+  kind: "workspace" | "quicknote",
+) => void;
+const windowCreatedListeners = new Set<WindowCreatedListener>();
+
+export function onBrowserWindowCreated(
+  listener: WindowCreatedListener,
+): () => void {
+  windowCreatedListeners.add(listener);
+  return () => {
+    windowCreatedListeners.delete(listener);
+  };
+}
+
+function notifyBrowserWindowCreated(
+  win: BrowserWindow,
+  kind: "workspace" | "quicknote",
+): void {
+  for (const listener of windowCreatedListeners) listener(win, kind);
+}
 
 function preloadPath(): string {
   return path.join(__dirname, "../preload/index.cjs");
@@ -386,6 +410,7 @@ function attachWorkspaceChrome(
   denyWindowOpenHandler(win);
   bindOpenMarkdownWindow(win);
   bindCloseTabAccelerator(win);
+  notifyBrowserWindowCreated(win, "workspace");
 
   win.once("ready-to-show", () => {
     applyTrafficLightPosition(win);
@@ -482,8 +507,8 @@ export function createWorkspaceWindow(
     width: bounds.width ?? MAIN_WIDTH,
     height: bounds.height ?? MAIN_HEIGHT,
     ...(bounds.x != null && bounds.y != null ? { x: bounds.x, y: bounds.y } : {}),
-    minWidth: 800,
-    minHeight: 560,
+    minWidth: MIN_WORKSPACE_WIDTH,
+    minHeight: MIN_WORKSPACE_HEIGHT,
     show: false,
     backgroundColor: "#ffffff",
     transparent: false,
@@ -603,6 +628,7 @@ export function createQuicknoteWindow(): BrowserWindow {
   registry.register({ id, kind: "quicknote", win });
   denyWindowOpenHandler(win);
   bindCloseTabAccelerator(win);
+  notifyBrowserWindowCreated(win, "quicknote");
 
   win.on("show", () => {
     clearQuicknoteDestroyTimer();
@@ -842,6 +868,22 @@ function listHiddenWorkspaceWindows(): BrowserWindow[] {
   return hidden;
 }
 
+function focusedWorkspaceWindow(): BrowserWindow | null {
+  for (const record of registry.workspaces()) {
+    const workspace = record.win;
+    if (
+      workspace &&
+      !workspace.isDestroyed() &&
+      workspace.isVisible() &&
+      !workspace.isMinimized() &&
+      workspace.isFocused()
+    ) {
+      return workspace;
+    }
+  }
+  return null;
+}
+
 function restoreHiddenWorkspaces(hidden: BrowserWindow[]): void {
   for (const workspace of hidden) {
     if (workspace.isDestroyed() || !workspace.isVisible()) continue;
@@ -855,6 +897,7 @@ function restoreHiddenWorkspaces(hidden: BrowserWindow[]): void {
  */
 function raiseQuicknoteWindow(win: BrowserWindow): void {
   markQuicknoteActivateSuppressed();
+  const workspace = focusedWorkspaceWindow();
   const hiddenWorkspaces = listHiddenWorkspaceWindows();
   for (const workspace of hiddenWorkspaces) {
     workspacesHeldHidden.add(workspace);
@@ -872,6 +915,12 @@ function raiseQuicknoteWindow(win: BrowserWindow): void {
     win.focus();
   }
   restoreHiddenWorkspaces(hiddenWorkspaces);
+  // panel 获得焦点后，macOS 可能把原本在前面的 workspace 降到别的应用后面；
+  // 恢复普通窗层级，再让 floating panel 保持在它上面。
+  if (workspace && !workspace.isDestroyed()) {
+    workspace.moveTop();
+    win.moveTop();
+  }
   if (hiddenWorkspaces.length === 0) return;
   setImmediate(() => {
     markQuicknoteActivateSuppressed();
@@ -937,16 +986,27 @@ export function broadcast(channel: string, payload: unknown): void {
 
 /** 全局搜索热键：显示并聚焦最近活动 workspace 窗，不 toggle 隐藏。已在前台则跳过 raise，避免 steal focus 卡顿。 */
 export function showAndFocusMainWindow(): void {
-  const win = getMainWindow();
-  if (!win || win.isDestroyed()) return;
+  showOrCreateMainWindow();
+}
+
+/**
+ * 只显示主窗，不走三态隐藏。小窗前台、功能转发、搜索热键都走这里。
+ * 没有 workspace 时补开一扇空白窗。
+ */
+export function showOrCreateMainWindow(): BrowserWindow {
+  let win = getMainWindow();
+  if (!win || win.isDestroyed()) {
+    win = createWorkspaceWindow({ mode: "blank" });
+  }
+  workspacesHeldHidden.delete(win);
   if (
-    !shouldRaiseMainWindow({
+    shouldRaiseMainWindow({
       visible: win.isVisible(),
       minimized: win.isMinimized(),
       focused: win.isFocused(),
     })
   ) {
-    return;
+    raiseWindow(win);
   }
-  raiseWindow(win);
+  return win;
 }

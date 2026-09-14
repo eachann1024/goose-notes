@@ -1,4 +1,4 @@
-import { type ComponentProps, type RefObject, useEffect, useLayoutEffect, useRef } from "react";
+import { type ComponentProps, type RefObject, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import * as LucideIcons from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { subscribePageTitleFocus } from "@/lib/page-title-focus";
 import { isElectronRuntime } from "@/lib/electron/runtime";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
+import { isEffectiveRightSidePanelOpen } from "@/lib/workspaceViewport";
+import { useWorkspaceViewportCollapse } from "@/hooks/useWorkspaceViewportCollapse";
+import { useWorkspaceViewport } from "@/stores/useWorkspaceViewport";
 
 // Electron 桌面端 chrome：全宽 overlay 顶栏挂在 .workspace-shell 顶部（覆盖侧栏+主区），
 // 主区内不再重复渲染 PageHeader/HistoryToolbar。Electron 构建保持现状，一行不挪。
@@ -132,8 +135,15 @@ export function WorkspaceLayout({
     consumeCapturedSelection: consumeAiPanelCapturedSelection,
   } = useNotebookAiPanel();
   const aiFullscreen = isFullscreenAiLayout(aiLayoutMode);
-  const showSideAiPanel =
-    aiEnabled && aiPanelOpen && !aiFullscreen;
+  const userSideAiPanel = aiEnabled && aiPanelOpen && !aiFullscreen;
+  useWorkspaceViewportCollapse();
+  const forceCollapseRight = useWorkspaceViewport((s) => s.forceCollapseRight);
+  const rightExpandOverride = useWorkspaceViewport((s) => s.rightExpandOverride);
+  const showSideAiPanel = isEffectiveRightSidePanelOpen(
+    userSideAiPanel,
+    forceCollapseRight,
+    rightExpandOverride,
+  );
   const showFullscreenAi =
     aiEnabled && aiPanelOpen && aiFullscreen;
   const searchHighlightNonce = usePages((s) => s.searchHighlightNonce);
@@ -186,20 +196,43 @@ export function WorkspaceLayout({
   // 改为：依赖 activePageId/page 一并参与，用 handledSearchHighlightNonce 做幂等去重，
   // 等切页落定、目标页 editor ready 后自然会再跑一次并完成定位。
   const locateRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleToggleAiPanel = useCallback(() => {
+    if (!aiAvailableForNotebook) return;
+    const vp = useWorkspaceViewport.getState();
+    if (!aiFullscreen && vp.forceCollapseRight) {
+      if (!aiPanelOpen) {
+        openAiPanel();
+        vp.setRightExpandOverride(true);
+        window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
+        return;
+      }
+      const nextOverride = !vp.rightExpandOverride;
+      vp.setRightExpandOverride(nextOverride);
+      if (nextOverride) {
+        window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
+      }
+      return;
+    }
+    toggleAiPanel();
+    if (!aiPanelOpen) {
+      window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
+    }
+  }, [
+    aiAvailableForNotebook,
+    aiFullscreen,
+    aiPanelOpen,
+    openAiPanel,
+    toggleAiPanel,
+  ]);
   // Mod+J 快捷键（useAppHotkeys 派发）→ 开关 AI 面板，与 UI 按钮门控一致：未启用 AI 时不响应
   useEffect(() => {
     const onToggle = () => {
-      if (!aiAvailableForNotebook) return;
-      toggleAiPanel();
-      // 由关闭切到打开时，面板若是首次挂载会自行聚焦；已挂载（如布局切换场景）则补发聚焦事件
-      if (!aiPanelOpen) {
-        window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
-      }
+      handleToggleAiPanel();
     };
     window.addEventListener("goose-note:toggle-ai-panel", onToggle);
     return () =>
       window.removeEventListener("goose-note:toggle-ai-panel", onToggle);
-  }, [aiAvailableForNotebook, aiPanelOpen, toggleAiPanel]);
+  }, [handleToggleAiPanel]);
 
   // 极简工作区的新建页会直接进入标题编辑。若此时 AI 正以全屏覆盖主区域，
   // 必须同步退出 AI，否则只会看到页头标题框，正文仍错误地停留在 AI 会话。
@@ -234,6 +267,9 @@ export function WorkspaceLayout({
           ? (detail as Parameters<typeof openAiPanel>[0])
           : null;
       openAiPanel(capture);
+      if (useWorkspaceViewport.getState().forceCollapseRight) {
+        useWorkspaceViewport.getState().setRightExpandOverride(true);
+      }
       // 面板已打开时重复触发「打开」不会重挂载，补发聚焦事件让输入框重新获焦；
       // 首次挂载时面板自身会聚焦，此事件无害。
       window.dispatchEvent(new CustomEvent("goose-note:focus-ai-composer"));
@@ -359,10 +395,10 @@ export function WorkspaceLayout({
                 ? () => void permanentlyDeletePageWithCleanup(activePageId)
                 : undefined
             }
-            aiPanelOpen={aiAvailableForNotebook && aiPanelOpen}
+            aiPanelOpen={showFullscreenAi || showSideAiPanel}
             aiLayoutMode={aiLayoutMode}
             onToggleAiPanel={
-              aiAvailableForNotebook ? toggleAiPanel : undefined
+              aiAvailableForNotebook ? handleToggleAiPanel : undefined
             }
           />
         )}
@@ -426,9 +462,9 @@ export function WorkspaceLayout({
                   aiAvailableForNotebook={aiAvailableForNotebook}
                   isWelcomeTab={isWelcomeTab}
                   openNewTabHandler={openNewTabHandler}
-                  aiPanelOpen={aiPanelOpen}
+                  aiPanelOpen={showFullscreenAi || showSideAiPanel}
                   aiLayoutMode={aiLayoutMode}
-                  toggleAiPanel={toggleAiPanel}
+                  toggleAiPanel={handleToggleAiPanel}
                   showSideAiPanel={showSideAiPanel}
                   closeAiPanel={closeAiPanel}
                   editorRef={editorRef}
@@ -455,7 +491,7 @@ export function WorkspaceLayout({
                 openNewTabHandler={openNewTabHandler}
                 aiPanelOpen={false}
                 aiLayoutMode={aiLayoutMode}
-                toggleAiPanel={toggleAiPanel}
+                toggleAiPanel={handleToggleAiPanel}
                 showSideAiPanel={false}
                 closeAiPanel={closeAiPanel}
                 editorRef={editorRef}
