@@ -6,6 +6,7 @@ import {
 } from "@/lib/canonicalLocalPath";
 import { localStorageAdapter } from "@/lib/storage";
 import { removeLocalPageMetaByWorkspaceId } from "@/lib/storage/pageRepository";
+import { removeLocalFolderOrders } from "./localFolderOrder";
 import { fs } from "@/lib/electron-platform/fs";
 import { persistPageSnapshots } from "./pages/persistence";
 import { useSettings } from "./useSettings";
@@ -396,6 +397,7 @@ export const useNotebooks = create<NotebooksState>()(
         pagesStore.removePagesByWorkspaceId(id, { purgePersistence: true });
         if (deletedNotebook?.source === "local-folder") {
           removeLocalPageMetaByWorkspaceId(id);
+          removeLocalFolderOrders(id);
         }
         useTabs.setState({
           openTabs: remainingTabs,

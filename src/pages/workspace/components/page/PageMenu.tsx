@@ -30,6 +30,214 @@ function captureEditorSelectedBlocks(): BlockNoteContent {
   return getEditorSelectedBlocksForExport(getActiveGooseNoteEditor());
 }
 
+const EXPORT_OPEN_DELAY_MS = 80;
+const EXPORT_CLOSE_DELAY_MS = 150;
+
+function PageExportSubmenu({
+  enabled,
+  viewportHeight,
+  onExportMarkdown,
+  onExportHtml,
+  onExportWord,
+  onExportPdf,
+}: {
+  enabled: boolean;
+  viewportHeight: number;
+  onExportMarkdown: () => void;
+  onExportHtml: () => void;
+  onExportWord: () => void;
+  onExportPdf: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hovering = useRef(false);
+  const pointerOnTrigger = useRef(false);
+  const blockClickToggle = useRef(false);
+  const suppressHoverOpen = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const clearTimers = () => {
+    if (openTimer.current != null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  const closeNow = () => {
+    hovering.current = false;
+    pointerOnTrigger.current = false;
+    suppressHoverOpen.current = true;
+    clearTimers();
+    setOpen(false);
+  };
+
+  const onTriggerEnter = () => {
+    hovering.current = true;
+    pointerOnTrigger.current = true;
+    if (suppressHoverOpen.current) return;
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    if (open || openTimer.current != null) return;
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      setOpen(true);
+    }, EXPORT_OPEN_DELAY_MS);
+  };
+
+  const onContentEnter = () => {
+    hovering.current = true;
+    pointerOnTrigger.current = false;
+    clearTimers();
+    setOpen(true);
+  };
+
+  const onLeave = () => {
+    hovering.current = false;
+    pointerOnTrigger.current = false;
+    suppressHoverOpen.current = false;
+    if (openTimer.current != null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    if (closeTimer.current != null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null;
+      setOpen(false);
+    }, EXPORT_CLOSE_DELAY_MS);
+  };
+
+  useEffect(() => () => clearTimers(), []);
+  useEffect(() => {
+    if (enabled) return;
+    hovering.current = false;
+    pointerOnTrigger.current = false;
+    suppressHoverOpen.current = false;
+    clearTimers();
+    setOpen(false);
+  }, [enabled]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      suppressHoverOpen.current = true;
+      hovering.current = false;
+      pointerOnTrigger.current = false;
+      blockClickToggle.current = false;
+      clearTimers();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]);
+
+  const select = (action: () => void) => {
+    closeNow();
+    action();
+  };
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          clearTimers();
+          setOpen(true);
+          return;
+        }
+        const ignoreClickToggle =
+          hovering.current &&
+          pointerOnTrigger.current &&
+          blockClickToggle.current;
+        blockClickToggle.current = false;
+        if (ignoreClickToggle) return;
+        hovering.current = false;
+        pointerOnTrigger.current = false;
+        clearTimers();
+        setOpen(false);
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <button
+          ref={triggerRef}
+          type="button"
+          data-state={open ? "open" : "closed"}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onPointerEnter={onTriggerEnter}
+          onPointerLeave={onLeave}
+          onPointerDown={() => {
+            blockClickToggle.current = open;
+          }}
+          onPointerUp={() => {
+            window.setTimeout(() => {
+              blockClickToggle.current = false;
+            }, 0);
+          }}
+          className="goose-interactive group grid min-h-[32px] w-full cursor-default grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-lg px-2 text-left text-xs"
+        >
+          <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]" />
+          <span className="min-w-0 truncate">导出</span>
+          <LucideIcons.ChevronRight className="ml-auto h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="goose-page-menu-export min-w-[144px] rounded-[12px] p-1"
+        side="right"
+        align="start"
+        sideOffset={4}
+        alignOffset={-4}
+        collisionPadding={8}
+        onPointerEnter={onContentEnter}
+        onPointerLeave={onLeave}
+        style={{
+          maxHeight:
+            viewportHeight <= 0
+              ? undefined
+              : `${Math.max(120, viewportHeight - 16)}px`,
+        }}
+      >
+        <DropdownMenuItem
+          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+          onSelect={() => select(onExportMarkdown)}
+        >
+          <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+          <span className="min-w-0 truncate">Markdown</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+          onSelect={() => select(onExportHtml)}
+        >
+          <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+          <span className="min-w-0 truncate">HTML</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+          onSelect={() => select(onExportWord)}
+        >
+          <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+          <span className="min-w-0 truncate">Word</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
+          onSelect={() => select(onExportPdf)}
+        >
+          <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+          <span className="min-w-0 truncate">PDF</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function PageMenu() {
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 0 : window.innerWidth,
@@ -50,6 +258,7 @@ export function PageMenu() {
     : undefined;
   const isLocalFolderNotebook = activeNotebook?.source === "local-folder";
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
+  const [pageMenuOpen, setPageMenuOpen] = useState(false);
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const isLocalItem = Boolean(page?.localFilePath);
@@ -174,6 +383,7 @@ export function PageMenu() {
     <>
       <Popover
         onOpenChange={(open) => {
+          setPageMenuOpen(open);
           if (open) captureSelectedBlocks();
         }}
       >
@@ -183,7 +393,7 @@ export function PageMenu() {
             size="icon"
             aria-label="更多操作"
             onPointerDownCapture={captureSelectedBlocks}
-            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           >
             <LucideIcons.MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">更多操作</span>
@@ -236,24 +446,24 @@ export function PageMenu() {
                   updatePage(activePageId, { isFavorite: !page.isFavorite })
                 }
                 className={cn(
-                  "relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
+                  "goose-interactive relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isFavorite
-                    ? "border-[#ead39b] bg-[#fff8e6] text-[#8a621a] hover:bg-[#fff3d6] dark:border-[#654f23] dark:bg-[#3a2d16] dark:text-[#fbbf24] dark:hover:bg-[#44351a]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 )}
               >
                 <span
                   className={cn(
                     "grid h-5 w-5 place-items-center rounded-[7px]",
-                    page.isFavorite && "bg-[#fff1c8] dark:bg-[#4b3919]",
+                    page.isFavorite && "bg-[var(--goose-interactive-selected)]",
                   )}
                 >
                   <LucideIcons.Star
                     className={cn(
-                      "h-3.5 w-3.5 text-muted-foreground",
+                      "h-3.5 w-3.5 text-current",
                       page.isFavorite &&
-                        "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)]",
+                        "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)]",
                     )}
                   />
                 </span>
@@ -272,24 +482,24 @@ export function PageMenu() {
                   updatePage(activePageId, { isPinned: !page.isPinned })
                 }
                 className={cn(
-                  "relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
+                  "goose-interactive relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   page.isPinned
-                    ? "border-[#e8c0bc] bg-[#fff0ee] text-[#91433d] hover:bg-[#ffe7e4] dark:border-[#6b3734] dark:bg-[#3f2020] dark:text-[#f87171] dark:hover:bg-[#492525]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 )}
               >
                 <span
                   className={cn(
                     "grid h-5 w-5 place-items-center rounded-[7px]",
-                    page.isPinned && "bg-[#ffe1dd] dark:bg-[#512827]",
+                    page.isPinned && "bg-[var(--goose-interactive-selected)]",
                   )}
                 >
                   <LucideIcons.Pin
                     className={cn(
-                      "h-3.5 w-3.5 text-muted-foreground",
+                      "h-3.5 w-3.5 text-current",
                       page.isPinned &&
-                        "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
+                        "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)]",
                     )}
                   />
                 </span>
@@ -306,7 +516,7 @@ export function PageMenu() {
             <div
               role="button"
               tabIndex={0}
-              className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               onClick={() =>
                 updatePage(activePageId, { isLocked: !page.isLocked })
               }
@@ -317,7 +527,7 @@ export function PageMenu() {
                 }
               }}
             >
-              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]" />
+              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]" />
               <span className="min-w-0 truncate">锁定页面</span>
               <Switch
                 aria-label="锁定页面"
@@ -381,62 +591,17 @@ export function PageMenu() {
           </PopoverAction>
 
           {/* Export submenu */}
-          <div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-2 text-xs"
-                >
-                  <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">导出</span>
-                  <LucideIcons.ChevronRight className="ml-auto h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="min-w-[144px] rounded-[12px] p-1"
-                sideOffset={2}
-                alignOffset={-4}
-                collisionPadding={8}
-                style={{
-                  maxHeight:
-                    viewport.height <= 0
-                      ? undefined
-                      : `${Math.max(120, viewport.height - 16)}px`,
-                }}
-              >
-                <DropdownMenuItem
-                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() =>
-                    runExport("Markdown", () => exportToMarkdown(page))
-                  }
-                >
-                  <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">Markdown</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => runExport("HTML", () => exportToHTML(page))}
-                >
-                  <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">HTML</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => runExport("Word", () => exportToWord(page))}
-                >
-                  <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">Word</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-                  onSelect={() => runExport("PDF", () => exportToPDF(page))}
-                >
-                  <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-                  <span className="min-w-0 truncate">PDF</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="w-full">
+            <PageExportSubmenu
+              enabled={pageMenuOpen}
+              viewportHeight={viewport.height}
+              onExportMarkdown={() =>
+                runExport("Markdown", () => exportToMarkdown(page))
+              }
+              onExportHtml={() => runExport("HTML", () => exportToHTML(page))}
+              onExportWord={() => runExport("Word", () => exportToWord(page))}
+              onExportPdf={() => runExport("PDF", () => exportToPDF(page))}
+            />
 
             <PopoverAction
               className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"

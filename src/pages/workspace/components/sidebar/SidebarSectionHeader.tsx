@@ -34,7 +34,7 @@ export function SidebarSectionHeader({
             "group/page-tab relative inline-flex h-6 min-w-[42px] items-center justify-center overflow-hidden rounded-md px-2 py-1 transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
             view === "pages"
               ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
           )}
           aria-pressed={view === "pages"}
           aria-label={view === "pages" ? "收起全部页面" : title}
@@ -71,7 +71,7 @@ export function SidebarSectionHeader({
             "rounded-md px-2 py-1 transition-colors",
             view === "outline"
               ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
           )}
           aria-pressed={view === "outline"}
         >
@@ -85,7 +85,7 @@ export function SidebarSectionHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
+                className="h-7 w-7 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label="搜索"
                 onClick={onSearch}
               >
@@ -109,7 +109,7 @@ export function SidebarSectionHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
+                  className="h-7 w-7 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   aria-label={createTitle}
                   onClick={onCreate}
                 >

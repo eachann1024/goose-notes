@@ -25,7 +25,6 @@ import {
   TreeDragOverlay,
 } from "./TreeRow";
 import { useSettings } from "@/stores/useSettings";
-import { shouldRenderExpandArrowSlot } from "../local-file-icon";
 import { TREE_INDENT } from "./useTreeDnd";
 
 // 与 TreeRow / MainTreeItem 保持一致：蓝点落在图标左缘，而非展开箭头区
@@ -91,7 +90,6 @@ export function TreeViewport({
   onToggleOpen,
   showExpandControls = true,
 }: TreeViewportProps) {
-  const hideExpandArrows = useSettings((s) => s.hideExpandArrows);
   const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> =
     fitContent
       ? renderItems.map((item, index) => ({
@@ -197,13 +195,7 @@ export function TreeViewport({
                   dropIntent?.kind === "after" ? "bottom" : "top";
                 const dropLineLeft =
                   item.depth * TREE_INDENT +
-                  ROW_PADDING_LEFT +
-                  (shouldRenderExpandArrowSlot({
-                    showExpandControls,
-                    hideExpandArrows,
-                  })
-                    ? ARROW_SLOT
-                    : 0);
+                  ROW_PADDING_LEFT;
                 const dragEnabled = draggablePageIdSet
                   ? draggablePageIdSet.has(item.id)
                   : true;

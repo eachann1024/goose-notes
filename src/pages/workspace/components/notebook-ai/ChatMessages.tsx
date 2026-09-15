@@ -801,7 +801,7 @@ export function ChatMessages({
       >
         <ActionBarPrimitive.Copy
           copiedDuration={1600}
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:hidden"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:hidden"
           aria-label="复制消息"
           title="复制"
         >
@@ -813,7 +813,7 @@ export function ChatMessages({
         className="flex items-center gap-0.5 text-[11px] text-muted-foreground"
       >
         <BranchPickerPrimitive.Previous
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
           aria-label="上一个回答分支"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -822,7 +822,7 @@ export function ChatMessages({
           <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
         </span>
         <BranchPickerPrimitive.Next
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
           aria-label="下一个回答分支"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -1117,7 +1117,7 @@ export function ChatMessages({
             </ThreadPrimitive.Messages>
             <ThreadPrimitive.ViewportFooter className="pointer-events-none sticky bottom-[calc(var(--ai-composer-float-pad,7.5rem)+12px)] z-10 flex h-0 justify-center overflow-visible">
               <ThreadPrimitive.ScrollToBottom
-                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
+                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
                 aria-label="滚动到底部"
                 title="滚动到底部"
               >

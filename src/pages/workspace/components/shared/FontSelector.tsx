@@ -69,7 +69,7 @@ export function FontSelector({
               "flex-1 rounded-md shadow-none outline-none",
               compact ? "px-2 py-1.5" : "px-3 py-2",
               "flex flex-col items-center justify-center border-2 border-transparent",
-              "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
               selected && "border-primary bg-background text-primary",
             )}
           >

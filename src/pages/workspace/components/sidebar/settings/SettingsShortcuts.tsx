@@ -22,6 +22,7 @@ import type { DesktopHotkeyStatus } from "@/stores/settings/types"
 import { SettingsSectionCard } from "./SettingsSectionCard"
 import { ShortcutField } from "./ShortcutField"
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
+import { LOCAL_FOLDER_FILE_SHORTCUTS } from "@/lib/local-folder-file-actions"
 
 // Electron 桌面端（仅本地模式）：设置-快捷键页多出「桌面全局快捷键」分区；Electron 不出现。
 // 单元测试没有 vite define，用 typeof 兜底避免模块加载即 ReferenceError。
@@ -66,7 +67,11 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
   "Mod+Z",
   "Mod+Shift+Z",
   "Mod+Y",
-  "Mod+Shift+M",
+  LOCAL_FOLDER_FILE_SHORTCUTS.moveItem,
+  LOCAL_FOLDER_FILE_SHORTCUTS.openInExternalApp,
+  LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager,
+  LOCAL_FOLDER_FILE_SHORTCUTS.openInTerminal,
+  LOCAL_FOLDER_FILE_SHORTCUTS.copyFilePath,
 ]
 
 /** 仅多标签模式生效的固定快捷键。 */
@@ -209,6 +214,7 @@ const FIXED_SHORTCUTS = [
   { label: "新建笔记", shortcut: FIXED_APP_SHORTCUTS.newNote },
   { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
   { label: "页内替换", shortcut: "Mod+Alt+F" },
+  { label: "收起侧栏其它文件夹（当前选中笔记保持可见）", shortcut: "Escape" },
   { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
   { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
   { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9", tabOnly: true },
@@ -227,7 +233,11 @@ const FIXED_SHORTCUTS = [
   { label: "下划线", shortcut: "Mod+U" },
           { label: "行内代码", shortcut: "Mod+E" },
           { label: "删除线", shortcut: "Mod+Shift+S" },
-  { label: "移动本地文件/文件夹", shortcut: "Mod+Shift+M" },
+  { label: "移动本地文件/文件夹", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.moveItem },
+  { label: "用外部应用打开当前本地文件", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.openInExternalApp },
+  { label: "在文件管理器中显示当前本地文件", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager },
+  { label: "在终端中打开当前本地文件", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.openInTerminal },
+  { label: "复制当前文件路径", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.copyFilePath },
   { label: "全选", shortcut: "Mod+A" },
   { label: "撤销", shortcut: "Mod+Z" },
   { label: "重做", shortcut: "Mod+Shift+Z" },

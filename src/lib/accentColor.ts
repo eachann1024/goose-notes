@@ -10,21 +10,31 @@ type AccentRuntimeTokens = {
  * 侧栏选中与行内代码等关键表面依赖这些变量；仅靠 CSS 选择器时，
  * 旧内核 / 缓存 CSS 可能只命中部分 token，导致侧栏已跟随 accent、
  * 行内代码仍停在 .dark 的 iris fallback。
- * hover / 图标底由 resolveAccentRuntimeTokens 跟选中表面写成同一色。
+ * hover 与侧栏浅染底完全同步；图标和文字取同一强调前景。
  */
 const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   iris: {
     light: {
-      "--goose-interactive-selected": "#e0e7ff",
-      "--goose-interactive-selected-fg": "#4f46e5",
+      "--goose-interactive-selected": "#eceafa",
+      "--goose-interactive-selected-fg": "#4c40a6",
+      "--goose-interactive-selected-border": "#8174cb",
+      "--goose-sidebar-hover": "#f3f1fb",
+      "--goose-interactive-hover": "#f3f1fb",
+      "--goose-interactive-hover-fg": "#4c40a6",
+      "--goose-interactive-hover-border": "#8174cb",
       "--goose-inline-code-bg": "#eef2ff",
       "--goose-inline-code-fg": "#4f46e5",
       "--goose-inline-code-border-hover": "#c7d2fe",
       "--goose-editor-selection-bg": "#e0e7ff",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(99, 102, 241, 0.2)",
-      "--goose-interactive-selected-fg": "#a5b4fc",
+      "--goose-interactive-selected": "#34304e",
+      "--goose-interactive-selected-fg": "#c4baff",
+      "--goose-interactive-selected-border": "#9484e5",
+      "--goose-sidebar-hover": "#2c293d",
+      "--goose-interactive-hover": "#2c293d",
+      "--goose-interactive-hover-fg": "#c4baff",
+      "--goose-interactive-hover-border": "#9484e5",
       "--goose-inline-code-bg": "#3d3e64",
       "--goose-inline-code-fg": "#c7d2fe",
       "--goose-inline-code-border-hover": "#6366f1",
@@ -33,16 +43,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   ocean: {
     light: {
-      "--goose-interactive-selected": "#dbeafe",
-      "--goose-interactive-selected-fg": "#2563eb",
+      "--goose-interactive-selected": "#e5edfc",
+      "--goose-interactive-selected-fg": "#214fae",
+      "--goose-interactive-selected-border": "#547dd0",
+      "--goose-sidebar-hover": "#eef3fc",
+      "--goose-interactive-hover": "#eef3fc",
+      "--goose-interactive-hover-fg": "#214fae",
+      "--goose-interactive-hover-border": "#547dd0",
       "--goose-inline-code-bg": "#eff6ff",
       "--goose-inline-code-fg": "#2563eb",
       "--goose-inline-code-border-hover": "#bfdbfe",
       "--goose-editor-selection-bg": "#dbeafe",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(59, 130, 246, 0.2)",
-      "--goose-interactive-selected-fg": "#93c5fd",
+      "--goose-interactive-selected": "#273750",
+      "--goose-interactive-selected-fg": "#a8c8ff",
+      "--goose-interactive-selected-border": "#779de8",
+      "--goose-sidebar-hover": "#29313d",
+      "--goose-interactive-hover": "#29313d",
+      "--goose-interactive-hover-fg": "#a8c8ff",
+      "--goose-interactive-hover-border": "#779de8",
       "--goose-inline-code-bg": "#324665",
       "--goose-inline-code-fg": "#bfdbfe",
       "--goose-inline-code-border-hover": "#3b82f6",
@@ -51,16 +71,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   mono: {
     light: {
-      "--goose-interactive-selected": "#c4c4c4",
-      "--goose-interactive-selected-fg": "#171717",
+      "--goose-interactive-selected": "#eeeeee",
+      "--goose-interactive-selected-fg": "#343434",
+      "--goose-interactive-selected-border": "#777777",
+      "--goose-sidebar-hover": "#f4f4f4",
+      "--goose-interactive-hover": "#f4f4f4",
+      "--goose-interactive-hover-fg": "#343434",
+      "--goose-interactive-hover-border": "#777777",
       "--goose-inline-code-bg": "#f5f5f5",
       "--goose-inline-code-fg": "#171717",
       "--goose-inline-code-border-hover": "#d4d4d4",
       "--goose-editor-selection-bg": "#e5e5e5",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(255, 255, 255, 0.16)",
-      "--goose-interactive-selected-fg": "#f5f5f5",
+      "--goose-interactive-selected": "#363636",
+      "--goose-interactive-selected-fg": "#eeeeee",
+      "--goose-interactive-selected-border": "#a0a0a0",
+      "--goose-sidebar-hover": "#2f2f2f",
+      "--goose-interactive-hover": "#2f2f2f",
+      "--goose-interactive-hover-fg": "#eeeeee",
+      "--goose-interactive-hover-border": "#a0a0a0",
       "--goose-inline-code-bg": "#3a3a3a",
       "--goose-inline-code-fg": "#f5f5f5",
       "--goose-inline-code-border-hover": "#737373",
@@ -69,16 +99,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   pine: {
     light: {
-      "--goose-interactive-selected": "#dcfce7",
-      "--goose-interactive-selected-fg": "#15803d",
+      "--goose-interactive-selected": "#e4f1e8",
+      "--goose-interactive-selected-fg": "#205d38",
+      "--goose-interactive-selected-border": "#559369",
+      "--goose-sidebar-hover": "#edf5ef",
+      "--goose-interactive-hover": "#edf5ef",
+      "--goose-interactive-hover-fg": "#205d38",
+      "--goose-interactive-hover-border": "#559369",
       "--goose-inline-code-bg": "#f0fdf4",
       "--goose-inline-code-fg": "#15803d",
       "--goose-inline-code-border-hover": "#bbf7d0",
       "--goose-editor-selection-bg": "#dcfce7",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(34, 197, 94, 0.2)",
-      "--goose-interactive-selected-fg": "#86efac",
+      "--goose-interactive-selected": "#273e31",
+      "--goose-interactive-selected-fg": "#a1dcb6",
+      "--goose-interactive-selected-border": "#6aae83",
+      "--goose-sidebar-hover": "#29342e",
+      "--goose-interactive-hover": "#29342e",
+      "--goose-interactive-hover-fg": "#a1dcb6",
+      "--goose-interactive-hover-border": "#6aae83",
       "--goose-inline-code-bg": "#2b4a37",
       "--goose-inline-code-fg": "#bbf7d0",
       "--goose-inline-code-border-hover": "#22c55e",
@@ -87,16 +127,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   amber: {
     light: {
-      "--goose-interactive-selected": "#fef3c7",
-      "--goose-interactive-selected-fg": "#b45309",
+      "--goose-interactive-selected": "#faf0d7",
+      "--goose-interactive-selected-fg": "#80500c",
+      "--goose-interactive-selected-border": "#ad7d2a",
+      "--goose-sidebar-hover": "#fbf5e8",
+      "--goose-interactive-hover": "#fbf5e8",
+      "--goose-interactive-hover-fg": "#80500c",
+      "--goose-interactive-hover-border": "#ad7d2a",
       "--goose-inline-code-bg": "#fffbeb",
       "--goose-inline-code-fg": "#b45309",
       "--goose-inline-code-border-hover": "#fde68a",
       "--goose-editor-selection-bg": "#fef3c7",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(245, 158, 11, 0.2)",
-      "--goose-interactive-selected-fg": "#fbbf24",
+      "--goose-interactive-selected": "#443920",
+      "--goose-interactive-selected-fg": "#f0cd87",
+      "--goose-interactive-selected-border": "#c6a057",
+      "--goose-sidebar-hover": "#373123",
+      "--goose-interactive-hover": "#373123",
+      "--goose-interactive-hover-fg": "#f0cd87",
+      "--goose-interactive-hover-border": "#c6a057",
       "--goose-inline-code-bg": "#4a3b24",
       "--goose-inline-code-fg": "#fde68a",
       "--goose-inline-code-border-hover": "#f59e0b",
@@ -105,16 +155,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   coral: {
     light: {
-      "--goose-interactive-selected": "#ffedd5",
-      "--goose-interactive-selected-fg": "#c2410c",
+      "--goose-interactive-selected": "#fbeadf",
+      "--goose-interactive-selected-fg": "#983a19",
+      "--goose-interactive-selected-border": "#b76e4a",
+      "--goose-sidebar-hover": "#fcf2ec",
+      "--goose-interactive-hover": "#fcf2ec",
+      "--goose-interactive-hover-fg": "#983a19",
+      "--goose-interactive-hover-border": "#b76e4a",
       "--goose-inline-code-bg": "#fff7ed",
       "--goose-inline-code-fg": "#c2410c",
       "--goose-inline-code-border-hover": "#fed7aa",
       "--goose-editor-selection-bg": "#ffedd5",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(249, 115, 22, 0.2)",
-      "--goose-interactive-selected-fg": "#fdba74",
+      "--goose-interactive-selected": "#463128",
+      "--goose-interactive-selected-fg": "#f4bc96",
+      "--goose-interactive-selected-border": "#d28f68",
+      "--goose-sidebar-hover": "#372c28",
+      "--goose-interactive-hover": "#372c28",
+      "--goose-interactive-hover-fg": "#f4bc96",
+      "--goose-interactive-hover-border": "#d28f68",
       "--goose-inline-code-bg": "#4f3425",
       "--goose-inline-code-fg": "#fed7aa",
       "--goose-inline-code-border-hover": "#f97316",
@@ -123,16 +183,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   rose: {
     light: {
-      "--goose-interactive-selected": "#ffe4e6",
-      "--goose-interactive-selected-fg": "#be123c",
+      "--goose-interactive-selected": "#f8e7eb",
+      "--goose-interactive-selected-fg": "#972446",
+      "--goose-interactive-selected-border": "#c36a83",
+      "--goose-sidebar-hover": "#fbf0f2",
+      "--goose-interactive-hover": "#fbf0f2",
+      "--goose-interactive-hover-fg": "#972446",
+      "--goose-interactive-hover-border": "#c36a83",
       "--goose-inline-code-bg": "#fff1f2",
       "--goose-inline-code-fg": "#be123c",
       "--goose-inline-code-border-hover": "#fecdd3",
       "--goose-editor-selection-bg": "#ffe4e6",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(244, 63, 94, 0.2)",
-      "--goose-interactive-selected-fg": "#fda4af",
+      "--goose-interactive-selected": "#462e37",
+      "--goose-interactive-selected-fg": "#f1b2c5",
+      "--goose-interactive-selected-border": "#d486a0",
+      "--goose-sidebar-hover": "#382a30",
+      "--goose-interactive-hover": "#382a30",
+      "--goose-interactive-hover-fg": "#f1b2c5",
+      "--goose-interactive-hover-border": "#d486a0",
       "--goose-inline-code-bg": "#66333b",
       "--goose-inline-code-fg": "#fecdd3",
       "--goose-inline-code-border-hover": "#f43f5e",
@@ -141,16 +211,26 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   grape: {
     light: {
-      "--goose-interactive-selected": "#f3e8ff",
-      "--goose-interactive-selected-fg": "#7e22ce",
+      "--goose-interactive-selected": "#f1e8f8",
+      "--goose-interactive-selected-fg": "#6e2e9e",
+      "--goose-interactive-selected-border": "#9d6abf",
+      "--goose-sidebar-hover": "#f7f1fb",
+      "--goose-interactive-hover": "#f7f1fb",
+      "--goose-interactive-hover-fg": "#6e2e9e",
+      "--goose-interactive-hover-border": "#9d6abf",
       "--goose-inline-code-bg": "#faf5ff",
       "--goose-inline-code-fg": "#7e22ce",
       "--goose-inline-code-border-hover": "#e9d5ff",
       "--goose-editor-selection-bg": "#f3e8ff",
     },
     dark: {
-      "--goose-interactive-selected": "rgba(168, 85, 247, 0.2)",
-      "--goose-interactive-selected-fg": "#d8b4fe",
+      "--goose-interactive-selected": "#3d2e4a",
+      "--goose-interactive-selected-fg": "#d6b3ef",
+      "--goose-interactive-selected-border": "#b088cc",
+      "--goose-sidebar-hover": "#302837",
+      "--goose-interactive-hover": "#302837",
+      "--goose-interactive-hover-fg": "#d6b3ef",
+      "--goose-interactive-hover-border": "#b088cc",
       "--goose-inline-code-bg": "#46305d",
       "--goose-inline-code-fg": "#e9d5ff",
       "--goose-inline-code-border-hover": "#a855f7",
@@ -173,7 +253,6 @@ export function resolveAccentRuntimeTokens(
   const selected = theme["--goose-interactive-selected"];
   return {
     ...theme,
-    "--goose-interactive-hover": selected,
     "--goose-icon-chip-on-selected": selected,
   };
 }
@@ -218,7 +297,11 @@ function writeAccentRuntimeTokens(
   --goose-inline-code-border-hover: ${border} !important;
   --goose-interactive-selected: ${tokens["--goose-interactive-selected"]} !important;
   --goose-interactive-selected-fg: ${tokens["--goose-interactive-selected-fg"]} !important;
+  --goose-interactive-selected-border: ${tokens["--goose-interactive-selected-border"]} !important;
+  --goose-sidebar-hover: ${tokens["--goose-sidebar-hover"]} !important;
   --goose-interactive-hover: ${tokens["--goose-interactive-hover"]} !important;
+  --goose-interactive-hover-fg: ${tokens["--goose-interactive-hover-fg"]} !important;
+  --goose-interactive-hover-border: ${tokens["--goose-interactive-hover-border"]} !important;
   --goose-icon-chip-on-selected: ${tokens["--goose-icon-chip-on-selected"]} !important;
   --goose-editor-selection-bg: ${tokens["--goose-editor-selection-bg"]} !important;
 }

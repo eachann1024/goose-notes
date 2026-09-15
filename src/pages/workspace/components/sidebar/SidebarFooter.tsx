@@ -10,7 +10,7 @@ export interface SidebarFooterProps {
 
 export function SidebarFooter(props: SidebarFooterProps) {
   return (
-    <div className="mt-auto shrink-0 pr-2">
+    <div className="mt-auto shrink-0 pt-2 pr-2">
       <NotebookSwitcher {...props} />
     </div>
   );

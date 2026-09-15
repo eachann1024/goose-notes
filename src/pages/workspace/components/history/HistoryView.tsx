@@ -435,7 +435,7 @@ export function HistoryVersionList() {
                           "history-version-item group relative flex items-center rounded-[10px] transition-colors duration-150",
                           isSelected
                             ? "bg-[var(--goose-interactive-selected)]"
-                            : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                            : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                         )}
                       >
                         {/* 绝对定位轨道：覆盖整行高度（含 padding），相邻项首尾相接不断线 */}
@@ -475,7 +475,7 @@ export function HistoryVersionList() {
                               "min-w-0 text-xs leading-snug",
                               isSelected
                                 ? "font-medium text-[var(--goose-interactive-selected-fg)]"
-                                : "text-foreground group-hover:text-[var(--goose-interactive-selected-fg)]",
+                                : "text-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
                             )}
                           >
                             <span className="tabular-nums">
@@ -487,7 +487,7 @@ export function HistoryVersionList() {
                                   "ml-1.5 font-normal",
                                   isSelected
                                     ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
-                                    : "text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]",
+                                    : "text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
                                 )}
                               >
                                 {v.label}
@@ -499,7 +499,7 @@ export function HistoryVersionList() {
                                   "ml-1.5 text-[10px] tabular-nums",
                                   isSelected
                                     ? "text-[var(--goose-interactive-selected-fg)] opacity-55"
-                                    : "text-muted-foreground/55 group-hover:text-[var(--goose-interactive-selected-fg)]",
+                                    : "text-muted-foreground/55 group-hover:text-[var(--goose-interactive-hover-fg)]",
                                 )}
                               >
                                 {deltaText}
@@ -533,7 +533,7 @@ export function HistoryVersionList() {
                             handleToggleMilestone(v.versionId, !v.isMilestone);
                           }}
                           className={cn(
-                            "history-star-control group/star absolute right-0.5 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color] duration-150 hover:bg-[var(--goose-icon-chip-on-selected)] dark:hover:bg-[var(--goose-interactive-hover)] active:bg-[var(--goose-interactive-selected)]",
+                            "history-star-control group/star absolute right-0.5 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color] duration-150 hover:bg-[var(--goose-interactive-hover)] dark:hover:bg-[var(--goose-interactive-hover)] active:bg-[var(--goose-interactive-selected)]",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                           )}
                         >
@@ -541,7 +541,7 @@ export function HistoryVersionList() {
                             className={cn(
                               "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
                               v.isMilestone &&
-                                "fill-[var(--goose-color-favorite)] text-[var(--goose-color-favorite)] group-hover/star:text-[var(--goose-color-favorite)]",
+                                "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)] group-hover/star:text-[var(--goose-interactive-selected-fg)]",
                             )}
                           />
                         </button>
@@ -575,7 +575,7 @@ export function HistoryToolbar() {
         variant="secondary"
         size="sm"
         aria-label="返回编辑页面"
-        className="history-secondary-control h-8 px-3 text-xs gap-1.5 text-foreground shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
+        className="history-secondary-control h-8 px-3 text-xs gap-1.5 text-foreground shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
         onClick={exit}
       >
         <LucideIcons.ArrowLeft className="h-3.5 w-3.5" />
@@ -733,7 +733,7 @@ export function HistoryReader() {
               type="button"
               variant="secondary"
               size="sm"
-              className="history-secondary-control mt-1 h-8 gap-1.5 rounded-[10px] text-xs shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-control-hover-bg)] hover:text-foreground active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
+              className="history-secondary-control mt-1 h-8 gap-1.5 rounded-[10px] text-xs shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
               onClick={reset}
             >
               <LucideIcons.RotateCcw className="h-3.5 w-3.5" />

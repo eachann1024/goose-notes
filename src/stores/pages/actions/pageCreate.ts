@@ -52,6 +52,7 @@ import type { StoreSet, StoreGet } from "./hydrate";
 import { flushEditorContent } from "./flushEditor";
 import { requestPageTitleFocus } from "@/lib/page-title-focus";
 import { useSettings } from "@/stores/useSettings";
+import { appendLocalFolderOrderEntries } from "@/stores/localFolderOrder";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 import { pickRandomPageIcon } from "@/lib/randomPageIcon";
@@ -539,6 +540,8 @@ export const materializeUnsavedLocalPageAction = async (
   }
 
   persistPageSnapshot(get().pages[pageId]);
+  // 草稿物化成文件后进手动顺序末尾
+  appendLocalFolderOrderEntries(latest.workspaceId, [get().pages[pageId]]);
   return true;
 };
 
@@ -706,6 +709,8 @@ export const createLocalPageRecordAction = async (
   }
 
   persistPageSnapshot(get().pages[id]);
+  // 手动顺序目录：新建条目追加到末尾，位置从此稳定
+  appendLocalFolderOrderEntries(workspaceId, [get().pages[id]]);
   return id;
 };
 
@@ -783,6 +788,8 @@ export const createLocalFolderRecordAction = async (
   }));
 
   syncLocalPageMetadataCache(id, newPage);
+  // 手动顺序目录：新建文件夹追加到末尾
+  appendLocalFolderOrderEntries(workspaceId, [newPage]);
   return id;
 };
 

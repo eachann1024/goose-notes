@@ -33,7 +33,7 @@ function createNoticeContent(handleClose: () => void) {
           onPointerDown: (e) => { e.preventDefault(); closeRef.current = true; handleClose(); },
           onClick: () => { if (closeRef.current) { closeRef.current = false; return; } handleClose(); },
           variant: "ghost",
-          className: "text-muted-foreground hover:text-[var(--goose-interactive-selected-fg)]",
+          className: "text-muted-foreground hover:text-[var(--goose-interactive-hover-fg)]",
         },
       ]}
     >

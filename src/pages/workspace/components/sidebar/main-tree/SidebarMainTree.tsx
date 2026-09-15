@@ -37,11 +37,20 @@ import {
 import { isPageTitleAutoFocusProtected } from "@/lib/page-title-focus";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
+import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
+import { formatShortcut } from "@/lib/utils";
 import { MAIN_TREE_INDENT } from "./mainTreeDragGeometry";
 import {
   clearLocalFolderDropParent,
   takeLocalFolderDropParent,
 } from "./mainTreeLocalDrop";
+import {
+  LOCAL_FOLDER_ROOT_DIR_KEY,
+  applyLocalFolderReorder,
+  clearLocalFolderOrder,
+  useLocalFolderManualOrder,
+  useLocalFolderOrders,
+} from "@/stores/localFolderOrder";
 import "./main-tree.css";
 
 interface SidebarMainTreeProps {
@@ -64,6 +73,14 @@ function scheduleAfterMenuClose(action: () => void) {
   window.setTimeout(action, 0);
 }
 
+function MenuShortcut({ shortcut }: { shortcut: string }) {
+  return (
+    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+      {formatShortcut(shortcut)}
+    </span>
+  );
+}
+
 export function SidebarMainTree({
   activeNotebookId,
   selectedPageId,
@@ -84,6 +101,36 @@ export function SidebarMainTree({
   const getChildren = usePages((s) => s.getChildren);
   const expandPageId = usePages((s) => s.expandPageId);
   const setExpandPageId = usePages((s) => s.setExpandPageId);
+  // 本地文件夹手动顺序：拖动排序 / 恢复名称排序后靠它触发树重建
+  const localFolderOrders = useLocalFolderOrders((s) =>
+    activeNotebookId ? s.ordersByNotebook[activeNotebookId] : undefined,
+  );
+  const rootHasManualOrder = useLocalFolderManualOrder(
+    activeNotebookId,
+    LOCAL_FOLDER_ROOT_DIR_KEY,
+  );
+  // 根目录进入手动排序后给个恢复入口（树容器与空状态两个右键菜单共用）
+  const rootOrderMenuGroup = rootHasManualOrder ? (
+    <ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onSelect={() =>
+          scheduleAfterMenuClose(() => {
+            if (!activeNotebookId) return;
+            // 写盘失败时 clearLocalFolderOrder 自己会报错，不要谎报成功
+            if (
+              clearLocalFolderOrder(activeNotebookId, LOCAL_FOLDER_ROOT_DIR_KEY)
+            ) {
+              toast.success("已恢复名称排序");
+            }
+          })
+        }
+      >
+        <LucideIcons.ArrowDownAZ className="h-4 w-4" />
+        <span>恢复名称排序</span>
+      </ContextMenuItem>
+    </ContextMenuGroup>
+  ) : null;
   const [pendingCreate, setPendingCreate] = useState<Page | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const draggingItemIdRef = useRef<string | null>(null);
@@ -131,9 +178,6 @@ export function SidebarMainTree({
         console.error("[local-folder] retry failed", error);
       });
   }, [activeNotebookId, notebook?.localPath]);
-
-  // Subscribe so re-render propagates to renderItem/renderItemArrow closures
-  useSettings((s) => s.hideExpandArrows);
 
   const expandedIds = useSidebarView(selectExpandedIds(activeNotebookId));
   const focusedId = useSidebarView(selectFocusedId(activeNotebookId));
@@ -305,8 +349,13 @@ export function SidebarMainTree({
         },
       };
     }
-    return pagesToTreeItems(scopedPages, activeNotebookId, isLocalFolder);
-  }, [scopedPages, activeNotebookId, isLocalFolder]);
+    return pagesToTreeItems(
+      scopedPages,
+      activeNotebookId,
+      isLocalFolder,
+      localFolderOrders,
+    );
+  }, [scopedPages, activeNotebookId, isLocalFolder, localFolderOrders]);
 
   const rootChildren = items.root?.children ?? [];
   const hasPages = rootChildren.length > 0;
@@ -484,7 +533,7 @@ export function SidebarMainTree({
         <button
           type="button"
           onClick={retryLocalFolderLoad}
-          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:ring-2 focus-visible:ring-ring"
         >
           重新加载
         </button>
@@ -524,7 +573,8 @@ export function SidebarMainTree({
               }
             >
               <LucideIcons.FilePlus2 className="h-4 w-4" />
-              <span>新建文件</span>
+              <span className="min-w-0 truncate">新建文件</span>
+              <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
             </ContextMenuItem>
             <ContextMenuItem
               onSelect={() =>
@@ -535,6 +585,7 @@ export function SidebarMainTree({
               <span>新建文件夹</span>
             </ContextMenuItem>
           </ContextMenuGroup>
+          {rootOrderMenuGroup}
         </ContextMenuContent>
       </ContextMenu>
     );
@@ -552,23 +603,19 @@ export function SidebarMainTree({
 
     let newParentId: string | undefined;
     let insertIndex: number;
+    // 本地文件夹落点：captured 优先（悬停行推断出的目录），否则用 rct 给的目标
+    const capturedDir = isLocalFolder ? takeLocalFolderDropParent() : null;
     if (isLocalFolder) {
-      const captured = takeLocalFolderDropParent();
-      if (captured !== null) {
-        newParentId = captured;
-        insertIndex = -1;
-      } else if (target.targetType === "item") {
-        const pid = String(target.targetItem);
-        newParentId = pid === "root" ? undefined : pid;
-        insertIndex = -1;
-      } else if (target.targetType === "between-items") {
-        const pid = String(target.parentItem);
-        newParentId = pid === "root" ? undefined : pid;
-        insertIndex = -1;
-      } else {
-        newParentId = undefined;
-        insertIndex = -1;
-      }
+      const rawParent =
+        capturedDir !== null
+          ? capturedDir
+          : target.targetType === "item"
+            ? String(target.targetItem)
+            : target.targetType === "between-items"
+              ? String(target.parentItem)
+              : undefined;
+      newParentId = rawParent === "root" ? undefined : rawParent;
+      insertIndex = target.targetType === "between-items" ? target.childIndex : -1;
     } else if (target.targetType === "between-items") {
       const pid = String(target.parentItem);
       newParentId = pid === "root" ? undefined : pid;
@@ -600,8 +647,30 @@ export function SidebarMainTree({
       });
     };
 
-    // ── 本地文件夹：文件系统移动，无自定义排序 ────────────────────────────────
+    // ── 本地文件夹：同目录内落点 = 该目录手动排序；其余落点 = 文件系统移动 ──────
     if (isLocalFolder) {
+      const sameDirDrop = dragIds.every(
+        (id) => usePages.getState().pages[id]?.parentId === newParentId,
+      );
+      if (target.targetType === "between-items" && sameDirDrop) {
+        const siblings = getChildren(newParentId, activeNotebookId).filter(
+          (page) => !page.localUnsaved,
+        );
+        if (
+          applyLocalFolderReorder(
+            activeNotebookId,
+            newParentId ?? LOCAL_FOLDER_ROOT_DIR_KEY,
+            siblings,
+            dragIds,
+            target.childIndex,
+          )
+        ) {
+          // 首次有效同目录拖动：该目录切为手动顺序，落点即新位置
+          keepDragSelection();
+          return;
+        }
+      }
+
       void (async () => {
         for (const id of dragIds) {
           try {
@@ -859,7 +928,8 @@ export function SidebarMainTree({
                 }
               >
                 <LucideIcons.FilePlus2 className="h-4 w-4" />
-                <span>新建文件</span>
+                <span className="min-w-0 truncate">新建文件</span>
+                <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
               </ContextMenuItem>
               <ContextMenuItem
                 onSelect={() =>
@@ -872,6 +942,7 @@ export function SidebarMainTree({
                 <span>新建文件夹</span>
               </ContextMenuItem>
             </ContextMenuGroup>
+            {rootOrderMenuGroup}
           </ContextMenuContent>
         )}
       </ContextMenu>

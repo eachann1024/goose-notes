@@ -1,4 +1,9 @@
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
+import { isImeKeyboardEvent } from "@/hooks/useImeInput";
+import {
+  armSidebarListCollapse,
+  tryCollapseSidebarListOnEscape,
+} from "@/lib/sidebarListCollapse";
 import { usePages } from "@/stores/usePages";
 import { useSidebarView } from "@/stores/useSidebarView";
 
@@ -61,12 +66,34 @@ export function useSidebarEffects({
     [currentView, resolveDeleteTargetPageId],
   );
 
+  const handleSidebarListEscape = useCallback(
+    (event: KeyboardEvent) => {
+      if (isImeKeyboardEvent(event)) return;
+      if (currentView !== "pages") return;
+      if (
+        !tryCollapseSidebarListOnEscape(event, activeNotebookId)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [activeNotebookId, currentView],
+  );
+
   useEffect(() => {
-    document.addEventListener("keydown", handleDeleteShortcut);
-    return () => {
-      document.removeEventListener("keydown", handleDeleteShortcut);
+    const onPointerDown = (event: PointerEvent) => {
+      armSidebarListCollapse(event.target);
     };
-  }, [handleDeleteShortcut]);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", handleDeleteShortcut);
+    document.addEventListener("keydown", handleSidebarListEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", handleDeleteShortcut);
+      document.removeEventListener("keydown", handleSidebarListEscape, true);
+    };
+  }, [handleDeleteShortcut, handleSidebarListEscape]);
 
   useEffect(() => {
     const handleOpenSettings = (event: Event) => {

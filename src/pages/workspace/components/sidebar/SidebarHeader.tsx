@@ -374,7 +374,7 @@ export function SidebarHeader({
             {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)]"
+              className="pointer-events-none absolute inset-0 rounded-full bg-[var(--goose-interactive-hover)]"
             />
             {dragGuide && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
@@ -424,7 +424,7 @@ export function SidebarHeader({
                               "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
                               isActive
                                 ? "text-[var(--goose-interactive-selected-fg)]"
-                                : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
@@ -443,13 +443,13 @@ export function SidebarHeader({
               <>
                 <div
                   className={cn(
-                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-full bg-gradient-to-r from-[#F1F1F1] to-transparent dark:from-[hsl(var(--goose-selected-bg)/0.88)] transition-opacity duration-200",
+                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-full bg-[var(--goose-interactive-hover)] transition-opacity duration-200",
                     canScrollLeft ? "opacity-100" : "opacity-0",
                   )}
                 />
                 <div
                   className={cn(
-                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-full bg-gradient-to-l from-[#F1F1F1] to-transparent dark:from-[hsl(var(--goose-selected-bg)/0.88)] transition-opacity duration-200",
+                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-full bg-[var(--goose-interactive-hover)] transition-opacity duration-200",
                     canScrollRight ? "opacity-100" : "opacity-0",
                   )}
                 />
@@ -471,7 +471,7 @@ export function SidebarHeader({
                     canScrollLeft
                       ? "opacity-0 -translate-x-1"
                       : "opacity-0 -translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronLeft className="h-3.5 w-3.5" />
@@ -494,7 +494,7 @@ export function SidebarHeader({
                     canScrollRight
                       ? "opacity-0 translate-x-1"
                       : "opacity-0 translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronRight className="h-3.5 w-3.5" />

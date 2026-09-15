@@ -38,8 +38,6 @@ interface SettingsAppearanceProps {
   editorFontSize: number;
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
-  hideExpandArrows: boolean;
-  setHideExpandArrows: (hidden: boolean) => void;
   randomIconOnCreate: boolean;
   setRandomIconOnCreate: (enabled: boolean) => void;
 }
@@ -279,8 +277,6 @@ export function SettingsAppearance({
   editorFontSize,
   increaseEditorFontSize,
   decreaseEditorFontSize,
-  hideExpandArrows,
-  setHideExpandArrows,
   randomIconOnCreate,
   setRandomIconOnCreate,
 }: SettingsAppearanceProps) {
@@ -358,6 +354,7 @@ export function SettingsAppearance({
                     size="icon"
                     variant="ghost"
                     aria-label="跟随系统"
+                    aria-pressed={theme === "system"}
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
                       theme === "system" &&
@@ -376,6 +373,7 @@ export function SettingsAppearance({
                     size="icon"
                     variant="ghost"
                     aria-label="浅色模式"
+                    aria-pressed={theme === "light"}
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
                       theme === "light" &&
@@ -394,6 +392,7 @@ export function SettingsAppearance({
                     size="icon"
                     variant="ghost"
                     aria-label="深色模式"
+                    aria-pressed={theme === "dark"}
                     className={cn(
                       "h-7 w-7 rounded-full transition-all duration-200",
                       theme === "dark" &&
@@ -543,6 +542,7 @@ export function SettingsAppearance({
             <Button
               size="sm"
               variant="ghost"
+              aria-pressed={uiFontSize === "small"}
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
                 uiFontSize === "small" &&
@@ -555,6 +555,7 @@ export function SettingsAppearance({
             <Button
               size="sm"
               variant="ghost"
+              aria-pressed={uiFontSize === "normal"}
               className={cn(
                 "h-7 rounded-full px-3 text-xs transition-all duration-200",
                 uiFontSize === "normal" &&
@@ -589,12 +590,6 @@ export function SettingsAppearance({
               默认以图标下方短线提示可展开项；悬停该行时显示箭头，可点击展开或收起。
             </p>
           </div>
-          <Switch
-            id="hide-expand-arrows"
-            checked={hideExpandArrows}
-            onCheckedChange={setHideExpandArrows}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
         </div>
         <div
           className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
@@ -639,12 +634,13 @@ export function SettingsAppearance({
             <SelectableCard
               key={t.value}
               selected={displayedCodeStyle === t.value}
+              aria-pressed={displayedCodeStyle === t.value}
               onClick={() => setCodeStyle(t.value)}
               className={cn(
                 "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
                 displayedCodeStyle === t.value
                   ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] dark:bg-[hsl(var(--foreground)/0.08)]",
+                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:bg-[hsl(var(--foreground)/0.08)]",
               )}
             >
               <LucideIcons.Code2 className="h-5 w-5 shrink-0" />

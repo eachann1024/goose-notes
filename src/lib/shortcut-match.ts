@@ -144,6 +144,7 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string) {
   else if (code === "BracketLeft") codeKey = "[";
   else if (code === "BracketRight") codeKey = "]";
   else if (code === "Comma") codeKey = ",";
+  else if (code === "Backquote") codeKey = "`";
   else if (code === "ArrowLeft") codeKey = "left";
   else if (code === "ArrowRight") codeKey = "right";
   else if (code === "ArrowUp") codeKey = "up";

@@ -13,6 +13,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { motion } from "motion/react";
 import "./notebook-switcher.css";
 import type { SidebarFooterProps } from "./SidebarFooter";
 import { useSidebarView } from "@/stores/useSidebarView";
@@ -74,21 +75,27 @@ function SortableNotebookItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative flex select-none items-center rounded-sm outline-none",
+        "goose-notebook-row relative flex select-none items-center rounded-lg outline-none",
         "justify-between gap-2 group",
         "min-h-9 mb-0.5 last:mb-0 py-1.5 px-2 text-xs",
         notebook.localPathMissing && "opacity-50",
-        // 选中仓库在 hover 时保持相同的高亮底色。
-        isActive
-          ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]"
-          : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+        "hover:bg-[var(--goose-interactive-hover)] focus-visible:bg-[var(--goose-interactive-hover)]",
+        isActive && "font-medium",
         isDragging && "opacity-60 cursor-grabbing z-10",
         !isDragging && "cursor-pointer",
       )}
       {...attributes}
       {...listeners}
       role="menuitem"
-      tabIndex={-1}
+      aria-current={isActive ? "true" : undefined}
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate(notebook.id);
+        }
+      }}
       onPointerDown={(event) => {
         dragMoved.current = false;
         if (event.button !== 0 || event.ctrlKey) return;
@@ -105,10 +112,10 @@ function SortableNotebookItem({
       }}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)]">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground">
           {renderNotebookIcon(notebook.icon || "BookOpen", "h-3.5 w-3.5")}
         </span>
-        <span className="truncate text-xs leading-snug">{notebook.name}</span>
+        <span className="truncate text-xs leading-snug" title={notebook.name}>{notebook.name}</span>
         {notebook.localPathMissing && (
           <span className="text-xs text-destructive">路径失效</span>
         )}
@@ -123,7 +130,7 @@ function SortableNotebookItem({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)] group-hover:opacity-100 group-hover:pointer-events-auto"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto motion-reduce:transition-none"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDeleteLocal(notebook.id);
@@ -142,7 +149,7 @@ function SortableNotebookItem({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] group-hover:opacity-100 group-hover:pointer-events-auto"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto motion-reduce:transition-none"
                 aria-label="编辑记事本"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -186,9 +193,52 @@ export function NotebookSwitcher({
     (state) => state.notebookDropdownHoverExpand,
   );
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [shellGeometry, setShellGeometry] = useState<{ collapsed: number; origin: string } | null>(null);
+  const [menuElement, setMenuElement] = useState<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    if (!isOpen || !trigger || !menuElement) return;
+    const syncShell = () => {
+      const menu = menuElement.getBoundingClientRect();
+      const button = trigger.getBoundingClientRect();
+      const top = Math.min(menu.top, button.top - 7);
+      const left = Math.min(menu.left, button.left - 7);
+      trigger.style.setProperty("--notebook-shell-top", `${top - button.top}px`);
+      trigger.style.setProperty("--notebook-shell-left", `${left - button.left}px`);
+      trigger.style.setProperty("--notebook-shell-width", `${Math.max(menu.right, button.right + 7) - left}px`);
+      const height = Math.max(menu.bottom, button.bottom + 7) - top;
+      trigger.style.setProperty("--notebook-shell-height", `${height}px`);
+      const collapsed = Math.min(1, (button.height + 14) / Math.max(1, height));
+      const origin = menuElement.dataset.side === "bottom" ? "top" : "bottom";
+      setShellGeometry((previous) => previous?.collapsed === collapsed && previous.origin === origin
+        ? previous : { collapsed, origin });
+    };
+    syncShell();
+    const resize = new ResizeObserver(syncShell);
+    resize.observe(trigger);
+    resize.observe(menuElement);
+    // 浮层避让、翻转或滚动重新定位时，也同步同一个外壳。
+    let lastPosition = "";
+    const position = new MutationObserver(() => {
+      const current = [menuElement.style.transform, menuElement.style.left, menuElement.style.top, menuElement.dataset.side].join(";");
+      if (current === lastPosition) return;
+      lastPosition = current;
+      syncShell();
+    });
+    position.observe(menuElement, { attributes: true, attributeFilter: ["style", "data-side"] });
+    return () => {
+      resize.disconnect();
+      position.disconnect();
+    };
+  }, [isOpen, menuElement]);
   const hovering = useRef({ trigger: false, content: false });
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen) hovering.current = { trigger: false, content: false };
+  }, [isOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -362,14 +412,15 @@ export function NotebookSwitcher({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
             aria-label={`当前笔记本 ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
             className={cn(
-              "sidebar-notebook-trigger group flex h-8 w-full items-center gap-2 rounded-lg pl-2 pr-1 text-left font-medium",
-              "text-foreground outline-none transition-colors duration-150",
-              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+              "sidebar-notebook-trigger group flex min-h-10 w-full items-center gap-2 rounded-lg bg-[var(--workspace-main-surface)] p-2 text-left font-medium",
+              "text-foreground outline-none transition-colors duration-150 motion-reduce:transition-none",
+              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
               "data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+              "focus-visible:bg-muted",
               isOpen &&
                 "bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-selected-fg)]",
             )}
@@ -385,31 +436,45 @@ export function NotebookSwitcher({
               scheduleClose();
             }}
           >
-            {activeNotebook && (
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-foreground/70">
-                {renderNotebookIcon(
-                  activeNotebook.icon || "BookOpen",
-                  "h-4 w-4 leading-none",
-                )}
-              </span>
+            {shellGeometry && (
+              <motion.span
+                aria-hidden="true"
+                className="goose-notebook-shell"
+                initial={{ opacity: 0, transform: `scaleY(${shellGeometry.collapsed})` }}
+                animate={{ opacity: isOpen ? 1 : 0, transform: `scaleY(${isOpen ? 1 : shellGeometry.collapsed})` }}
+                transition={{ duration: isOpen ? 0.2 : 0.15, ease: isOpen ? [0.23, 1, 0.32, 1] : "easeIn" }}
+                style={{ transformOrigin: shellGeometry.origin }}
+              />
             )}
+            <span
+              aria-hidden="true"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--workspace-main-surface)] text-muted-foreground"
+            >
+              {renderNotebookIcon(
+                activeNotebook?.icon || "BookOpen",
+                "h-4 w-4 leading-none",
+              )}
+            </span>
             {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
-            <span className="min-w-0 flex-1 truncate tracking-[0.01em] leading-snug">
+            <span className="min-w-0 flex-1 truncate leading-snug" title={activeNotebook?.name}>
               {activeNotebook?.name ||
                 (isElectronHost ? "打开文件夹" : "选择记事本")}
             </span>
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]">
               <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5" />
             </span>
           </button>
         </PopoverTrigger>
         <PopoverContent
-          className="goose-notebook-menu-surface goose-floating-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] p-1.5 before:content-[''] before:absolute before:left-0 before:right-0 data-[side=bottom]:before:-top-2 data-[side=top]:before:-bottom-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
-          style={{ minWidth: 220 }}
+          aria-label="切换笔记本"
+          ref={setMenuElement}
+          className="goose-notebook-menu-surface goose-floating-surface w-[calc(var(--goose-popover-trigger-width)+14px)] max-w-[calc(100vw-1rem)] backdrop-blur-0"
+          animation="reveal"
           side="top"
           align="start"
-          alignOffset={0}
-          sideOffset={2}
+          alignOffset={-7}
+          sideOffset={0}
+          collisionPadding={0}
           forceMount
           onMouseEnter={() => {
             if (!notebookDropdownHoverExpand) return;
@@ -464,7 +529,7 @@ export function NotebookSwitcher({
           <div className="grid grid-cols-2 gap-1">
             {isElectronHost ? (
               <PopoverAction
-                className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
+                className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={() => void handleCreateVault()}
               >
                 <LucideIcons.FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -472,7 +537,7 @@ export function NotebookSwitcher({
               </PopoverAction>
             ) : (
               <PopoverAction
-                className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
+                className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={handleCreate}
               >
                 <LucideIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -480,7 +545,7 @@ export function NotebookSwitcher({
               </PopoverAction>
             )}
             <PopoverAction
-              className="min-h-9 w-full justify-start gap-1.5 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap"
+              className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
               <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />

@@ -22,11 +22,14 @@ import { focusIconSelectorOnOpen } from "./iconSelectorFocus";
 interface IconSelectorProps<T extends HTMLElement = HTMLElement> {
   value?: string;
   onChange: (icon: string | undefined) => void;
-  children: React.ReactNode;
+  /** 触发元素；用 anchorPoint 时不需要，弹层直接钉在坐标上 */
+  children?: React.ReactNode;
   portalContainerRef?: React.RefObject<T | null>;
   onFirstOpen?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** 右键菜单触发时用屏幕坐标当锚点：只定位不定交互，不需要触发元素 */
+  anchorPoint?: { x: number; y: number };
   /** 编辑器内弹出时，给弹层补上 goose-editor-context-ui，避免被编辑器裁切/层级压住 */
   editorContext?: boolean;
 }
@@ -245,6 +248,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
   onFirstOpen,
   open: controlledOpen,
   onOpenChange,
+  anchorPoint,
   editorContext = false,
 }: IconSelectorProps<T>) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -413,7 +417,13 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {isControlled ? (
+      {anchorPoint ? (
+        <PopoverAnchor
+          aria-hidden="true"
+          className="pointer-events-none fixed h-0 w-0"
+          style={{ left: anchorPoint.x, top: anchorPoint.y }}
+        />
+      ) : isControlled ? (
         <PopoverAnchor asChild>{children}</PopoverAnchor>
       ) : (
         <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -481,7 +491,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                     "inline-flex h-9 min-w-10 items-center justify-center rounded-[8px] px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-popover",
                     selected
                       ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                      : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                   onClick={() => selectCategory(category.id)}
                   onKeyDown={(event) => handleCategoryKeyDown(event, index)}
@@ -498,7 +508,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-popover"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-popover"
                     aria-label="随机选择图标"
                     onClick={handleRandomIcon}
                   >
@@ -510,7 +520,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
             </TooltipProvider>
             <button
               type="button"
-              className="inline-flex h-9 min-w-10 items-center justify-center rounded-[8px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-popover"
+              className="inline-flex h-9 min-w-10 items-center justify-center rounded-[8px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-popover"
               aria-label="移除当前图标"
               onClick={() => {
                 onChange(undefined);
@@ -547,7 +557,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
                       "group/icon inline-flex h-[38px] w-full items-center justify-center rounded-[9px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                       selected
                         ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                        : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                        : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     )}
                     onClick={() => {
                       onChange(name);

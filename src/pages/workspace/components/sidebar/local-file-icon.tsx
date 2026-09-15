@@ -1,6 +1,7 @@
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Page } from "@/types";
+import type { LocalFolderLoadStatus } from "@/stores/useNotebooks";
 
 interface LocalFileIconProps {
   page: Page;
@@ -11,7 +12,10 @@ interface LocalFileIconProps {
   isExpanded?: boolean;
 }
 
-/** 本地仓库里的目录不能换图标；文件和内置笔记本页面可以。 */
+/**
+ * 正文与标题栏的页面图标：本地仓库里的目录没有正文，不提供换图标；
+ * 文件与内置笔记本页面可以。侧栏的文件夹图标不走这里（见 isSidebarFolderRow）。
+ */
 export function canCustomizePageIcon(
   page: Pick<Page, "isFolder" | "localPendingCreate">,
   isLocalNotebook: boolean,
@@ -21,8 +25,11 @@ export function canCustomizePageIcon(
   return true;
 }
 
-/** 本地仓库：每一级文件夹都显示展开箭头，不论当前有没有子项。 */
-export function shouldShowFolderExpandArrow({
+/**
+ * 侧栏行是不是文件夹：本地仓库看 isFolder，内置笔记本看是否已有子页面。
+ * 只有文件夹行画图标、才有展开箭头，也才允许在右键菜单里换图标。
+ */
+export function isSidebarFolderRow({
   isFolder,
   hasChildren,
   isLocalNotebook,
@@ -34,15 +41,37 @@ export function shouldShowFolderExpandArrow({
   return isLocalNotebook ? isFolder : hasChildren;
 }
 
-/** 收藏等平铺列表不允许展开，不预留箭头槽，也不把图标当展开控件。 */
-export function shouldRenderExpandArrowSlot({
-  showExpandControls,
-  hideExpandArrows,
-}: {
-  showExpandControls: boolean;
-  hideExpandArrows: boolean;
+/** 本地仓库：每一级文件夹都显示展开箭头，不论当前有没有子项。 */
+export function shouldShowFolderExpandArrow(args: {
+  isFolder: boolean;
+  hasChildren: boolean;
+  isLocalNotebook: boolean;
 }): boolean {
-  return showExpandControls && !hideExpandArrows;
+  return isSidebarFolderRow(args);
+}
+
+/**
+ * 空文件夹占位：文件夹行展开后确实一个子项都没有才显示。
+ * 本地仓库读取中/读取失败时不能冒充空目录——那只是还没扫到。
+ */
+export function shouldShowEmptyFolderPlaceholder({
+  isFolderRow,
+  isExpanded,
+  hasChildren,
+  isLocalNotebook,
+  localLoadStatus,
+}: {
+  isFolderRow: boolean;
+  isExpanded: boolean;
+  hasChildren: boolean;
+  isLocalNotebook: boolean;
+  localLoadStatus?: LocalFolderLoadStatus;
+}): boolean {
+  if (!isFolderRow || !isExpanded || hasChildren) return false;
+  if (isLocalNotebook && (localLoadStatus === "loading" || localLoadStatus === "error")) {
+    return false;
+  }
+  return true;
 }
 
 function nodeHasVisibleContent(node: unknown): boolean {
@@ -108,10 +137,10 @@ export function LocalFileIcon({
     );
   }
 
-  // 本地仓库：目录永远用文件夹图标，不吃自定义 icon。
-  // 开合状态跟箭头走，避免收起时还显示打开的文件夹。
+  // 本地仓库：目录默认用文件夹图标（开合状态跟箭头走），右键菜单换过的图标优先。
   if (isLocalFolder && page.isFolder) {
-    const Icon = isExpanded ? LucideIcons.FolderOpen : LucideIcons.Folder;
+    const Icon =
+      SelectedIcon ?? (isExpanded ? LucideIcons.FolderOpen : LucideIcons.Folder);
     return (
       <Icon
         size={16}

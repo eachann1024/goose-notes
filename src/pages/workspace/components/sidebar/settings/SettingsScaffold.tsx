@@ -75,7 +75,7 @@ export function SettingsScaffold({
         </div>
         <button
           type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--goose-selected-bg))] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--goose-selected-bg))] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
           aria-label="关闭"
           onClick={onClose}
         >
@@ -97,12 +97,13 @@ export function SettingsScaffold({
                   type="button"
                   variant="ghost"
                   size="sm"
+                  aria-pressed={activeTab === tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "h-auto w-auto shrink-0 justify-start gap-3 md:w-full rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "goose-interactive h-auto w-auto shrink-0 justify-start gap-3 md:w-full rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activeTab === tab.id
                       ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                 >
                   <Icon className="h-4 w-4" />

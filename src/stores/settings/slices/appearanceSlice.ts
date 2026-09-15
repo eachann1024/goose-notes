@@ -36,8 +36,6 @@ export interface AppearanceSliceState {
   imageExportWatermark: WatermarkConfig;
   /** 导出图片上次选择的卡片主题 */
   imageExportThemeId: CardThemeId;
-  /** 隐藏侧栏常驻展开箭头，hover 行时用图标位临时展开/收起 */
-  hideExpandArrows: boolean;
   /** 新建笔记时自动分配随机图标；本地文件同样生效，文件夹忽略。 */
   randomIconOnCreate: boolean;
 
@@ -73,7 +71,6 @@ export interface AppearanceSliceActions {
   decreaseAiChatScale: () => void;
   setImageExportWatermark: (config: Partial<WatermarkConfig>) => void;
   setImageExportThemeId: (id: CardThemeId) => void;
-  setHideExpandArrows: (hidden: boolean) => void;
   setRandomIconOnCreate: (enabled: boolean) => void;
 
   setSingleTabMode: (enabled: boolean) => void;
@@ -97,7 +94,6 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   aiChatScale: 1.0,
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
   imageExportThemeId: "notebook",
-  hideExpandArrows: false,
   randomIconOnCreate: true,
 
   singleTabMode: true,
@@ -214,8 +210,7 @@ export function createAppearanceSlice(
     setImageExportWatermark: (config) =>
       set({ imageExportWatermark: normalizeWatermarkConfig(config) }),
     setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
-    setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
-    setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
+      setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
 
     setSingleTabMode: (singleTabMode) => set({ singleTabMode }),
   };
