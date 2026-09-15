@@ -361,8 +361,18 @@ export function NotebookSwitcher({
     <>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <div
-            className="w-full"
+          <button
+            type="button"
+            aria-label={`当前笔记本 ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
+            className={cn(
+              "sidebar-notebook-trigger group flex h-8 w-full items-center gap-2 rounded-lg pl-2 pr-1 text-left font-medium",
+              "text-foreground outline-none transition-colors duration-150",
+              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+              "data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+              isOpen &&
+                "bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-selected-fg)]",
+            )}
             onMouseEnter={() => {
               if (!notebookDropdownHoverExpand) return;
               hovering.current.trigger = true;
@@ -375,38 +385,26 @@ export function NotebookSwitcher({
               scheduleClose();
             }}
           >
-            <Button
-              variant="ghost"
-              className={cn(
-                "sidebar-notebook-trigger w-full justify-between px-2 h-9 py-0 font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-hover)] transition-colors",
-                isOpen && "bg-[var(--goose-interactive-hover)]",
-              )}
-            >
-              <div className="flex items-center gap-2 truncate min-w-0">
-                {activeNotebook && (
-                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-foreground/70 text-[16px] leading-none">
-                    {renderNotebookIcon(
-                      activeNotebook.icon || "BookOpen",
-                      "h-[18px] w-[18px] leading-none",
-                    )}
-                  </span>
+            {activeNotebook && (
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-foreground/70">
+                {renderNotebookIcon(
+                  activeNotebook.icon || "BookOpen",
+                  "h-4 w-4 leading-none",
                 )}
-                {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
-                <span className="truncate tracking-[0.01em] leading-snug">
-                  {activeNotebook?.name ||
-                    (isElectronHost ? "打开文件夹" : "选择记事本")}
-                </span>
-              </div>
-              {isOpen ? (
-                <LucideIcons.ChevronUp className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
-              ) : (
-                <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
-              )}
-            </Button>
-          </div>
+              </span>
+            )}
+            {/* leading-snug：truncate(overflow hidden) 配 leading-none 会裁掉 g/y/p 降部 */}
+            <span className="min-w-0 flex-1 truncate tracking-[0.01em] leading-snug">
+              {activeNotebook?.name ||
+                (isElectronHost ? "打开文件夹" : "选择记事本")}
+            </span>
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]">
+              <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5" />
+            </span>
+          </button>
         </PopoverTrigger>
         <PopoverContent
-          className="goose-notebook-menu-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] rounded-lg border border-border p-1.5 shadow-md before:content-[''] before:absolute before:left-0 before:right-0 data-[side=bottom]:before:-top-2 data-[side=top]:before:-bottom-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
+          className="goose-notebook-menu-surface goose-floating-surface w-[var(--goose-popover-trigger-width)] min-w-[13.75rem] max-w-[calc(100vw-1rem)] p-1.5 before:content-[''] before:absolute before:left-0 before:right-0 data-[side=bottom]:before:-top-2 data-[side=top]:before:-bottom-2 before:h-2 backdrop-blur-0 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100 data-[state=closed]:duration-0"
           style={{ minWidth: 220 }}
           side="top"
           align="start"

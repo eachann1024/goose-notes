@@ -38,6 +38,7 @@ import {
   SELECTION_QUOTE_DUPLICATE_TOAST,
   buildSelectionQuoteAttrs,
   consumePendingAppendComposerSelections,
+  shouldDeferPendingSelectionQuote,
   type AppendComposerSelectionDetail,
   type AiSelectionQuoteAttrs,
 } from "@/components/editor/ai/composer/selectionQuote";
@@ -82,7 +83,7 @@ export interface ComposerHandle {
   replaceDefaultPageReference: (
     reference: AiFileReferenceAttrs,
   ) => "applied" | "already" | "skipped";
-  /** 静默把选区引用 chip 追加到输入框末尾 */
+  /** 把选区引用 chip 追加到输入框末尾；加入对话路径由外层聚焦 */
   appendSelectionQuote: (
     quote: AiSelectionQuoteAttrs,
     options?: { restoreCaret?: boolean; animate?: boolean },
@@ -92,6 +93,8 @@ export interface ComposerHandle {
 interface ComposerProps {
   /** 用于按笔记本持久化输入草稿 */
   notebookId: string;
+  /** 当前会话；切换会话时推迟消费加入对话队列 */
+  conversationId?: string;
   /** 面板解析后的初始草稿；不传则读 store */
   initialContent?: JSONContent | null;
   onSend: (
@@ -112,6 +115,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
   function Composer(
     {
       notebookId,
+      conversationId,
       initialContent,
       onSend,
       onSlashCommand,
@@ -367,6 +371,16 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     useEffect(() => {
       let cancelled = false;
       const applyDetail = (detail: AppendComposerSelectionDetail) => {
+        if (
+          shouldDeferPendingSelectionQuote({
+            composerConversationId: conversationId,
+            activeConversationId: useNotebookAiChats
+              .getState()
+              .getActiveConversationId(notebookId),
+          })
+        ) {
+          return false;
+        }
         const attrs = buildSelectionQuoteAttrs({
           pageId: detail?.pageId ?? "",
           pageTitle: detail?.pageTitle ?? "",
@@ -375,12 +389,18 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         if (!attrs) return true;
         const result = inputRef.current?.appendSelectionQuote(attrs, {
           animate: detail.animate === true,
+          restoreCaret: false,
         });
         if (result === "duplicate") {
           toast(SELECTION_QUOTE_DUPLICATE_TOAST);
+          inputRef.current?.focus();
           return true;
         }
-        return result === "appended";
+        if (result === "appended") {
+          inputRef.current?.focus();
+          return true;
+        }
+        return false;
       };
       const flushPending = () => {
         const run = (tries: number) => {
@@ -401,7 +421,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
           flushPending,
         );
       };
-    }, []);
+    }, [conversationId, notebookId]);
 
     useImperativeHandle(
       ref,
@@ -446,17 +466,15 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             streaming={isStreaming}
             expanded={expanded}
             className={cn(
-              expanded ? "rounded-[20px]" : "rounded-full",
+              "rounded-[20px]",
               "shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]",
             )}
           >
             <div
               ref={shellRef}
               className={cn(
-                "notebook-ai-composer-shell bui-root flex min-h-[44px] gap-2 overflow-hidden",
-                expanded
-                  ? "flex-wrap items-end rounded-[20px]"
-                  : "flex-nowrap items-center rounded-full",
+                "notebook-ai-composer-shell bui-root flex min-h-[44px] gap-2 overflow-hidden rounded-[20px]",
+                expanded ? "flex-wrap items-end" : "flex-nowrap items-center",
                 "bg-[hsl(var(--goose-editor-bg))] py-1.5 pl-2.5 pr-2",
                 dropActive &&
                   "ring-2 ring-[var(--goose-interactive-selected)] ring-offset-1 ring-offset-background",

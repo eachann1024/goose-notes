@@ -36,18 +36,19 @@ test("页面菜单保持视口尺寸及独立表面层次", () => {
   expect(menuClasses).toEqual(
     expect.arrayContaining([
       "goose-page-menu-surface",
+      "goose-floating-surface",
       "max-h-[calc(100vh-24px)]",
       "w-[272px]",
       "max-w-[calc(100vw-16px)]",
-      "border",
-      "border-border",
-      "shadow-md",
-      "rounded-lg",
     ]),
   );
+  expect(menuClasses).not.toContain("border-border");
+  expect(menuClasses).not.toContain("shadow-md");
   expect(surfaceCss).toContain(".goose-page-menu-surface:focus");
   expect(surfaceCss).toContain(".goose-page-menu-surface:focus-visible");
-  expect(surfaceCss).toContain("box-shadow: var(--shadow-md) !important");
+  expect(surfaceCss).toContain(
+    "box-shadow: var(--goose-menu-shadow) !important",
+  );
   expect(pageMenu).toContain('className="min-w-[144px]');
   expect(pageMenu).toContain("sideOffset={6}");
   expect(pageMenu).toContain("<FontSelector");

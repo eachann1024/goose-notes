@@ -4,6 +4,7 @@ import { installExportDom } from "./installExportDom";
 import {
   contentBlockFromEventTarget,
   extendToVisualLineEnd,
+  extendToVisualLineStart,
   findPosOnVisualLine,
   isClickInInterBlockGap,
   isClickOnVisualLine,
@@ -45,6 +46,13 @@ test("沿视觉行走到行尾，遇到折行停止", () => {
   expect(extendToVisualLineEnd(twoLineCoords, 2, 10)).toBe(5);
   expect(extendToVisualLineEnd(twoLineCoords, 7, 10)).toBe(10);
   expect(extendToVisualLineEnd(twoLineCoords, 0, 5)).toBe(5);
+});
+
+test("沿视觉行走到行首，遇到折行停止", () => {
+  expect(extendToVisualLineStart(twoLineCoords, 3, 0)).toBe(0);
+  expect(extendToVisualLineStart(twoLineCoords, 5, 0)).toBe(0);
+  expect(extendToVisualLineStart(twoLineCoords, 7, 0)).toBe(6);
+  expect(extendToVisualLineStart(twoLineCoords, 10, 0)).toBe(6);
 });
 
 test("按点击 Y 落到对应视觉行", () => {
@@ -287,6 +295,7 @@ test("行内内容拉满剩余宽度，列表 marker 不接收指针", () => {
   expect(surfaceCss).toContain("flex-grow: 0");
   expect(listsCss).toContain("pointer-events: none");
   expect(editorTsx).toContain("gooseTrailingBlankClickExtension");
+  expect(editorTsx).toContain("gooseLineBoundaryKeyboardExtension");
 });
 
 test("标注块嵌套 inline 算文本块，表格外壳不算", () => {

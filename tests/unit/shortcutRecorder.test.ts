@@ -256,7 +256,7 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
   const isMac = true;
   const desktopHotkeys = {
     wakeHotkey: "CmdOrCtrl+Alt+N",
-    quicknoteHotkey: "CmdOrCtrl+Alt+Q",
+    quicknoteHotkey: "Alt+N",
     searchHotkey: "CmdOrCtrl+Shift+K",
   };
   const configured = getAllConfiguredShortcuts(
@@ -272,7 +272,7 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
     normalizeShortcutForConflict("CmdOrCtrl+Alt+N", isMac),
   );
   expect(configured).toContain(
-    normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
+    normalizeShortcutForConflict("Alt+N", isMac),
   );
   expect(configured).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+Shift+K", isMac),
@@ -291,21 +291,21 @@ test("desktop global hotkeys join the conflict list and respect excludeId", () =
     normalizeShortcutForConflict("CmdOrCtrl+Alt+N", isMac),
   );
   expect(excludingWake).toContain(
-    normalizeShortcutForConflict("CmdOrCtrl+Alt+Q", isMac),
+    normalizeShortcutForConflict("Alt+N", isMac),
   );
   expect(excludingWake).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+Shift+K", isMac),
   );
 });
 
-test("in-app search and desktop search hotkey may share Cmd+K", () => {
+test("in-app search and desktop search hotkey conflict on the same chord", () => {
   const isMac = true;
   const desktopHotkeys = {
     wakeHotkey: "CmdOrCtrl+Alt+N",
-    quicknoteHotkey: "CmdOrCtrl+Alt+Q",
+    quicknoteHotkey: "Alt+N",
     searchHotkey: "CmdOrCtrl+K",
   };
-  const excludingDesktopSearch = getAllConfiguredShortcuts(
+  const editingDesktopSearch = getAllConfiguredShortcuts(
     { openSearch: "Mod+K" },
     "",
     "",
@@ -314,11 +314,11 @@ test("in-app search and desktop search hotkey may share Cmd+K", () => {
     false,
     desktopHotkeys,
   );
-  expect(excludingDesktopSearch).not.toContain(
+  expect(editingDesktopSearch).toContain(
     normalizeShortcutForConflict("Mod+K", isMac),
   );
 
-  const excludingAppSearch = getAllConfiguredShortcuts(
+  const editingAppSearch = getAllConfiguredShortcuts(
     { openSearch: "Mod+K" },
     "",
     "",
@@ -327,7 +327,7 @@ test("in-app search and desktop search hotkey may share Cmd+K", () => {
     false,
     desktopHotkeys,
   );
-  expect(excludingAppSearch).not.toContain(
+  expect(editingAppSearch).toContain(
     normalizeShortcutForConflict("CmdOrCtrl+K", isMac),
   );
 });

@@ -80,6 +80,28 @@ test("加入对话在侧栏关闭时强制打开并排布局", () => {
   expect(layout).toContain('setAiLayoutMode("side-panel")');
   expect(quote).toContain('detail: { layout: "side-panel" }');
   expect(quote).toContain("consumePendingAppendComposerSelections");
+  expect(quote).toContain("FOCUS_AI_COMPOSER_EVENT");
+});
+
+test("加入对话与打开面板会刷新过期会话并聚焦输入框", () => {
+  const session = readSource(
+    "src/pages/workspace/components/notebook-ai/NotebookAiSession.tsx",
+  );
+  const panel = readSource(
+    "src/pages/workspace/components/notebook-ai/NotebookAiPanel.tsx",
+  );
+  const composer = readSource(
+    "src/pages/workspace/components/notebook-ai/Composer.tsx",
+  );
+  const chats = readSource("src/stores/useNotebookAiChats.ts");
+
+  expect(chats).toContain("30 * 60 * 1000");
+  expect(session).toContain("ensureFreshConversation");
+  expect(session).toContain("OPEN_AI_PANEL_EVENT");
+  expect(panel).toContain("ensureFreshOnOpenRef.current()");
+  expect(panel).toContain("conversationId={conversationId}");
+  expect(composer).toContain("shouldDeferPendingSelectionQuote");
+  expect(composer).toContain("inputRef.current?.focus()");
 });
 
 test("切走 AI / 开设置时隐藏文字工具栏及同类浮动层", () => {

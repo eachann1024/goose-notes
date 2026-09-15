@@ -151,6 +151,9 @@ test("context-menu: 右键定位、禁用项、子菜单方向键、Escape、sto
   await trigger.click({ button: "right", position: { x: 10, y: 10 } });
   const menu = page.getByRole("menu", { name: "测试菜单", exact: true });
   await expect(menu).toBeVisible();
+  await expect
+    .poll(() => menu.evaluate((el) => getComputedStyle(el).borderTopWidth))
+    .toBe("1px");
   await expect(
     page.getByRole("menuitem", { name: "动作", exact: true }),
   ).toBeFocused();
@@ -211,6 +214,11 @@ test("context-menu: 右键定位、禁用项、子菜单方向键、Escape、sto
 test("popover: 进入与恢复焦点、可取消自动焦点和外部点击", async ({ page }) => {
   await mountControls(page);
   await page.locator("#popover-trigger").click();
+  const popover = page.getByRole("dialog", { name: "普通浮层" });
+  await expect(popover).toBeVisible();
+  await expect
+    .poll(() => popover.evaluate((el) => getComputedStyle(el).borderTopWidth))
+    .toBe("1px");
   await expect(page.getByLabel("浮层输入", { exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.locator("#popover-trigger")).toBeFocused();
@@ -265,6 +273,23 @@ test("HeroUI Modal/Tabs 和原生 Switch 键盘行为", async ({ page }) => {
   await page.keyboard.press("Space");
   await expect(setting).toBeChecked({ checked: !checked });
   await page.getByRole("button", { name: "数据管理", exact: true }).click();
+  const localTab = page.getByRole("tab", { name: "本地备份" });
+  const localColor = await localTab.evaluate((el) => getComputedStyle(el).color);
+  const rgb = localColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  expect(rgb, `未选中 Tab 字色应可见，实际 ${localColor}`).toBeTruthy();
+  const luminance =
+    (0.2126 * Number(rgb![1]) +
+      0.7152 * Number(rgb![2]) +
+      0.0722 * Number(rgb![3])) /
+    255;
+  expect(luminance).toBeLessThan(0.65);
+  await localTab.hover();
+  const hovered = await localTab.evaluate((el) => ({
+    opacity: getComputedStyle(el).opacity,
+    transitionProperty: getComputedStyle(el).transitionProperty,
+  }));
+  expect(Number(hovered.opacity)).toBe(1);
+  expect(hovered.transitionProperty).toBe("none");
   await page.getByRole("tab", { name: "WebDAV备份" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "本地备份" })).toHaveAttribute(

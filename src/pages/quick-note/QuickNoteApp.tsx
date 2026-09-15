@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { CircleAlert, X, Pencil } from "lucide-react";
+import { CircleAlert, FilePlus2, X, Pencil } from "lucide-react";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,
@@ -19,9 +19,12 @@ import {
   QUICKNOTE_MIN_HEIGHT,
   QUICKNOTE_ZOOM_STEP,
   QUICKNOTE_SLOTS,
+  getActiveDraftContent,
   isQuickNoteDraftEmpty,
   type QuickNoteSlot,
 } from "@/stores/useQuickNote";
+import { toast } from "@/components/ui/sonner";
+import { useNotebooks } from "@/stores/useNotebooks";
 import { EditorHostBridge } from "@/pages/workspace/components/editor-host/EditorHostBridge";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
 import {
@@ -60,6 +63,7 @@ const POSITION_SETTLE_MS = 720;
  *
  * 小窗是「草稿便签」：不直接对应一条真实笔记，编辑内容只落到草稿存储
  * （useQuickNote.drafts[activeSlot]），不写进 pages、不进笔记列表 / 搜索、不自动存盘成文件。
+ * 点标题栏「保存到笔记」才把当前槽位写入当前笔记本，并清空回到空白初始状态。
  *
  * 支持 1–5 五个独立草稿槽位，各自持久化。切换槽位时重挂编辑器加载对应草稿。
  *
@@ -117,6 +121,7 @@ export function QuickNoteApp() {
    */
   const [previewSlot, setPreviewSlot] = useState<QuickNoteSlot | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [savingToNote, setSavingToNote] = useState(false);
   const [renamingSlot, setRenamingSlot] = useState<QuickNoteSlot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -292,6 +297,29 @@ export function QuickNoteApp() {
   const handleHelpOpenChange = useCallback((open: boolean) => {
     setHelpOpen(open);
   }, []);
+
+  const handleSaveToNote = useCallback(async () => {
+    if (savingToNote) return;
+    flushEditor();
+    if (isQuickNoteDraftEmpty(getActiveDraftContent(useQuickNote.getState()))) {
+      return;
+    }
+    setSavingToNote(true);
+    try {
+      await useNotebooks.persist.rehydrate();
+      const id = await useQuickNote.getState().saveDraftToNotebook();
+      if (!id) {
+        toast.error("未能保存到笔记", {
+          description: "请确认已打开笔记本后再试。",
+        });
+        return;
+      }
+      applyHistoryContentToEditor(null);
+      toast.success("已保存到笔记");
+    } finally {
+      setSavingToNote(false);
+    }
+  }, [applyHistoryContentToEditor, flushEditor, savingToNote]);
 
   /** 拖动预览：只改显示槽，不写 activeSlot。 */
   const handlePreviewSlot = useCallback(
@@ -597,6 +625,24 @@ export function QuickNoteApp() {
         </div>
 
         <div className="quicknote-titlebar-actions">
+          <button
+            type="button"
+            aria-label="保存到笔记"
+            title={
+              occupiedSlots[activeSlot]
+                ? "保存到笔记"
+                : "当前便签是空的，无法保存"
+            }
+            className="quicknote-titlebar-btn quicknote-save-btn"
+            style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+            disabled={savingToNote || !occupiedSlots[activeSlot]}
+            aria-busy={savingToNote}
+            onClick={() => {
+              void handleSaveToNote();
+            }}
+          >
+            <FilePlus2 className="h-3 w-3" />
+          </button>
           <Popover open={helpOpen} onOpenChange={handleHelpOpenChange}>
             <PopoverTrigger asChild>
               <button
@@ -618,7 +664,9 @@ export function QuickNoteApp() {
             >
               <div className="quicknote-help-heading">
                 <div className="text-sm font-medium">速记便签</div>
-                <p>内容只保留在当前便签，不会自动进入笔记本。</p>
+                <p>
+                  内容默认只留在当前便签。点「保存到笔记」会在当前笔记本新建一篇，并清空这张便签。
+                </p>
               </div>
               <button
                 type="button"
@@ -646,6 +694,12 @@ export function QuickNoteApp() {
                   {helpShortcuts.zoomIn} / {helpShortcuts.zoomOut} 缩放，
                   {helpShortcuts.zoomReset} 复位；{helpShortcuts.undo} 撤销，
                   {helpShortcuts.redo} 或 {helpShortcuts.alternateRedo} 重做。
+                </li>
+                <li>
+                  <b className="text-foreground">保存</b>
+                  ：点右上角
+                  <FilePlus2 className="mx-0.5 inline h-3 w-3 align-text-bottom" />
+                  把当前便签写入当前笔记本，保存后清空并回到空白。
                 </li>
                 <li>
                   <b className="text-foreground">收起</b>

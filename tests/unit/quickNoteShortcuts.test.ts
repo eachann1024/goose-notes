@@ -2,8 +2,6 @@ import { expect, test } from "playwright/test";
 import {
   getQuickNoteSlotShortcut,
   getQuickNoteWorkspaceAction,
-  QUICKNOTE_MAIN_WINDOW_SLASH_TITLES,
-  rewriteQuickNoteSlashItemForMainWindow,
   shouldQuickNoteEditableTargetOwnShortcut,
 } from "../../src/pages/quick-note/quickNoteShortcuts";
 
@@ -161,32 +159,15 @@ test("quick-note workspace shortcuts open the main window", () => {
       { newNote: "Meta+N" },
     ),
   ).toBe("new-note");
-});
-
-test("quick-note slash items that need the main window rewrite their click", () => {
-  expect(QUICKNOTE_MAIN_WINDOW_SLASH_TITLES.has("表格")).toBe(true);
-  let opened = 0;
-  const rewritten = rewriteQuickNoteSlashItemForMainWindow(
-    {
-      title: "表格",
-      description: "插入一个简单的表格",
-      onItemClick: () => {
-        opened = -1;
-      },
-    },
-    () => {
-      opened += 1;
-    },
-  );
-  expect(rewritten.description).toBe("需在主窗口使用");
-  rewritten.onItemClick?.();
-  expect(opened).toBe(1);
-
-  const kept = rewriteQuickNoteSlashItemForMainWindow(
-    { title: "一级标题", onItemClick: () => {} },
-    () => {
-      opened = 9;
-    },
-  );
-  expect(kept.description).toBeUndefined();
+  expect(
+    getQuickNoteWorkspaceAction(
+      workspaceKeyEvent({
+        key: "u",
+        code: "KeyU",
+        metaKey: true,
+        shiftKey: true,
+      }),
+      {},
+    ),
+  ).toBeNull();
 });

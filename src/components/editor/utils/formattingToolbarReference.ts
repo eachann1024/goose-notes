@@ -79,6 +79,26 @@ export function getFormattingToolbarReferenceRect(
   return editor.getSelectionBoundingBox();
 }
 
+function isUsableToolbarRect<T extends { width: number; height: number }>(
+  rect: T | undefined,
+): rect is T {
+  return Boolean(rect && (rect.width > 0 || rect.height > 0));
+}
+
+/**
+ * 拖选时选区会先塌成空：当前锚点暂时没有，沿用上一帧，避免工具栏跳到 0,0
+ * 或被 avoid-overlap 隐掉（从而闪出被挡住的上一行）。
+ */
+export function rememberFormattingToolbarRect<
+  T extends { width: number; height: number },
+>(rect: T | undefined, last: { current: T | null }, empty: T): T {
+  if (isUsableToolbarRect(rect)) {
+    last.current = rect;
+    return rect;
+  }
+  return last.current ?? rect ?? empty;
+}
+
 function getSelectedCellsUnionRect(
   editor: BlockNoteEditor<any, any, any>,
 ): DOMRect | undefined {

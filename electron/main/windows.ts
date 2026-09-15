@@ -125,6 +125,7 @@ const sharedWebPrefs = (): BrowserWindowConstructorOptions["webPreferences"] => 
   nodeIntegration: false,
   sandbox: true,
   spellcheck: false,
+  zoomFactor: 1,
   // 正式包启用 V8 代码缓存；开发热更新不要 code cache。
   ...(isDevRenderer() ? {} : { v8CacheOptions: "code" as const }),
 });

@@ -1,4 +1,9 @@
-import { SIDEBAR_FONT_SIZE_DEFAULT } from "./types";
+import {
+  DEFAULT_QUICKNOTE_HOTKEY,
+  DEFAULT_SEARCH_HOTKEY,
+  LEGACY_DEFAULT_QUICKNOTE_HOTKEY,
+  SIDEBAR_FONT_SIZE_DEFAULT,
+} from "./types";
 
 export function migrateSettingsPersistedState(
   persistedState: unknown,
@@ -30,11 +35,24 @@ export function migrateSettingsPersistedState(
   delete state.tableEvenColumnWidth;
 
   // v4 拆分应用内与系统全局搜索；只迁移旧全局默认，保留应用内自定义和禁用状态。
+  // v5 速记小窗默认改为 Option/Alt+N；只改还停在旧默认的用户。
   const desktop = state.desktop;
   if (desktop && typeof desktop === "object") {
-    const desktopSettings = desktop as Record<string, unknown>;
+    const desktopSettings = { ...(desktop as Record<string, unknown>) };
+    let changed = false;
     if (version < 4 && desktopSettings.searchHotkey === "CmdOrCtrl+K") {
-      state.desktop = { ...desktopSettings, searchHotkey: "CmdOrCtrl+Shift+K" };
+      desktopSettings.searchHotkey = DEFAULT_SEARCH_HOTKEY;
+      changed = true;
+    }
+    if (
+      version < 5 &&
+      desktopSettings.quicknoteHotkey === LEGACY_DEFAULT_QUICKNOTE_HOTKEY
+    ) {
+      desktopSettings.quicknoteHotkey = DEFAULT_QUICKNOTE_HOTKEY;
+      changed = true;
+    }
+    if (changed) {
+      state.desktop = desktopSettings;
     }
   }
 

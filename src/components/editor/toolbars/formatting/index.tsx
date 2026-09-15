@@ -22,6 +22,7 @@ import {
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/components/editor/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
+import { useFormattingToolbarHold } from "@/components/editor/state/formattingToolbarHold";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
@@ -48,6 +49,7 @@ import { ClearFormatButton } from "@/components/editor/toolbars/formatting/group
 import { canShowAddToChatButton } from "@/components/editor/ai/composer/selectionQuote";
 import { getSelectedImageUrl } from "@/components/editor/utils/selection";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 
 export { shouldRenderFormattingToolbar };
 
@@ -114,6 +116,7 @@ export function EditorFormattingToolbar() {
       }),
   });
 
+  const holdDuringPointerSelect = useFormattingToolbarHold();
   const aiActive = useFormattingToolbarAi((s) => s.active);
   const activateFormattingToolbarAi = useFormattingToolbarAi(
     (state) => state.activate,
@@ -237,8 +240,10 @@ export function EditorFormattingToolbar() {
   if (!editor.isEditable) return null;
 
   // Selection-based gating only matters when AI mode isn't already active.
+  // 拖选按住期间选区会先塌成空：不要卸掉工具栏，否则被挡住的上一行会闪一下。
   if (
     !aiActive &&
+    !holdDuringPointerSelect &&
     (!selectionState.hasTextSelection ||
       selectionState.disallowsFormattingToolbar ||
       isInTitleOne)
@@ -246,7 +251,15 @@ export function EditorFormattingToolbar() {
     return null;
   }
 
-  const showAiButton = __GOOSE_EDITOR_AI__ && aiSettings.enabled && caps.showAi;
+  const isQuickNoteSurface =
+    __GOOSE_EDITOR_COMPACT__ ||
+    __GOOSE_LITE__ ||
+    isQuickNoteEditorPage(page);
+  const showAiButton =
+    __GOOSE_EDITOR_AI__ &&
+    aiSettings.enabled &&
+    caps.showAi &&
+    !isQuickNoteSurface;
 
   // 分节渲染：仅在「相邻两节都可见」时插入 Separator，避免双分隔线 / 尾随分隔线。
   const sections: ReactNode[] = [];
@@ -316,15 +329,12 @@ export function EditorFormattingToolbar() {
     );
   }
 
-  const showAddToChat =
-    !__GOOSE_EDITOR_COMPACT__ &&
-    !__GOOSE_LITE__ &&
-    canShowAddToChatButton({
-      aiEnabled: aiSettings.enabled,
-      isCompact: false,
-      selectedText: selectionState.selectedQuoteText,
-      isImageNodeSelection: selectionState.isImageNodeSelection,
-    });
+  const showAddToChat = canShowAddToChatButton({
+    aiEnabled: aiSettings.enabled,
+    isCompact: isQuickNoteSurface,
+    selectedText: selectionState.selectedQuoteText,
+    isImageNodeSelection: selectionState.isImageNodeSelection,
+  });
 
   if (showAddToChat) {
     sections.push(

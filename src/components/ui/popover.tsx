@@ -249,27 +249,20 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             className={cn(
               "z-[20000] outline-none",
               !editorContext &&
-                "w-64 rounded-[10px] border border-border/80 bg-[hsl(var(--popover))] p-2 text-popover-foreground",
+                "goose-floating-surface w-64 p-2 text-popover-foreground",
               !editorContext && className,
             )}
             style={{
               ...state.floatingStyles,
-              boxShadow: editorContext
-                ? undefined
-                : "0 8px 22px rgba(15,23,42,0.1), 0 1px 3px rgba(15,23,42,0.06)",
               ...style,
             }}
           >
             {editorContext ? (
               <div
                 className={cn(
-                  "goose-editor-context-ui w-64 rounded-[10px] border border-border/80 bg-[hsl(var(--popover))] p-2 text-popover-foreground",
+                  "goose-editor-context-ui goose-floating-surface w-64 p-2 text-popover-foreground",
                   className,
                 )}
-                style={{
-                  boxShadow:
-                    "0 8px 22px rgba(15,23,42,0.1), 0 1px 3px rgba(15,23,42,0.06)",
-                }}
               >
                 {children}
               </div>

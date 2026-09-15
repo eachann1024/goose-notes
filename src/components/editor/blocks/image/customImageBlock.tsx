@@ -10,7 +10,10 @@ import {
   MediaLoadingPreview,
   MediaPlaceholder,
 } from "@/components/editor/blocks/shared/MediaPlaceholder";
-import { normalizeParsedImageProps } from "./imageCaption";
+import {
+  imageBlockWithoutGeneratedCaption,
+  normalizeParsedImageProps,
+} from "./imageCaption";
 
 function CustomImageBlockContent({
   block,
@@ -38,9 +41,11 @@ function CustomImageBlockContent({
     );
   }
 
+  const displayBlock = imageBlockWithoutGeneratedCaption(block);
+
   return (
-    <ResizableFileBlockWrapper block={block} editor={editor}>
-      <ImagePreview block={block} editor={editor} />
+    <ResizableFileBlockWrapper block={displayBlock} editor={editor}>
+      <ImagePreview block={displayBlock} editor={editor} />
     </ResizableFileBlockWrapper>
   );
 }
@@ -58,7 +63,12 @@ export const customImageBlock = createReactBlockSpec(
       const parsed = imageParse()(element);
       return parsed ? normalizeParsedImageProps(parsed) : undefined;
     },
-    toExternalHTML: ImageToExternalHTML,
+    toExternalHTML: (props) => (
+      <ImageToExternalHTML
+        {...props}
+        block={imageBlockWithoutGeneratedCaption(props.block)}
+      />
+    ),
     runsBefore: ["file"],
   },
 )();

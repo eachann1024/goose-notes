@@ -107,21 +107,23 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 /*
- * 输入条外壳：单行胶囊 → 多行 20px 圆角（与 .bui-approval 同圆角）。
+ * 输入条外壳：单行、多行都是 20px 圆角（与 .bui-approval 同圆角），
+ * 边框与右键菜单 --goose-menu-border 一致，避免白底上看不见。
  * 高度与控件位移由 PromptBar 共用一次 180ms 布局过渡；编辑器立即完成重排。
- * 圆角跟随同一时长，颜色过渡沿用原 150ms。
+ * 颜色过渡沿用原 150ms。
  */
 .notebook-ai-composer-shell {
+ border-radius: 20px;
  transition:
   color 150ms ease,
   background-color 150ms ease,
-  border-color 150ms ease,
-  border-radius 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  border-color 150ms ease;
 }
 .bui-prompt-bar {
  overflow: hidden;
+ border: 1px solid hsl(var(--goose-menu-border));
+ border-radius: 20px;
  background: hsl(var(--goose-editor-bg));
- transition: border-radius 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .bui-prompt-bar > .notebook-ai-composer-shell {
  background: transparent;
@@ -960,7 +962,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  padding: 4px 14px 16px;
  min-width: 0;
  font-size: var(--editor-font-size, 16px);
- line-height: 1.7;
+ line-height: 1.5;
  color: hsl(var(--foreground));
 }
 
@@ -1006,7 +1008,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 /* 计划正文跟编辑器走：标题/清单不再压成聊天窄栏字号 */
 .notebook-ai-plan-md {
  font-size: var(--editor-font-size, 16px);
- line-height: 1.7;
+ line-height: 1.5;
 }
 
 .notebook-ai-plan-md [data-streamdown="heading-1"] {

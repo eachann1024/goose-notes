@@ -16,9 +16,7 @@ test("default desktop hotkeys convert to Electron accelerators", () => {
   expect(toElectronAccelerator(DEFAULT_WAKE_HOTKEY)).toBe(
     "CommandOrControl+Alt+N",
   );
-  expect(toElectronAccelerator(DEFAULT_QUICKNOTE_HOTKEY)).toBe(
-    "CommandOrControl+Alt+Q",
-  );
+  expect(toElectronAccelerator(DEFAULT_QUICKNOTE_HOTKEY)).toBe("Alt+N");
   expect(toElectronAccelerator(DEFAULT_SEARCH_HOTKEY)).toBe(
     "CommandOrControl+Shift+K",
   );
@@ -45,7 +43,7 @@ test("CommandOrControl aliases match so a second register of the same default is
     ),
   ).toBe(true);
   expect(
-    electronAcceleratorsMatch("CommandOrControl+Alt+N", "CommandOrControl+Alt+Q"),
+    electronAcceleratorsMatch("CommandOrControl+Alt+N", "Alt+N"),
   ).toBe(false);
   expect(electronAcceleratorAliases("CommandOrControl+K", "darwin")).toEqual([
     "CommandOrControl+K",
@@ -89,6 +87,24 @@ test("before-input matches default wake and search accelerators", () => {
   ).toBe(true);
   expect(
     inputMatchesAccelerator({ ...wake, type: "keyUp" }, "CommandOrControl+Alt+N", "darwin"),
+  ).toBe(false);
+
+  const quicknote = {
+    type: "keyDown",
+    key: "n",
+    code: "KeyN",
+    meta: false,
+    alt: true,
+    control: false,
+    shift: false,
+  };
+  expect(inputMatchesAccelerator(quicknote, "Alt+N", "darwin")).toBe(true);
+  expect(inputMatchesAccelerator(quicknote, "Alt+N", "win32")).toBe(true);
+  expect(
+    inputMatchesAccelerator({ ...quicknote, key: "Dead" }, "Alt+N", "darwin"),
+  ).toBe(true);
+  expect(
+    inputMatchesAccelerator({ ...quicknote, meta: true }, "Alt+N", "darwin"),
   ).toBe(false);
 
   const search = {

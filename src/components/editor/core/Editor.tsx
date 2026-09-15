@@ -72,8 +72,6 @@ import {
   warmupSlashMenuIcons,
 } from "./blocknoteSlashItems";
 import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
-import { rewriteQuickNoteSlashItemForMainWindow } from "@/pages/quick-note/quickNoteShortcuts";
-import { showDesktopMainWindow } from "@/lib/electron/windowToggle";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { gooseTableCellSelectionExtension } from "@/components/editor/extensions/tableCellSelectionExtension";
 import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
@@ -103,6 +101,7 @@ import { gooseSuppressMarkdownInSpecialBlocksExtension } from "@/components/edit
 import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extensions/headingMarkSuppressExtension";
 import { gooseInlineCodeCaretExtension } from "@/components/editor/extensions/inlineCodeCaretExtension";
 import { gooseTrailingBlankClickExtension } from "@/components/editor/extensions/trailingBlankClickExtension";
+import { gooseLineBoundaryKeyboardExtension } from "@/components/editor/extensions/lineBoundaryKeyboardExtension";
 import { createInlineCodePathTagExtension } from "@/components/editor/extensions/inlineCodePathTagExtension";
 import { createPageMentionClickExtension } from "@/components/editor/extensions/pageMentionClickExtension";
 import { gooseWikiLinkInputExtension } from "@/components/editor/extensions/wikiLinkInputExtension";
@@ -361,6 +360,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseWikiLinkInputExtension,
         inlineCodePathTagExtension,
         gooseTrailingBlankClickExtension,
+        gooseLineBoundaryKeyboardExtension,
         gooseInlineCodeCaretExtension,
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
@@ -427,7 +427,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           ...zh.placeholders,
           // 速记小窗打开即可输入，不用长提示抢占空白草稿的视觉焦点。
           // 常规笔记本仍保留菜单入口提示。
-          default: __GOOSE_LITE__ ? "" : "输入 / 、或随时 @ 提及笔记...",
+          default:
+            __GOOSE_LITE__ || isQuickNoteEditorPage(page)
+              ? ""
+              : "输入 / 、或随时 @ 提及笔记...",
           toggleListItem: "",
         },
         // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
@@ -669,6 +672,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           (contentModeRef.current === "normalized" ||
             false),
         settingsRef.current.features,
+        { compact: isQuickNoteEditorPage(page) },
       );
       if (hiddenSlashItemTitles && hiddenSlashItemTitles.length > 0) {
         const hidden = new Set(hiddenSlashItemTitles);
@@ -694,13 +698,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           collapsed.pop();
         }
         items = collapsed;
-      }
-      if (isQuickNoteEditorPage(page)) {
-        items = items.map((item) =>
-          rewriteQuickNoteSlashItemForMainWindow(item, () => {
-            void showDesktopMainWindow("none");
-          }),
-        );
       }
       return filterSlashMenuItems(items, query);
     },

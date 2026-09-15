@@ -5,6 +5,6 @@
   .goose-page-menu-surface,
   .goose-page-menu-surface:focus,
   .goose-page-menu-surface:focus-visible {
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: var(--goose-menu-shadow) !important;
   }
 }

@@ -6,6 +6,7 @@ import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   getFormattingSelectionMode,
   getFormattingToolbarCapabilities,
+  isFormattingToolbarOpen,
   resolveFormattingToolbarAiBlockId,
   shouldRenderFormattingToolbar,
 } from "../../src/components/editor/toolbars/formatting/helpers";
@@ -317,6 +318,66 @@ test("跨单元格 TextSelection（用途→维度）→ mode cellGrid，仍显�
 
   expect(getFormattingSelectionMode(editor)).toBe("cellGrid");
   expect(shouldRenderFormattingToolbar(editor)).toBe(true);
+});
+
+test("已有选区再拖选时，pointer 按住期间仍保持格式工具栏打开", () => {
+  const gates = {
+    editable: true,
+    suppress: false,
+    aiActive: false,
+    storeOpen: false,
+    selectionAllowed: false,
+  };
+
+  expect(isFormattingToolbarOpen({ ...gates, holdDuringPointerSelect: false })).toBe(
+    false,
+  );
+  expect(isFormattingToolbarOpen({ ...gates, holdDuringPointerSelect: true })).toBe(
+    true,
+  );
+});
+
+test("空白点击抑制或 AI 激活时，即使按住也不打开格式工具栏", () => {
+  const holding = {
+    editable: true,
+    storeOpen: false,
+    selectionAllowed: false,
+    holdDuringPointerSelect: true,
+  };
+
+  expect(
+    isFormattingToolbarOpen({ ...holding, suppress: true, aiActive: false }),
+  ).toBe(false);
+  expect(
+    isFormattingToolbarOpen({ ...holding, suppress: false, aiActive: true }),
+  ).toBe(false);
+  expect(
+    isFormattingToolbarOpen({
+      ...holding,
+      editable: false,
+      suppress: false,
+      aiActive: false,
+    }),
+  ).toBe(false);
+});
+
+test("未按住时格式工具栏仍要求 store 与选区同时成立", () => {
+  const rest = {
+    editable: true,
+    suppress: false,
+    aiActive: false,
+    holdDuringPointerSelect: false,
+  };
+
+  expect(
+    isFormattingToolbarOpen({ ...rest, storeOpen: true, selectionAllowed: false }),
+  ).toBe(false);
+  expect(
+    isFormattingToolbarOpen({ ...rest, storeOpen: false, selectionAllowed: true }),
+  ).toBe(false);
+  expect(
+    isFormattingToolbarOpen({ ...rest, storeOpen: true, selectionAllowed: true }),
+  ).toBe(true);
 });
 
 test("CellSelection 覆盖两格 → mode cellGrid，仍显示格式工具栏", () => {

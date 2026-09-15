@@ -1,4 +1,5 @@
 import type { PartialBlock } from "@blocknote/core";
+import { normalizeParsedImageProps } from "@/components/editor/blocks/image/imageCaption";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent, createEmptyBlockNoteContent } from "./emptyContent";
 import {
@@ -123,7 +124,10 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
           type: "image",
           props: {
             url: node.attrs?.src || node.attrs?.url || "",
-            caption: node.attrs?.alt || node.attrs?.title || "",
+            ...normalizeParsedImageProps({
+              caption: node.attrs?.alt || node.attrs?.title || "",
+              name: node.attrs?.alt || node.attrs?.title || "",
+            }),
           },
         } as PartialBlock,
       ];

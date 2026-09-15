@@ -9,6 +9,7 @@ import {
 import { usePages } from "@/stores/usePages";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "@/stores/useNotebooks";
 import { createEmptyLocalPageContent } from "@/components/editor/utils/blocknote-content";
+import { UNTITLED_PAGE_TITLE } from "@/components/editor/utils/page-title";
 import type { JSONContent, Page } from "@/types";
 import {
   applyRedo,
@@ -33,8 +34,8 @@ import { toast } from "@/components/ui/sonner";
  *
  * 小窗与主窗是两个独立的 WebView 进程，但共享同一份 Electron db。小窗是「草稿便签」：
  * 不直接对应一条真实笔记，编辑内容只落到草稿存储，不写进 pages、不进笔记列表 / 搜索。
- * 用户点左上角「保存到笔记本」才把当前槽位草稿整体 createPageRecord 入库，
- * 随后清空该槽位、回到空白便签。
+ * 用户点标题栏「保存到笔记」才把当前槽位草稿写入当前笔记本（本地文件夹则新建 .md），
+ * 随后清空该槽位、撤销栈归零，编辑器回到空白初始状态。
  *
  * 支持 1–5 五个独立草稿槽位（activeSlot + drafts），各自持久化、互不覆盖，
  * 每个槽位名称（slotNames）也独立持久化。
@@ -315,10 +316,11 @@ interface QuickNoteState {
   /** 重做当前槽位一步。 */
   redoDraft: () => { content: JSONContent | null; applied: boolean };
   /**
-   * 保存当前槽位草稿到笔记本：以草稿内容新建一条真实笔记并落库，随后清空该槽位。
-   * 返回新笔记 id；草稿为空时返回 null（不产生空笔记）。
+   * 保存当前槽位草稿到当前笔记本：本地文件夹新建 .md，其它笔记本走 createPageRecord。
+   * 成功后清空该槽位并丢掉撤销/重做，回到空白初始状态。
+   * 草稿为空、没有当前笔记本、或写盘失败时返回 null，不改草稿。
    */
-  saveDraftToNotebook: () => string | null;
+  saveDraftToNotebook: () => Promise<string | null>;
   /** 清空当前槽位草稿，回到空白便签。 */
   clearDraft: () => void;
   setWindowWidth: (width: number) => void;
@@ -411,6 +413,50 @@ export function isQuickNoteDraftEmpty(content: JSONContent | null): boolean {
     return !root.content.some(blockHasMeaningfulContent);
   }
   return !blockHasMeaningfulContent(root);
+}
+
+function collectInlineText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  let text = "";
+  for (const item of content) {
+    if (!item || typeof item !== "object") continue;
+    const candidate = item as { text?: unknown; content?: unknown };
+    if (typeof candidate.text === "string") text += candidate.text;
+    else text += collectInlineText(candidate.content);
+  }
+  return text;
+}
+
+function extractFirstBlockText(block: unknown): string {
+  if (!block || typeof block !== "object") return "";
+  const candidate = block as { content?: unknown; children?: unknown };
+  const inline = collectInlineText(candidate.content).trim();
+  if (inline) return inline.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  if (!Array.isArray(candidate.children)) return "";
+  for (const child of candidate.children) {
+    const nested = extractFirstBlockText(child);
+    if (nested) return nested;
+  }
+  return "";
+}
+
+function getDraftBlocks(content: JSONContent | null): unknown[] {
+  if (!content) return [];
+  if (Array.isArray(content)) return content;
+  if (typeof content !== "object") return [];
+  const root = content as { type?: unknown; content?: unknown };
+  if (root.type === "doc" && Array.isArray(root.content)) return root.content;
+  return [content];
+}
+
+/** 用草稿第一行可见文字做新笔记文件名；没有文字时回退「未命名」。 */
+export function extractQuickNoteDraftTitle(content: JSONContent | null): string {
+  for (const block of getDraftBlocks(content)) {
+    const text = extractFirstBlockText(block);
+    if (text) return text.slice(0, 80);
+  }
+  return UNTITLED_PAGE_TITLE;
 }
 
 /** 读取当前激活槽位的草稿内容。 */
@@ -530,19 +576,42 @@ export const useQuickNote = create<QuickNoteState>()(
         return { content: result.content, applied: true };
       },
 
-      saveDraftToNotebook: () => {
+      saveDraftToNotebook: async () => {
         const content = getActiveDraftContent(get());
-        if (isQuickNoteDraftEmpty(content)) {
-          get().clearDraft();
-          return null;
+        if (isQuickNoteDraftEmpty(content)) return null;
+
+        const notebooksState = useNotebooks.getState();
+        const nbId = notebooksState.activeNotebookId ?? DEFAULT_NOTEBOOK;
+        const notebook = notebooksState.notebooks[nbId];
+        if (!notebook) return null;
+
+        const title = extractQuickNoteDraftTitle(content);
+        let id: string | null = null;
+        if (notebook.source === "local-folder") {
+          id =
+            (await usePages.getState().createLocalPageRecord({
+              workspaceId: nbId,
+              title,
+              content: content ?? undefined,
+            })) ?? null;
+        } else {
+          id =
+            usePages.getState().createPageRecord({
+              workspaceId: nbId,
+              content: content ?? undefined,
+            }) || null;
         }
-        const nbId =
-          useNotebooks.getState().activeNotebookId ?? DEFAULT_NOTEBOOK;
-        const id = usePages.getState().createPageRecord({
-          workspaceId: nbId,
-          content: content ?? undefined,
+        if (!id) return null;
+
+        const latest = get();
+        const slot = latest.activeSlot;
+        recordQuickNoteRecovery(slot, latest.drafts[slot] ?? null, null);
+        lastUndoRecordAtBySlot[slot] = 0;
+        set({
+          drafts: { ...latest.drafts, [slot]: null },
+          undoStacks: { ...latest.undoStacks, [slot]: [] },
+          redoStacks: { ...latest.redoStacks, [slot]: [] },
         });
-        get().clearDraft();
         return id;
       },
 

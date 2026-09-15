@@ -1,13 +1,15 @@
 /**
  * 选区引用 token：把编辑器选区以 chip 追加到 AI 输入框末尾。
- * 不与 @页面引用混用。侧栏已开时插入必须静默（不 focus composer）；
- * 侧栏未开时先打开为并排侧栏，再把 chip 交给随后挂载的输入框。
+ * 不与 @页面引用混用。
+ * 加入对话会打开并聚焦 AI 输入框；侧栏未开时先打开为并排侧栏，
+ * 再把 chip 交给随后挂载的输入框。
  */
 import { ensureComposerCaretAnchors } from "./useSkillCommands";
 
 export const APPEND_COMPOSER_SELECTION_EVENT =
   "goose-note:append-composer-selection";
 export const OPEN_AI_PANEL_EVENT = "goose-note:open-ai-panel";
+export const FOCUS_AI_COMPOSER_EVENT = "goose-note:focus-ai-composer";
 
 export const SELECTION_QUOTE_SUMMARY_MAX = 16;
 export const SELECTION_QUOTE_DUPLICATE_TOAST = "该选区已在输入框中";
@@ -66,6 +68,16 @@ export function canDispatchAppendComposerSelection(params: {
   isImageNodeSelection: boolean;
 }): boolean {
   return canShowAddToChatButton(params);
+}
+
+/** 会话正在切换时，当前 Composer 实例先别消费队列，留给随后挂载的输入框。 */
+export function shouldDeferPendingSelectionQuote(params: {
+  composerConversationId: string | null | undefined;
+  activeConversationId: string | null | undefined;
+}): boolean {
+  const composerId = params.composerConversationId;
+  const activeId = params.activeConversationId;
+  return Boolean(composerId && activeId && composerId !== activeId);
 }
 
 /** FNV-1a 32-bit，去重键用，不求加密强度 */
@@ -303,14 +315,15 @@ export function dispatchAppendComposerSelection(
   detail: AppendComposerSelectionDetail,
 ): void {
   pendingAppendComposerSelections.push(detail);
-  if (!readAiPanelActive()) {
-    window.dispatchEvent(
-      new CustomEvent(OPEN_AI_PANEL_EVENT, {
-        detail: { layout: "side-panel" },
-      }),
-    );
-  }
+  window.dispatchEvent(
+    readAiPanelActive()
+      ? new CustomEvent(OPEN_AI_PANEL_EVENT)
+      : new CustomEvent(OPEN_AI_PANEL_EVENT, {
+          detail: { layout: "side-panel" },
+        }),
+  );
   window.dispatchEvent(
     new CustomEvent(APPEND_COMPOSER_SELECTION_EVENT, { detail }),
   );
+  window.dispatchEvent(new CustomEvent(FOCUS_AI_COMPOSER_EVENT));
 }

@@ -21,6 +21,7 @@ import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
 import { toast } from "@/components/ui/sonner";
 import type { EditorRef } from "@/components/editor/core/Editor";
+import { OPEN_AI_PANEL_EVENT } from "@/components/editor/ai/composer/selectionQuote";
 import {
   useNotebookAiChats,
   composerDraftHasContent,
@@ -117,6 +118,11 @@ export interface NotebookAiSessionValue {
   newConversation: (options?: {
     onConsumeCapturedSelection?: () => void;
   }) => void;
+  /**
+   * 打开 AI / 加入对话时解析当前会话：过期则归档并进入空白新会话。
+   * 流式生成中不切换，避免打断正在进行的回复。
+   */
+  ensureFreshConversation: () => string;
   compactConversation: () => void;
   selectConversation: (
     nextConversationId: string,
@@ -554,6 +560,40 @@ export function NotebookAiSessionProvider({
     ],
   );
 
+  const ensureFreshConversation = useCallback(() => {
+    if (isBusy) return conversationId;
+    const nextConversationId = useNotebookAiChats
+      .getState()
+      .ensureFreshActiveConversation(notebookId);
+    if (nextConversationId === conversationId) return conversationId;
+
+    persistCurrentConversation();
+    clearError();
+    requestCurrentPageIdRef.current = null;
+    useNotebookAiChats.getState().clearComposerDraft(notebookId);
+    setSuppressDefaultPageSeed(true);
+    setComposerRevision((revision) => revision + 1);
+    setConversationId(nextConversationId);
+    setMessages([]);
+    return nextConversationId;
+  }, [
+    isBusy,
+    conversationId,
+    notebookId,
+    persistCurrentConversation,
+    clearError,
+    setConversationId,
+    setMessages,
+  ]);
+
+  useEffect(() => {
+    const onOpen = () => {
+      ensureFreshConversation();
+    };
+    window.addEventListener(OPEN_AI_PANEL_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_AI_PANEL_EVENT, onOpen);
+  }, [ensureFreshConversation]);
+
   const compactConversation = useCallback(() => {
     if (isBusy) {
       toast.warning("正在生成回复，请稍后再压缩");
@@ -907,6 +947,7 @@ export function NotebookAiSessionProvider({
       suppressDefaultPageSeed,
       send,
       newConversation,
+      ensureFreshConversation,
       compactConversation,
       selectConversation,
       deleteConversation,
@@ -930,6 +971,7 @@ export function NotebookAiSessionProvider({
       suppressDefaultPageSeed,
       send,
       newConversation,
+      ensureFreshConversation,
       compactConversation,
       selectConversation,
       deleteConversation,

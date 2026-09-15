@@ -54,7 +54,10 @@ export function SettingsScaffold({
   };
 
   return (
-    <div className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground">
+    <div
+      className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground"
+      data-settings=""
+    >
       <div
         className={
           isElectronRuntime()
@@ -72,7 +75,7 @@ export function SettingsScaffold({
         </div>
         <button
           type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--goose-selected-bg))] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
           aria-label="关闭"
           onClick={onClose}
         >
@@ -80,7 +83,7 @@ export function SettingsScaffold({
         </button>
       </div>
 
-      <div className="workspace-stage min-h-0 flex-1 flex-col overflow-hidden p-3 md:flex-row">
+      <div className="workspace-stage min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <div className="workspace-main-sheet flex w-full shrink-0 flex-col md:w-60 overflow-hidden rounded-[16px] bg-[hsl(var(--goose-shell-bg))]">
           <nav
             aria-label="设置分类"

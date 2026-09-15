@@ -109,8 +109,6 @@ export function getAllConfiguredShortcuts(
     if (id === excludeId || !s) continue
     // 单标签模式下这些动作不注册热键，也不应占用可配置位。
     if (singleTabMode && TAB_ONLY_APP_SHORTCUT_IDS.has(id)) continue
-    // 应用内搜索与桌面「唤出搜索面板」是同一动作，允许共用 ⌘K / Ctrl+K。
-    if (excludeId === "search-hotkey" && id === "openSearch") continue
     shortcuts.push(normalizeShortcutForConflict(s, isMac))
   }
   // 单标签模式隐藏「关闭标签」配置，其值不参与冲突。
@@ -120,7 +118,7 @@ export function getAllConfiguredShortcuts(
   if (excludeId !== "search-panel-close" && searchPanelCloseShortcut) {
     shortcuts.push(normalizeShortcutForConflict(searchPanelCloseShortcut, isMac))
   }
-  // 桌面全局快捷键（Electron）也参与冲突占用；excludeId 用 wake-hotkey / quicknote-hotkey。
+  // 桌面全局快捷键（Electron）也参与冲突占用。
   if (excludeId !== "wake-hotkey" && desktopHotkeys?.wakeHotkey) {
     shortcuts.push(normalizeShortcutForConflict(desktopHotkeys.wakeHotkey, isMac))
   }
@@ -129,11 +127,7 @@ export function getAllConfiguredShortcuts(
       normalizeShortcutForConflict(desktopHotkeys.quicknoteHotkey, isMac),
     )
   }
-  if (
-    excludeId !== "search-hotkey" &&
-    excludeId !== "openSearch" &&
-    desktopHotkeys?.searchHotkey
-  ) {
+  if (excludeId !== "search-hotkey" && desktopHotkeys?.searchHotkey) {
     shortcuts.push(
       normalizeShortcutForConflict(desktopHotkeys.searchHotkey, isMac),
     )

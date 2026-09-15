@@ -420,7 +420,7 @@ export function IconSelector<T extends HTMLElement = HTMLElement>({
       )}
       <PopoverContent
         className={cn(
-          "goose-icon-selector w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden rounded-[14px] border border-border/40 bg-popover p-0 text-foreground shadow-[0_16px_36px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.06)]",
+          "goose-icon-selector goose-floating-surface w-[324px] min-w-[220px] max-w-[calc(100vw-20px)] overflow-hidden p-0 text-foreground",
           editorContext && "goose-editor-context-ui",
         )}
         align="start"

@@ -48,6 +48,10 @@ const expandLayout = readFileSync(
   ),
   "utf8",
 );
+const notebookAiCss = readFileSync(
+  new URL("../../src/pages/workspace/styles/notebook-ai.css", import.meta.url),
+  "utf8",
+);
 
 function firstRuleContaining(css: string, needle: string): string {
   const selectorIndex = css.indexOf(needle);
@@ -89,8 +93,21 @@ test("发送按钮切回面板时按草稿决定高亮", () => {
   expect(nativeEditor).toContain("onIsEmptyChange?.(empty)");
 });
 
-test("面板输入条是胶囊白底单行，跟 A 方案原型一致", () => {
-  expect(composer).toContain("rounded-full");
+test("面板输入条单行多行都是 20px 圆角白底", () => {
+  expect(composer).toContain("rounded-[20px]");
+  expect(composer).not.toContain(
+    'expanded ? "rounded-[20px]" : "rounded-full"',
+  );
+  expect(composer).not.toContain("flex-nowrap items-center rounded-full");
+  expect(
+    firstRuleContaining(notebookAiCss, ".notebook-ai-composer-shell {"),
+  ).toContain("border-radius: 20px");
+  expect(firstRuleContaining(notebookAiCss, ".bui-prompt-bar {")).toContain(
+    "border-radius: 20px",
+  );
+  expect(firstRuleContaining(notebookAiCss, ".bui-prompt-bar {")).toContain(
+    "border: 1px solid hsl(var(--goose-menu-border))",
+  );
   expect(composer).toContain("min-h-[44px]");
   expect(composer).toContain("bg-[hsl(var(--goose-editor-bg))]");
   expect(composer).toContain("items-center");
@@ -108,7 +125,7 @@ test("内容到模型位或硬换行时用 wrap 切两行，输入独占上行",
   expect(composer).toContain("basis-full");
   expect(composer).toContain("data-expanded");
   expect(composer).toContain("rounded-[20px]");
-  expect(composer).toContain("rounded-full");
+  expect(composer).not.toContain("flex-nowrap items-center rounded-full");
   expect(composer).not.toContain("flex flex-col");
   expect(composer).toContain("shouldExpandComposer");
   expect(composer).toContain("isEditorDomEmpty");
@@ -118,14 +135,14 @@ test("内容到模型位或硬换行时用 wrap 切两行，输入独占上行",
   expect(nativeEditor).toContain("onLayoutMeasure");
 });
 
-test("清空和发送会收回单行胶囊", () => {
+test("清空和发送会收回单行布局", () => {
   expect(composer).toContain("collapseChrome");
   expect(input).toContain('--ai-composer-h", "24px"');
   expect(input).toContain("onMultilineChange?.(false)");
   expect(input).toContain("onLayoutMeasure?.()");
 });
 
-test("面板输入区 4 行封顶，多行切 20px 圆角", () => {
+test("面板输入区 4 行封顶，单行多行都是 20px 圆角", () => {
   expect(nativeEditor).toContain("max-h-[96px]");
   expect(nativeEditor).not.toContain("max-h-[144px]");
   expect(nativeEditor).toContain("--ai-composer-h");
@@ -133,7 +150,7 @@ test("面板输入区 4 行封顶，多行切 20px 圆角", () => {
   expect(nativeEditor).toContain("Math.min(Math.max(el.scrollHeight, 24), 96)");
   expect(nativeEditor).not.toContain("const next = isEditorDomEmpty(el)");
   expect(composer).toContain("rounded-[20px]");
-  expect(composer).toContain("rounded-full");
+  expect(composer).not.toContain("flex-nowrap items-center rounded-full");
   expect(composer).toContain("notebook-ai-composer-shell");
   expect(composer).toContain("onMultilineChange={setMultiline}");
 });

@@ -1,5 +1,6 @@
 import type { CardTheme } from "../themes";
 import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
+import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
 import {
   escapeHtml,
   BLOCKNOTE_TEXT_COLORS,
@@ -61,18 +62,6 @@ function looksLikeImageUrl(src: string): boolean {
   if (src.startsWith("data:image/")) return true;
   const path = src.split("?")[0].split("#")[0].toLowerCase();
   return /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/.test(path);
-}
-
-/**
- * 浏览器复制位图时通常会把文件名写成 image.png / image.webp。它不是用户
- * 填写的说明，且在图片导出中被误渲染成 figcaption。只处理 data URL，避免
- * 干预用户为本地或远程图片明确填写的同名说明。
- */
-function isGeneratedDataImageName(value: string, src: string): boolean {
-  if (!/^data:image\//i.test(src)) return false;
-  return /^image(?:[-_ ]?\d+| \(\d+\))?\.(?:png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(
-    value.trim(),
-  );
 }
 
 function imageTextProp(value: unknown): string {

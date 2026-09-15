@@ -85,5 +85,5 @@ test("search waits for hydration at startup and remains a focus/open action", ()
   expect(hotkeys).toContain("showOrCreateMainWindow");
   expect(hotkeys).toContain('"desktop:open-search"');
   expect(hotkeys).toContain("before-input-event");
-  expect(source("../../src/stores/settings/index.ts")).toContain("version: 4");
+  expect(source("../../src/stores/settings/index.ts")).toContain("version: 5");
 });

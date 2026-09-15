@@ -12,6 +12,7 @@ import {
   CLOSE_TAB_ACCELERATOR,
   CLOSE_WINDOW_ACCELERATOR,
 } from "./closeTabAccelerator";
+import { lockWebContentsPageZoom } from "./pageZoom";
 import {
   createWorkspaceWindow,
   getMainWindow,
@@ -23,9 +24,11 @@ import {
 } from "./windows";
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
-const DEFAULT_QUICKNOTE = "CmdOrCtrl+Alt+Q";
+const DEFAULT_QUICKNOTE = "Alt+N";
 
 app.setName("Goose Note");
+// 禁止触控板捏合缩放整页；键盘 Cmd/Ctrl+/- 由渲染进程改编辑器字号。
+app.commandLine.appendSwitch("disable-pinch");
 
 if (process.platform === "linux") {
   // ponytail: Omarchy/Hyprland sets ELECTRON_OZONE_PLATFORM_HINT=wayland.
@@ -50,6 +53,10 @@ if (!gotLock) {
 
 function startApp(): void {
   let pendingFocus = false;
+
+  app.on("web-contents-created", (_event, contents) => {
+    lockWebContentsPageZoom(contents);
+  });
 
   function focusExistingWorkspace(): void {
     const win = getMainWindow();
@@ -111,7 +118,17 @@ function startApp(): void {
         ],
       },
       { role: "editMenu" },
-      { role: "viewMenu" },
+      {
+        // 默认 viewMenu 带 zoomIn/zoomOut/resetZoom，会缩放整个 webContents。
+        role: "viewMenu",
+        submenu: [
+          { role: "reload" },
+          { role: "forceReload" },
+          { role: "toggleDevTools" },
+          { type: "separator" },
+          { role: "togglefullscreen" },
+        ],
+      },
       {
         role: "window",
         submenu: [

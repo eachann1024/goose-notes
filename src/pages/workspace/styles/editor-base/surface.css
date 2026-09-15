@@ -146,11 +146,9 @@
   border-radius: 4px;
 }
 
-/* BlockNote 块间距全局优化 */
+/* 行距对齐 Notion：正文 16px / 1.5，块间距靠 BlockNote 默认 3px padding，
+ * 不再额外加 0.5em 底边距（那会把回车后的「行」撑得比 Notion 松一截）。 */
 .workspace-editor-surface .bn-block-outer {
-  margin-bottom: 0.5em;
-}
-
-.workspace-editor-surface .bn-block-outer:last-child {
+  line-height: 1.5;
   margin-bottom: 0;
 }

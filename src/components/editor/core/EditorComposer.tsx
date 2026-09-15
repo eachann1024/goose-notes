@@ -38,11 +38,15 @@ import {
 } from "@/components/editor/toolbars/formatting";
 import { FixedFormattingToolbarController } from "@/components/editor/toolbars/formatting/FixedFormattingToolbarController";
 import { GooseFormattingToolbarController } from "@/components/editor/toolbars/formatting/GooseFormattingToolbarController";
-import { getFormattingSelectionMode } from "@/components/editor/toolbars/formatting/helpers";
+import {
+  getFormattingSelectionMode,
+  isFormattingToolbarOpen,
+} from "@/components/editor/toolbars/formatting/helpers";
 import { AIExtension } from "@blocknote/xl-ai";
 import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
 import { GooseAIMenuController } from "@/components/editor/ai/GooseAIMenuController";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
+import { FormattingToolbarHoldContext } from "@/components/editor/state/formattingToolbarHold";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
@@ -67,7 +71,6 @@ import {
   shouldOpenInlineAiOnEmptyParagraph,
 } from "@/components/editor/ai/emptyParagraphAiShortcut";
 import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
-import { showDesktopMainWindow } from "@/lib/electron/windowToggle";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
@@ -232,10 +235,10 @@ export function EditorComposer({
       }
     }
 
-    const allowEnterAi = !isQuickNoteEditorPage(page);
+    if (isQuickNoteEditorPage(page)) return;
     if (
       (!__GOOSE_EDITOR_AI__ && true) ||
-      !isInlineAiEmptyParagraphTriggerKey(event.key, allowEnterAi) ||
+      !isInlineAiEmptyParagraphTriggerKey(event.key) ||
       page?.localFilePath ||
       Boolean(page?.localUnsaved)
     ) {
@@ -259,7 +262,6 @@ export function EditorComposer({
     if (
       !shouldOpenInlineAiOnEmptyParagraph({
         key: event.key,
-        allowEnter: allowEnterAi,
         defaultPrevented: event.defaultPrevented,
         repeat: event.repeat,
         altKey: event.altKey,
@@ -354,12 +356,7 @@ export function EditorComposer({
       if (target?.closest?.("[data-shortcut-recorder]")) return;
       if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
 
-      if (isQuickNoteEditorPage(page)) {
-        event.preventDefault();
-        event.stopPropagation();
-        void showDesktopMainWindow("ai-panel");
-        return;
-      }
+      if (isQuickNoteEditorPage(page)) return;
 
       let selectedText: string;
       try {
@@ -372,7 +369,7 @@ export function EditorComposer({
       if (
         !canDispatchAppendComposerSelection({
           aiEnabled: aiSettings.enabled,
-          isCompact: false,
+          isCompact: isQuickNoteEditorPage(page),
           selectedText,
           isImageNodeSelection,
         })
@@ -414,6 +411,9 @@ export function EditorComposer({
   });
   const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
   const resetFormattingToolbarAi = useFormattingToolbarAi((s) => s.reset);
+  const [holdFormattingToolbar, setHoldFormattingToolbar] = useState(false);
+  const holdFormattingToolbarRef = useRef(false);
+  const toolbarOpenForHoldRef = useRef(false);
   useEffect(() => {
     if (!editable) {
       setLinkPopoverOpen(false);
@@ -421,12 +421,49 @@ export function EditorComposer({
     }
   }, [editable, resetFormattingToolbarAi]);
 
-  const formattingToolbarOpen =
-    editable &&
-    !suppressFormattingToolbar &&
-    !formattingToolbarAiActive &&
-    formattingToolbarStoreOpen &&
-    formattingToolbarSelectionAllowed;
+  const formattingToolbarOpen = isFormattingToolbarOpen({
+    editable,
+    suppress: suppressFormattingToolbar,
+    aiActive: formattingToolbarAiActive,
+    storeOpen: formattingToolbarStoreOpen,
+    selectionAllowed: formattingToolbarSelectionAllowed,
+    holdDuringPointerSelect: holdFormattingToolbar,
+  });
+  toolbarOpenForHoldRef.current = formattingToolbarOpen;
+
+  // BlockNote 在 editor pointerdown 时关掉格式栏，pointerup 才按选区恢复。
+  // 已有选区再拖选另一行时按住工具栏，避免挡住的上一行闪一下。
+  useEffect(() => {
+    const dom = editor.domElement;
+    if (!dom) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      if (holdFormattingToolbarRef.current) return;
+      if (!toolbarOpenForHoldRef.current) return;
+      holdFormattingToolbarRef.current = true;
+      setHoldFormattingToolbar(true);
+    };
+    const endHold = () => {
+      if (!holdFormattingToolbarRef.current) return;
+      holdFormattingToolbarRef.current = false;
+      setHoldFormattingToolbar(false);
+    };
+
+    dom.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("pointerup", endHold);
+    window.addEventListener("pointercancel", endHold);
+    window.addEventListener("blur", endHold);
+    return () => {
+      dom.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("pointerup", endHold);
+      window.removeEventListener("pointercancel", endHold);
+      window.removeEventListener("blur", endHold);
+      if (!holdFormattingToolbarRef.current) return;
+      holdFormattingToolbarRef.current = false;
+      setHoldFormattingToolbar(false);
+    };
+  }, [editor, editor.domElement]);
 
   const formattingToolbarFloatingOptions = useMemo<FloatingUIOptions>(() => {
     const boundary = editorContainerRef.current ?? undefined;
@@ -647,18 +684,20 @@ export function EditorComposer({
             extendButton={GooseTableExtendButton}
           />
         ) : null}
-        {__GOOSE_EDITOR_COMPACT__ ? (
-          <FixedFormattingToolbarController
-            formattingToolbar={EditorFormattingToolbar}
-            open={formattingToolbarOpen}
-          />
-        ) : (
-          <GooseFormattingToolbarController
-            formattingToolbar={EditorFormattingToolbar}
-            floatingUIOptions={formattingToolbarFloatingOptions}
-            portalElement={null}
-          />
-        )}
+        <FormattingToolbarHoldContext.Provider value={holdFormattingToolbar}>
+          {__GOOSE_EDITOR_COMPACT__ ? (
+            <FixedFormattingToolbarController
+              formattingToolbar={EditorFormattingToolbar}
+              open={formattingToolbarOpen}
+            />
+          ) : (
+            <GooseFormattingToolbarController
+              formattingToolbar={EditorFormattingToolbar}
+              floatingUIOptions={formattingToolbarFloatingOptions}
+              portalElement={null}
+            />
+          )}
+        </FormattingToolbarHoldContext.Provider>
         <LinkToolbarController
           linkToolbar={EditorLinkToolbar}
           portalElement={null}
@@ -699,7 +738,7 @@ export function EditorComposer({
                 }
               }}
             />
-            {__GOOSE_LITE__ || false ? null : (
+            {__GOOSE_LITE__ || isQuickNoteEditorPage(page) ? null : (
               <SuggestionMenuController
                 triggerCharacter="@"
                 getItems={getMentionItems}
@@ -718,9 +757,12 @@ export function EditorComposer({
           </>
         ) : null}
         {/* 紧凑编辑器构建不挂 AI 菜单。 */}
-        {__GOOSE_EDITOR_AI__ && aiSettings.enabled && editable && (
-          <GooseAIMenuController aiMenu={GooseAIMenu} />
-        )}
+        {__GOOSE_EDITOR_AI__ &&
+          aiSettings.enabled &&
+          editable &&
+          !isQuickNoteEditorPage(page) && (
+            <GooseAIMenuController aiMenu={GooseAIMenu} />
+          )}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div

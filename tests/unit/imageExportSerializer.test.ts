@@ -483,6 +483,24 @@ test("base64 图片忽略剪贴板生成的 image.png，保留显式说明、替
   expect(described).toContain("max-width:320px;");
 });
 
+test("att 图上的剪贴板默认名也不输出 figcaption", () => {
+  const theme = getCardTheme("github-light");
+  const html = renderBlock(
+    {
+      type: "image",
+      props: {
+        url: "att:img-1",
+        caption: "image.png",
+        name: "image.png",
+        previewWidth: 176,
+      },
+    },
+    theme,
+  );
+  expect(html).not.toContain("figcaption");
+  expect(html).toContain('alt="image.png"');
+});
+
 test("codeBlock 输出 code-block 壳与语言标签", () => {
   const theme = getCardTheme("github-light");
   const html = renderBlock(

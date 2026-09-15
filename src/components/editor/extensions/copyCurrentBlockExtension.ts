@@ -92,7 +92,7 @@ function selectedRootBlockNodes(
 
 /**
  * 原生内部 HTML 不会经过 customImageBlock 的外部 HTML parse。复制时在无损
- * slice 的 DOM 边界处理旧 data URL 的默认文件名，避免 `image.png` 被当作 caption。
+ * slice 的 DOM 边界处理剪贴板默认文件名，避免 `image.png` 被当作 caption。
  * 显式说明、宽度和其他属性保持原样。
  */
 function normalizeDataImageCaptionInClipboardDom(dom: HTMLElement): void {

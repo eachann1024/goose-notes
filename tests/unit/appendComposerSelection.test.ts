@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import { installExportDom } from "./installExportDom";
 import {
@@ -7,10 +8,12 @@ import {
   canShowAddToChatButton,
   consumePendingAppendComposerSelections,
   dispatchAppendComposerSelection,
+  FOCUS_AI_COMPOSER_EVENT,
   formatSelectionQuoteModelBlock,
   hashSelectionQuoteText,
   hasDuplicateSelectionQuote,
   OPEN_AI_PANEL_EVENT,
+  shouldDeferPendingSelectionQuote,
   summarizeSelectionQuote,
   takePendingAppendComposerSelections,
 } from "../../src/components/editor/ai/composer/selectionQuote";
@@ -92,7 +95,30 @@ test("门控：AI 关闭、空选区、空白、图片 NodeSelection 都不显�
   ).toBe(false);
 });
 
-test("侧栏关闭时排队选区并打开并排侧栏", () => {
+test("桌面小窗草稿页按运行时页面隐藏加入对话，不依赖 compact 构建旗标", () => {
+  const toolbar = readFileSync(
+    "src/components/editor/toolbars/formatting/index.tsx",
+    "utf8",
+  );
+  expect(toolbar).toContain("isQuickNoteEditorPage(page)");
+  expect(toolbar).toContain("isCompact: isQuickNoteSurface");
+  expect(toolbar).toContain("!isQuickNoteSurface");
+  const composer = readFileSync(
+    "src/components/editor/core/EditorComposer.tsx",
+    "utf8",
+  );
+  expect(composer).toContain("if (isQuickNoteEditorPage(page)) return;");
+  expect(composer).not.toContain('showDesktopMainWindow("ai-panel")');
+  expect(composer).toContain(
+    "__GOOSE_LITE__ || isQuickNoteEditorPage(page) ? null",
+  );
+  expect(composer).toContain("!isQuickNoteEditorPage(page) && (");
+  const editor = readFileSync("src/components/editor/core/Editor.tsx", "utf8");
+  expect(editor).toContain("{ compact: isQuickNoteEditorPage(page) }");
+  expect(editor).not.toContain("rewriteQuickNoteSlashItemForMainWindow");
+});
+
+test("侧栏关闭时排队选区并打开并排侧栏，随后聚焦输入框", () => {
   installExportDom();
   document.body.removeAttribute(AI_PANEL_ACTIVE_ATTR);
   takePendingAppendComposerSelections();
@@ -107,6 +133,9 @@ test("侧栏关闭时排队选区并打开并排侧栏", () => {
     expect(
       stub.events.filter((event) => event.type === OPEN_AI_PANEL_EVENT),
     ).toEqual([{ type: OPEN_AI_PANEL_EVENT, detail: { layout: "side-panel" } }]);
+    expect(
+      stub.events.filter((event) => event.type === FOCUS_AI_COMPOSER_EVENT),
+    ).toEqual([{ type: FOCUS_AI_COMPOSER_EVENT, detail: null }]);
     expect(takePendingAppendComposerSelections()).toEqual([
       {
         pageId: "page-1",
@@ -122,7 +151,7 @@ test("侧栏关闭时排队选区并打开并排侧栏", () => {
   }
 });
 
-test("侧栏已开时只排队选区，不重复打开面板", () => {
+test("侧栏已开时仍派发打开与聚焦，不强制改布局", () => {
   installExportDom();
   document.body.setAttribute(AI_PANEL_ACTIVE_ATTR, "");
   takePendingAppendComposerSelections();
@@ -135,13 +164,37 @@ test("侧栏已开时只排队选区，不重复打开面板", () => {
     });
     expect(
       stub.events.filter((event) => event.type === OPEN_AI_PANEL_EVENT),
-    ).toEqual([]);
+    ).toEqual([{ type: OPEN_AI_PANEL_EVENT, detail: null }]);
+    expect(
+      stub.events.filter((event) => event.type === FOCUS_AI_COMPOSER_EVENT),
+    ).toEqual([{ type: FOCUS_AI_COMPOSER_EVENT, detail: null }]);
     expect(takePendingAppendComposerSelections()).toHaveLength(1);
   } finally {
     document.body.removeAttribute(AI_PANEL_ACTIVE_ATTR);
     stub.restore();
     takePendingAppendComposerSelections();
   }
+});
+
+test("会话正在切换时推迟消费选区队列", () => {
+  expect(
+    shouldDeferPendingSelectionQuote({
+      composerConversationId: "old",
+      activeConversationId: "new",
+    }),
+  ).toBe(true);
+  expect(
+    shouldDeferPendingSelectionQuote({
+      composerConversationId: "same",
+      activeConversationId: "same",
+    }),
+  ).toBe(false);
+  expect(
+    shouldDeferPendingSelectionQuote({
+      composerConversationId: "old",
+      activeConversationId: null,
+    }),
+  ).toBe(false);
 });
 
 test("消费失败时选区留在队列，成功后才出队", () => {

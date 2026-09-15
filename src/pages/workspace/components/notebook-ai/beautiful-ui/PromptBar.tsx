@@ -1,9 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import {
-  PROMPT_BAR_EXPANDED_RADIUS,
-  promptBarBeamRadius,
-} from "./promptBarBeamRadius";
+import { PROMPT_BAR_RADIUS, promptBarBeamRadius } from "./promptBarBeamRadius";
 
 import { usePromptBarLayoutMotion } from "./usePromptBarLayoutMotion";
 
@@ -16,16 +13,14 @@ export function PromptBar({
   className,
 }: {
   streaming?: boolean;
-  /** 多行展开态：beam 圆角从胶囊收到 20px，与外壳一致 */
+  /** 多行展开态：布局换行；beam 圆角始终与外壳 20px 对齐 */
   expanded?: boolean;
   children: ReactNode;
   className?: string;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   usePromptBarLayoutMotion(barRef);
-  const [beamRadius, setBeamRadius] = useState(
-    expanded ? PROMPT_BAR_EXPANDED_RADIUS - BEAM_INSET : 21,
-  );
+  const [beamRadius, setBeamRadius] = useState(PROMPT_BAR_RADIUS - BEAM_INSET);
 
   useLayoutEffect(() => {
     const el = barRef.current;
@@ -37,7 +32,6 @@ export function PromptBar({
         promptBarBeamRadius({
           width,
           height,
-          expanded: Boolean(expanded),
           inset: BEAM_INSET,
         }),
       );

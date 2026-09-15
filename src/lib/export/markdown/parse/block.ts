@@ -1,3 +1,4 @@
+import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
 import { parseInlineMarkdown } from "./inline";
 import {
   isLegacyCodeBlockMetaComment,
@@ -34,18 +35,6 @@ function decodeHtmlAttribute(value: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
-}
-
-/**
- * 浏览器把截图/位图复制为 Markdown 时，会生成 image.png、image.webp 或
- * image-1.png 一类的 alt。它只是文件名，不是图片说明；仅对 base64 data URL
- * 作此判断，以免吞掉用户在普通 Markdown 图片上写的同名说明。
- */
-function isGeneratedBase64ImageName(alt: string, url: string): boolean {
-  if (!/^data:image\/[a-z0-9.+-]+;base64,/i.test(url)) return false;
-  return /^image(?:[-_ ]?\d+| \(\d+\))?\.(?:png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(
-    alt.trim(),
-  );
 }
 
 /**
@@ -406,13 +395,13 @@ export function markdownToJsonContent(markdown: string): any {
       const widthValue = width ? Number(width) : undefined;
       const align = metaMap.get("align");
       const alt = imgMatch[1];
-      const isGeneratedName = isGeneratedBase64ImageName(alt, imgMatch[2]);
+      const isGeneratedName = isGeneratedDataImageName(alt, imgMatch[2]);
       content.push({
         type: "image",
         props: {
           url: imgMatch[2],
-          // Markdown alt 同时供编辑器的 img alt（name）使用。只有剪贴板生成
-          // 的默认文件名不应升级为可见 caption；name 仍保留，避免破坏 a11y。
+          // Markdown alt 同时供编辑器的 img alt（name）使用。剪贴板生成的
+          // image.png 一类默认文件名不应升级为可见 caption；name 仍保留。
           ...(alt ? { name: alt } : {}),
           ...(alt && !isGeneratedName ? { caption: alt } : {}),
           ...(Number.isFinite(widthValue) ? { previewWidth: widthValue } : {}),

@@ -472,7 +472,11 @@ test("打开 AI：未过期会话继续，过期会话归档后进入空白新�
   ).toHaveLength(1);
 });
 
-test("打开 AI：空会话不会被 6 小时规则误归档", () => {
+test("过期窗口为 30 分钟", () => {
+  expect(CONVERSATION_STALE_MS).toBe(30 * 60 * 1000);
+});
+
+test("打开 AI：空会话不会被 30 分钟规则误归档", () => {
   const store = useNotebookAiChats.getState();
   const emptyId = store.createConversation("notebookA");
 

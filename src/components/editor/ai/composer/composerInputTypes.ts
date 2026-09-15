@@ -27,8 +27,9 @@ export interface AiComposerInputHandle {
  /** 在光标处插入页面引用 chip（无光标时追加到末尾） */
  insertReference: (reference: AiFileReferenceAttrs) => void;
  /**
-  * 把选区引用 chip 静默追加到输入框末尾。
-  * 不 focus；restoreCaret 为 true 时恢复插入前的 caret。
+  * 把选区引用 chip 追加到输入框末尾。
+  * 本身不 focus；restoreCaret 为 true 时恢复插入前的 caret。
+  * 加入对话由 Composer 在插入后 focus。
   */
  appendSelectionQuote: (
   quote: AiSelectionQuoteAttrs,

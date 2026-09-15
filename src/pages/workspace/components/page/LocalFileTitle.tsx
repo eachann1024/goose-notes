@@ -5,7 +5,7 @@
  * 纯展示层，**不写入 page.content**。
  * 盒模型逐项复刻 BlockNote H1 首块，保证与内部笔记本标题视觉一致：
  *   字号 = 编辑器字号 × 3（跟随 --editor-font-size 设置）、行高 1.5（bn-block-outer）、
- *   上 18px / 下 3px 内边距（heading / bn-block-content）、块底 margin 0.5em（bn-block-outer）。
+ *   上 18px / 下 3px 内边距（heading / bn-block-content），块底不再额外加 margin。
  *   letter-spacing 不显式设置，与 h1 一样继承 body 的 0.01em。
  *
  * 点击进入行内编辑：Enter/失焦提交，Esc 取消。
@@ -191,7 +191,7 @@ export function LocalFileTitle({
         style={{
           paddingTop: 18,
           paddingBottom: 3,
-          marginBottom: "calc(var(--editor-font-size, 16px) * 0.5)",
+          marginBottom: 0,
         }}
       >
         <input
@@ -239,7 +239,7 @@ export function LocalFileTitle({
       style={{
         paddingTop: 18,
         paddingBottom: 3,
-        marginBottom: "calc(var(--editor-font-size, 16px) * 0.5)",
+        marginBottom: 0,
       }}
     >
       <div

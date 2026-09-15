@@ -10,10 +10,8 @@ export interface SidebarFooterProps {
 
 export function SidebarFooter(props: SidebarFooterProps) {
   return (
-    <div className="mt-auto shrink-0 border-t border-border/60 pt-2 pr-2">
-      <div className="rounded-xl border border-border/60 bg-background/60 p-1">
-        <NotebookSwitcher {...props} />
-      </div>
+    <div className="mt-auto shrink-0 pr-2">
+      <NotebookSwitcher {...props} />
     </div>
   );
 }

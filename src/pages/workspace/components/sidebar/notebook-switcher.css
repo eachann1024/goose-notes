@@ -3,6 +3,6 @@
   .goose-notebook-menu-surface,
   .goose-notebook-menu-surface:focus,
   .goose-notebook-menu-surface:focus-visible {
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: var(--goose-menu-shadow) !important;
   }
 }

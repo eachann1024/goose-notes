@@ -90,6 +90,28 @@ export function extendToVisualLineEnd(
   return pos;
 }
 
+/** 从 `from` 沿同一视觉行走到第一个文档位置。 */
+export function extendToVisualLineStart(
+  coordsAtPos: (pos: number) => CaretCoords,
+  from: number,
+  textblockStart: number,
+): number {
+  let pos = from;
+  while (pos > textblockStart) {
+    let curr: CaretCoords;
+    let prev: CaretCoords;
+    try {
+      curr = coordsAtPos(pos);
+      prev = coordsAtPos(pos - 1);
+    } catch {
+      break;
+    }
+    if (wrappedToNextLine(prev, curr)) break;
+    pos -= 1;
+  }
+  return pos;
+}
+
 /** 二分找到 `clientY` 所在视觉行上的一个文档位置。 */
 export function findPosOnVisualLine(
   coordsAtPos: (pos: number) => CaretCoords,

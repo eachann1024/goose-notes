@@ -169,7 +169,8 @@
 }
 
 /* HeroUI 的 text-muted 表示弱化文字；本项目 --muted / --color-muted 是底色。
- * 深色模式下 text-muted 会变成「深色底当字色」，关闭钮、菜单箭头等图标消失。 */
+ * 深色模式下 text-muted 会变成「深色底当字色」，关闭钮、菜单箭头等图标消失。
+ * Tabs 未选中态把 text-muted @apply 进 .tabs__tab，.class 覆盖不到。 */
 .text-muted {
   color: hsl(var(--muted-foreground));
 }
@@ -179,9 +180,33 @@
   color: hsl(var(--muted-foreground));
 }
 
+.tabs__tab {
+  transition: none;
+}
+
+.tabs__tab:not([data-selected="true"]) {
+  color: hsl(var(--muted-foreground));
+}
+
+.tabs__tab:not([data-disabled="true"]):hover,
+.tabs__tab[data-hovered="true"]:not([data-disabled="true"]) {
+  opacity: 1;
+}
+
+.tabs__indicator {
+  display: none;
+}
+
+.tabs__panel[data-exiting="true"] {
+  position: static;
+}
+
 /* class 模式暗色：等价 v3 darkMode: ["class"] */
 @custom-variant dark (&:is(.dark *));
 
+/* 弹出层外壳：右键菜单、下拉、Popover 共用边框/圆角/阴影。
+ * goose-menu-surface 额外管菜单项 hover；下拉仍走强调色 hover，只用 floating。 */
+.goose-floating-surface,
 .goose-menu-surface {
   border: 1px solid hsl(var(--goose-menu-border));
   border-radius: var(--goose-menu-radius);
@@ -195,11 +220,21 @@
  * empty menu look like it has a different background from the same menu while
  * an item is hovered. */
 @layer properties {
+  .goose-floating-surface,
+  .goose-floating-surface:focus,
+  .goose-floating-surface:focus-visible,
   .goose-menu-surface,
   .goose-menu-surface:focus,
   .goose-menu-surface:focus-visible {
     box-shadow: var(--goose-menu-shadow) !important;
   }
+}
+
+.goose-dropdown-host {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 .goose-menu-surface [role="menuitem"][data-highlighted],
@@ -211,9 +246,30 @@
 .goose-menu-surface [role="menuitemcheckbox"]:focus,
 .goose-menu-surface [role="menuitemradio"][data-highlighted],
 .goose-menu-surface [role="menuitemradio"][data-focused],
-.goose-menu-surface [role="menuitemradio"]:focus {
+.goose-menu-surface [role="menuitemradio"]:focus,
+.goose-menu-surface [data-slot="menu-item"]:hover,
+.goose-menu-surface [data-slot="menu-item"][data-hovered],
+.goose-menu-surface [data-slot="menu-item"][data-focused],
+.goose-menu-surface [data-slot="menu-item"]:focus {
   background-color: hsl(var(--goose-menu-hover)) !important;
   color: var(--goose-interactive-selected-fg) !important;
+}
+
+.goose-menu-surface [data-slot="menu-item"],
+.goose-menu-surface .menu-item {
+  min-height: var(--goose-menu-item-height);
+  border-radius: var(--goose-menu-item-radius);
+  font-size: var(--goose-menu-item-font-size);
+  line-height: var(--goose-menu-item-line-height);
+  gap: 8px;
+  padding-block: 0;
+}
+
+.goose-menu-surface [data-slot="menu-item"]:active,
+.goose-menu-surface [data-slot="menu-item"][data-pressed="true"],
+.goose-menu-surface .menu-item:active,
+.goose-menu-surface .menu-item[data-pressed="true"] {
+  transform: none;
 }
 
 [data-slot="menu-item"]:hover,
@@ -241,6 +297,19 @@
 
 .goose-menu-separator {
   margin: 6px 8px;
+  background-color: hsl(var(--goose-menu-border));
+}
+
+.goose-menu-surface.menu {
+  gap: 0;
+}
+
+.goose-menu-surface [data-slot="separator"],
+.goose-menu-surface.menu [data-slot="separator"],
+.goose-menu-surface .goose-menu-separator {
+  width: auto;
+  margin: 6px 8px;
+  align-self: stretch;
   background-color: hsl(var(--goose-menu-border));
 }
 

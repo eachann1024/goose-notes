@@ -1,4 +1,5 @@
 import type { PartialBlock } from "@blocknote/core";
+import { normalizeParsedImageProps } from "@/components/editor/blocks/image/imageCaption";
 import type { BlockNoteContent } from "./emptyContent";
 import {
   TITLE_HEADING_LEVEL,
@@ -383,7 +384,11 @@ function normalizeBlock(block: any): PartialBlock[] {
   }
 
   const sanitized: PartialBlock = { type };
-  if (block.props || block.attrs) sanitized.props = block.props ?? block.attrs;
+  if (block.props || block.attrs) {
+    const rawProps = (block.props ?? block.attrs) as Record<string, unknown>;
+    sanitized.props =
+      type === "image" ? normalizeParsedImageProps(rawProps) : rawProps;
+  }
   if (block.content !== undefined) {
     sanitized.content = type === "codeBlock" ? simpleExtractText(block) : block.content;
   }

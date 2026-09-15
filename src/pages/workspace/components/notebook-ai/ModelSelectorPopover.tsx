@@ -69,7 +69,7 @@ export function ModelSelectorPopover({ disabled }: ModelSelectorPopoverProps) {
         </button>
       </PopoverTrigger>
       {/*
-        触发器在胶囊输入条右侧、发送按钮左边：align="end" 让菜单贴右缘往左展，
+        触发器在输入条右侧、发送按钮左边：align="end" 让菜单贴右缘往左展，
         窄侧栏里不会把宽菜单甩出面板。
       */}
       <PopoverContent

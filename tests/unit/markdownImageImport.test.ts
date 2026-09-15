@@ -93,3 +93,37 @@ test("仅有 name 的 data 图片序列化后仍能保留名称和宽度", () =>
   });
   expect(roundTripped.props.caption).toBeUndefined();
 });
+
+test("上传后的 att 图也不把 image.png 升级为可见说明", () => {
+  const [image] = markdownToJsonContent(
+    "![image.png](att:img-1){width=176}",
+  );
+  expect(image).toMatchObject({
+    type: "image",
+    props: {
+      url: "att:img-1",
+      name: "image.png",
+      previewWidth: 176,
+    },
+  });
+  expect(image.props.caption).toBeUndefined();
+
+  const markdown = jsonContentToMarkdown([
+    {
+      type: "image",
+      props: {
+        url: "att:img-1",
+        name: "image.png",
+        caption: "image.png",
+        previewWidth: 176,
+      },
+    },
+  ] as any);
+  const [roundTripped] = markdownToJsonContent(markdown);
+  expect(roundTripped.props).toMatchObject({
+    url: "att:img-1",
+    name: "image.png",
+    previewWidth: 176,
+  });
+  expect(roundTripped.props.caption).toBeUndefined();
+});

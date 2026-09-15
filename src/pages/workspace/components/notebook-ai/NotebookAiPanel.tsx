@@ -72,6 +72,7 @@ import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { cn } from "@/lib/utils";
 import { readEditorScale } from "./artifactPanZoomScale";
+import { FOCUS_AI_COMPOSER_EVENT } from "@/components/editor/ai/composer/selectionQuote";
 import {
   buildComposerDraftFromReference,
   resolveEmptySessionComposerSeed,
@@ -208,6 +209,7 @@ export function NotebookAiPanel({
   const notebooks = useNotebooks((state) => state.notebooks);
 
   const {
+    conversationId,
     messages,
     error,
     clearError,
@@ -219,6 +221,7 @@ export function NotebookAiPanel({
     suppressDefaultPageSeed,
     send,
     newConversation,
+    ensureFreshConversation,
     compactConversation,
     selectConversation,
     deleteConversation,
@@ -226,6 +229,12 @@ export function NotebookAiPanel({
     onBatchApproval,
     onBatchUndo,
   } = useNotebookAiSession();
+
+  const ensureFreshOnOpenRef = useRef(ensureFreshConversation);
+  ensureFreshOnOpenRef.current = ensureFreshConversation;
+  useEffect(() => {
+    ensureFreshOnOpenRef.current();
+  }, []);
 
   // 空会话默认 @ 跟随当前页：切笔记本 / 切页后再打开面板时换成最新笔记。
   // 用户已打字、加过其他 chip，或会话里已有消息，都保持原样。
@@ -294,10 +303,10 @@ export function NotebookAiPanel({
     if (unavailableReason || !bodyReady) return;
     const focusComposer = () => composerRef.current?.focus();
     const timer = window.setTimeout(focusComposer, 50);
-    window.addEventListener("goose-note:focus-ai-composer", focusComposer);
+    window.addEventListener(FOCUS_AI_COMPOSER_EVENT, focusComposer);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener("goose-note:focus-ai-composer", focusComposer);
+      window.removeEventListener(FOCUS_AI_COMPOSER_EVENT, focusComposer);
     };
   }, [unavailableReason, bodyReady, composerRevision]);
 
@@ -611,6 +620,7 @@ export function NotebookAiPanel({
               ref={composerRef}
               key={`${notebookId}-${composerRevision}`}
               notebookId={notebookId}
+              conversationId={conversationId}
               initialContent={composerSeedContent}
               onSend={handleSend}
               onSlashCommand={handleSlashCommand}

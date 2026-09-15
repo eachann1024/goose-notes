@@ -83,6 +83,28 @@ export function isSlashMenuDivider(item: SlashMenuItem): boolean {
   );
 }
 
+/** 速记小窗 / 紧凑构建只保留常用输入块。 */
+export const COMPACT_SLASH_MENU_TITLES = new Set([
+  "一级标题",
+  "二级标题",
+  "待办事项",
+  "无序列表",
+  "有序列表",
+  "引用",
+  "标注",
+  "分隔线",
+  "代码块",
+  "图片",
+]);
+
+export function filterCompactSlashMenuItems(
+  items: SlashMenuItem[],
+): SlashMenuItem[] {
+  return items.filter(
+    (it) => !isSlashMenuDivider(it) && COMPACT_SLASH_MENU_TITLES.has(it.title),
+  );
+}
+
 export function getBlockNoteSlashMenuItems(
   editor: BlockNoteEditor<any, any, any>,
   aiEnabled: boolean,
@@ -90,6 +112,7 @@ export function getBlockNoteSlashMenuItems(
     transcodeVideoUploads: true,
     openAttachmentsExternally: true,
   },
+  options?: { compact?: boolean },
 ): SlashMenuItem[] {
   // 插入完成后：把光标移到新块、把视图滚动到新块、把焦点交回编辑器
   const focusAndScrollTo = (block: { id: string }) => {
@@ -189,8 +212,10 @@ export function getBlockNoteSlashMenuItems(
 
   const items: SlashMenuItem[] = [];
 
-  // 未启用 AI 的构建不添加「生成」斜杠项。
-  if (aiEnabled && (__GOOSE_EDITOR_AI__ || false)) {
+  const compact = Boolean(options?.compact) || __GOOSE_EDITOR_COMPACT__;
+
+  // 未启用 AI 的构建 / 小窗不添加「生成」斜杠项。
+  if (aiEnabled && (__GOOSE_EDITOR_AI__ || false) && !compact) {
     items.push({
       title: "生成",
       description: "接着写点什么...",
@@ -415,23 +440,8 @@ export function getBlockNoteSlashMenuItems(
 
   let menuItems = items;
 
-  // 紧凑模式精简斜杠菜单，保留常用输入块。
-  if (__GOOSE_EDITOR_COMPACT__) {
-    const compactSlashTitles = new Set([
-      "一级标题",
-      "二级标题",
-      "待办事项",
-      "无序列表",
-      "有序列表",
-      "引用",
-      "标注",
-      "分隔线",
-      "代码块",
-      "图片",
-    ]);
-    menuItems = menuItems.filter(
-      (it) => !isSlashMenuDivider(it) && compactSlashTitles.has(it.title),
-    );
+  if (compact) {
+    menuItems = filterCompactSlashMenuItems(menuItems);
   }
 
   return menuItems;

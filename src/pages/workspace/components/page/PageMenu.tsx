@@ -196,7 +196,7 @@ export function PageMenu() {
           页面更多菜单走 viewport 坐标系，尺寸用真实 px。
         */}
         <PopoverContent
-          className="goose-page-menu-surface max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-lg border border-border p-1.5 shadow-md"
+          className="goose-page-menu-surface goose-floating-surface max-h-[calc(100vh-24px)] w-[272px] max-w-[calc(100vw-16px)] overflow-y-auto p-1.5"
           align="end"
           sideOffset={6}
           style={{

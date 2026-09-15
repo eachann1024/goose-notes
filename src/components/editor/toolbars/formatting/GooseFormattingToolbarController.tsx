@@ -1,4 +1,4 @@
-import { type FC, useMemo } from "react";
+import { type FC, useMemo, useRef } from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import { flip, offset, shift } from "@floating-ui/react";
 import {
@@ -11,7 +11,10 @@ import {
   type GenericPopoverReference,
 } from "@blocknote/react";
 
-import { getFormattingToolbarReferenceRect } from "@/components/editor/utils/formattingToolbarReference";
+import {
+  getFormattingToolbarReferenceRect,
+  rememberFormattingToolbarRect,
+} from "@/components/editor/utils/formattingToolbarReference";
 import { getFormattingSelectionMode } from "./helpers";
 
 type GooseFormattingToolbarControllerProps = {
@@ -54,6 +57,7 @@ export function GooseFormattingToolbarController({
         ? storeOpen && openProp
         : storeOpen;
 
+  const lastReferenceRectRef = useRef<DOMRect | null>(null);
   const reference = useMemo<GenericPopoverReference | undefined>(() => {
     const dom = editor.domElement;
     const contextEl =
@@ -64,7 +68,11 @@ export function GooseFormattingToolbarController({
     const getBoundingClientRect = () => {
       const mode = getFormattingSelectionMode(editor);
       const rect = getFormattingToolbarReferenceRect(editor, mode);
-      return rect ?? new DOMRect();
+      return rememberFormattingToolbarRect(
+        rect,
+        lastReferenceRectRef,
+        new DOMRect(),
+      );
     };
 
     if (contextEl) {

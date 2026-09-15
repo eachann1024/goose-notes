@@ -73,6 +73,7 @@ declare global {
   const DropdownMenuItem: typeof import('./components/ui/dropdown-menu').DropdownMenuItem
   const DropdownMenuRadioGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioGroup
   const DropdownMenuRadioItem: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioItem
+  const DropdownMenuSeparator: typeof import('./components/ui/dropdown-menu').DropdownMenuSeparator
   const DropdownMenuTrigger: typeof import('./components/ui/dropdown-menu').DropdownMenuTrigger
   const EDITOR_CONTEXT_UI_GAP: typeof import('./components/editor/utils/editorContextUi').EDITOR_CONTEXT_UI_GAP
   const EDITOR_FONT_SIZE_DEFAULT: typeof import('./stores/settings/index').EDITOR_FONT_SIZE_DEFAULT
@@ -83,13 +84,11 @@ declare global {
   const EDITOR_UI_SCALE_CHANGE_EVENT: typeof import('./lib/appearance').EDITOR_UI_SCALE_CHANGE_EVENT
   const ELECTRON_MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').ELECTRON_MAX_FILE_ATTACHMENT_SIZE
   const ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').ELECTRON_MAX_VIDEO_ATTACHMENT_SIZE
-  const ELECTRON_WINDOW_HEIGHT_DEFAULT: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_DEFAULT
-  const ELECTRON_WINDOW_HEIGHT_MAX: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_MAX
-  const ELECTRON_WINDOW_HEIGHT_MIN: typeof import('./stores/settings/index').ELECTRON_WINDOW_HEIGHT_MIN
   const FILE_NAV_AI_PANEL: typeof import('./stores/useFileNavHistory').FILE_NAV_AI_PANEL
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
+  const FormattingToolbarHoldContext: typeof import('./components/editor/state/formattingToolbarHold').FormattingToolbarHoldContext
   const Fragment: typeof import('react').Fragment
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
   const GOOSE_FAVORITE_KEY: typeof import('./lib/local-frontmatter').GOOSE_FAVORITE_KEY
@@ -296,6 +295,7 @@ declare global {
   const extractFirstHeadingText: typeof import('./lib/local-title-binding').extractFirstHeadingText
   const extractFrontmatter: typeof import('./lib/markdown-raw-guard').extractFrontmatter
   const extractPlainText: typeof import('./components/editor/utils/blocknote-content/index').extractPlainText
+  const extractQuickNoteDraftTitle: typeof import('./stores/useQuickNote').extractQuickNoteDraftTitle
   const extractStructureSummary: typeof import('./components/editor/utils/content-text-extractor').extractStructureSummary
   const extractTextFromContent: typeof import('./components/editor/utils/content-text-extractor').extractTextFromContent
   const extractTitleFromContent: typeof import('./components/editor/utils/content-text-extractor').extractTitleFromContent
@@ -535,6 +535,7 @@ declare global {
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
   const rememberDiskWriteFailure: typeof import('./lib/diskWriteError').rememberDiskWriteFailure
   const rememberEditorSelectedBlocks: typeof import('./components/editor/utils/selection').rememberEditorSelectedBlocks
+  const rememberFormattingToolbarRect: typeof import('./components/editor/utils/formattingToolbarReference').rememberFormattingToolbarRect
   const rememberLocalFolderTarget: typeof import('./lib/local-folder-target').rememberLocalFolderTarget
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const removeLocalPageIdMap: typeof import('./lib/local-page-idmap').removeLocalPageIdMap
@@ -662,6 +663,7 @@ declare global {
   const useFileNavHistory: typeof import('./stores/useFileNavHistory').useFileNavHistory
   const useFormatCode: typeof import('./components/editor/hooks/useFormatCode').useFormatCode
   const useFormattingToolbarAi: typeof import('./components/editor/state/formattingToolbarAi').useFormattingToolbarAi
+  const useFormattingToolbarHold: typeof import('./components/editor/state/formattingToolbarHold').useFormattingToolbarHold
   const useGlobalScrollActivity: typeof import('./components/editor/hooks/useGlobalScrollActivity').useGlobalScrollActivity
   const useHistoryRecorder: typeof import('./hooks/useHistoryRecorder').useHistoryRecorder
   const useHistoryView: typeof import('./stores/useHistoryView').useHistoryView

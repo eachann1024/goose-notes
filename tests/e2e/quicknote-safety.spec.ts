@@ -83,19 +83,27 @@ test.describe("quick-note draft safety", () => {
     await expect(helpTrigger).toBeVisible();
     await expect(switcherInteractive).toHaveCSS("pointer-events", "auto");
 
+    const saveButton = page.getByRole("button", { name: "保存到笔记" });
+    await expect(saveButton).toBeVisible();
+    await expect(saveButton).toBeDisabled();
+
     const actionLayout = await page
       .locator(".quicknote-titlebar-actions")
       .evaluate((actions) => {
+        const save = actions.querySelector<HTMLElement>(".quicknote-save-btn");
         const info = actions.querySelector<HTMLElement>(
           ".quicknote-help-trigger",
         );
         const close = actions.querySelector<HTMLElement>(
           ".quicknote-close-btn",
         );
-        if (!info || !close) return null;
+        if (!save || !info || !close) return null;
+        const saveRect = save.getBoundingClientRect();
         const infoRect = info.getBoundingClientRect();
         const closeRect = close.getBoundingClientRect();
         return {
+          saveRight: saveRect.right,
+          infoLeft: infoRect.left,
           infoRight: infoRect.right,
           closeLeft: closeRect.left,
           gap: closeRect.left - infoRect.right,
@@ -106,6 +114,9 @@ test.describe("quick-note draft safety", () => {
         };
       });
     expect(actionLayout).not.toBeNull();
+    expect(actionLayout!.saveRight).toBeLessThanOrEqual(
+      actionLayout!.infoLeft,
+    );
     expect(actionLayout!.infoRight).toBeLessThanOrEqual(
       actionLayout!.closeLeft,
     );
@@ -120,7 +131,7 @@ test.describe("quick-note draft safety", () => {
 
     await helpTrigger.click();
     const helpIntro = page.getByText(
-      "内容只保留在当前便签，不会自动进入笔记本。",
+      "内容默认只留在当前便签。点「保存到笔记」会在当前笔记本新建一篇，并清空这张便签。",
     );
     await expect(helpIntro).toBeVisible();
     const helpBounds = await page

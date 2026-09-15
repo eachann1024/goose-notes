@@ -16,7 +16,7 @@
   -webkit-user-select: text;
   overflow-anchor: none;
   font-size: var(--editor-font-size);
-  line-height: 1.7;
+  line-height: 1.5;
   caret-color: hsl(var(--foreground));
   caret-width: var(--goose-editor-caret-width, 2px);
 }
@@ -175,7 +175,7 @@
    这里只做无 accent 时的兜底，以及盖掉 BlockNote 的 highlight。
    不用写死 iris 紫——否则琥珀等强调色下选区会「串色」。
 
-   WKWebView / Safari 跨块选区会把块容器（含 .bn-block-outer 的 0.5em
+   WKWebView / Safari 跨块选区会把块容器（含 .bn-block-outer 的块
    底间距）也画成 ::selection，列表项之间就会出现空白高亮条。
    块壳先透明；文字高亮必须写在元素自身的 ::selection 上
    （.bn-inline-content::selection），带空格的后代选择器在 WebKit 上不生效。 */

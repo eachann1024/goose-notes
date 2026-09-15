@@ -412,7 +412,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
         <div
           data-notion-slash-surface="true"
           className={cn(
-            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground",
+            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-[hsl(var(--goose-menu-border))] bg-[hsl(var(--goose-menu-surface))] text-popover-foreground",
             !lite &&
               "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
             lite

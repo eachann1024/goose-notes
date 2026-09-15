@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 import {
   getFormattingToolbarReferenceRect,
   getMultiBlockToolbarEdgeRect,
+  rememberFormattingToolbarRect,
   type ToolbarReferenceRect,
 } from "../../src/components/editor/utils/formattingToolbarReference";
 
@@ -79,4 +80,27 @@ test("getFormattingToolbarReferenceRect returns undefined for mode none (no view
   // Pure fallback only: mode "none" short-circuits without touching the DOM.
   const stubEditor = {} as any;
   expect(getFormattingToolbarReferenceRect(stubEditor, "none")).toBeUndefined();
+});
+
+function box(x: number, y: number, width: number, height: number) {
+  return { x, y, width, height, top: y, left: x, right: x + width, bottom: y + height };
+}
+
+test("rememberFormattingToolbarRect keeps the last usable box when the current selection collapses", () => {
+  const last: { current: ReturnType<typeof box> | null } = { current: null };
+  const first = box(10, 20, 300, 24);
+  const empty = box(0, 0, 0, 0);
+
+  expect(rememberFormattingToolbarRect(first, last, empty)).toBe(first);
+  expect(last.current).toBe(first);
+  expect(rememberFormattingToolbarRect(undefined, last, empty)).toBe(first);
+  expect(rememberFormattingToolbarRect(empty, last, empty)).toBe(first);
+});
+
+test("rememberFormattingToolbarRect falls back to an empty box when nothing was remembered", () => {
+  const last: { current: ReturnType<typeof box> | null } = { current: null };
+  const empty = box(0, 0, 0, 0);
+
+  expect(rememberFormattingToolbarRect(undefined, last, empty)).toBe(empty);
+  expect(last.current).toBeNull();
 });

@@ -258,6 +258,33 @@ export function shouldRenderFormattingToolbar(
 }
 
 /**
+ * 浮动格式栏是否打开。
+ *
+ * BlockNote 的 FormattingToolbarExtension 在 editor pointerdown 时把 store
+ * 置 false，pointerup 才按选区恢复。已有选区再拖选另一行时，工具栏会先卸掉、
+ * 露出被挡住的上一行，松手才回来。按住期间若工具栏本来是开的，继续保持打开。
+ */
+export function isFormattingToolbarOpen({
+  editable,
+  suppress,
+  aiActive,
+  storeOpen,
+  selectionAllowed,
+  holdDuringPointerSelect,
+}: {
+  editable: boolean;
+  suppress: boolean;
+  aiActive: boolean;
+  storeOpen: boolean;
+  selectionAllowed: boolean;
+  holdDuringPointerSelect: boolean;
+}): boolean {
+  if (!editable || suppress || aiActive) return false;
+  if (holdDuringPointerSelect) return true;
+  return storeOpen && selectionAllowed;
+}
+
+/**
  * AI 菜单需要 block id 锚点。表格 / CellSelection 下 getTextCursorPosition 可能抛错，
  * 依次回退：光标块 → 选区首块 → 选区起点最近 blockContainer。
  */

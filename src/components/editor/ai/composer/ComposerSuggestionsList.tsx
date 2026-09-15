@@ -104,7 +104,7 @@ export function ComposerSuggestionsList({
       }}
     >
       <div
-        className="goose-editor-context-ui overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+        className="goose-editor-context-ui goose-floating-surface overflow-hidden"
         style={{
           minWidth: POPOVER_MIN_WIDTH,
           maxWidth: POPOVER_MAX_WIDTH,

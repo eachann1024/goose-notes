@@ -10,7 +10,7 @@ const MAX_MESSAGES_PER_CONVERSATION = 60;
 /** 最多持久化聊天记录的笔记本数 */
 const MAX_NOTEBOOKS = 20;
 /** 超过此时长未活跃的会话视为归档：再次打开 AI 进入空白新会话，旧会话留在历史里 */
-export const CONVERSATION_STALE_MS = 6 * 60 * 60 * 1000;
+export const CONVERSATION_STALE_MS = 30 * 60 * 1000;
 const NOTEBOOK_AI_CHATS_STORAGE_VERSION = 1;
 
 /**
@@ -454,13 +454,13 @@ export const useNotebookAiChats = create<NotebookAiChatsState>()(
         }
 
         // 以笔记本级 last touch 为准（发消息 / 切历史 / 新建 / 打开都会刷新），
-        // 避免「只点开历史」后马上被 6 小时规则误归档。
+        // 避免「只点开历史」后马上被 30 分钟规则误归档。
         const lastActiveAt = Math.max(
           notebookChat?.updatedAt ?? 0,
           activeConversation.updatedAt,
         );
         if (now - lastActiveAt < maxAgeMs) {
-          // 恢复未过期会话时刷新 touch，把 6 小时窗口从「最近一次打开」起算。
+          // 恢复未过期会话时刷新 touch，把 30 分钟窗口从「最近一次打开」起算。
           get().setActiveConversation(notebookId, activeConversation.id);
           return activeConversation.id;
         }

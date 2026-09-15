@@ -33,6 +33,7 @@
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
   --workspace-stage-pad-left: 10px;
+  --workspace-stage-pad-bottom: 12px;
   --workspace-sidebar-gap: 8px;
   --workspace-sidebar-width: 180px;
   --workspace-resize-line: linear-gradient(
@@ -104,7 +105,7 @@
   height: 100%;
   width: 100%;
   gap: var(--workspace-sidebar-gap);
-  padding: 10px 10px 12px var(--workspace-stage-pad-left);
+  padding: 10px 10px 0 var(--workspace-stage-pad-left);
 }
 
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
@@ -113,7 +114,8 @@
 .workspace-shell[data-electron-chrome] {
   flex-direction: column;
 }
-.workspace-shell[data-electron-chrome] .workspace-stage {
+.workspace-shell[data-electron-chrome] .workspace-stage,
+.workspace-shell[data-settings] .workspace-stage {
   flex: 1;
   min-height: 0;
   height: auto;
@@ -257,6 +259,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   background: var(--workspace-main-surface);
   border: 0;
   border-radius: 12px;
+  margin-bottom: var(--workspace-stage-pad-bottom);
   box-shadow: none;
   margin-left: 0;
   overflow: hidden;
@@ -631,6 +634,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   .workspace-shell .workspace-main-sheet {
     border-radius: 0;
     margin-left: 0;
+    margin-bottom: 0;
   }
 
   .workspace-shell .workspace-editor-surface {

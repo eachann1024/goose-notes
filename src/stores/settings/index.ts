@@ -132,7 +132,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) =>
         migrateSettingsPersistedState(persistedState, version),
       storage: createJSONStorage(() => localStorageAdapter),

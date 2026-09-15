@@ -27,6 +27,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/editor/ui/dropdown-menu";
 import { cn } from "@/components/editor/utils/cn";
@@ -533,6 +534,7 @@ export function GooseTableHandle({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         editorContext
+        variant="menu"
         className="w-40"
         side={isRow ? "right" : "bottom"}
         align="start"
@@ -561,22 +563,12 @@ export function GooseTableHandle({
             </DropdownMenuItem>
             {index === 0 && features.tablePresentationControls && (
               <>
-                {isHeaderRow ? (
-                  <DropdownMenuItem
-                    onSelect={() => handleToggleHeaderRow(false)}
-                    className="bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                  >
-                    <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
-                    取消标题行
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onSelect={() => handleToggleHeaderRow(true)}
-                  >
-                    <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
-                    设为标题行
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  onSelect={() => handleToggleHeaderRow(!isHeaderRow)}
+                >
+                  <LucideIcons.Heading1 className="mr-2 h-4 w-4" />
+                  {isHeaderRow ? "取消标题行" : "设为标题行"}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => runMenuAction(handleEvenColumnWidth)}
                 >
@@ -585,6 +577,7 @@ export function GooseTableHandle({
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleDelete}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除行
             </DropdownMenuItem>
@@ -605,6 +598,7 @@ export function GooseTableHandle({
             >
               <LucideIcons.ArrowRight className="mr-2 h-4 w-4" /> 右侧添加列
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleDelete}>
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除列
             </DropdownMenuItem>

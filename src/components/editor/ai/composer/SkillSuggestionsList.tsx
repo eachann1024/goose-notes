@@ -105,7 +105,7 @@ export function SkillSuggestionsList(props: {
     >
       <div
         ref={listRef}
-        className="goose-editor-context-ui flex w-[340px] flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg"
+        className="goose-editor-context-ui goose-floating-surface flex w-[340px] flex-col gap-1 overflow-y-auto p-1.5"
         style={{ maxHeight }}
       >
         {props.items.length === 0 ? (
