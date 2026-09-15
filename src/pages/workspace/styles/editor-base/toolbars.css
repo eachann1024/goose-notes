@@ -60,9 +60,11 @@
     color 120ms ease-out;
 }
 
-[data-formatting-toolbar] .goose-formatting-toolbar-control:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+[data-formatting-toolbar] .goose-formatting-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
@@ -80,6 +82,13 @@
   background: var(--goose-interactive-selected) !important;
   color: var(--goose-interactive-selected-fg) !important;
   box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 颜色按钮的图标显示最近一次文档颜色；容器状态仍由共享 token 控制。 */
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-goose-preserve-icon-color="true"] {
+  color: hsl(var(--foreground)) !important;
 }
 
 /* 块工具栏统一用语义化 pressed 状态接入产品强调色。
@@ -88,17 +97,6 @@
 .goose-block-toolbar-control[aria-pressed="true"]:hover,
 .goose-block-toolbar-control[aria-pressed="true"]:focus-visible {
   background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
-}
-
-/* 颜色按钮内部自行呈现文本色，激活时只改变按钮底色。 */
-[data-formatting-toolbar]
-  .goose-formatting-toolbar-control[data-goose-preserve-icon-color="true"] {
-  color: hsl(var(--foreground)) !important;
-}
-
-[data-formatting-toolbar] .goose-formatting-toolbar-control-ai,
-[data-formatting-toolbar] .goose-formatting-toolbar-control-ai:hover {
   color: var(--goose-interactive-selected-fg);
 }
 
@@ -136,9 +134,9 @@
     color 120ms ease-out;
 }
 
-[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:focus-visible {
@@ -259,10 +257,11 @@
     color 120ms ease-out;
 }
 
-.goose-block-toolbar-control:hover,
-.goose-block-toolbar-control:focus-visible {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+.goose-block-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
 }
 
 .goose-block-toolbar-control:focus-visible {
@@ -326,9 +325,11 @@
     color 120ms ease-out;
 }
 
-.goose-link-toolbar-control:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+.goose-link-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
 }
 
 .goose-link-toolbar-control:focus-visible {

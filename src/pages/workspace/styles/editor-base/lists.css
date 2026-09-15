@@ -3,10 +3,9 @@
  * 依赖 --goose-list-* / --goose-bullet-* / --goose-interactive-selected-fg。
  */
 
-/* 无序 / 有序列表 marker 共用正文首行的光学中心轴。
-   列表字形的墨迹中心会比中文正文低约 0.04em；用 em 轻微上移后，在
-   Cmd +/- 的所有字号下都保持一致，且不改变 marker 槽布局。
-   提醒事项是自绘方框，几何中心即视觉中心，不套这段偏移。 */
+/* 有序列表数字是字体字形：墨迹中心会比中文正文低约 0.04em，用 em 轻微上移。
+   无序圆点 / 方点是自绘几何，几何中心即视觉中心，不套这段偏移。
+   提醒事项同样是自绘方框，也不套。 */
 .workspace-editor-surface {
   --goose-list-marker-optical-offset-y: -0.04em;
   /* 无序列表各级几何 marker 半径（随字号 em 缩放） */
@@ -18,10 +17,7 @@
 }
 
 .workspace-editor-surface
-  .bn-block-content:is(
-    [data-content-type="bulletListItem"],
-    [data-content-type="numberedListItem"]
-  )::before {
+  .bn-block-content[data-content-type="numberedListItem"]::before {
   transform: translateY(var(--goose-list-marker-optical-offset-y));
 }
 
@@ -87,7 +83,7 @@
   background-color: currentColor;
   background-image: none;
   line-height: 0;
-  transform: translateY(var(--goose-list-marker-optical-offset-y));
+  transform: none;
 }
 
 /* 光标所在列表行的 marker 使用产品现有强调前景色。强调色令牌为实色，
@@ -142,6 +138,7 @@
   border-radius: 50%;
   background-color: transparent;
   background-image: none;
+  transform: none;
 }
 
 /* 第二级子无序列表继续使用方点，保持层级可辨识。 */
@@ -172,6 +169,7 @@
   border-radius: 0;
   background-color: currentColor;
   background-image: none;
+  transform: none;
 }
 
 /*

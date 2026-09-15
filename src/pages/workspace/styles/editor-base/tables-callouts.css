@@ -317,7 +317,7 @@
 
 .goose-table-extend-button:hover,
 .goose-table-extend-button.is-editing {
-  color: var(--goose-interactive-selected-fg);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .goose-table-extend-button:hover > svg,
@@ -372,8 +372,8 @@
 }
 
 .goose-table-handle-btn:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
   opacity: 1;
 }
 
@@ -387,8 +387,8 @@
 }
 .workspace-editor-surface .bn-table-handle:hover {
   opacity: 1;
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .workspace-editor-surface

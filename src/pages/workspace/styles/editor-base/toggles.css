@@ -55,8 +55,8 @@
 }
 .bn-editor .bn-toggle-button:hover,
 .bn-editor .bn-toggle-add-block-button:hover {
-  background: var(--goose-icon-chip-on-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 /* 侧栏折叠按钮：默认 muted；hover/active/data-fold-hot 用高特异 + !important 压 portal 层叠 */
@@ -68,26 +68,20 @@
     color 0.15s ease-out;
 }
 
-html body .bn-side-menu button.goose-heading-fold-btn:hover,
-html body .bn-side-menu button.goose-heading-fold-btn:active,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active,
 html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] {
-  background-color: var(--goose-icon-chip-on-selected) !important;
-  color: var(--goose-interactive-selected-fg) !important;
+  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
 }
 
-html body .bn-side-menu button.goose-heading-fold-btn:hover svg,
-html body .bn-side-menu button.goose-heading-fold-btn:hover span,
-html body .bn-side-menu button.goose-heading-fold-btn:active svg,
-html body .bn-side-menu button.goose-heading-fold-btn:active span,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover svg,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:hover span,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active svg,
-html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="true"]:active span,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover span,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active svg,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active span,
 html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] svg,
 html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span {
-  color: var(--goose-interactive-selected-fg) !important;
+  color: var(--goose-interactive-hover-fg) !important;
 }
 
 /* 折叠标题整行虚线边框：

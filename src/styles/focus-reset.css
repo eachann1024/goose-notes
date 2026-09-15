@@ -1,54 +1,36 @@
-/**
- * 全局去掉焦点外框与投影，输入框保留自身边框。
- * 怎么用：放到全局 CSS 最前面，或 `@import "./focus-reset.css";`
- * 覆盖：失焦残留 outline、按钮键盘焦点、Firefox 内边框、Tailwind/Uno ring。
- * 不改变边框宽度或文本选择，不以 focus 外框表达折叠状态。
- */
+/* 只抑制鼠标/程序性焦点；键盘 focus-visible 由 index.css 的可见环处理。 */
 @layer properties {
-  *:focus,
-  *:focus-visible {
-    outline: none !important;
+  *:focus:not(:focus-visible) {
     box-shadow: none !important;
   }
 }
 
-*,
-*::before,
-*::after {
-  outline: none !important;
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
-}
-
 :is(
-  a,
-  button,
-  summary,
-  [role="button"],
-  [role="tab"],
-  [role="menuitem"],
-  [role="option"],
-  [role="menuitemcheckbox"],
-  [role="menuitemradio"]
-):is(:focus, :focus-visible, :-moz-focusring) {
-  outline: none !important;
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
+    a,
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"]
+  ):focus:not(:focus-visible) {
   box-shadow: none !important;
-  --tw-ring-offset-width: 0px !important;
-  --tw-ring-offset-color: transparent !important;
-  --tw-ring-color: transparent !important;
   --tw-ring-offset-shadow: 0 0 #0000 !important;
   --tw-ring-shadow: 0 0 #0000 !important;
-  --un-ring-offset-shadow: 0 0 #0000 !important;
-  --un-ring-shadow: 0 0 #0000 !important;
 }
 
 ::-moz-focus-inner {
   border: 0 !important;
   padding: 0 !important;
+}
+
+/* Text entry stays ring-free after a click and typing; Tab restores keyboard focus. */
+html[data-goose-pointer-focus="true"] :is(input, textarea, select, [contenteditable="true"]):focus {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }

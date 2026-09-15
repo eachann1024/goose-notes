@@ -21,8 +21,9 @@
 }
 
 .goose-file-block-content:hover {
-  background-color: hsl(var(--muted) / 0.55);
-  border-color: hsl(var(--border) / 0.6);
+  background-color: var(--goose-interactive-hover);
+  border-color: var(--goose-interactive-hover-border);
+  color: var(--goose-interactive-hover-fg);
 }
 
 /* 确保 BlockNote wrapper 不收缩 */
@@ -82,8 +83,8 @@
   line-height: 1.4;
   flex: 1;
   min-width: 0;
-  background: hsl(var(--muted) / 0.28);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
   border: none;
   outline: none;
   border-radius: 3px;

@@ -225,7 +225,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  margin: 8px 0 4px;
  font-size: 11px;
  line-height: 16px;
- color: var(--muted-foreground, #8b8b8b);
+ color: hsl(var(--muted-foreground));
  user-select: none;
 }
 
@@ -284,9 +284,9 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 /* skill：青绿，叠在卡片白气泡上仍有边框与底色差 */
 .notebook-ai-message-inline .ai-composer-chip[data-ai-skill-chip] {
- background: rgba(88, 215, 184, 0.22);
- color: #58d7b8;
- border-color: rgba(88, 215, 184, 0.5);
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-interactive-selected-border);
 }
 
 /* @ 引用：跟随当前强调色；可点击打开对应笔记 */
@@ -307,7 +307,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 .notebook-ai-message-inline .ai-composer-chip[data-ai-mention-chip]:hover {
  background: var(--goose-interactive-hover);
- color: var(--goose-interactive-selected-fg);
+ color: var(--goose-interactive-hover-fg);
 }
 
 .notebook-ai-message-inline .ai-composer-chip[data-ai-selection-quote-chip] {
@@ -548,7 +548,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-message-actions button:hover,
 .notebook-ai-message-actions button:focus-visible {
  background: var(--goose-interactive-hover);
- color: var(--goose-interactive-selected-fg);
+ color: var(--goose-interactive-hover-fg);
 }
 
 .notebook-ai-message:hover > .notebook-ai-message-actions,
@@ -668,7 +668,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  width: 14px;
  height: 14px;
  flex: 0 0 auto;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
 }
 
 .bui-think-spinner.notebook-ai-work-mark {
@@ -688,7 +688,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  border: 0;
  border-radius: 8px;
  background: transparent;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
  font-size: 12.5px;
  line-height: 1.4;
  text-align: left;
@@ -697,12 +697,12 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 .notebook-ai-work-toggle:hover,
 .notebook-ai-work-toggle:focus-visible {
- background: var(--goose-interactive-selected);
- color: var(--goose-interactive-selected-fg);
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
 }
 
 .notebook-ai-work-toggle:focus-visible {
- outline: 2px solid var(--goose-color-focus, #4f46e5);
+ outline: 2px solid hsl(var(--ring));
  outline-offset: 2px;
 }
 
@@ -733,14 +733,14 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-work-toggle--static:hover,
 .notebook-ai-work-toggle--static:focus-visible {
  background: transparent;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
 }
 
 .notebook-ai-work-live {
  margin: 12px 0 0;
  font-size: 12.5px;
  line-height: 1.4;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
 }
 
 .notebook-ai-work-chev {
@@ -797,7 +797,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-work-step-st {
  flex: 0 0 auto;
  font-size: 11.5px;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
 }
 
 .notebook-ai-work-step-detail {
@@ -815,7 +815,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  min-width: 0;
  font-size: 13.5px;
  line-height: 1.7;
- color: var(--muted-foreground, #5c5c66);
+ color: hsl(var(--muted-foreground));
  overflow-anchor: none;
 }
 
@@ -850,7 +850,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  margin: 0;
  font-size: 13px;
  line-height: 1.65;
- color: var(--muted-foreground, #5c5c66);
+ color: hsl(var(--muted-foreground));
  white-space: pre-wrap;
  word-break: break-word;
 }
@@ -874,7 +874,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  border: 0;
  border-radius: 8px;
  background: transparent;
- color: var(--muted-foreground, #8b8b96);
+ color: hsl(var(--muted-foreground));
  font-size: 13px;
  font-weight: 500;
  line-height: 20px;
@@ -883,12 +883,12 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 .notebook-ai-letter-fold-toggle:hover,
 .notebook-ai-letter-fold-toggle:focus-visible {
- background: var(--goose-interactive-selected);
- color: var(--goose-interactive-selected-fg);
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
 }
 
 .notebook-ai-letter-fold-toggle:focus-visible {
- outline: 2px solid var(--goose-color-focus, #4f46e5);
+ outline: 2px solid hsl(var(--ring));
  outline-offset: 2px;
 }
 
@@ -930,7 +930,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 .notebook-ai-plan-file {
- border-top: 1px solid var(--goose-block-subtle-border, #e4e4e8);
+ border-top: 1px solid var(--goose-block-subtle-border);
 }
 
 .notebook-ai-plan-file-bar {
@@ -939,7 +939,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  align-items: center;
  gap: 8px;
  padding: 8px 14px;
- color: var(--muted-foreground, #5c5c66);
+ color: hsl(var(--muted-foreground));
  font-size: 12px;
  line-height: 16px;
 }
@@ -976,7 +976,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-plan-diff {
  overflow: hidden;
  border-radius: 8px;
- border: 1px solid var(--goose-block-subtle-border, #e4e4e8);
+ border: 1px solid var(--goose-block-subtle-border);
  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
  font-size: 13px;
  line-height: 1.65;
@@ -1001,7 +1001,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 .notebook-ai-plan-diff-line--add {
- background: var(--bui-green-tint, #dcfce7);
+ background: var(--bui-green-tint);
  color: var(--goose-color-success);
 }
 
@@ -1076,12 +1076,12 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 .notebook-ai-messages ::selection {
- background-color: rgba(35, 131, 226, 0.28);
+ background-color: var(--goose-interactive-selected);
  color: inherit;
 }
 
 .dark .notebook-ai-messages ::selection {
- background-color: rgba(35, 131, 226, 0.4);
+ background-color: var(--goose-interactive-selected);
  color: inherit;
 }
 
@@ -1155,12 +1155,12 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  width: 16px;
  height: 16px;
  border-radius: 4px;
- border: 1.5px solid var(--muted-foreground, #8b8b96);
+ border: 1.5px solid hsl(var(--muted-foreground));
 }
 
 .notebook-ai-work-letter .ai-md-checkbox[data-checked="true"] {
  background: transparent;
- border-color: var(--muted-foreground, #8b8b96);
+ border-color: hsl(var(--muted-foreground));
  color: currentColor;
 }
 
@@ -1194,7 +1194,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  margin: 0;
  padding: 0;
  gap: 0;
- border: 1px solid var(--goose-block-subtle-border, #e4e4e8);
+ border: 1px solid var(--goose-block-subtle-border);
  border-radius: 8px;
  background: var(--goose-block-subtle-bg);
  overflow: hidden;
@@ -1208,7 +1208,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  height: 32px;
  padding: 0 10px;
  border: 0;
- border-bottom: 1px solid var(--goose-block-subtle-border, #e4e4e8);
+ border-bottom: 1px solid var(--goose-block-subtle-border);
  background: transparent;
 }
 
@@ -1287,10 +1287,10 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 /* ── AI 画布卡片（showSvg / xml·svg 围栏）───────────────────────── */
 
 .notebook-ai-canvas-card {
- border: 1px solid rgba(31, 30, 29, 0.08);
+ border: 1px solid hsl(var(--border));
  border-radius: 12px;
- background: rgba(255, 255, 255, 0.72);
- box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+ background: hsl(var(--background));
+ box-shadow: none;
  overflow: hidden;
  transition:
   border-color 0.15s ease,
@@ -1303,23 +1303,25 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 .notebook-ai-canvas-card:hover {
- border-color: rgba(79, 70, 229, 0.18);
- box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+ border-color: var(--goose-interactive-hover-border);
+ background: var(--goose-interactive-hover);
+ box-shadow: none;
 }
 
 .dark .notebook-ai-canvas-card,
 :root.dark .notebook-ai-canvas-card,
 [data-theme="dark"] .notebook-ai-canvas-card {
- border-color: rgba(222, 220, 209, 0.1);
- background: rgba(255, 255, 255, 0.03);
- box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+ border-color: hsl(var(--border));
+ background: hsl(var(--background));
+ box-shadow: none;
 }
 
 .dark .notebook-ai-canvas-card:hover,
 :root.dark .notebook-ai-canvas-card:hover,
 [data-theme="dark"] .notebook-ai-canvas-card:hover {
- border-color: rgba(129, 140, 248, 0.28);
- box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+ border-color: var(--goose-interactive-hover-border);
+ background: var(--goose-interactive-hover);
+ box-shadow: none;
 }
 
 .notebook-ai-canvas-card-header {
@@ -1339,13 +1341,13 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  font-weight: 600;
  letter-spacing: 0.01em;
  line-height: 1.3;
- color: var(--foreground, #141413);
+ color: hsl(var(--foreground));
 }
 
 .dark .notebook-ai-canvas-card-title,
 :root.dark .notebook-ai-canvas-card-title,
 [data-theme="dark"] .notebook-ai-canvas-card-title {
- color: #faf9f5;
+ color: hsl(var(--foreground));
 }
 
 .notebook-ai-canvas-card-download {
@@ -1375,7 +1377,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  table-layout: auto;
  border-collapse: collapse;
  font-size: 12px;
- color: var(--foreground, #141413);
+ color: hsl(var(--foreground));
 }
 
 .notebook-ai-canvas-card-scroll th,
@@ -1384,12 +1386,12 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  padding: 8px 12px;
  text-align: left;
  vertical-align: top;
- border-bottom: 1px solid var(--goose-block-subtle-border, #e6e4dc);
+ border-bottom: 1px solid var(--goose-block-subtle-border);
 }
 
 .notebook-ai-canvas-card-scroll th {
  font-weight: 600;
- color: var(--muted-foreground, #5a5956);
+ color: hsl(var(--muted-foreground));
  background: var(--goose-interactive-hover);
 }
 
@@ -1404,13 +1406,13 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  min-height: 220px;
  padding: 24px 16px 28px;
  font-size: 13px;
- color: rgba(90, 89, 86, 0.72);
+ color: hsl(var(--muted-foreground));
 }
 
 .dark .notebook-ai-canvas-card-loading,
 :root.dark .notebook-ai-canvas-card-loading,
 [data-theme="dark"] .notebook-ai-canvas-card-loading {
- color: rgba(250, 249, 245, 0.62);
+ color: hsl(var(--muted-foreground));
 }
 
 /* ── 可视化 artifact：pan/zoom 视口内按原始尺寸渲染，由容器缩放适配 ── */
@@ -1485,7 +1487,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-artifact-svg .pieCircle:hover,
 .notebook-ai-artifact-svg .box:hover,
 .notebook-ai-artifact-svg .node:hover .box {
- fill: var(--goose-control-hover-bg) !important;
+ fill: var(--goose-interactive-hover) !important;
 }
 
 .notebook-ai-artifact-svg .node:hover .nodeLabel,
@@ -1493,7 +1495,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .notebook-ai-artifact-svg .node:hover foreignObject div,
 .notebook-ai-artifact-svg .actor:hover foreignObject div,
 .notebook-ai-artifact-svg .mindmap-node:hover .nodeLabel {
- background-color: var(--goose-control-hover-bg) !important;
+ background-color: var(--goose-interactive-hover) !important;
 }
 
 .notebook-ai-artifact-panzoom-controls {
