@@ -128,9 +128,9 @@ const DropdownMenuContent = React.forwardRef<HTMLElement, ContentProps>(
   },
 );
 const itemClass =
-  "relative flex cursor-default select-none items-center gap-2 rounded-[10px] pe-2 ps-2 py-1.5 text-[13px] outline-none transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus:bg-[var(--goose-interactive-selected)] focus:text-[var(--goose-interactive-selected-fg)] data-[hovered]:bg-[var(--goose-interactive-selected)] data-[hovered]:text-[var(--goose-interactive-selected-fg)] data-[focused]:bg-[var(--goose-interactive-selected)] data-[focused]:text-[var(--goose-interactive-selected-fg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
+  "goose-interactive relative flex cursor-default select-none items-center gap-2 rounded-lg pe-2 ps-2 py-1.5 text-[13px] outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
 const menuItemClass =
-  "goose-menu-item relative flex w-full cursor-default select-none items-center gap-2 px-2 py-0 text-left text-sm leading-5 outline-none transition-colors data-[highlighted]:text-[var(--goose-interactive-selected-fg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
+  "goose-interactive goose-menu-item relative flex w-full cursor-default select-none items-center gap-2 px-2 py-0 text-left text-sm leading-5 outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
 type ItemProps = Omit<
   React.ComponentPropsWithoutRef<typeof Dropdown.Item>,
   "onSelect" | "children" | "onClick"

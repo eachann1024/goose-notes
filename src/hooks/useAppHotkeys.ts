@@ -26,6 +26,15 @@ import {
 } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
 import {
+  LOCAL_FOLDER_FILE_SHORTCUTS,
+  copyLocalFolderPagePath,
+  hasCurrentLocalFolderPage,
+  openLocalFolderPageInExternalApp,
+  openLocalFolderPageInTerminal,
+  resolveCurrentLocalFolderPage,
+  revealLocalFolderPageInFileManager,
+} from "@/lib/local-folder-file-actions";
+import {
   isImeKeyboardEvent,
   shouldSkipAppHotkeyEvent,
 } from "@/hooks/useImeInput";
@@ -373,31 +382,60 @@ export function useAppHotkeys() {
       },
       {
         id: "move-local-folder-item",
-        match: (event) => matchShortcut(event, "Mod+Shift+M"),
-        when: () => {
-          const { activeNotebookId, notebooks } = useNotebooks.getState();
-          if (!activeNotebookId) return false;
-          if (notebooks[activeNotebookId]?.source !== "local-folder") {
-            return false;
-          }
-          const pages = usePages.getState().pages;
-          const selectedId =
-            useSidebarView.getState().selectedByNotebook[activeNotebookId];
-          const pageId = selectedId ?? usePages.getState().activePageId;
-          const page = pageId ? pages[pageId] : undefined;
-          return Boolean(page?.localFilePath && !page.trashedAt);
-        },
+        match: (event) =>
+          matchShortcut(event, LOCAL_FOLDER_FILE_SHORTCUTS.moveItem),
+        when: hasCurrentLocalFolderPage,
         handler: (event) => {
           event.preventDefault();
-          const { activeNotebookId } = useNotebooks.getState();
-          if (!activeNotebookId) return;
-          const selectedId =
-            useSidebarView.getState().selectedByNotebook[activeNotebookId];
-          const pageId = selectedId ?? usePages.getState().activePageId;
-          if (!pageId) return;
+          const page = resolveCurrentLocalFolderPage();
+          if (!page) return;
           useLocalFolderTargetPicker
             .getState()
-            .openMovePicker(activeNotebookId, pageId);
+            .openMovePicker(page.workspaceId, page.id);
+        },
+      },
+      {
+        id: "open-local-file-external-app",
+        match: (event) =>
+          matchShortcut(event, LOCAL_FOLDER_FILE_SHORTCUTS.openInExternalApp),
+        when: hasCurrentLocalFolderPage,
+        handler: (event) => {
+          event.preventDefault();
+          const page = resolveCurrentLocalFolderPage();
+          if (page) void openLocalFolderPageInExternalApp(page);
+        },
+      },
+      {
+        id: "reveal-local-file-in-file-manager",
+        match: (event) =>
+          matchShortcut(event, LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager),
+        when: hasCurrentLocalFolderPage,
+        handler: (event) => {
+          event.preventDefault();
+          const page = resolveCurrentLocalFolderPage();
+          if (page) void revealLocalFolderPageInFileManager(page);
+        },
+      },
+      {
+        id: "open-local-file-in-terminal",
+        match: (event) =>
+          matchShortcut(event, LOCAL_FOLDER_FILE_SHORTCUTS.openInTerminal),
+        when: hasCurrentLocalFolderPage,
+        handler: (event) => {
+          event.preventDefault();
+          const page = resolveCurrentLocalFolderPage();
+          if (page) void openLocalFolderPageInTerminal(page);
+        },
+      },
+      {
+        id: "copy-local-file-path",
+        match: (event) =>
+          matchShortcut(event, LOCAL_FOLDER_FILE_SHORTCUTS.copyFilePath),
+        when: hasCurrentLocalFolderPage,
+        handler: (event) => {
+          event.preventDefault();
+          const page = resolveCurrentLocalFolderPage();
+          if (page) void copyLocalFolderPagePath(page);
         },
       },
       // toggle theme (Mod+Shift+L)

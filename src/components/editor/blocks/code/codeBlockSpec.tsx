@@ -1133,7 +1133,7 @@ function CodeBlockComponent({
                 <button
                   type="button"
                   onClick={() => setShowLatexHint(false)}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 >
                   <LucideIcons.X className="h-3.5 w-3.5" />
                 </button>
@@ -1145,7 +1145,7 @@ function CodeBlockComponent({
                       key={i}
                       type="button"
                       onClick={() => setShowLatexHint(false)}
-                      className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+                      className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                     >
                       <span className="text-[11px] font-medium text-muted-foreground">
                         {s.label}

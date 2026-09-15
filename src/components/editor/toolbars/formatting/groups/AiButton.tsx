@@ -18,7 +18,7 @@ export function AiButton({
           size="sm"
           onClick={onActivate}
           aria-label="AI 润色"
-          className="goose-formatting-toolbar-control goose-formatting-toolbar-control-ai"
+          className="goose-formatting-toolbar-control"
         >
           <LucideIcons.Sparkles className="h-[15px] w-[15px]" />
         </Button>

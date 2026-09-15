@@ -1,6 +1,7 @@
 import { createExtension } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
 
 type RestoreState = {
   /** 块内容节点的位置；转换不会改变该位置。 */
@@ -204,6 +205,40 @@ function createMarkdownBlockTrigger(editor: any) {
         const blockPos = $from.before($from.depth);
         const targetType = state.schema.nodes[trigger.type];
         if (!targetType) return false;
+
+        // 已有成对围栏时整体转换；只查同级块，不吞掉无闭合标记的后续正文。
+        if (
+          trigger.type === "codeBlock" &&
+          $from.parentOffset === parent.content.size &&
+          !currentBlock.children.length
+        ) {
+          const body: any[] = [];
+          let next = editor.getNextBlock(currentBlock);
+          while (next) {
+            const isClosingFence =
+              next.type === "paragraph" &&
+              !next.children.length &&
+              Array.isArray(next.content) &&
+              next.content.every((item: any) => item.type === "text") &&
+              /^```[ \t]*$/u.test(next.content.map((item: any) => item.text).join(""));
+            if (isClosingFence) {
+              // 先完成序列化再修改；复用导出逻辑保留待办、链接及嵌套列表标记。
+              const content = jsonContentToMarkdown(body);
+              editor.transact(() => {
+                editor.updateBlock(currentBlock, {
+                  type: "codeBlock",
+                  props: trigger.props,
+                  content,
+                });
+                editor.removeBlocks([...body, next]);
+                editor.setTextCursorPosition(currentBlock.id, "start");
+              });
+              return true;
+            }
+            body.push(next);
+            next = editor.getNextBlock(next);
+          }
+        }
 
         const tr = state.tr;
         tr.setNodeMarkup(blockPos, targetType, {

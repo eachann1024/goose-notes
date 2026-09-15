@@ -349,7 +349,7 @@ type MenuItemProps = Omit<
   "onSelect"
 > & { inset?: boolean; onSelect?: (event: Event) => void };
 const itemClass =
-  "goose-menu-item relative flex w-full cursor-default select-none items-center gap-2 px-2 py-0 text-left text-sm leading-5 outline-none transition-colors data-[highlighted]:text-[var(--goose-interactive-selected-fg)] disabled:pointer-events-none disabled:opacity-50";
+  "goose-interactive goose-menu-item relative flex w-full cursor-default select-none items-center gap-2 px-2 py-0 text-left text-sm leading-5 outline-none transition-colors disabled:pointer-events-none disabled:opacity-50";
 const ContextMenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
   (
     { className, inset, disabled, onSelect, onClick, children, ...props },

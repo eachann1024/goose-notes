@@ -26,7 +26,7 @@ type FindInPageBarProps = {
 };
 
 const iconBtnClass =
-  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] disabled:opacity-50";
+  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-50";
 
 export function FindInPageBar({
   editor,
@@ -194,7 +194,7 @@ export function FindInPageBar({
               aria-label={caseSensitive ? "区分大小写：开" : "区分大小写：关"}
               aria-pressed={caseSensitive}
               className={cn(
-                "inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded px-1 text-xs hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                "inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded px-1 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 caseSensitive &&
                   "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
               )}

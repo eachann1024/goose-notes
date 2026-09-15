@@ -227,6 +227,10 @@ export function EditorSideMenu() {
         pointerEvents: "auto",
       }}
       onMouseDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <div className="goose-editor-inline-context-ui flex items-center gap-0.5 rounded-[10px] border border-border/50 bg-popover p-[3px] pl-1 pr-1 shadow-[0_1px_2px_hsl(var(--foreground)/0.05),0_8px_22px_hsl(var(--foreground)/0.06)] dark:border-white/12 dark:shadow-[0_8px_22px_rgba(0,0,0,0.35)]">
         <TooltipProvider delayDuration={600} disableHoverableContent>
@@ -240,7 +244,7 @@ export function EditorSideMenu() {
                 onClick={handleAdd}
                 className={cn(
                   "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
-                  "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                  "transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 )}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -300,7 +304,7 @@ export function EditorSideMenu() {
           className={cn(
             "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
             "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
-            "transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] active:cursor-grabbing",
+            "transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:cursor-grabbing",
           )}
         >
           <GripVertical className="h-3.5 w-3.5" />

@@ -129,7 +129,7 @@ export function ComposerSuggestionsList({
                     "flex w-full cursor-pointer flex-nowrap items-start gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors",
                     index === activeIndex
                       ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] [&_svg]:text-[var(--goose-interactive-selected-fg)]"
-                      : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_*]:text-[var(--goose-interactive-selected-fg)]",
+                      : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_*]:text-[var(--goose-interactive-hover-fg)]",
                   )}
                   onMouseDown={(e) => {
                     e.preventDefault();

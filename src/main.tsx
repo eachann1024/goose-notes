@@ -454,6 +454,14 @@ export const bootstrap = async (
   // 且 hydrateFromStorage 随笔记数线性变慢，是小窗冷启动的最大开销。
   // 仍保留：initHostFs（编辑器文件能力）、设置/字体（主题）、保存守卫（关窗 flush 草稿）。
   const { lean = false, beforeInit } = options;
+  // Chromium also matches text inputs clicked by a pointer as :focus-visible.
+  // Track pointer entry globally so both windows keep Tab focus without click rings.
+  document.addEventListener("pointerdown", () => {
+    document.documentElement.dataset.goosePointerFocus = "true";
+  }, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") delete document.documentElement.dataset.goosePointerFocus;
+  }, true);
   const root = createRoot(rootElement);
   // 主工作区在恢复完成前保持 index.html 的空 root，不提交启动页或首页。
   // Electron 会先显示 BrowserWindow，任何提前 render 都会成为用户看见的错误首帧。

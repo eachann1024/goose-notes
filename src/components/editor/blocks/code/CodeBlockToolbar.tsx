@@ -230,12 +230,12 @@ export function CodeBlockToolbar({
   const chipClass = cn(
     "transition-colors duration-150",
     "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
-    "hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
     "focus-visible:ring-0 focus-visible:ring-offset-0",
     "cursor-pointer rounded-md",
   );
   const chipActiveClass =
-    "border-[var(--goose-block-subtle-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-selected)]";
+    "border-[var(--goose-block-subtle-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)]";
   const iconSize = "h-3.5 w-3.5";
 
   return (

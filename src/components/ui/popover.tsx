@@ -13,8 +13,10 @@ import {
   useInteractions,
   useMergeRefs,
   useRole,
+  useTransitionStatus,
   type Placement,
 } from "@floating-ui/react";
+import { useAnimate, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { TriggerChild } from "./trigger-child";
 
@@ -38,13 +40,17 @@ function usePopoverState({
     padding: 8,
   });
   const open = controlled ?? local;
+  // Programmatic/keyboard opens are immediate; a pointer explicitly opts into motion.
+  const keyboard = React.useRef(true);
+  const reducedMotion = useReducedMotion();
   const outside = React.useRef<{
     onInteractOutside?: (event: Event) => void;
     onPointerDownOutside?: (event: Event) => void;
   }>({});
   const floating = useFloating({
     open,
-    onOpenChange: (next) => {
+    onOpenChange: (next, event) => {
+      if (event) keyboard.current = event.type === "keydown" || (event.type === "click" && (event as MouseEvent).detail === 0);
       if (controlled === undefined) setLocal(next);
       onOpenChange?.(next);
     },
@@ -69,6 +75,12 @@ function usePopoverState({
       }),
     ],
   });
+  const presence = useTransitionStatus(floating.context, {
+    duration: { open: 200, close: keyboard.current ? 0 : 150 },
+  });
+  React.useEffect(() => {
+    if (!presence.isMounted) keyboard.current = true;
+  }, [presence.isMounted]);
   const click = useClick(floating.context);
   const dismiss = useDismiss(floating.context, {
     outsidePress: (native) => {
@@ -81,6 +93,9 @@ function usePopoverState({
   const role = useRole(floating.context, { role: "dialog" });
   return {
     ...floating,
+    ...presence,
+    keyboard,
+    motionMode: keyboard.current ? "instant" : reducedMotion ? "reduced" : "full",
     ...useInteractions([click, dismiss, role]),
     open,
     modal,
@@ -110,9 +125,25 @@ const PopoverTrigger = React.forwardRef<
   const state = usePopoverContext();
   const ref = useMergeRefs([forwardedRef, state.refs.setReference]);
   const injected = {
-    ...state.getReferenceProps(props),
+    ...state.getReferenceProps({
+      ...props,
+      onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
+        state.keyboard.current = true;
+        props.onKeyDownCapture?.(event);
+      },
+      onPointerDownCapture: (event: React.PointerEvent<HTMLElement>) => {
+        state.keyboard.current = false;
+        props.onPointerDownCapture?.(event);
+      },
+      onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+        if (!state.open) state.keyboard.current = false;
+        props.onPointerEnter?.(event);
+      },
+    }),
     ref,
     "data-state": state.open ? "open" : "closed",
+    "data-present": state.isMounted ? "true" : "false",
+    "data-motion": state.motionMode,
   };
   return asChild && React.isValidElement(children) ? (
     <TriggerChild
@@ -155,6 +186,7 @@ type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & {
   container?: HTMLElement | null;
   editorContext?: boolean;
   forceMount?: boolean;
+  animation?: "fade" | "reveal";
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
   onInteractOutside?: (event: Event) => void;
@@ -173,6 +205,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       editorContext,
       children,
       forceMount,
+      animation = "fade",
       onOpenAutoFocus,
       onCloseAutoFocus,
       onInteractOutside,
@@ -183,7 +216,39 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     forwardedRef,
   ) => {
     const state = usePopoverContext();
-    const ref = useMergeRefs([forwardedRef, state.refs.setFloating]);
+    const [scope, animate] = useAnimate<HTMLDivElement>();
+    const [mountedNode, setMountedNode] = React.useState<HTMLDivElement | null>(null);
+    const ref = useMergeRefs([
+      forwardedRef,
+      state.refs.setFloating,
+      scope,
+      setMountedNode,
+    ]);
+    const actualSide = state.placement.split("-")[0];
+    const collapsedClip = actualSide === "top"
+      ? "inset(100% 0% 0% 0%)"
+      : actualSide === "left"
+        ? "inset(0% 0% 0% 100%)"
+        : actualSide === "right"
+          ? "inset(0% 100% 0% 0%)"
+          : "inset(0% 0% 100% 0%)";
+    React.useLayoutEffect(() => {
+      if (!mountedNode || !state.isMounted) return;
+      if (animation === "reveal" && state.motionMode !== "full") {
+        mountedNode.style.clipPath = "none";
+      }
+      const controls = animate(mountedNode, {
+        opacity: state.open ? 1 : 0,
+        ...(animation === "reveal" ? {
+          clipPath: state.motionMode !== "full" ? "none" : state.open
+            ? "inset(0% 0% 0% 0%)" : collapsedClip,
+        } : {}),
+      }, {
+        duration: state.motionMode === "instant" ? 0 : state.open && state.motionMode === "full" ? 0.2 : 0.15,
+        ease: state.open ? [0.23, 1, 0.32, 1] : "easeIn",
+      });
+      return () => controls.stop();
+    }, [animate, mountedNode, state.open, state.isMounted, state.motionMode, animation, collapsedClip]);
     const callbacks = React.useRef({ onOpenAutoFocus, onCloseAutoFocus });
     callbacks.current = { onOpenAutoFocus, onCloseAutoFocus };
     state.outside.current = { onInteractOutside, onPointerDownOutside };
@@ -228,7 +293,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       state.setPlacement,
       state.setSpacing,
     ]);
-    if (!state.open && !forceMount) return null;
+    if (!state.isMounted && !forceMount) return null;
     return (
       <FloatingPortal root={container}>
         <FloatingFocusManager
@@ -239,12 +304,24 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
           returnFocus={focus.restore}
         >
           <div
-            {...state.getFloatingProps(props)}
+            {...state.getFloatingProps({
+              ...props,
+              onKeyDownCapture: (event: React.KeyboardEvent<HTMLDivElement>) => {
+                state.keyboard.current = true;
+                props.onKeyDownCapture?.(event);
+              },
+              onPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => {
+                state.keyboard.current = false;
+                props.onPointerDownCapture?.(event);
+              },
+            })}
             ref={ref}
             tabIndex={-1}
-            hidden={!state.open}
+            hidden={!state.isMounted}
+            inert={!state.open}
+            aria-hidden={!state.open || undefined}
             data-state={state.open ? "open" : "closed"}
-            data-side={state.placement.split("-")[0]}
+            data-side={actualSide}
             data-goose-floating-content=""
             className={cn(
               "z-[20000] outline-none",
@@ -255,6 +332,9 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             style={{
               ...state.floatingStyles,
               ...style,
+              opacity: 0,
+              ...(animation === "reveal" ? { clipPath: collapsedClip } : {}),
+              pointerEvents: state.open ? style?.pointerEvents : "none",
             }}
           >
             {editorContext ? (
@@ -292,7 +372,7 @@ function PopoverAction({
       {...props}
       type="button"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center gap-2 rounded-[10px] px-2 py-1.5 text-left text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] disabled:pointer-events-none disabled:opacity-50",
+        "goose-interactive relative flex w-full cursor-default select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       onClick={(event) => {

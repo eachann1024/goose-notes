@@ -488,13 +488,7 @@ export function FormattingToolbarColorPicker() {
       }}
     >
       <div
-        className="goose-color-picker-panel flex flex-col border bg-popover dark:border-white/20"
-        // Electron 旧内核不吃 hsl(var(--x)/alpha)，用 rgba 投影避免整块实色遮住色板。
-        style={{
-          borderColor: "rgba(128,128,128,0.28)",
-          boxShadow:
-            "0 8px 22px rgba(15,23,42,0.12), 0 1px 3px rgba(15,23,42,0.06)",
-        }}
+        className="goose-color-picker-panel flex flex-col border border-border bg-popover shadow-md"
       >
         <div className="goose-color-picker-title font-semibold text-muted-foreground">
           文本颜色
@@ -507,7 +501,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 isTextColorActive && currentTextColor === item.color
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                   : "",
@@ -549,7 +543,7 @@ export function FormattingToolbarColorPicker() {
               variant="ghost"
               size="icon"
               className={cn(
-                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 isBgColorActive && currentBgColor === item.color
                   ? "border-primary ring-1 ring-primary/25"
                   : "",

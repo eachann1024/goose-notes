@@ -55,7 +55,7 @@ function CalloutIconPicker({
       >
         <button
           type="button"
-          className="callout-icon-slot shrink-0 rounded transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+          className="callout-icon-slot shrink-0 rounded transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
           onMouseDown={stopEditorMouseDown}
           data-callout-icon-trigger
         >
