@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import { expect, test } from "playwright/test";
 import {
   canCustomizePageIcon,
-  shouldRenderExpandArrowSlot,
   shouldShowFolderExpandArrow,
 } from "../../src/pages/workspace/components/sidebar/local-file-icon";
 import {
@@ -156,33 +155,6 @@ test("本地仓库：空文件夹也显示展开箭头，文件不显示", () =>
       isFolder: true,
       hasChildren: false,
       isLocalNotebook: false,
-    }),
-  ).toBe(false);
-});
-
-test("收藏平铺列表不预留展开箭头槽", () => {
-  expect(
-    shouldRenderExpandArrowSlot({
-      showExpandControls: false,
-      hideExpandArrows: false,
-    }),
-  ).toBe(false);
-  expect(
-    shouldRenderExpandArrowSlot({
-      showExpandControls: false,
-      hideExpandArrows: true,
-    }),
-  ).toBe(false);
-  expect(
-    shouldRenderExpandArrowSlot({
-      showExpandControls: true,
-      hideExpandArrows: false,
-    }),
-  ).toBe(true);
-  expect(
-    shouldRenderExpandArrowSlot({
-      showExpandControls: true,
-      hideExpandArrows: true,
     }),
   ).toBe(false);
 });

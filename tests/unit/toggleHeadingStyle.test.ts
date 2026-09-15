@@ -29,6 +29,28 @@ test("嵌套列表不再画左侧引用线", () => {
   expect(listsCss).toContain("border-left: 0 !important");
 });
 
+test("无序列表几何圆点不套数字字形的光学上移", () => {
+  const listsCss = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/lists.css", import.meta.url),
+    "utf8",
+  );
+  expect(listsCss).not.toMatch(
+    /\[data-content-type="bulletListItem"\][\s\S]{0,80}\[data-content-type="numberedListItem"\][\s\S]{0,80}::before\s*\{[^}]*optical-offset/,
+  );
+  expect(listsCss).toMatch(
+    /\.bn-block-content\[data-content-type="numberedListItem"\]::before\s*\{[^}]*optical-offset/,
+  );
+  const bulletRule = listsCss.match(
+    /\.bn-block-content\[data-content-type="bulletListItem"\]::before \{[\s\S]*?\n\}/,
+  )?.[0];
+  expect(bulletRule).toContain("transform: none");
+  expect(bulletRule).not.toContain("optical-offset");
+  const nestedRule = listsCss.match(
+    /一级子无序列表[\s\S]*?::before \{[\s\S]*?\n\}/,
+  )?.[0];
+  expect(nestedRule).toContain("transform: none");
+});
+
 test("标题区块折叠用 data-goose-section-hidden 隐藏后续兄弟", () => {
   const togglesCss = readFileSync(
     new URL("../../src/pages/workspace/styles/editor-base/toggles.css", import.meta.url),

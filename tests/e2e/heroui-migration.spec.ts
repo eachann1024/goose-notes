@@ -374,7 +374,28 @@ test("HeroUI 单选菜单与混合面板内导出菜单键盘退出", async ({ p
     h.stores.useTabs.getState().openPermanentTab(pages[0].id);
   });
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
-  await page.getByRole("button", { name: "导出", exact: true }).click();
+  const exportTrigger = page.getByRole("button", { name: "导出", exact: true });
+  const generateImage = page.getByRole("button", { name: "生成图片", exact: true });
+  const exportBox = await exportTrigger.boundingBox();
+  const generateBox = await generateImage.boundingBox();
+  expect(exportBox).toBeTruthy();
+  expect(generateBox).toBeTruthy();
+  expect(exportBox!.width).toBeGreaterThan(generateBox!.width * 0.9);
+  await exportTrigger.hover();
+  const markdownItem = page.getByRole("menuitem", { name: "Markdown", exact: true });
+  await expect(markdownItem).toBeVisible();
+  const submenu = page.getByRole("menu");
+  const triggerBox = await exportTrigger.boundingBox();
+  const submenuBox = await submenu.boundingBox();
+  expect(triggerBox).toBeTruthy();
+  expect(submenuBox).toBeTruthy();
+  expect(submenuBox!.y).toBeLessThan(triggerBox!.y + triggerBox!.height);
+  expect(submenuBox!.y + submenuBox!.height).toBeGreaterThan(triggerBox!.y);
+  const besideTrigger =
+    submenuBox!.x + 8 >= triggerBox!.x + triggerBox!.width ||
+    submenuBox!.x + submenuBox!.width <= triggerBox!.x + 8;
+  expect(besideTrigger).toBe(true);
+  await exportTrigger.click();
   await page.keyboard.press("Home");
   await expect(
     page.getByRole("menuitem", { name: "Markdown", exact: true }),

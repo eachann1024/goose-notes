@@ -1,98 +1,53 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 
-const MENU_SOURCES = [
-  "src/components/ui/dropdown-menu.tsx",
-  "src/components/ui/context-menu.tsx",
-] as const;
+const indexCss = readFileSync("src/index.css", "utf8");
+const focusResetCss = readFileSync("src/styles/focus-reset.css", "utf8");
 
-const SUGGESTION_SOURCES = [
-  "src/components/editor/ai/composer/ComposerSuggestionsList.tsx",
-  "src/components/editor/ai/composer/SkillSuggestionsList.tsx",
-] as const;
-
-const CLOSE_BUTTON_SOURCES = [
-  "src/components/ui/dialog.tsx",
-  "src/components/ui/dialog-shell.tsx",
-] as const;
-
-const HOVER_SELECTED_FG = "hover:text-[var(--goose-interactive-selected-fg)]";
-const HOVER_NESTED_SELECTED_FG =
-  "hover:[&_*]:text-[var(--goose-interactive-selected-fg)]";
-
-test("下拉 hover 与 focused 用强调色背景", () => {
-  const source = readFileSync("src/components/ui/dropdown-menu.tsx", "utf8");
-  expect(source).toContain("hover:bg-[var(--goose-interactive-selected)]");
-  expect(source).toContain(
-    "data-[focused]:bg-[var(--goose-interactive-selected)]",
+test("共享轻染 hover 使用当前强调色的背景、前景与细描边", () => {
+  expect(indexCss).toContain(".goose-interactive:where(");
+  expect(indexCss).toContain(
+    "background-color: var(--goose-interactive-hover);",
+  );
+  expect(indexCss).toContain("color: var(--goose-interactive-hover-fg);");
+  expect(indexCss).toContain(
+    "outline: 1px solid var(--goose-interactive-hover-border);",
   );
 });
 
-test("下拉与右键 highlighted 用强调色前景，不用 text-foreground", () => {
-  for (const path of MENU_SOURCES) {
-    const source = readFileSync(path, "utf8");
-    expect(source, path).toContain(
-      path.includes("dropdown-menu")
-        ? "data-[focused]:text-[var(--goose-interactive-selected-fg)]"
-        : "data-[highlighted]:text-[var(--goose-interactive-selected-fg)]",
-    );
-    expect(source, path).not.toContain("data-[highlighted]:text-foreground");
-  }
+test("selected 优先于 hover，菜单项保留更强 selected 表面", () => {
+  expect(indexCss).toContain('.goose-interactive[data-selected="true"]');
+  expect(indexCss).toContain(
+    "background-color: var(--goose-interactive-selected);",
+  );
+  expect(indexCss).toContain(
+    '.goose-menu-surface .goose-interactive[data-selected="true"]',
+  );
+  expect(indexCss).toContain("var(--goose-interactive-selected-border)");
 });
 
-test("思考折叠 hover 用强调色背景，不用 --bui-hover-2", () => {
-  const css = readFileSync(
-    "src/pages/workspace/styles/beautiful-ui.css",
+test("UI 基座统一接入共享交互类，主操作和危险操作不再用实色按钮", () => {
+  const button = readFileSync("src/components/ui/button.tsx", "utf8");
+  const iconButton = readFileSync("src/components/ui/icon-button.tsx", "utf8");
+  const dropdown = readFileSync("src/components/ui/dropdown-menu.tsx", "utf8");
+  const contextMenu = readFileSync(
+    "src/components/ui/context-menu.tsx",
     "utf8",
   );
-  const hoverRule = css.match(/\.bui-think-toggle:hover\s*\{[^}]*\}/)?.[0];
-  expect(hoverRule).toBeTruthy();
-  expect(hoverRule).toMatch(
-    /background:\s*var\(--goose-interactive-(?:hover|selected)\)/,
+
+  expect(button).toContain("goose-interactive-primary");
+  expect(button).toContain("goose-interactive-danger");
+  expect(button).not.toContain("bg-primary text-primary-foreground");
+  expect(iconButton).toContain("goose-interactive");
+  expect(dropdown).toContain("goose-interactive");
+  expect(contextMenu).toContain("goose-interactive");
+});
+
+test("focus-visible 保持可见，鼠标焦点 reset 不吞掉 hover 描边", () => {
+  expect(indexCss).toContain(
+    "):focus-visible {\n    outline: 2px solid var(--goose-accent-focus",
   );
-  expect(hoverRule).not.toContain("--bui-hover-2");
-});
-
-test("Composer / Skill 建议项 hover 嵌套文字用强调色前景", () => {
-  for (const path of SUGGESTION_SOURCES) {
-    expect(readFileSync(path, "utf8"), path).toContain(
-      HOVER_NESTED_SELECTED_FG,
-    );
-  }
-});
-
-test("斜杠菜单常规项 hover 嵌套文字用强调色前景", () => {
-  expect(
-    readFileSync("src/components/editor/core/CustomSlashMenu.tsx", "utf8"),
-  ).toContain(HOVER_NESTED_SELECTED_FG);
-});
-
-test("侧栏重新加载 hover 用强调色前景", () => {
-  expect(
-    readFileSync(
-      "src/pages/workspace/components/sidebar/main-tree/SidebarMainTree.tsx",
-      "utf8",
-    ),
-  ).toContain(HOVER_SELECTED_FG);
-});
-
-test("对话框与抽屉关闭钮 hover 用强调色前景", () => {
-  for (const path of CLOSE_BUTTON_SOURCES) {
-    expect(readFileSync(path, "utf8"), path).toContain(HOVER_SELECTED_FG);
-  }
-});
-
-test("Callout 图标与单标签标题 hover 用强调色前景", () => {
-  expect(
-    readFileSync(
-      "src/components/editor/blocks/callout/calloutBlock.tsx",
-      "utf8",
-    ),
-  ).toContain(HOVER_SELECTED_FG);
-  expect(
-    readFileSync(
-      "src/pages/workspace/components/page/SingleTabTitle.tsx",
-      "utf8",
-    ),
-  ).toContain(HOVER_SELECTED_FG);
+  expect(focusResetCss).not.toContain("*:focus-visible");
+  expect(focusResetCss).toContain('html[data-goose-pointer-focus="true"] :is(input, textarea, select, [contenteditable="true"]):focus');
+  expect(focusResetCss).not.toMatch(/\*:focus\s*\{/);
 });

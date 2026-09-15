@@ -126,6 +126,10 @@ test("configured shortcut conflicts include fixed shortcuts", () => {
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+Z"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Y"));
   expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+M"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+A"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+F"));
+  expect(configured).toContain(normalizeShortcutForConflict("Mod+Shift+C"));
+  expect(configured).toContain(normalizeShortcutForConflict("Ctrl+`"));
 });
 
 test("Windows reserves save shortcuts without blocking editor formatting or Super", () => {

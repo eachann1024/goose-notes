@@ -17,16 +17,22 @@ const treeRow = readFileSync(
   "utf8",
 );
 
-test("收藏树 hover 与选中共用强调蓝，不用黑色前景", () => {
+test("收藏树 hover 不覆盖选中，且使用共享 hover 三件套", () => {
   expect(sidebarDndCss).toContain(".sidebar-tree-row--hovered");
   expect(sidebarDndCss).toMatch(
-    /\.sidebar-tree-row--hovered[\s\S]{0,120}color:\s*var\(--goose-interactive-selected-fg\)/,
+    /\.sidebar-tree-row--selected[\s\S]{0,120}color:\s*var\(--goose-interactive-selected-fg\)/,
   );
   expect(sidebarDndCss).toMatch(
     /\.sidebar-tree-row--selected[\s\S]{0,240}background:\s*var\(--goose-interactive-selected\)/,
   );
   expect(sidebarDndCss).toMatch(
-    /\.sidebar-tree-row--hovered[\s\S]{0,240}background:\s*var\(--goose-interactive-selected\)/,
+    /\.sidebar-tree-row--hovered:not\(\.sidebar-tree-row--selected\)[\s\S]{0,240}background:\s*var\(--goose-interactive-hover\)/,
+  );
+  expect(sidebarDndCss).toMatch(
+    /\.sidebar-tree-row--hovered:not\(\.sidebar-tree-row--selected\)[\s\S]{0,240}color:\s*var\(--goose-interactive-hover-fg\)/,
+  );
+  expect(sidebarDndCss).toMatch(
+    /\.sidebar-tree-row--hovered:not\(\.sidebar-tree-row--selected\)[\s\S]{0,320}box-shadow:\s*inset 0 0 0 1px var\(--goose-interactive-hover-border\)/,
   );
   const cssWithoutComments = sidebarDndCss.replace(/\/\*[\s\S]*?\*\//g, "");
   expect(cssWithoutComments).not.toContain(".sidebar-tree-row:hover");
@@ -62,9 +68,9 @@ test("收藏平铺树不渲染展开箭头槽", () => {
   expect(favorites).toContain("flatRoots");
   expect(favorites).toContain("allowNest={false}");
   expect(sidebarTree).toContain("showExpandControls={!flatRoots}");
-  expect(treeRow).toContain("shouldRenderExpandArrowSlot");
+  expect(treeRow).not.toContain("reserveExpandSlot");
   expect(treeRow).toContain("showExpandControls");
-  expect(treeViewport).toContain("shouldRenderExpandArrowSlot");
+  expect(treeViewport).not.toContain("shouldRenderExpandArrowSlot");
   expect(treeViewport).toContain("showExpandControls");
 });
 
@@ -125,7 +131,7 @@ test("收藏行字号图标与主树列表一致", () => {
     /sidebar-tree-row[\s\S]{0,220}text-sm font-medium/,
   );
   expect(mainTree).toContain(
-    "main-tree-local-folder-icon flex items-center justify-center h-5 w-5 shrink-0 mr-0.5",
+    "main-tree-folder-icon group/folder-icon relative z-10 flex items-center justify-center h-5 w-5 shrink-0 mr-0.5",
   );
   expect(treeRow).toContain(
     "pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5",

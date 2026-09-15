@@ -42,6 +42,45 @@ for (const width of [1440, 1200]) {
   }
 }
 
+test("全屏 AI 失焦后 Escape 关闭面板", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("goose-note-ai-layout-mode", "fullscreen");
+  });
+  await page.goto("/?e2eLocalMock");
+  await page.waitForFunction(() => Boolean(window.__gooseTest));
+  await page.evaluate(async () => {
+    const harness = window.__gooseTest!;
+    const { pages } = await harness.setupMockNotebook();
+    harness.stores.useTabs.getState().openPermanentTab(pages[0].id);
+    const { useSettings } = await import("/src/stores/useSettings.ts");
+    useSettings.setState((state) => ({
+      ai: {
+        ...state.ai,
+        enabled: true,
+        selectedModelId: "gpt-test",
+        customModelOptions: [{ id: "gpt-test", label: "GPT Test" }],
+      },
+    }));
+  });
+  await expect(page.locator(".electron-titlebar")).toBeVisible();
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent("goose-note:open-ai-panel"));
+  });
+  const panel = page.locator('[data-ai-panel-layout="fullscreen"]');
+  const editor = panel.locator("[data-ai-composer-editor]");
+  await expect(panel).toBeVisible();
+  await expect(editor).toHaveAttribute("contenteditable", "true");
+  await editor.click();
+  await expect(editor).toBeFocused();
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+  await expect(editor).not.toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+});
+
 test("AI 输入条单行和多行都是 20px 圆角", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {

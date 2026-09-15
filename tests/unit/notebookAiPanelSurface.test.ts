@@ -52,6 +52,22 @@ test("关 AI 面板只收起 UI，不 stop 会话", () => {
   expect(hook).toContain("goose-note:close-ai-panel");
 });
 
+test("全屏 AI 失焦后 Escape 走窗口监听关闭面板", () => {
+  const panel = readSource(
+    "src/pages/workspace/components/notebook-ai/NotebookAiPanel.tsx",
+  );
+  const listener = panel.slice(
+    panel.indexOf("全屏覆盖主区"),
+    panel.indexOf("const composerPlaceholder"),
+  );
+  expect(listener).toContain("if (!isFullscreen) return");
+  expect(listener).toContain('window.addEventListener("keydown", onKeyDown)');
+  expect(listener).toContain('event.key !== "Escape"');
+  expect(listener).toContain("isImeKeyboardEvent(event)");
+  expect(listener).toContain('[role="dialog"][data-state="open"]');
+  expect(listener).toContain("onClose()");
+});
+
 test("AI 面板挂载时标记任务面，卸载时清标记并收起浮层", () => {
   const panel = readSource(
     "src/pages/workspace/components/notebook-ai/NotebookAiPanel.tsx",

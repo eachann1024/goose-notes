@@ -9,3 +9,14 @@ test("ContextMenu 用捕获阶段 pointerdown 关闭，不把整块 trigger 当�
   );
   expect(source).toContain("isInsideMenuFloating");
 });
+
+test("块左侧 + / grip 不弹出编辑器右键菜单，无整行选区时拷贝仍可用", () => {
+  const menu = readFileSync(
+    "src/components/editor/menus/EditorContextMenu.tsx",
+    "utf8",
+  );
+  expect(menu).toContain('target.closest(".bn-side-menu")');
+  expect(menu).toContain("resolveCopyBlockSelection");
+  expect(menu).toContain("disabled={!canCopy}");
+  expect(menu).not.toContain("disabled={!selectedText}\n            onSelect={handleCopySelection}");
+});

@@ -15,6 +15,9 @@ test("shortcut labels follow the current platform", () => {
   expect(formatShortcut("Alt+W", "windows")).toBe("Alt + W");
   expect(formatShortcut("Ctrl+,", "mac")).toBe("⌃,");
   expect(formatShortcut("Ctrl+,", "windows")).toBe("Ctrl + ,");
+  expect(formatShortcut("Ctrl+`", "mac")).toBe("⌃`");
+  expect(formatShortcut("Mod+Shift+C", "mac")).toBe("⌘⇧C");
+  expect(formatShortcut("Mod+Shift+C", "windows")).toBe("Ctrl + Shift + C");
 });
 
 test("plus keys and non-Mac primary modifiers stay unambiguous", () => {

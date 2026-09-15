@@ -69,9 +69,19 @@ test("已有文本选区时 getCurrentBlockNodeSelection 返回 null", () => {
   expect(getCurrentBlockNodeSelection(editor.prosemirrorState)).toBeNull();
 });
 
-test("折叠光标时 resolveCopyBlockSelection 返回 null", () => {
+test("折叠光标时 resolveCopyBlockSelection 返回当前块", () => {
   const editor = createEditor();
-  expect(resolveCopyBlockSelection(editor.prosemirrorState)).toBeNull();
+  const resolved = resolveCopyBlockSelection(editor.prosemirrorState);
+  const current = getCurrentBlockNodeSelection(editor.prosemirrorState);
+
+  expect(resolved).toBeInstanceOf(NodeSelection);
+  expect(current).toBeInstanceOf(NodeSelection);
+  expect((resolved as NodeSelection).node.attrs.id).toBe(
+    (current as NodeSelection).node.attrs.id,
+  );
+  expect((resolved as NodeSelection).node.firstChild?.type.name).toBe(
+    "heading",
+  );
 });
 
 test("部分文本选区时 resolveCopyBlockSelection 返回 null", () => {
