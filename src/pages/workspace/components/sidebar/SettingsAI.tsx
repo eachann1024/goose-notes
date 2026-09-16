@@ -8,7 +8,6 @@ import {
 import * as LucideIcons from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -447,7 +446,7 @@ export function SettingsAI({
         >
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <AiGradientIcon className="h-4 w-4 text-foreground" />
+              <LucideIcons.Sparkles className="h-4 w-4 text-current" />
               <Label
                 htmlFor="ai-enabled"
                 className="cursor-pointer text-sm font-medium text-foreground"
@@ -753,7 +752,7 @@ export function SettingsAI({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
                   onClick={() => setApiKeyVisible((visible) => !visible)}
                   aria-label={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
                   aria-pressed={apiKeyVisible}

@@ -1,21 +1,18 @@
 import type { TreeItem, TreeItemIndex } from "react-complex-tree";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import {
+  LOCAL_FOLDER_ROOT_DIR_KEY,
+  sortLocalFolderChildren,
+  type LocalFolderOrderMap,
+} from "@/stores/localFolderOrder";
 
 export { getPageTitle };
 
-function sortPages(items: Page[], isLocalFolder: boolean): Page[] {
+function sortInternalPages(items: Page[]): Page[] {
   return items.sort((a, b) => {
     if (!!a.localPendingCreate !== !!b.localPendingCreate) {
       return a.localPendingCreate ? -1 : 1;
-    }
-    if (isLocalFolder) {
-      if (!!a.isFolder !== !!b.isFolder) {
-        return a.isFolder ? -1 : 1;
-      }
-      const nameA = getPageTitle(a);
-      const nameB = getPageTitle(b);
-      return nameA.localeCompare(nameB, "zh-CN", { numeric: true });
     }
     const orderA = a.order ?? a.createdAt;
     const orderB = b.order ?? b.createdAt;
@@ -39,6 +36,7 @@ export function pagesToTreeItems(
   pages: Page[],
   activeNotebookId: string,
   isLocalFolder: boolean,
+  localFolderOrders?: LocalFolderOrderMap,
 ): Record<TreeItemIndex, TreeItem<Page>> {
   const scoped = pages.filter(
     (p) =>
@@ -51,7 +49,15 @@ export function pagesToTreeItems(
     childrenMap.get(key)!.push(page);
   }
   for (const [key, list] of childrenMap.entries()) {
-    childrenMap.set(key, sortPages(list, isLocalFolder));
+    childrenMap.set(
+      key,
+      isLocalFolder
+        ? sortLocalFolderChildren(
+            list,
+            localFolderOrders?.[key ?? LOCAL_FOLDER_ROOT_DIR_KEY],
+          )
+        : sortInternalPages(list),
+    );
   }
 
   const items: Record<TreeItemIndex, TreeItem<Page>> = {};

@@ -27,7 +27,13 @@ export function SidebarHeader({
     areSidebarPagesEqual,
   );
   const activePageId = usePages((state) => state.activePageId);
-  const highlightedPageId = selectedPageId ?? activePageId;
+  const storeHighlightedPageId = selectedPageId ?? activePageId;
+  const [pendingPinnedSelection, setPendingPinnedSelection] = useState<{
+    pageId: string;
+    previousHighlightedPageId: string | null;
+  } | null>(null);
+  const highlightedPageId =
+    pendingPinnedSelection?.pageId ?? storeHighlightedPageId;
   const setExpandPageId = usePages((state) => state.setExpandPageId);
   const setPendingNavigatePageId = usePages(
     (state) => state.setPendingNavigatePageId,
@@ -238,6 +244,18 @@ export function SidebarHeader({
   }, [stopAutoScroll]);
 
   useEffect(() => {
+    if (!pendingPinnedSelection) return;
+    if (
+      storeHighlightedPageId === pendingPinnedSelection.pageId ||
+      (storeHighlightedPageId !==
+        pendingPinnedSelection.previousHighlightedPageId &&
+        storeHighlightedPageId !== pendingPinnedSelection.pageId)
+    ) {
+      setPendingPinnedSelection(null);
+    }
+  }, [pendingPinnedSelection, storeHighlightedPageId]);
+
+  useEffect(() => {
     if (activePinnedRef.current) {
       activePinnedRef.current.scrollIntoView({
         behavior: "smooth",
@@ -251,7 +269,7 @@ export function SidebarHeader({
       cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
     };
-  }, [activePageId, pinnedMeasureKey, syncPinnedScrollState]);
+  }, [highlightedPageId, pinnedMeasureKey, syncPinnedScrollState]);
 
   const pageHasVisibleContent = useCallback((page: Page): boolean => {
     const visit = (node: unknown): boolean => {
@@ -335,6 +353,10 @@ export function SidebarHeader({
       if (!targetPage || targetPage.trashedAt) return;
       closeNotebookAiIfFullscreen();
       onOpenPinnedPage?.();
+      setPendingPinnedSelection({
+        pageId,
+        previousHighlightedPageId: storeHighlightedPageId ?? null,
+      });
 
       if (useNotebooks.getState().activeNotebookId !== targetPage.workspaceId) {
         setPendingNavigatePageId(targetPage.id);
@@ -346,6 +368,7 @@ export function SidebarHeader({
         useNotebooks.getState().notebooks[targetPage.workspaceId]?.source ===
           "local-folder"
       ) {
+        setPendingPinnedSelection(null);
         useSidebarView.getState().expand(targetPage.workspaceId, targetPage.id);
         setExpandPageId(targetPage.id);
         return;
@@ -363,6 +386,7 @@ export function SidebarHeader({
       setActiveNotebook,
       setExpandPageId,
       setPendingNavigatePageId,
+      storeHighlightedPageId,
     ],
   );
 
@@ -370,14 +394,21 @@ export function SidebarHeader({
     <>
       <div className="pb-2 pr-2 pt-0">
         {(pinnedPages.length > 0 || dragGuide) && (
-          <div className="group/pinned relative min-h-10">
-            {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}
+          <div
+            className={cn(
+              "group/pinned relative min-h-10",
+              pinnedPages.length > 0 && !dragGuide
+                ? "inline-flex max-w-full"
+                : "flex w-full",
+            )}
+          >
+            {/* 贴合卡片底与滚动层分离：滚动裁切不会切掉边框和选中药丸 */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full bg-[#F1F1F1] dark:bg-[hsl(var(--goose-selected-bg)/0.88)]"
+              className="pointer-events-none absolute inset-0 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--goose-editor-bg))]"
             />
             {dragGuide && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
                 {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
                 {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
               </div>
@@ -386,15 +417,16 @@ export function SidebarHeader({
               <nav
                 aria-label="置顶页面"
                 ref={pinnedScrollerRef}
-                className="relative flex items-center gap-1 overflow-x-auto px-1 py-1 scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="relative max-w-full flex items-center gap-1 overflow-x-auto px-1 py-1 scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onWheel={handlePinnedWheel}
               >
                 {pillBox && (
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute left-0 top-0 rounded-full",
-                      "bg-[var(--goose-interactive-selected)] shadow-sm",
+                      "pointer-events-none absolute left-0 top-0 rounded-lg",
+                      "bg-[var(--goose-interactive-selected)]",
+                      "shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-fg)]",
                       pillReady
                         ? "transition-transform duration-[180ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
                         : "transition-none",
@@ -419,12 +451,12 @@ export function SidebarHeader({
                             aria-label={title}
                             aria-current={isActive ? "page" : undefined}
                             className={cn(
-                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center justify-center",
+                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-lg inline-flex items-center justify-center",
                               "transition-colors duration-150 active:[&_svg]:scale-[0.97]",
                               "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
                               isActive
                                 ? "text-[var(--goose-interactive-selected-fg)]"
-                                : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
@@ -443,13 +475,13 @@ export function SidebarHeader({
               <>
                 <div
                   className={cn(
-                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-full bg-gradient-to-r from-[#F1F1F1] to-transparent dark:from-[hsl(var(--goose-selected-bg)/0.88)] transition-opacity duration-200",
+                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-lg bg-[hsl(var(--goose-editor-bg))] transition-opacity duration-200",
                     canScrollLeft ? "opacity-100" : "opacity-0",
                   )}
                 />
                 <div
                   className={cn(
-                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-full bg-gradient-to-l from-[#F1F1F1] to-transparent dark:from-[hsl(var(--goose-selected-bg)/0.88)] transition-opacity duration-200",
+                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-lg bg-[hsl(var(--goose-editor-bg))] transition-opacity duration-200",
                     canScrollRight ? "opacity-100" : "opacity-0",
                   )}
                 />
@@ -471,7 +503,7 @@ export function SidebarHeader({
                     canScrollLeft
                       ? "opacity-0 -translate-x-1"
                       : "opacity-0 -translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronLeft className="h-3.5 w-3.5" />
@@ -494,7 +526,7 @@ export function SidebarHeader({
                     canScrollRight
                       ? "opacity-0 translate-x-1"
                       : "opacity-0 translate-x-2 pointer-events-none",
-                    "hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                 >
                   <LucideIcons.ChevronRight className="h-3.5 w-3.5" />

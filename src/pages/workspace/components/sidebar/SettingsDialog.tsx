@@ -47,6 +47,7 @@ import { clearLegacyStorage } from "@/lib/storage/migrateLegacyStorage";
 import { historyRepository } from "@/lib/history/repository";
 import { clearAllLocalMdSnapshots } from "@/lib/local-md-snapshot";
 import { removeLocalPageIdMap } from "@/lib/local-page-idmap";
+import { removeLocalFolderOrders } from "@/stores/localFolderOrder";
 import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
 import { HostAdapter } from "@/lib/host/adapter";
 import type { ExportOptions } from "@/lib/export";
@@ -222,8 +223,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     editorFontSize,
     increaseEditorFontSize,
     decreaseEditorFontSize,
-    hideExpandArrows,
-    setHideExpandArrows,
     randomIconOnCreate,
     setRandomIconOnCreate,
 
@@ -284,8 +283,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       editorFontSize: s.editorFontSize,
       increaseEditorFontSize: s.increaseEditorFontSize,
       decreaseEditorFontSize: s.decreaseEditorFontSize,
-      hideExpandArrows: s.hideExpandArrows,
-      setHideExpandArrows: s.setHideExpandArrows,
       randomIconOnCreate: s.randomIconOnCreate,
       setRandomIconOnCreate: s.setRandomIconOnCreate,
 
@@ -492,6 +489,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     } else {
       clearPersistedPages();
       allLocalNotebookIds.forEach(removeLocalPageIdMap);
+      allLocalNotebookIds.forEach(removeLocalFolderOrders);
       clearAllLocalMdSnapshots();
     }
     clearLegacyStorage();
@@ -748,7 +746,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <button
                   type="button"
                   onClick={handleCloseAppsBanner}
-                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
                   aria-label="关闭鹅的全家桶"
                 >
                   <LucideIcons.X className="h-3 w-3" />
@@ -764,7 +762,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleOpenApp(app)}
-                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                     >
                       <img
                         src={app.icon}
@@ -853,8 +851,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 editorFontSize={editorFontSize}
                 increaseEditorFontSize={increaseEditorFontSize}
                 decreaseEditorFontSize={decreaseEditorFontSize}
-                hideExpandArrows={hideExpandArrows}
-                setHideExpandArrows={setHideExpandArrows}
                 randomIconOnCreate={randomIconOnCreate}
                 setRandomIconOnCreate={setRandomIconOnCreate}
               />

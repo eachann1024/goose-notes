@@ -15,8 +15,8 @@
   padding: 5px 6px;
   gap: 2px;
   border-radius: 14px;
-  background: #ffffff;
-  color: #1f1f1f;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
   border: 1px solid rgba(219, 219, 219, 0.7);
   box-shadow:
     0 8px 22px rgba(15, 23, 42, 0.08),
@@ -41,8 +41,8 @@
 .dark .bn-combobox,
 .bn-root.dark .bn-combobox,
 .bn-root[data-color-scheme="dark"] .bn-combobox {
-  background: #323230;
-  color: #e6e6e6;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
   border-color: rgba(61, 61, 61, 0.7);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.04),
@@ -95,7 +95,7 @@
     background-color 120ms ease-out;
 }
 
-.goose-ai-prompt-field:hover {
+.goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover {
   background: var(--goose-interactive-hover);
 }
 
@@ -103,7 +103,7 @@
   background: rgba(241, 240, 237, 0.75);
   box-shadow:
     inset 0 0 0 1px rgba(219, 219, 219, 1),
-    inset 0 0 0 2px rgba(99, 102, 241, 0.22);
+    inset 0 0 0 2px var(--goose-interactive-selected-border);
 }
 
 .dark .goose-ai-prompt-field,
@@ -112,8 +112,8 @@
   box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
 }
 
-.dark .goose-ai-prompt-field:hover,
-.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:hover {
+.dark .goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover {
   background: var(--goose-interactive-hover);
 }
 
@@ -122,7 +122,7 @@
   background: rgba(42, 42, 40, 0.75);
   box-shadow:
     inset 0 0 0 1px rgba(61, 61, 61, 1),
-    inset 0 0 0 2px rgba(99, 102, 241, 0.32);
+    inset 0 0 0 2px var(--goose-interactive-selected-border);
 }
 
 .goose-ai-prompt-field--disabled {
@@ -173,7 +173,7 @@
   position: absolute;
   inset: -7px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.42);
+  background: var(--goose-interactive-selected);
   transform: scale(0.72);
   opacity: 0.4;
   animation: goose-ai-sparkle-glow 1.05s ease-in-out infinite;
@@ -191,12 +191,7 @@
   width: 70%;
   pointer-events: none;
   z-index: 2;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: var(--goose-interactive-hover);
   transform: translateX(0);
   animation: goose-ai-sparkle-shimmer 0.95s ease-in-out infinite;
 }
@@ -216,7 +211,7 @@
   .goose-ai-prompt-field--busy
   .goose-ai-prompt-field__icon
   .bn-combobox-icon::before {
-  background: rgba(165, 180, 252, 0.48);
+  background: var(--goose-interactive-selected);
 }
 
 .dark
@@ -227,12 +222,7 @@
   .goose-ai-prompt-field--busy
   .goose-ai-prompt-field__icon
   .bn-combobox-icon::after {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(199, 210, 254, 0.95) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: var(--goose-interactive-hover);
 }
 
 .goose-ai-sparkle-bit {
@@ -240,7 +230,7 @@
   width: 5px;
   height: 5px;
   border-radius: 1px;
-  background: #6366f1;
+  background: var(--goose-interactive-selected-fg);
   opacity: 0;
   pointer-events: none;
   z-index: 3;
@@ -251,7 +241,7 @@
 .goose-ai-sparkle-bit--d {
   width: 3px;
   height: 3px;
-  background: #a855f7;
+  background: var(--goose-interactive-selected-fg);
 }
 
 .goose-ai-prompt-field--busy .goose-ai-sparkle-bit--a {
@@ -429,7 +419,7 @@
   box-shadow: none !important;
   resize: none;
   outline: none;
-  color: #1f1f1f;
+  color: hsl(var(--popover-foreground));
   font-size: 13px !important;
   line-height: var(--goose-ai-line) !important;
   font-family: inherit;
@@ -443,11 +433,11 @@
 
 .dark .goose-ai-prompt-field__textarea,
 .bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea {
-  color: #e6e6e6;
+  color: hsl(var(--popover-foreground));
 }
 
 .goose-ai-prompt-field__textarea::placeholder {
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
   opacity: 1;
   /* placeholder 单行省略，避免撑开高度错觉 */
   white-space: nowrap;
@@ -459,18 +449,18 @@
 .dark .goose-ai-prompt-field__textarea::placeholder,
 .bn-root[data-color-scheme="dark"]
   .goose-ai-prompt-field__textarea::placeholder {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .goose-ai-prompt-field__textarea:disabled {
   cursor: default;
   opacity: 1;
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .goose-ai-prompt-field__textarea:disabled,
 .bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea:disabled {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 /* 忙态：输入槽改成单行 ticker，原文/placeholder 让位 */
@@ -509,7 +499,7 @@
   overflow: hidden;
   font-size: 13px;
   line-height: var(--goose-ai-line);
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   text-overflow: ellipsis;
   word-break: normal;
@@ -517,7 +507,7 @@
 
 .dark .goose-ai-think-ticker__scroller,
 .bn-root[data-color-scheme="dark"] .goose-ai-think-ticker__scroller {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .goose-ai-prompt-field--with-right .goose-ai-prompt-field__textarea {
@@ -560,7 +550,7 @@
   border-radius: 10px;
   border: 0;
   background: rgba(241, 240, 237, 0.55);
-  color: #1f1f1f;
+  color: hsl(var(--popover-foreground));
   font-size: 13px;
   line-height: 1.4;
   box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.6);
@@ -582,12 +572,12 @@
   .bn-combobox-input
   .mantine-Input-input {
   background: rgba(42, 42, 40, 0.55);
-  color: #e6e6e6;
+  color: hsl(var(--popover-foreground));
   box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
 }
 
 .bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input::placeholder {
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
   opacity: 1;
 }
 
@@ -601,7 +591,7 @@
   .bn-combobox
   .bn-combobox-input
   .mantine-Input-input::placeholder {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .bn-combobox .mantine-Input-section[data-position="left"] {
@@ -615,7 +605,7 @@
   padding-inline-end: 6px;
   pointer-events: auto;
   z-index: 2;
-  background: #f1f0ed;
+  background: hsl(var(--muted));
   border-radius: 0 10px 10px 0;
 }
 
@@ -623,7 +613,7 @@
 .bn-root[data-color-scheme="dark"]
   .bn-combobox
   .mantine-Input-section[data-position="right"] {
-  background: #2a2a28;
+  background: hsl(var(--muted));
 }
 
 .bn-combobox .bn-combobox-icon {
@@ -633,7 +623,7 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  color: #6366f1; /* 与 AiButton 共用项目主题强调色 */
+  color: var(--goose-interactive-selected-fg); /* 与 AiButton 共用项目主题强调色 */
 }
 
 .bn-combobox .bn-combobox-icon svg {
@@ -655,18 +645,19 @@
   height: 26px;
   border: 0;
   border-radius: 8px;
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
   cursor: pointer;
-  transition: filter 120ms ease-out;
+  transition: background-color 120ms ease-out;
 }
 
 .goose-ai-menu-stop:hover {
-  filter: brightness(1.05);
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
 }
 
 .goose-ai-menu-stop:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 1px;
 }
 
@@ -702,13 +693,13 @@
  */
 .bn-mantine .bn-suggestion-menu-item {
   --group-gap: 10px !important;
-  --menu-item-color: #1f1f1f;
-  --bn-colors-menu-text: #1f1f1f;
+  --menu-item-color: hsl(var(--popover-foreground));
+  --bn-colors-menu-text: hsl(var(--popover-foreground));
   /* 与 22px 图标槽对齐：上下对称，单行时图标/文字视觉居中 */
   padding: 5px 8px !important;
   border-radius: 8px !important;
   background: transparent !important;
-  color: #1f1f1f;
+  color: hsl(var(--popover-foreground));
   cursor: pointer;
   transition: background-color 100ms ease-out;
   flex-wrap: nowrap !important;
@@ -720,24 +711,24 @@
 
 .dark .bn-mantine .bn-suggestion-menu-item,
 .bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item {
-  --menu-item-color: #e6e6e6;
-  --bn-colors-menu-text: #e6e6e6;
-  color: #e6e6e6;
+  --menu-item-color: hsl(var(--popover-foreground));
+  --bn-colors-menu-text: hsl(var(--popover-foreground));
+  color: hsl(var(--popover-foreground));
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover {
-  background: var(--goose-interactive-selected) !important;
-  color: var(--goose-interactive-selected-fg);
-  --menu-item-color: var(--goose-interactive-selected-fg);
-  --bn-colors-menu-text: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg);
+  --menu-item-color: var(--goose-interactive-hover-fg);
+  --bn-colors-menu-text: var(--goose-interactive-hover-fg);
 }
 
 .dark .bn-mantine .bn-suggestion-menu-item:hover,
 .bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item:hover {
-  background: var(--goose-interactive-selected) !important;
-  color: var(--goose-interactive-selected-fg);
-  --menu-item-color: var(--goose-interactive-selected-fg);
-  --bn-colors-menu-text: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg);
+  --menu-item-color: var(--goose-interactive-hover-fg);
+  --bn-colors-menu-text: var(--goose-interactive-hover-fg);
 }
 
 /* 键盘选中项与全局列表选中态同级：鸢尾靛蓝浅底 + 强调文字 */
@@ -764,7 +755,7 @@
   margin-inline-end: 10px !important;
   padding: 0 !important;
   line-height: 0 !important;
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
 }
 
 .dark
@@ -775,13 +766,13 @@
   .bn-mantine
   .bn-suggestion-menu-item
   .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: var(--goose-interactive-selected-fg);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .dark
@@ -792,7 +783,7 @@
   .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  color: var(--goose-interactive-selected-fg);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .bn-mantine
@@ -829,7 +820,7 @@
   height: 22px !important;
   margin: 0 !important;
   padding: 0 !important;
-  color: #1f1f1f;
+  color: hsl(var(--popover-foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -841,7 +832,7 @@
   .bn-mantine
   .bn-suggestion-menu-item
   .bn-mt-suggestion-menu-item-title {
-  color: #e6e6e6;
+  color: hsl(var(--popover-foreground));
 }
 
 /* small 项不展示副标题；若将来有副标题，整行改为顶对齐以免挤扁 */
@@ -852,7 +843,7 @@
 }
 
 .bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-title {
-  color: var(--goose-interactive-selected-fg);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .dark
@@ -863,7 +854,7 @@
   .bn-mantine
   .bn-suggestion-menu-item:hover
   .bn-mt-suggestion-menu-item-title {
-  color: var(--goose-interactive-selected-fg);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .bn-mantine
@@ -875,7 +866,7 @@
 .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle {
   font-size: 11px !important;
   line-height: 1.3 !important;
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle,
@@ -883,7 +874,7 @@
   .bn-mantine
   .bn-suggestion-menu-item
   .bn-mt-suggestion-menu-item-subtitle {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .bn-mantine
@@ -912,7 +903,7 @@
   appearance: none;
   border: 1px solid rgba(219, 219, 219, 0.9);
   background: transparent;
-  color: #1f1f1f;
+  color: hsl(var(--popover-foreground));
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 12.5px;
@@ -926,25 +917,27 @@
 }
 
 .goose-ai-tag:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
 }
 
 .goose-ai-tag:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 1px;
 }
 
 .dark .goose-ai-tag,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag {
   border-color: rgba(61, 61, 61, 0.9);
-  color: #e6e6e6;
+  color: hsl(var(--popover-foreground));
 }
 
 .dark .goose-ai-tag:hover,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
 }
 
 /* ➕：圆形虚线，与普通 tag 区分 */
@@ -957,25 +950,25 @@
   padding: 0;
   border-style: dashed;
   border-radius: 999px;
-  color: #6e6e6e;
+  color: hsl(var(--muted-foreground));
 }
 
 .goose-ai-tag--plus:hover {
-  color: var(--goose-interactive-selected-fg);
-  border-color: var(--goose-interactive-selected-fg);
-  background: transparent;
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+  background: var(--goose-interactive-hover);
 }
 
 .dark .goose-ai-tag--plus,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag--plus {
-  color: #a8a8a8;
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .goose-ai-tag--plus:hover,
 .bn-root[data-color-scheme="dark"] .goose-ai-tag--plus:hover {
-  color: var(--goose-interactive-selected-fg);
-  border-color: var(--goose-interactive-selected-fg);
-  background: transparent;
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+  background: var(--goose-interactive-hover);
 }
 
 /* ---------- AI 结果回显区（thinking / error / 流式文本） ---------- */
@@ -988,8 +981,8 @@
 ins,
 [data-type="modification"] {
   color: inherit;
-  background: rgba(99, 102, 241, 0.18);
-  border-bottom: 1px solid #dbdbdb;
+  background: var(--goose-interactive-selected);
+  border-bottom: 1px solid hsl(var(--border));
   text-decoration: none;
   padding: 0 1px;
   border-radius: 2px;
@@ -997,6 +990,6 @@ ins,
 
 .dark ins,
 .dark [data-type="modification"] {
-  background: rgba(99, 102, 241, 0.28);
+  background: var(--goose-interactive-selected);
   border-bottom-color: rgba(61, 61, 61, 0.8);
 }

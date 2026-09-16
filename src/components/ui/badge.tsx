@@ -13,11 +13,11 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground",
+          "border-[var(--goose-interactive-hover-border)] bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-hover-fg)]",
         secondary:
           "border-transparent bg-secondary text-secondary-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground",
+          "border-[var(--goose-interactive-danger-border)] bg-[var(--goose-interactive-danger)] text-[var(--goose-interactive-danger-fg)]",
         outline: "text-foreground",
       },
     },

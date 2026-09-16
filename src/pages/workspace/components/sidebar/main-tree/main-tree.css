@@ -112,8 +112,13 @@
   min-height: 100%;
 }
 
-.main-tree-row.main-tree-row--selected,
 .main-tree-row.main-tree-row--hovered {
+  color: var(--goose-interactive-hover-fg) !important;
+  background-color: var(--goose-interactive-hover) !important;
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-hover-border);
+}
+
+.main-tree-row.main-tree-row--selected {
   color: var(--goose-interactive-selected-fg) !important;
   background-color: var(--goose-interactive-selected) !important;
 }
@@ -127,10 +132,13 @@
   background-color: var(--goose-interactive-selected) !important;
 }
 
-/* 选中 / 悬停行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
+/* 选中 / 拖放行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
    text-muted-foreground 工具类，需显式覆盖；语义色图标（如读取失败红）不动。 */
 .main-tree-row--selected svg:not([class*="text-destructive"]),
 .main-tree-row--hovered svg:not([class*="text-destructive"]),
+.main-tree-row--drop-target svg:not([class*="text-destructive"]),
+.main-tree-row--drop-target-local svg:not([class*="text-destructive"]),
+.main-tree-row--dragging svg:not([class*="text-destructive"]),
 [data-goose-context-trigger][data-context-open="true"]
   .main-tree-row
   svg:not([class*="text-destructive"]) {
@@ -143,7 +151,7 @@
   background: var(--goose-interactive-selected);
 }
 
-/* 原行不随拖影消失：以半透明蓝色占位，持续展示来源层级和原位置。 */
+/* 原行不随拖影消失：以半透明强调色占位，持续展示来源层级和原位置。 */
 .main-tree-row--dragging {
   color: var(--sidebar-dnd-accent) !important;
   background-color: var(--sidebar-dnd-accent-soft) !important;
@@ -151,11 +159,10 @@
   opacity: 0.66;
 }
 
-.main-tree-row--drop-target,
-.main-tree-row--drop-target-local {
-  color: hsl(var(--foreground)) !important;
+.main-tree-row.main-tree-row--drop-target,
+.main-tree-row.main-tree-row--drop-target-local {
+  color: var(--sidebar-dnd-accent) !important;
   background-color: var(--sidebar-dnd-accent-soft) !important;
-  box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset !important;
 }
 
 .main-tree-drop-between-line {
@@ -177,6 +184,17 @@
   transform: translate(-50%, -50%);
 }
 
+/* 指针进入可视列表上/下缘吸附带时，行内线不代表真实落点（真实落点是根级首/末），
+   只留 MainTreeEdgeDropWatcher 画在可视边缘的线。 */
+[data-main-tree-edge-drop] .main-tree-drop-between-line {
+  display: none;
+}
+
+.main-tree-edge-drop-line {
+  z-index: 60;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .main-tree-row,
   .main-tree-drop-between-line,
@@ -194,7 +212,7 @@
 
 /* 上面的库样式重置使用了更靠后的 !important。拖动源与行内落点必须在它
  * 之后重新声明 background-color，否则部分 hover / dragging-over 组合只剩
- * 蓝色描边，浅蓝填充会退回透明或中性灰。 */
+ * 强调色描边，浅色填充会退回透明或中性灰。 */
 .rct-main-tree .main-tree-row.main-tree-row--dragging,
 .rct-main-tree .main-tree-row.main-tree-row--drop-target,
 .rct-main-tree .main-tree-row.main-tree-row--drop-target-local {
@@ -217,4 +235,8 @@
 .rct-main-tree [data-rct-item-focus="true"]:focus:not(:focus-visible) {
   outline: none !important;
   box-shadow: none !important;
+}
+
+.main-tree-row--hovered svg:not([class*="text-destructive"]) {
+  color: var(--goose-interactive-hover-fg);
 }

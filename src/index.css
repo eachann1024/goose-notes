@@ -142,30 +142,30 @@
   --accent: 60 6.67% 94.12%;
   --border: 0 0% 86%;
   --goose-menu-surface: var(--goose-editor-bg);
-  --goose-menu-hover: 0 0% 94.5%;
+  --goose-menu-hover: var(--goose-interactive-hover);
   --goose-menu-border: 0 0% 86%;
   --goose-menu-radius: 16px;
   --goose-menu-item-radius: 8px;
   --goose-menu-item-height: 30px;
   --goose-menu-item-font-size: 14px;
   --goose-menu-item-line-height: 20px;
-  --goose-menu-shadow: 0 14px 34px rgba(15, 23, 42, 0.16),
-    0 2px 8px rgba(15, 23, 42, 0.08);
+  --goose-menu-shadow:
+    0 14px 34px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 .dark,
 [data-theme="dark"] {
   --accent: 60 2.4% 16.1%;
   --border: 0 0% 24%;
   --goose-menu-surface: 60 2.2% 19.5%;
-  --goose-menu-hover: 0 0% 24%;
+  --goose-menu-hover: var(--goose-interactive-hover);
   --goose-menu-border: 0 0% 28%;
   --goose-menu-radius: 16px;
   --goose-menu-item-radius: 8px;
   --goose-menu-item-height: 30px;
   --goose-menu-item-font-size: 14px;
   --goose-menu-item-line-height: 20px;
-  --goose-menu-shadow: 0 14px 34px rgba(0, 0, 0, 0.32),
-    0 2px 8px rgba(0, 0, 0, 0.18);
+  --goose-menu-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 /* HeroUI 的 text-muted 表示弱化文字；本项目 --muted / --color-muted 是底色。
@@ -237,6 +237,161 @@
   padding: 0;
 }
 
+/* HeroUI 下拉默认 zoom-in-90 过猛，且从中心放大。
+ * 改成和 Floating UI 菜单同一套：从触发边移入 6px + scale(0.96)。 */
+[data-goose-floating-content].dropdown__popover {
+  transform-origin: var(--trigger-anchor-point, top center);
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"] {
+  animation: goose-floating-in-bottom 200ms cubic-bezier(0.23, 1, 0.32, 1) both
+    !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="top"] {
+  animation-name: goose-floating-in-top !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="left"] {
+  animation-name: goose-floating-in-left !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="right"] {
+  animation-name: goose-floating-in-right !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"] {
+  animation: goose-floating-out-bottom 150ms ease-in both !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="top"] {
+  animation-name: goose-floating-out-top !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="left"] {
+  animation-name: goose-floating-out-left !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="right"] {
+  animation-name: goose-floating-out-right !important;
+}
+
+@keyframes goose-floating-in-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-out-bottom {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-top {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes goose-floating-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-goose-floating-content].dropdown__popover[data-entering="true"] {
+    animation: goose-floating-fade-in 150ms ease both !important;
+  }
+
+  [data-goose-floating-content].dropdown__popover[data-exiting="true"] {
+    animation: goose-floating-fade-out 150ms ease both !important;
+  }
+}
+
 .goose-menu-surface [role="menuitem"][data-highlighted],
 .goose-menu-surface [role="menuitem"][data-focused],
 .goose-menu-surface [role="menuitem"][data-state="open"],
@@ -251,8 +406,9 @@
 .goose-menu-surface [data-slot="menu-item"][data-hovered],
 .goose-menu-surface [data-slot="menu-item"][data-focused],
 .goose-menu-surface [data-slot="menu-item"]:focus {
-  background-color: hsl(var(--goose-menu-hover)) !important;
-  color: var(--goose-interactive-selected-fg) !important;
+  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-hover-border);
 }
 
 .goose-menu-surface [data-slot="menu-item"],
@@ -276,16 +432,28 @@
 [data-slot="menu-item"][data-hovered],
 [data-slot="menu-item"][data-focused],
 [data-slot="menu-item"]:focus {
-  background-color: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-hover-border);
 }
 
 .goose-menu-item:hover,
 .goose-menu-item:focus,
 .goose-menu-item[data-highlighted],
 .goose-menu-item[data-state="open"] {
-  background-color: hsl(var(--goose-menu-hover));
-  color: hsl(var(--foreground));
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-hover-border);
+}
+
+.goose-menu-surface .goose-interactive[data-selected="true"],
+.goose-menu-surface .goose-interactive[aria-selected="true"],
+.goose-menu-surface .goose-interactive[aria-checked="true"],
+.goose-menu-surface .goose-interactive[data-state="checked"],
+.goose-menu-surface .goose-interactive[data-state="open"] {
+  background-color: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-border);
 }
 
 .goose-menu-item {
@@ -293,6 +461,23 @@
   border-radius: var(--goose-menu-item-radius);
   font-size: var(--goose-menu-item-font-size);
   line-height: var(--goose-menu-item-line-height);
+}
+
+/* 危险菜单项（删除行/列）：只用危险色 token，不硬编码色值。 */
+.goose-menu-item-danger {
+  --goose-interactive-hover: var(--goose-interactive-danger);
+  --goose-interactive-hover-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-hover-border: var(--goose-interactive-danger-border);
+  color: var(--goose-interactive-danger-fg);
+}
+
+.goose-menu-item-danger:hover,
+.goose-menu-item-danger:focus,
+.goose-menu-item-danger[data-highlighted],
+.goose-menu-item-danger[data-state="open"] {
+  background-color: var(--goose-interactive-danger);
+  color: var(--goose-interactive-danger-fg);
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-danger-border);
 }
 
 .goose-menu-separator {
@@ -355,8 +540,6 @@
   --font-sans: var(--font-default), sans-serif;
   --font-serif: var(--font-serif), serif;
   --font-mono: var(--font-mono), monospace;
-
-
 }
 
 /* v4 默认 ring 宽度为 1px、ring 颜色为 currentColor；
@@ -379,6 +562,96 @@
   }
 }
 
+.goose-interactive {
+  box-sizing: border-box;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.goose-interactive:where(
+  :not(:disabled):not([data-disabled="true"]):not([data-selected="true"]):not(
+      [aria-selected="true"]
+    ):not([aria-pressed="true"]):not([data-state="open"]):not(
+      [data-state="checked"]
+    )
+):is(:hover, [data-hovered="true"], [data-focused="true"]) {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-interactive:is(
+  :hover,
+  [data-hovered="true"],
+  [data-focused="true"],
+  [data-selected="true"],
+  [aria-selected="true"],
+  [aria-pressed="true"],
+  [data-state="open"],
+  [data-state="checked"]
+) :is(svg, .text-muted, .text-muted-foreground) {
+  color: inherit;
+}
+
+.goose-interactive[data-selected="true"],
+.goose-interactive[aria-selected="true"],
+.goose-interactive[aria-pressed="true"],
+.goose-interactive[data-state="open"],
+.goose-interactive[data-state="checked"],
+.goose-interactive--selected {
+  background-color: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-interactive-primary {
+  background-color: var(--goose-interactive-hover);
+  border-color: var(--goose-interactive-hover-border);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-interactive-primary:hover:not(:disabled),
+.goose-interactive-primary:active:not(:disabled) {
+  background-color: var(--goose-interactive-selected);
+  border-color: var(--goose-interactive-selected-border);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-interactive-danger {
+  --goose-interactive-hover: var(--goose-interactive-danger);
+  --goose-interactive-hover-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-hover-border: var(--goose-interactive-danger-border);
+  --goose-interactive-selected: var(--goose-interactive-danger);
+  --goose-interactive-selected-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-selected-border: var(--goose-interactive-danger-border);
+  background-color: var(--goose-interactive-danger);
+  border-color: var(--goose-interactive-danger-border);
+  color: var(--goose-interactive-danger-fg);
+}
+
+.goose-interactive-danger:hover:not(:disabled),
+.goose-interactive-danger:active:not(:disabled) {
+  background-color: var(--goose-color-danger-subtle-bg);
+}
+
+.goose-interactive:disabled,
+.goose-interactive[data-disabled="true"],
+.goose-interactive-primary:disabled,
+.goose-interactive-danger:disabled {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-toolbar-action {
+  --goose-interactive-hover-border: transparent;
+  --goose-interactive-selected-border: transparent;
+}
+
+.goose-interactive:focus-visible {
+  outline: 2px solid var(--goose-accent-focus);
+  outline-offset: 2px;
+}
+
 @layer base {
   :root {
     --goose-shell-bg: 0 0% 95.69%; /* #f4f4f4 */
@@ -388,14 +661,16 @@
     /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，Electron 旧内核安全） */
     --goose-interactive-selected: #e0e7ff;
     --goose-interactive-selected-fg: #4f46e5;
-    --goose-interactive-selected-border: transparent;
-    /* hover / 图标底跟选中表面同一色，换强调色时一起变 */
-    --goose-interactive-hover: var(--goose-interactive-selected);
+    --goose-interactive-selected-border: var(--goose-interactive-selected-fg);
+    --goose-sidebar-hover: var(--goose-interactive-hover);
+    --goose-interactive-hover: #f3f1fb;
+    --goose-interactive-hover-fg: #4f46e5;
+    --goose-interactive-hover-border: #8174cb;
     --goose-editor-selection-bg: #e0e7ff;
     /* 紧凑按钮状态：实色，避免 Electron 旧内核解析 hsl(var(...)/alpha) 失败 */
-    --goose-control-hover-bg: #ebeae8;
-    --goose-primary-hover-bg: #4f46e5;
-    --goose-primary-active-bg: #4338ca;
+    --goose-control-hover-bg: var(--goose-interactive-hover);
+    --goose-primary-hover-bg: var(--goose-interactive-hover);
+    --goose-primary-active-bg: var(--goose-interactive-selected);
     --goose-icon-chip-on-selected: var(--goose-interactive-selected);
     /* 置顶/Pin 激活红：必须是 hex 实色，Electron 旧内核解析不了 Tailwind 的 oklch 红 */
     --goose-pin-accent: #ef4444;
@@ -404,6 +679,15 @@
     --goose-color-danger-hover: #dc2626; /* 删除按钮 hover 背景红 */
     --goose-color-danger-subtle-bg: #fee2e2; /* 链接移除按钮 hover 淡红背景 */
     --goose-color-danger-focus: #dc2626; /* 危险菜单项 focus/highlighted 文字色 */
+    --goose-interactive-danger: #fff1f2;
+    --goose-interactive-danger-fg: #b42318;
+    --goose-interactive-danger-border: #d92d20;
+    --goose-interactive-success: #ecfdf3;
+    --goose-interactive-success-fg: #067647;
+    --goose-interactive-success-border: #32a467;
+    --goose-interactive-warning: #fffaeb;
+    --goose-interactive-warning-fg: #9a6700;
+    --goose-interactive-warning-border: #dcae38;
     --goose-color-favorite: #facc15; /* 收藏星星黄 */
     --goose-color-unsaved: #f59e0b; /* 未保存状态点琥珀 */
     --goose-color-success: #22c55e; /* 成功确认勾绿 */
@@ -485,13 +769,16 @@
     /* 暗色鸢尾靛蓝：浅底用 rgba 直写（Electron 旧内核安全） */
     --goose-interactive-selected: rgba(99, 102, 241, 0.2);
     --goose-interactive-selected-fg: #a5b4fc;
-    --goose-interactive-selected-border: transparent;
-    --goose-interactive-hover: var(--goose-interactive-selected);
+    --goose-interactive-selected-border: var(--goose-interactive-selected-fg);
+    --goose-sidebar-hover: var(--goose-interactive-hover);
+    --goose-interactive-hover: #2c293d;
+    --goose-interactive-hover-fg: #a5b4fc;
+    --goose-interactive-hover-border: #9484e5;
     /* 编辑器文字选区：略实于侧栏选中，无 accent 时与 iris fallback 一致 */
     --goose-editor-selection-bg: rgba(99, 102, 241, 0.35);
-    --goose-control-hover-bg: #2e2e2e;
-    --goose-primary-hover-bg: #4f46e5;
-    --goose-primary-active-bg: #4338ca;
+    --goose-control-hover-bg: var(--goose-interactive-hover);
+    --goose-primary-hover-bg: var(--goose-interactive-hover);
+    --goose-primary-active-bg: var(--goose-interactive-selected);
     --goose-icon-chip-on-selected: var(--goose-interactive-selected);
     --goose-pin-accent: #f87171;
     /* 深色模式语义实色变量覆盖 */
@@ -499,6 +786,15 @@
     --goose-color-danger-hover: #dc2626;
     --goose-color-danger-subtle-bg: #3f1919;
     --goose-color-danger-focus: #f87171;
+    --goose-interactive-danger: #481f24;
+    --goose-interactive-danger-fg: #ffb4ab;
+    --goose-interactive-danger-border: #e27d75;
+    --goose-interactive-success: #153d2b;
+    --goose-interactive-success-fg: #8ce0b1;
+    --goose-interactive-success-border: #4fb67d;
+    --goose-interactive-warning: #443619;
+    --goose-interactive-warning-fg: #f3d17c;
+    --goose-interactive-warning-border: #ca9f36;
     --goose-color-favorite: #fbbf24;
     --goose-color-unsaved: #fb923c;
     --goose-color-success: #4ade80;
@@ -582,15 +878,18 @@
   }
 
   [data-sonner-toaster][data-y-position="top"] {
-    top: calc(var(--offset-top, 14px) + var(--goose-top-safe-area)) !important;
+    top: calc(
+      var(--goose-toast-offset-top, var(--offset-top, 14px)) +
+        var(--goose-top-safe-area)
+    ) !important;
   }
 
   ::selection {
-    background-color: rgba(127, 127, 127, 0.24);
+    background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
     color: inherit;
   }
   ::-moz-selection {
-    background-color: rgba(127, 127, 127, 0.24);
+    background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
     color: inherit;
   }
 
@@ -644,10 +943,24 @@
     --editor-file-icon-box-size: calc(40px * var(--editor-scale));
   }
 
-  /* 产品全局不绘制 focus 外框或 Tailwind ring。交互反馈由组件自身的
-     背景、文字与状态变化承担，避免 contenteditable 被浏览器包成输入框。
+  /* 程序性焦点不绘制外框，键盘 focus-visible 保留独立可见提示。
      [tabindex] 包含 -1：Radix DialogContent 等容器在打开和窗口重获焦点时
      会被程序性聚焦，Electron 旧内核会按系统强调色画出贴窗口边缘的 outline。 */
+  :where(
+      a[href],
+      button,
+      input,
+      textarea,
+      select,
+      summary,
+      [tabindex],
+      [contenteditable="true"]
+    ):focus:not(:focus-visible) {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-inset-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+
   :where(
     a[href],
     button,
@@ -655,14 +968,14 @@
     textarea,
     select,
     summary,
-    [tabindex],
-    [contenteditable="true"]
-  ):is(:focus, :focus-visible) {
-    outline: none !important;
-    outline-offset: 0 !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-    --tw-inset-ring-shadow: 0 0 #0000 !important;
-    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"]
+  ):focus-visible {
+    outline: 2px solid var(--goose-accent-focus, hsl(var(--ring)));
+    outline-offset: 2px;
   }
 
   /* Placeholder 也是操作提示，需达到与普通小号文本一致的可读性。 */
@@ -1040,40 +1353,6 @@
   }
 }
 
-@keyframes ai-title-nebula-shift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes ai-title-nebula-bloom {
-  0%,
-  100% {
-    opacity: 0.44;
-    transform: translate3d(-4%, 0, 0) scale(0.96);
-  }
-  50% {
-    opacity: 0.82;
-    transform: translate3d(7%, 0, 0) scale(1.06);
-  }
-}
-
-@keyframes ai-title-nebula-stars {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: translate3d(0, 1px, 0) scale(0.9);
-  }
-  50% {
-    opacity: 0.9;
-    transform: translate3d(-3px, -1px, 0) scale(1.12);
-  }
-}
-
 .ai-icon[data-ai-state="streaming"] .ai-icon-glyph {
   transform-origin: 12px 12px;
   transform-box: fill-box;
@@ -1113,28 +1392,15 @@
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  border: 1.5px solid rgba(99, 215, 255, 0.95);
-  box-shadow:
-    0 0 10px rgba(149, 243, 216, 0.55),
-    inset 0 0 6px rgba(255, 255, 255, 0.4);
+  border: 1.5px solid var(--goose-interactive-hover-border);
+  box-shadow: none;
   transform-origin: center;
   animation: ai-icon-ring 980ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .ai-icon-ring--delayed {
   animation-delay: 220ms;
-  border-color: rgba(149, 243, 216, 0.9);
-  box-shadow:
-    0 0 10px rgba(99, 215, 255, 0.55),
-    inset 0 0 6px rgba(255, 255, 255, 0.35);
-}
-
-.dark .ai-icon-ring {
-  border-color: rgba(99, 215, 255, 0.7);
-}
-
-.dark .ai-icon-ring--delayed {
-  border-color: rgba(149, 243, 216, 0.65);
+  border-color: var(--goose-interactive-selected-border);
 }
 
 /* 默认透明底；hover 与顶栏其它图标一致起底；选中用强调色底 + 强调色图标 */
@@ -1152,8 +1418,8 @@ button.ai-icon-button {
 }
 
 .ai-icon-button:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .ai-icon-button:focus-visible {
@@ -1199,8 +1465,14 @@ button.ai-icon-button {
   transform: none;
 }
 
-.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph path,
-.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph circle {
+.ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  path,
+.ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  circle {
   stroke: var(--goose-interactive-selected-fg);
 }
 
@@ -1213,11 +1485,6 @@ button.ai-icon-button {
   background: transparent;
   box-shadow: none;
   color: hsl(var(--foreground));
-}
-
-.dark .ai-icon-button:hover {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
 }
 
 .dark .ai-icon-button[aria-pressed="true"],
@@ -1237,8 +1504,16 @@ button.ai-icon-button {
   transform: none;
 }
 
-.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph path,
-.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] .ai-icon-glyph circle {
+.dark
+  .ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  path,
+.dark
+  .ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  circle {
   stroke: var(--goose-interactive-selected-fg);
 }
 
@@ -1246,81 +1521,26 @@ button.ai-icon-button {
   transform: scale(1.06);
 }
 
-.dark .ai-icon-button[aria-pressed="true"]:hover .ai-icon[data-ai-state="idle"] {
+.dark
+  .ai-icon-button[aria-pressed="true"]:hover
+  .ai-icon[data-ai-state="idle"] {
   filter: none;
   transform: none;
 }
 
-/* AI 运行时把星云状态延展到整条顶栏；空闲或仅打开面板时完全撤回。 */
+/* AI 运行态沿用产品强调色，不保留独立星云渐变。 */
 .ai-header-nebula-streaming {
   position: relative;
-  isolation: isolate;
-  background: linear-gradient(
-    118deg,
-    #f1edff,
-    #e9f4ff 42%,
-    #ffeefa 72%,
-    #eefcff
-  );
-  background-size: 220% 220%;
-  box-shadow:
-    0 5px 18px rgba(125, 93, 229, 0.14),
-    inset 0 -1px rgba(156, 128, 255, 0.16);
-  animation: ai-title-nebula-shift 7s ease-in-out infinite;
+  background: var(--goose-interactive-hover);
+  box-shadow: inset 0 -1px var(--goose-interactive-hover-border);
 }
 
 .ai-header-nebula-streaming::before {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  top: -30px;
-  right: 5%;
-  width: 150px;
-  height: 88px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 116, 192, 0.34),
-    rgba(129, 112, 255, 0.16) 46%,
-    transparent 72%
-  );
-  border-radius: 50%;
-  pointer-events: none;
-  animation: ai-title-nebula-bloom 4.8s ease-in-out infinite;
+  content: none;
 }
 
 .ai-header-nebula-streaming::after {
-  content: "✦  ·  ✦";
-  position: absolute;
-  z-index: 2;
-  top: 7px;
-  right: 14px;
-  color: rgba(124, 92, 255, 0.55);
-  font-size: 8px;
-  letter-spacing: 5px;
-  text-shadow:
-    -34px 17px rgba(255, 113, 185, 0.48),
-    10px 18px rgba(80, 196, 255, 0.6);
-  pointer-events: none;
-  animation: ai-title-nebula-stars 2.6s ease-in-out infinite;
-}
-
-.ai-header-nebula-streaming > * {
-  position: relative;
-  z-index: 1;
-}
-
-.dark .ai-header-nebula-streaming {
-  background: linear-gradient(
-    118deg,
-    #312c4d,
-    #243b56 42%,
-    #4a2d46 72%,
-    #203f46
-  );
-  background-size: 220% 220%;
-  box-shadow:
-    0 8px 26px rgba(90, 58, 190, 0.3),
-    inset 0 -1px rgba(187, 166, 255, 0.22);
+  content: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1380,7 +1600,8 @@ svg.lucide {
 }
 
 /* 打开菜单或对话框时隐藏残留提示，兼容第三方与自有浮层。 */
-body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden])) [role="tooltip"] {
+body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden]))
+  [role="tooltip"] {
   display: none !important;
 }
 
@@ -1426,9 +1647,10 @@ body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden])) [role="tool
   min-height: 36px;
   margin-top: 4px;
   border-radius: 8px;
+  border: 1px solid var(--goose-interactive-hover-border);
   padding: 0 16px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
   font-size: 13px;
   font-weight: 500;
 }
@@ -1472,4 +1694,15 @@ html[data-startup-settling] *,
 html[data-startup-settling] *::before,
 html[data-startup-settling] *::after {
   transition-property: none !important;
+}
+
+/* 选中只保留底色，不让状态描边在失焦后残留；拖放仍使用独立强调色。 */
+:root:root {
+  --goose-interactive-selected-border: transparent;
+}
+
+/* 文本控件的键盘焦点使用中性色；指针焦点由 focus-reset.css 抑制。 */
+:is(input, textarea, select, [contenteditable="true"]) {
+  --ring: var(--muted-foreground);
+  --goose-accent-focus: hsl(var(--muted-foreground));
 }

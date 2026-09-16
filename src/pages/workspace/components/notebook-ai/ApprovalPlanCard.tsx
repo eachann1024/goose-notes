@@ -246,7 +246,7 @@ export function ApprovalPlanCard({
       </Button>
       <Button
         type="button"
-        className="h-[40px] rounded-[14px] bg-[#1c1c1c] text-[14px] font-semibold text-white shadow-none hover:bg-[#2a2a2a] dark:bg-[#f4f4f5] dark:text-[#171717] dark:hover:bg-[#e4e4e7]"
+        className="goose-interactive-primary h-[40px] rounded-[14px] text-[14px] font-semibold shadow-none"
         disabled={!canApprove}
         onClick={() => void respond(true)}
       >

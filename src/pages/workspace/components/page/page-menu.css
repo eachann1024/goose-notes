@@ -8,3 +8,10 @@
     box-shadow: var(--goose-menu-shadow) !important;
   }
 }
+
+/* HeroUI Popover.Trigger defaults to inline-block and would shrink the
+ * export row to icon+label. Keep the hit target the full menu row. */
+.goose-page-menu-surface [data-slot="popover-trigger"] {
+  display: grid;
+  width: 100%;
+}

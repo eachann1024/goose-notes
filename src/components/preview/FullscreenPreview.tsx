@@ -13,7 +13,7 @@ import {
 } from "@/lib/preview/previewAction";
 
 const PREVIEW_ICON_CLASS =
-  "cursor-pointer hover:bg-[var(--goose-control-hover-bg)] dark:hover:bg-[var(--goose-control-hover-bg)]";
+  "cursor-pointer hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]";
 
 function isZoomInKey(event: KeyboardEvent) {
   return (

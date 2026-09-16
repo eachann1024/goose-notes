@@ -524,3 +524,45 @@
  .goose-toast-success-action:hover {
  background: var(--goose-inline-code-border-hover) !important;
 }
+
+/* 语义 toast 收敛到浅染、描边、同色文图；放在 Sonner 兼容规则之后覆盖旧实色。 */
+.goose-toaster [data-sonner-toast].goose-toast-error,
+.goose-toaster [data-sonner-toast][data-type="error"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error,
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+  background: var(--goose-interactive-danger) !important;
+  border-color: var(--goose-interactive-danger-border) !important;
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error :is([data-title], [data-description], [data-icon]),
+.goose-toaster [data-sonner-toast][data-type="error"] :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] :is([data-title], [data-description], [data-icon]) {
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-button][data-action],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-button][data-action],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-button][data-action],
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-button][data-action] {
+  background: var(--goose-interactive-danger) !important;
+  border-color: var(--goose-interactive-danger-border) !important;
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success,
+.goose-toaster [data-sonner-toast][data-type="success"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success,
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+  background: var(--goose-interactive-success) !important;
+  border-color: var(--goose-interactive-success-border) !important;
+  color: var(--goose-interactive-success-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success :is([data-title], [data-description], [data-icon]),
+.goose-toaster [data-sonner-toast][data-type="success"] :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] :is([data-title], [data-description], [data-icon]) {
+  color: var(--goose-interactive-success-fg) !important;
+}

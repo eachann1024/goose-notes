@@ -21,13 +21,13 @@ const defaultToastClassNames = {
   title: "!text-foreground !opacity-100 !font-semibold",
   description: "!text-muted-foreground",
   actionButton:
-    "!bg-primary !text-primary-foreground hover:!brightness-95 !rounded-lg !px-3.5 !h-8 !text-xs !font-semibold !border !border-[rgba(15,23,42,0.12)] transition-all duration-150",
+    "goose-interactive goose-interactive-primary !rounded-lg !px-3.5 !h-8 !text-xs !font-semibold !border transition-all duration-150",
   cancelButton:
-    "!bg-muted !text-muted-foreground hover:!brightness-95 !rounded-lg !px-3 !h-8 !text-xs !font-medium",
+    "goose-interactive !bg-transparent !rounded-lg !px-3 !h-8 !text-xs !font-medium",
   // 轻量关闭：无粗边框，默认细 X，hover 才淡底高亮
   // hover 背景必须用 rgba，禁止 foreground/8 —— 旧内核会退化成实心黑圆
   closeButton:
-    "goose-toast-close !absolute !left-auto !right-1.5 !top-2 !transform-none !translate-x-0 !translate-y-0 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground hover:!text-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
+    "goose-interactive goose-toast-close !absolute !left-auto !right-1.5 !top-2 !transform-none !translate-x-0 !translate-y-0 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
   error:
     "goose-toast-error !border-[rgba(200,25,46,0.18)] dark:!border-[rgba(255,109,125,0.18)]",
   success: "goose-toast-success",

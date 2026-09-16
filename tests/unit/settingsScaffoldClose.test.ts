@@ -12,7 +12,7 @@ test("设置页关闭钮默认灰底，hover 换成强调色", () => {
   );
   expect(closeButton).toContain("bg-[hsl(var(--goose-selected-bg))]");
   expect(closeButton).toContain(
-    "hover:bg-[var(--goose-icon-chip-on-selected)]",
+    "hover:bg-[var(--goose-interactive-hover)]",
   );
 });
 

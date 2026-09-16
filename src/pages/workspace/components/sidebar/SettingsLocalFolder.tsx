@@ -186,7 +186,7 @@ function OpenAppField({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] focus:bg-[var(--goose-interactive-selected)] data-[state=open]:bg-[var(--goose-interactive-hover)]"
+              className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus:bg-[var(--goose-interactive-selected)] data-[state=open]:bg-[var(--goose-interactive-hover)]"
             >
               <span className="truncate">{selectedLabel}</span>
               <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -295,7 +295,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
                 type="button"
                 disabled={isDefaultFolder}
                 onClick={() => removeFolder(folder)}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full disabled:pointer-events-none disabled:opacity-50 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full disabled:pointer-events-none disabled:opacity-50 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label={`移除 ${folder}`}
               >
                 <LucideIcons.X className="h-3 w-3" />
@@ -335,7 +335,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 text-xs text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
+            className="h-8 text-xs text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
             onClick={resetToDefault}
           >
             恢复默认
@@ -594,12 +594,12 @@ function LocalAssetMaintenanceDialog({
                         "border-t border-[var(--goose-block-subtle-border)]",
                       selected
                         ? "bg-[var(--goose-interactive-selected)]"
-                        : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                        : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     )}
                   >
                     <button
                       type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+                      className="flex h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
                       aria-pressed={selected}
                       aria-label={
                         selected
@@ -657,7 +657,7 @@ function LocalAssetMaintenanceDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 rounded-[10px] text-muted-foreground hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+                      className="h-8 w-8 shrink-0 rounded-[10px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
                       aria-label={`在文件管理器显示 ${asset.name}`}
                       onClick={() => revealAsset(asset)}
                     >

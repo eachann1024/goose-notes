@@ -3,7 +3,7 @@ import type { NotebookAiLayoutMode } from "@/pages/workspace/components/notebook
 import { isFullscreenAiLayout } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useAiHeaderActions, useAiHeaderTitle } from "@/pages/workspace/components/notebook-ai/aiHeaderSlot";
 import { ConversationTitle } from "@/pages/workspace/components/notebook-ai/ConversationTitle";
-import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
+import { Sparkles } from "lucide-react";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
@@ -45,7 +45,6 @@ export function PageHeader({
   hideDocumentTitle = false,
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
-  const aiDoneToken = useAiStatus((state) => state.doneToken);
   const notebooks = useNotebooks((state) => state.notebooks);
   const showPageIcon = Boolean(
     page &&
@@ -92,7 +91,7 @@ export function PageHeader({
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
 
   const actionButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-selected-fg)]";
+    "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-hover-fg)]";
 
   return (
     <div
@@ -127,7 +126,7 @@ export function PageHeader({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     sidebarExpandAttention && "sidebar-expand-attention",
                   )}
                   onClick={toggleSidebarCollapsed}
@@ -205,11 +204,7 @@ export function PageHeader({
                   aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
                   aria-pressed={aiPanelOpen}
                 >
-                  <AiGradientIcon
-                    key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
-                    className="h-4 w-4"
-                    state={aiPhase}
-                  />
+                  <Sparkles className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -237,7 +232,7 @@ export function PageHeader({
                     aria-label="恢复页面"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-restore-hover)] hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
                     <LucideIcons.RotateCcw className="h-4 w-4" />
                   </Button>
@@ -253,7 +248,7 @@ export function PageHeader({
                     type="button"
                     aria-label="永久删除页面"
                     size="icon"
-                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-hover)] hover:text-white"
+                    className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)]"
                   >
                     <LucideIcons.Trash2 className="h-4 w-4" />
                   </Button>

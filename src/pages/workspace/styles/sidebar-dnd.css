@@ -6,26 +6,20 @@
   display: none;
 }
 
-/* 文件树拖放使用独立语义色，不改变产品现有的中性选中色。
-   直接使用 hex/rgba，兼容 Electron 旧内核，避免 hsl(var(...)/alpha) 解析退化。 */
+/* 拖放与选中共用主题令牌；黑白模式不再漏出独立写死的蓝色。 */
 :root {
-  --sidebar-dnd-accent: #3f6fec;
-  --sidebar-dnd-accent-soft: rgba(63, 111, 236, 0.14);
-  --sidebar-dnd-accent-medium: rgba(63, 111, 236, 0.24);
-  --sidebar-dnd-accent-ring: rgba(63, 111, 236, 0.62);
+  --sidebar-dnd-accent: var(--goose-interactive-hover-fg);
+  --sidebar-dnd-accent-soft: var(--goose-interactive-hover);
+  --sidebar-dnd-accent-medium: var(--goose-interactive-hover);
+  --sidebar-dnd-accent-ring: var(--goose-accent-drag-line);
   --sidebar-dnd-overlay-bg: rgba(255, 255, 255, 0.96);
-  --sidebar-dnd-overlay-border: rgba(63, 111, 236, 0.38);
+  --sidebar-dnd-overlay-border: var(--goose-interactive-selected-border);
   --sidebar-dnd-overlay-shadow:
     0 10px 26px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.1);
 }
 
 .dark {
-  --sidebar-dnd-accent: #7394ff;
-  --sidebar-dnd-accent-soft: rgba(115, 148, 255, 0.16);
-  --sidebar-dnd-accent-medium: rgba(115, 148, 255, 0.24);
-  --sidebar-dnd-accent-ring: rgba(115, 148, 255, 0.72);
   --sidebar-dnd-overlay-bg: rgba(39, 39, 42, 0.97);
-  --sidebar-dnd-overlay-border: rgba(115, 148, 255, 0.46);
   --sidebar-dnd-overlay-shadow:
     0 12px 28px rgba(0, 0, 0, 0.38), 0 2px 7px rgba(0, 0, 0, 0.24);
 }
@@ -44,10 +38,16 @@
   background-clip: padding-box !important;
 }
 
-.sidebar-tree-row--selected,
-.sidebar-tree-row--hovered {
+.sidebar-tree-row--selected {
   color: var(--goose-interactive-selected-fg) !important;
   background: var(--goose-interactive-selected) !important;
+}
+
+
+.sidebar-tree-row--hovered:not(.sidebar-tree-row--selected) {
+  color: var(--goose-interactive-hover-fg) !important;
+  background: var(--goose-interactive-hover) !important;
+  box-shadow: inset 0 0 0 1px var(--goose-interactive-hover-border);
 }
 
 /* 收藏/虚拟树多行共用 .sidebar-tree-row。Electron 旧内核会把
@@ -60,9 +60,10 @@
   background-color: var(--goose-interactive-selected) !important;
 }
 
-/* 选中 / 悬停 / 右键行内图标统一吃强调文字色；语义色图标不动。 */
+/* 选中 / 拖放 / 右键行内图标统一吃强调文字色；语义色图标不动。 */
 .sidebar-tree-row--selected svg:not([class*="text-destructive"]),
-.sidebar-tree-row--hovered svg:not([class*="text-destructive"]),
+.sidebar-drop-parent-target svg:not([class*="text-destructive"]),
+.sidebar-tree-source-placeholder svg:not([class*="text-destructive"]),
 .workspace-shell
   [data-goose-context-trigger][data-context-open="true"]
   > .sidebar-tree-row
@@ -78,6 +79,7 @@
 }
 
 .sidebar-tree-nest-target {
+  color: var(--sidebar-dnd-accent);
   background: var(--sidebar-dnd-accent-soft);
   box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset;
   transition:
@@ -170,6 +172,7 @@
 }
 
 .sidebar-drop-parent-target {
+  color: var(--sidebar-dnd-accent) !important;
   border: 1px solid var(--sidebar-dnd-accent-ring);
   background: var(--sidebar-dnd-accent-soft);
   box-shadow: 0 0 0 1px var(--sidebar-dnd-overlay-bg) inset;
@@ -225,4 +228,27 @@
   border: 2px solid hsl(var(--background));
   border-radius: 50%;
   box-shadow: 0 0 0 1px var(--workspace-drag-line-color, hsl(var(--primary)));
+}
+
+/* 描边不占行尺寸，也不依赖会被全局/RCT 焦点 reset 清掉的 box-shadow。 */
+.main-tree-row--selected::after,
+.main-tree-row--drop-target::after,
+.main-tree-row--drop-target-local::after,
+.sidebar-tree-row--selected::after,
+.sidebar-drop-parent-target::after,
+[data-goose-context-trigger][data-context-open="true"] .main-tree-row::after,
+[data-goose-context-trigger][data-context-open="true"] > .sidebar-tree-row::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--goose-interactive-selected-border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.main-tree-row--drop-target::after,
+.main-tree-row--drop-target-local::after,
+.sidebar-drop-parent-target::after {
+  border-color: var(--sidebar-dnd-accent-ring);
+  border-style: dashed;
 }

@@ -209,7 +209,7 @@
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: #ffffff;
+  background: hsl(var(--background));
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translate(-50%, -50%) scale(0.6);
   opacity: 0;
@@ -352,7 +352,7 @@
   white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-hover-fg);
 }
 
 /* 工具条占位，图片不会被压住 */
@@ -386,8 +386,8 @@
 }
 
 .goose-image-lightbox .yarl__button:hover:not(:disabled) {
-  background: var(--goose-control-hover-bg);
-  color: hsl(var(--foreground));
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .goose-image-lightbox .yarl__button:disabled {
@@ -398,9 +398,9 @@
 }
 
 .goose-image-lightbox .yarl__button:focus-visible {
-  outline: none;
-  background: var(--goose-control-hover-bg);
-  box-shadow: 0 0 0 2px hsl(var(--ring));
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .goose-image-lightbox .yarl__navigation_prev,

@@ -770,7 +770,7 @@ export function EditorComposer({
           className="absolute z-[20020]"
           style={{ top: 8, left: "50%", transform: "translateX(-50%)" }}
         >
-          <div className="goose-editor-inline-context-ui flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]">
+          <div className="goose-editor-inline-context-ui flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-popover">
             <input
               value={linkPopoverUrl}
               onChange={(e) => setLinkPopoverUrl(e.target.value)}

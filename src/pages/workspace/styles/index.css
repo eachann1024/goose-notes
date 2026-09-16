@@ -36,22 +36,8 @@
   --workspace-stage-pad-bottom: 12px;
   --workspace-sidebar-gap: 8px;
   --workspace-sidebar-width: 180px;
-  --workspace-resize-line: linear-gradient(
-    180deg,
-    hsl(218 18% 60% / 0) 0%,
-    hsl(218 18% 60% / 0.18) 22%,
-    hsl(218 18% 60% / 0.9) 50%,
-    hsl(218 18% 60% / 0.18) 78%,
-    hsl(218 18% 60% / 0) 100%
-  );
-  --workspace-resize-line-active: linear-gradient(
-    180deg,
-    hsl(218 22% 52% / 0) 0%,
-    hsl(218 22% 52% / 0.28) 22%,
-    hsl(218 22% 52% / 1) 50%,
-    hsl(218 22% 52% / 0.28) 78%,
-    hsl(218 22% 52% / 0) 100%
-  );
+  --workspace-resize-line: var(--goose-interactive-hover-border);
+  --workspace-resize-line-active: var(--goose-interactive-selected-fg);
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
@@ -65,22 +51,8 @@
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line: linear-gradient(
-    180deg,
-    hsl(210 18% 92% / 0) 0%,
-    hsl(210 18% 92% / 0.16) 22%,
-    hsl(210 18% 92% / 0.82) 50%,
-    hsl(210 18% 92% / 0.16) 78%,
-    hsl(210 18% 92% / 0) 100%
-  );
-  --workspace-resize-line-active: linear-gradient(
-    180deg,
-    hsl(210 20% 95% / 0) 0%,
-    hsl(210 20% 95% / 0.24) 22%,
-    hsl(210 20% 95% / 0.96) 50%,
-    hsl(210 20% 95% / 0.24) 78%,
-    hsl(210 20% 95% / 0) 100%
-  );
+  --workspace-resize-line: var(--goose-interactive-hover-border);
+  --workspace-resize-line-active: var(--goose-interactive-selected-fg);
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
@@ -105,7 +77,7 @@
   height: 100%;
   width: 100%;
   gap: var(--workspace-sidebar-gap);
-  padding: 10px 10px 0 var(--workspace-stage-pad-left);
+  padding: 10px 10px var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
 }
 
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
@@ -131,6 +103,11 @@
         var(--workspace-sidebar-gap)
     )
   );
+}
+
+/* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
+.electron-titlebar button:not(:hover):not([aria-pressed="true"]):not([data-state="open"]) > svg.lucide {
+  color: hsl(var(--foreground));
 }
 
 .electron-window-controls {
@@ -259,93 +236,52 @@ html[data-sidebar-collapsed] .bn-side-menu {
   background: var(--workspace-main-surface);
   border: 0;
   border-radius: 12px;
-  margin-bottom: var(--workspace-stage-pad-bottom);
   box-shadow: none;
   margin-left: 0;
   overflow: hidden;
 }
 
-/* 历史页交互状态使用扁平选择器：Electron 旧内核不执行 Tailwind v4 的嵌套 hover CSS。 */
-.workspace-shell .history-secondary-control:hover {
-  color: hsl(var(--foreground)) !important;
-  background-color: var(--goose-control-hover-bg) !important;
+/* 历史页与侧栏控件共用方案 1；内部描边不改变行高/点击区域。 */
+.workspace-shell .history-secondary-control:hover:not(:disabled),
+.workspace-shell .history-version-item[data-selected="false"]:hover,
+.workspace-shell .history-star-control:hover:not(:disabled),
+.workspace-shell .sidebar-footer-control:hover:not([data-active="true"]),
+.workspace-shell .goose-page-icon-trigger:hover {
+  color: var(--goose-interactive-hover-fg);
+  background-color: var(--goose-interactive-hover);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
 }
 
-.workspace-shell .history-version-item[data-selected="false"]:hover {
-  color: var(--goose-interactive-selected-fg) !important;
-  background-color: var(--goose-interactive-hover) !important;
-}
-
-.workspace-shell .history-version-item[data-selected="true"] {
-  background-color: var(--goose-interactive-selected) !important;
-}
-
-.workspace-shell .history-version-item[data-selected="true"]:hover {
-  box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-fg) !important;
-}
-
-.workspace-shell .history-version-item[data-selected="true"]:active {
-  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
-}
-
-.workspace-shell .history-version-item:focus-within {
-  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
-}
-
-/* 历史页星标、侧栏底栏图标：hover 与侧栏选中一致（强调底 + 强调色）。 */
-.workspace-shell .history-star-control:hover,
-.workspace-shell .sidebar-footer-control:hover {
-  color: var(--goose-interactive-selected-fg) !important;
-  background-color: var(--goose-interactive-selected) !important;
-}
-
-.workspace-shell .history-secondary-control:active,
+.workspace-shell .history-version-item[data-selected="true"],
+.workspace-shell .history-version-item[data-selected="true"]:hover,
+.workspace-shell .sidebar-footer-control[data-active="true"],
+.workspace-shell .sidebar-footer-control[data-active="true"]:hover,
+.workspace-shell .goose-page-icon-trigger[data-state="open"],
+.workspace-shell .history-primary-control,
+.workspace-shell .history-primary-control:hover:not(:disabled),
+.workspace-shell .history-secondary-control:active:not(:disabled),
 .workspace-shell .sidebar-footer-control:active,
-.workspace-shell .history-star-control:active {
-  color: var(--goose-interactive-selected-fg) !important;
-  background-color: var(--goose-interactive-selected) !important;
-}
-
-.workspace-shell .history-secondary-control:active,
-.workspace-shell .sidebar-footer-control:active {
-  transform: translateY(1px) !important;
-}
-
-.workspace-shell .sidebar-footer-control[data-active="true"]:hover {
-  color: var(--goose-interactive-selected-fg) !important;
-  background-color: var(--goose-interactive-selected) !important;
-  box-shadow: inset 0 0 0 1px var(--goose-interactive-selected-fg) !important;
+.workspace-shell .history-star-control:active:not(:disabled) {
+  color: var(--goose-interactive-selected-fg);
+  background-color: var(--goose-interactive-selected);
+  outline: 1px solid var(--goose-interactive-selected-border);
+  outline-offset: -1px;
 }
 
 .workspace-shell .history-secondary-control:focus-visible,
 .workspace-shell .history-primary-control:focus-visible,
 .workspace-shell .sidebar-footer-control:focus-visible,
-.workspace-shell .history-star-control:focus-visible {
-  outline: none !important;
-  box-shadow: inset 0 0 0 2px var(--goose-interactive-selected-fg) !important;
-}
-
-.workspace-shell .history-primary-control:hover {
-  background-color: var(--goose-primary-hover-bg) !important;
-}
-
-/* Electron 旧内核不执行 Tailwind v4 嵌套 hover：侧栏/顶栏换图标入口。 */
-.workspace-shell .goose-page-icon-trigger:hover,
-.workspace-shell .goose-page-icon-trigger[data-state="open"] {
-  color: var(--goose-interactive-selected-fg);
-  background: var(--goose-interactive-selected);
-}
-
-.workspace-shell .history-primary-control:active {
-  background-color: var(--goose-primary-active-bg) !important;
-  box-shadow: none !important;
-  transform: translateY(1px) !important;
+.workspace-shell .history-star-control:focus-visible,
+.workspace-shell .history-version-item:focus-within {
+  outline: 2px solid var(--goose-interactive-selected-fg);
+  outline-offset: 2px;
 }
 
 .workspace-shell .history-primary-control:disabled {
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-  opacity: 0.5 !important;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .workspace-shell .history-star-control svg {
@@ -365,12 +301,12 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 
 .workspace-shell .history-star-control[data-marked="true"] svg {
-  color: var(--goose-color-favorite) !important;
-  fill: var(--goose-color-favorite) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  fill: currentColor;
 }
 
 .workspace-shell .sidebar-expand-attention {
-  color: hsl(var(--foreground));
+  color: var(--goose-interactive-selected-fg);
   background: var(--goose-interactive-selected);
   animation: sidebar-expand-attention 4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -444,82 +380,13 @@ html[data-sidebar-collapsed] .bn-side-menu {
   overflow-anchor: none;
 }
 
-@keyframes page-menu-text-shimmer {
-  0% {
-    background-position: 115% 50%;
-  }
-  100% {
-    background-position: -15% 50%;
-  }
-}
-
+/* 文案装饰不再拥有彩虹/红色渐变，跟随控件与强调色。 */
 .page-menu-generate-image .page-menu-shimmer-text {
-  color: hsl(var(--foreground));
-}
-
-.page-menu-generate-image:hover .page-menu-shimmer-text,
-.page-menu-generate-image:focus .page-menu-shimmer-text,
-.page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
-  background-image: linear-gradient(
-    105deg,
-    hsl(var(--foreground)) 0%,
-    hsl(var(--foreground)) 10%,
-    hsl(350 70% 64%) 24%,
-    hsl(34 82% 65%) 36%,
-    hsl(144 50% 54%) 48%,
-    hsl(199 68% 60%) 60%,
-    hsl(262 62% 68%) 72%,
-    hsl(350 70% 64%) 84%,
-    hsl(var(--foreground)) 94%,
-    hsl(var(--foreground)) 100%
-  );
-  background-size: 240% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: page-menu-text-shimmer 10s linear infinite;
-  will-change: background-position;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-menu-generate-image:hover .page-menu-shimmer-text,
-  .page-menu-generate-image:focus .page-menu-shimmer-text,
-  .page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
-    animation: none;
-    background-position: 52% 50%;
-  }
-}
-
-@keyframes shortcut-hint-shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 220% 50%;
-  }
+  color: inherit;
 }
 
 .shortcut-capture-hint {
-  color: #ef4444;
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .shortcut-capture-hint {
-    background-image: linear-gradient(
-      90deg,
-      #ef4444 0%,
-      #f87171 36%,
-      #fecaca 50%,
-      #f87171 64%,
-      #ef4444 100%
-    );
-    background-size: 220% 100%;
-    background-position: 0% 50%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: shortcut-hint-shimmer 4.2s linear infinite;
-  }
+  color: var(--goose-interactive-selected-fg);
 }
 
 @keyframes ai-stream-wave-char {
@@ -587,42 +454,21 @@ html[data-sidebar-collapsed] .bn-side-menu {
   }
 }
 
-@keyframes ai-workspace-stream-shimmer {
-  0% {
-    background-position: -200% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
 .ai-workspace-stream-dot {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted-foreground)),
-    #10b981,
-    hsl(var(--muted-foreground))
-  );
-  background-size: 200% 100%;
-  animation:
-    ai-workspace-stream-dot 1.2s ease-in-out infinite,
-    ai-workspace-stream-shimmer 2s linear infinite;
-  will-change: transform, opacity, background-position;
+  background: var(--goose-interactive-selected-fg);
+  animation: ai-workspace-stream-dot 1.2s ease-in-out infinite;
 }
 
 .ai-workspace-stream-label {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted-foreground)) 0%,
-    #10b981 40%,
-    hsl(var(--muted-foreground)) 80%
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: ai-workspace-stream-shimmer 2.5s linear infinite;
-  will-change: background-position;
+  color: var(--goose-interactive-selected-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-workspace-stream-dot,
+  .ai-stream-wave-char,
+  .ai-stream-wave-dot {
+    animation: none;
+  }
 }
 
 @media (max-width: 768px) {

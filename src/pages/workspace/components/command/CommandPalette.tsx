@@ -377,7 +377,7 @@ export function CommandPalette() {
                   // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
                   searchAllNotebooks
                     ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                    : "text-muted-foreground/60 hover:text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)]"
+                    : "text-muted-foreground/60 hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
                 }`}
               >
                 {searchAllNotebooks ? "所有记事本" : currentNotebookName}
@@ -430,16 +430,16 @@ export function CommandPalette() {
                           action.run();
                         });
                       }}
-                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                     >
                       <span className="mr-2 flex h-4 w-4 shrink-0 items-center justify-center">
-                        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]" />
+                        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]" />
                       </span>
                       <span className="min-w-0 flex-1 truncate">
                         {action.label}
                       </span>
                       {shortcut ? (
-                        <span className="ml-3 shrink-0 text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
+                        <span className="ml-3 shrink-0 text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
                           {formatShortcut(shortcut)}
                         </span>
                       ) : null}

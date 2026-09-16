@@ -21,7 +21,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className="h-full bg-primary transition-all"
+          className="h-full bg-[var(--goose-interactive-hover-fg)] transition-all"
           style={{ width: `${clamped}%` }}
         />
       </div>

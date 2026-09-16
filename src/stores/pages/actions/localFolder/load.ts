@@ -27,6 +27,10 @@ import {
   listRecoveryEntries,
 } from "@/lib/storage/recoveryJournal";
 import { restorePendingLocalSave } from "../../folderSync";
+import {
+  appendLocalFolderOrderEntries,
+  ensureLocalFolderOrdersLoaded,
+} from "@/stores/localFolderOrder";
 import { toast } from "@/components/ui/sonner";
 import { getContentSignature } from "@/components/editor/utils/blocknote-content";
 import type { StoreSet, StoreGet } from "../hydrate";
@@ -339,6 +343,11 @@ const loadLocalFolderPagesOnce = async (
       return result;
     });
 
+    // 扫描发现的条目（外部新增 / 移入）追加到所属手动顺序目录末尾。
+    // 只追加不清理：隐藏目录 / 暂时读不到的文件不在 localPages 里，
+    // 按扫描结果清扫会误删合法槽位（应用内移动的旧槽位由 move 路径清）。
+    appendLocalFolderOrderEntries(notebookId, localPages);
+
     let recoveredCount = 0;
     let conflictCount = 0;
     for (const entry of listRecoveryEntries("local-file")) {
@@ -420,6 +429,9 @@ export const loadLocalFolderPagesAction = (
   if (typeof window === "undefined" || !window.gooseFs) {
     return Promise.resolve();
   }
+
+  // 手动排序只存在内存 store 里，进该本地文件夹时读进来，树才能直接按手动顺序渲染
+  ensureLocalFolderOrdersLoaded(notebookId);
 
   const hiddenFolders = [...useSettings.getState().localFolderHiddenFolders];
   const fingerprint = JSON.stringify({
@@ -609,4 +621,7 @@ export const addSingleLocalPageAction = async (
       [pageId]: newPage,
     },
   }));
+
+  // watch 增量新增（外部新建/移入）：进手动顺序目录末尾
+  appendLocalFolderOrderEntries(notebookId, [newPage]);
 };

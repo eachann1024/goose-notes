@@ -5,7 +5,7 @@ import {
   findLastRowAboveY,
   findRowAtY,
   resolveLocalFolderDropParentId,
-  shouldHideSortLineForLocalFolder,
+  shouldHideLocalFolderSortLine,
   type TreeRowDropInfo,
 } from "../../src/pages/workspace/components/sidebar/main-tree/mainTreeDragGeometry";
 
@@ -85,10 +85,39 @@ test("拖动线贴在真实行顶，最后一项之后贴行底", () => {
   expect(dropLineTopPx(0, [], 32)).toBe(0);
 });
 
-test("本地文件夹在目录内隐藏排序线，根级仍可显示", () => {
-  expect(shouldHideSortLineForLocalFolder("plan")).toBe(true);
-  expect(shouldHideSortLineForLocalFolder("root")).toBe(false);
-  expect(shouldHideSortLineForLocalFolder(undefined)).toBe(false);
+test("本地文件夹只在同目录内拖动时显示排序线", () => {
+  // 根级同目录内排序：显示
+  expect(
+    shouldHideLocalFolderSortLine({
+      nestParent: "root",
+      draggedParentId: undefined,
+      isBetweenItems: true,
+    }),
+  ).toBe(false);
+  // 目录内同目录排序：显示
+  expect(
+    shouldHideLocalFolderSortLine({
+      nestParent: "plan",
+      draggedParentId: "plan",
+      isBetweenItems: true,
+    }),
+  ).toBe(false);
+  // 落到别的目录：隐藏（只是移进该目录）
+  expect(
+    shouldHideLocalFolderSortLine({
+      nestParent: "plan",
+      draggedParentId: undefined,
+      isBetweenItems: true,
+    }),
+  ).toBe(true);
+  // 落在行上：隐藏
+  expect(
+    shouldHideLocalFolderSortLine({
+      nestParent: "plan",
+      draggedParentId: "plan",
+      isBetweenItems: false,
+    }),
+  ).toBe(true);
 });
 
 test("主树用整数行高和真实落点，不再靠 mb-0.5 估高", () => {

@@ -103,6 +103,9 @@ test("SideMenu 用 hover 判定挡住 BlockNote 的左右 250px 吸附", () => {
   expect(source).toContain("isTableSideMenuUiTarget");
   expect(source).toContain("keepWhileHidden");
   expect(source).toContain("hoveringEditor || isDragging");
+  expect(source).toContain("onContextMenu={(e) => {");
+  expect(source).toContain("e.preventDefault()");
+  expect(source).toContain("e.stopPropagation()");
   expect(css).toContain(".bn-side-menu::after");
   expect(css).toContain("left: 100%");
   expect(css).toContain('.bn-side-menu[data-heading-gutter="true"]::after');

@@ -45,7 +45,9 @@ import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGr
 import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
 import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
+import { ListTypeGroup } from "@/components/editor/toolbars/formatting/groups/ListTypeGroup";
 import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
+import { getListTypeToolbarState } from "@/components/editor/toolbars/formatting/listType";
 import { canShowAddToChatButton } from "@/components/editor/ai/composer/selectionQuote";
 import { getSelectedImageUrl } from "@/components/editor/utils/selection";
 import { getPageTitle } from "@/components/editor/utils/page-title";
@@ -131,6 +133,7 @@ export function EditorFormattingToolbar() {
   const isScrolling = scrollActivity.isScrolling;
 
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const bindTooltip = useCallback<BindTooltip>(
@@ -215,6 +218,10 @@ export function EditorFormattingToolbar() {
   const isCode = markStates.code;
 
   const textAlignment = caps.textAlignment;
+  const listState = useEditorState({
+    editor,
+    selector: ({ editor }) => getListTypeToolbarState(editor),
+  });
 
   const linkUrl = caps.showLink ? editor.getSelectedLinkUrl() : undefined;
   const isLinkActive = !!linkUrl;
@@ -235,7 +242,7 @@ export function EditorFormattingToolbar() {
   const shouldHideForScroll =
     (!__GOOSE_EDITOR_COMPACT__ && isScrolling) || isContextMenuOpen;
   // While AI is active we keep the toolbar visible regardless of scroll/menu.
-  const shouldHide = !aiActive && shouldHideForScroll;
+  const shouldHide = !aiActive && !colorPickerOpen && shouldHideForScroll;
 
   if (!editor.isEditable) return null;
 
@@ -292,7 +299,9 @@ export function EditorFormattingToolbar() {
             bindTooltip={bindTooltip}
           />
         )}
-        {caps.showColors && <FormattingToolbarColorPicker />}
+        {caps.showColors && (
+          <FormattingToolbarColorPicker onOpenChange={setColorPickerOpen} />
+        )}
       </Fragment>,
     );
   }
@@ -316,6 +325,18 @@ export function EditorFormattingToolbar() {
         setTextAlignment={setTextAlignment}
         bindTooltip={bindTooltip}
       />,
+    );
+  }
+
+  const showList =
+    listState.show &&
+    caps.mode !== "none" &&
+    caps.mode !== "cellText" &&
+    caps.mode !== "cellGrid";
+
+  if (showList) {
+    sections.push(
+      <ListTypeGroup key="list-type" bindTooltip={bindTooltip} />,
     );
   }
 

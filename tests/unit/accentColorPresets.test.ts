@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
-import { ACCENT_COLORS, DEFAULT_ACCENT_COLOR, normalizeAccentColor } from "../../src/stores/settings/types";
+import {
+  ACCENT_COLORS,
+  DEFAULT_ACCENT_COLOR,
+  normalizeAccentColor,
+} from "../../src/stores/settings/types";
 
 const css = readFileSync(
   new URL("../../src/styles/goose-accent-colors.css", import.meta.url),
@@ -15,7 +19,11 @@ const REQUIRED_TOKENS = [
   "--goose-primary-active-bg",
   "--goose-interactive-selected",
   "--goose-interactive-selected-fg",
+  "--goose-interactive-selected-border",
+  "--goose-sidebar-hover",
   "--goose-interactive-hover",
+  "--goose-interactive-hover-fg",
+  "--goose-interactive-hover-border",
   "--goose-icon-chip-on-selected",
   "--goose-inline-code-bg",
   "--goose-inline-code-fg",
@@ -71,7 +79,10 @@ test("强调色 preset 不使用旧 Electron 内核不可靠的颜色语法", ()
 
 test("编辑器与 AI 行内代码都消费强调色 token", () => {
   const editorCss = readFileSync(
-    new URL("../../src/pages/workspace/styles/editor-base/inline.css", import.meta.url),
+    new URL(
+      "../../src/pages/workspace/styles/editor-base/inline.css",
+      import.meta.url,
+    ),
     "utf8",
   );
   const indexCss = readFileSync(
@@ -79,18 +90,17 @@ test("编辑器与 AI 行内代码都消费强调色 token", () => {
     "utf8",
   );
   const aiCss = readFileSync(
-    new URL("../../src/pages/workspace/styles/notebook-ai.css", import.meta.url),
+    new URL(
+      "../../src/pages/workspace/styles/notebook-ai.css",
+      import.meta.url,
+    ),
     "utf8",
   );
 
-  expect(editorCss).toContain(
-    "background-color: var(--goose-inline-code-bg);",
-  );
+  expect(editorCss).toContain("background-color: var(--goose-inline-code-bg);");
   expect(editorCss).toContain("color: var(--goose-inline-code-fg);");
   expect(editorCss).toContain("[data-goose-inline-code-content]");
-  expect(indexCss).toContain(
-    "background-color: var(--goose-inline-code-bg);",
-  );
+  expect(indexCss).toContain("background-color: var(--goose-inline-code-bg);");
   expect(indexCss).toContain("color: var(--goose-inline-code-fg);");
   expect(indexCss).not.toMatch(
     /\.ai-markdown[\s\S]*code:not\(pre > code\)[\s\S]*hsl\(220/,
@@ -138,7 +148,9 @@ test("深色行内代码 token 足够有色相和底色", () => {
     const fg = getToken(rule, "--goose-inline-code-fg");
     expect(bg, `${name} dark bg too faint`).not.toMatch(/0\.14\)/);
     expect(fg, `${name} dark fg must not be mono gray`).not.toBe("#f5f5f5");
-    expect(fg, `${name} dark fg must be hex color`).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(fg, `${name} dark fg must be hex color`).toMatch(
+      /^#[0-9a-fA-F]{6}$/,
+    );
   }
 
   expect(getToken(irisDark, "--goose-inline-code-fg")).toBe("#c7d2fe");
@@ -146,7 +158,9 @@ test("深色行内代码 token 足够有色相和底色", () => {
   expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#4a3b24");
   expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#fde68a");
   expect(getToken(roseDark, "--goose-inline-code-fg")).toBe("#fecdd3");
-  expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(/^#f[a-f0-9]{5}$/i);
+  expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(
+    /^#f[a-f0-9]{5}$/i,
+  );
   expect(getToken(monoDark, "--goose-inline-code-bg")).not.toBe("");
 });
 
@@ -166,9 +180,9 @@ test("深色 fallback 行内代码跟随选中表面，不再硬编码 iris", ()
   );
   expect(darkSection).not.toContain("--goose-inline-code-bg: #3d3e64;");
   expect(darkSection).not.toContain("--goose-inline-code-fg: #c7d2fe;");
-  expect(darkSection).toContain(
-    "--goose-interactive-hover: var(--goose-interactive-selected);",
-  );
+  expect(darkSection).toContain("--goose-interactive-hover: #2c293d;");
+  expect(darkSection).toContain("--goose-interactive-hover-fg: #a5b4fc;");
+  expect(darkSection).toContain("--goose-interactive-hover-border: #9484e5;");
   expect(darkSection).toContain(
     "--goose-icon-chip-on-selected: var(--goose-interactive-selected);",
   );
@@ -179,7 +193,7 @@ test("深色 accent 选择器绑定在 :root.dark 上提高匹配确定性", () 
   expect(css).not.toMatch(/(?<!:root)\.dark\[data-goose-accent=/);
 });
 
-test("hover 与图标底都跟选中表面同步", () => {
+test("八组 hover 与侧栏浅染底、前景和描边完全同步", () => {
   for (const accentColor of ACCENT_COLORS) {
     for (const selector of [
       `:root[data-goose-accent="${accentColor}"]`,
@@ -189,7 +203,15 @@ test("hover 与图标底都跟选中表面同步", () => {
       expect(
         getToken(rule, "--goose-interactive-hover"),
         `${selector} hover`,
-      ).toBe("var(--goose-interactive-selected)");
+      ).toBe(getToken(rule, "--goose-sidebar-hover"));
+      expect(
+        getToken(rule, "--goose-interactive-hover-fg"),
+        `${selector} fg`,
+      ).toBe(getToken(rule, "--goose-interactive-selected-fg"));
+      expect(
+        getToken(rule, "--goose-interactive-hover-border"),
+        `${selector} border`,
+      ).toBe(getToken(rule, "--goose-interactive-selected-border"));
       expect(
         getToken(rule, "--goose-icon-chip-on-selected"),
         `${selector} chip`,
@@ -201,7 +223,13 @@ test("hover 与图标底都跟选中表面同步", () => {
     for (const isDark of [false, true]) {
       const tokens = resolveAccentRuntimeTokens(accentColor, isDark);
       expect(tokens["--goose-interactive-hover"]).toBe(
-        tokens["--goose-interactive-selected"],
+        tokens["--goose-sidebar-hover"],
+      );
+      expect(tokens["--goose-interactive-hover-fg"]).toBe(
+        tokens["--goose-interactive-selected-fg"],
+      );
+      expect(tokens["--goose-interactive-hover-border"]).toBe(
+        tokens["--goose-interactive-selected-border"],
       );
       expect(tokens["--goose-icon-chip-on-selected"]).toBe(
         tokens["--goose-interactive-selected"],
@@ -212,7 +240,10 @@ test("hover 与图标底都跟选中表面同步", () => {
 
 test("跨块选区只给文字节点上色，块壳 ::selection 保持透明", () => {
   const shellCss = readFileSync(
-    new URL("../../src/pages/workspace/styles/editor-base/shell.css", import.meta.url),
+    new URL(
+      "../../src/pages/workspace/styles/editor-base/shell.css",
+      import.meta.url,
+    ),
     "utf8",
   );
   const shellTransparent = shellCss.match(
@@ -228,7 +259,9 @@ test("跨块选区只给文字节点上色，块壳 ::selection 保持透明", (
 
   expect(css).toContain(".bn-inline-content::selection");
   expect(css).toContain(".bn-inline-content *::selection");
-  expect(css).toContain('.bn-block-content[data-content-type="codeBlock"] pre::selection');
+  expect(css).toContain(
+    '.bn-block-content[data-content-type="codeBlock"] pre::selection',
+  );
   expect(css).not.toMatch(
     /:root\[data-goose-accent="[a-z]+"\] \.goose-blocknote-editor ::selection/,
   );
@@ -236,4 +269,80 @@ test("跨块选区只给文字节点上色，块壳 ::selection 保持透明", (
     /:root\[data-goose-accent="[a-z]+"\] \.bn-editor ::selection/,
   );
   expect(css).not.toContain(".bn-inline-content ::selection");
+});
+
+test("方案 1：静态与运行时令牌一致，黑白无彩色，文字和描边保持对比", () => {
+  const luminance = (hex: string) =>
+    hex
+      .slice(1)
+      .match(/../g)!
+      .map((c) => parseInt(c, 16) / 255)
+      .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+      .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const contrast = (a: string, b: string) =>
+    (Math.max(luminance(a), luminance(b)) + 0.05) /
+    (Math.min(luminance(a), luminance(b)) + 0.05);
+  const keys = [
+    "--goose-interactive-selected",
+    "--goose-interactive-selected-fg",
+    "--goose-interactive-selected-border",
+    "--goose-sidebar-hover",
+    "--goose-interactive-hover",
+    "--goose-interactive-hover-fg",
+    "--goose-interactive-hover-border",
+  ];
+  for (const accent of ACCENT_COLORS) {
+    for (const dark of [false, true]) {
+      const tokens = resolveAccentRuntimeTokens(accent, dark);
+      const rule = getRule(
+        `:root${dark ? ".dark" : ""}[data-goose-accent="${accent}"]`,
+      );
+      for (const key of keys) {
+        expect(getToken(rule, key), `${accent}/${dark}/${key}`).toBe(
+          tokens[key],
+        );
+        expect(tokens[key]).toMatch(/^#[a-f0-9]{6}$/);
+        if (accent === "mono")
+          expect(new Set(tokens[key].slice(1).match(/../g)).size).toBe(1);
+      }
+      expect(contrast(tokens[keys[0]], tokens[keys[1]])).toBeGreaterThanOrEqual(
+        4.5,
+      );
+      expect(contrast(tokens[keys[0]], tokens[keys[2]])).toBeGreaterThanOrEqual(
+        3,
+      );
+      expect(tokens[keys[3]]).not.toBe(tokens[keys[0]]);
+      expect(tokens[keys[4]]).toBe(tokens[keys[3]]);
+      expect(tokens[keys[5]]).toBe(tokens[keys[1]]);
+      expect(tokens[keys[6]]).toBe(tokens[keys[2]]);
+    }
+  }
+  expect(resolveAccentRuntimeTokens("ocean", false)).toMatchObject({
+    "--goose-interactive-selected": "#e5edfc",
+    "--goose-interactive-selected-fg": "#214fae",
+    "--goose-interactive-selected-border": "#547dd0",
+    "--goose-sidebar-hover": "#eef3fc",
+  });
+  const dnd = readFileSync(
+    "src/pages/workspace/styles/sidebar-dnd.css",
+    "utf8",
+  );
+  for (const key of [
+    "accent",
+    "accent-soft",
+    "accent-medium",
+    "accent-ring",
+    "overlay-border",
+  ]) {
+    expect(dnd).toMatch(
+      new RegExp(`--sidebar-dnd-${key}: var\\(--goose-interactive-`),
+    );
+    expect(dnd.match(new RegExp(`--sidebar-dnd-${key}:`, "g"))).toHaveLength(1);
+  }
+  expect(dnd).toContain(".main-tree-row--selected::after");
+  expect(dnd).toContain(".sidebar-tree-row--selected::after");
+  expect(dnd).toContain(
+    "border: 1px solid var(--goose-interactive-selected-border)",
+  );
+  expect(dnd).toContain("border-style: dashed");
 });

@@ -13,7 +13,10 @@ import {
   type BlockHit,
 } from "./crossBlockDeleteExtension";
 import { isGeneratedDataImageName } from "../blocks/image/imageCaption";
-import { serializeDocRangePlainText } from "../utils/clipboard";
+import {
+  serializeDocRangePlainText,
+  serializeSlicePlainText,
+} from "../utils/clipboard";
 
 const PLUGIN_KEY = new PluginKey("goose-copy-current-block");
 
@@ -122,15 +125,29 @@ export function normalizeBlockNoteClipboardHtml(html: string): string {
   return document.body.innerHTML === before ? html : document.body.innerHTML;
 }
 
+function copySelectionPlainText(
+  state: EditorState,
+  blockSelection: NodeSelection | Slice,
+): string {
+  if (blockSelection instanceof NodeSelection) {
+    return serializeDocRangePlainText(
+      state.doc,
+      blockSelection.from,
+      blockSelection.to,
+    );
+  }
+  return serializeSlicePlainText(blockSelection);
+}
+
 /**
- * 解析 copy 时应走的块级选区：显式 NodeSelection、或刚好覆盖完整 blockContainer 的文本选区。
- * 折叠光标返回 null（copy handler 应 preventDefault，不写剪贴板）。
+ * 解析 copy 时应走的块级选区：折叠光标提升为当前块、显式 NodeSelection、
+ * 或刚好覆盖完整 blockContainer 的文本选区。部分文本选区返回 null，交给默认 copy。
  */
 export function resolveCopyBlockSelection(
   state: EditorState,
 ): NodeSelection | Slice | null {
   const { selection } = state;
-  if (selection.empty) return null;
+  if (selection.empty) return getCurrentBlockNodeSelection(state);
 
   if (selection instanceof NodeSelection) {
     if (selection.node.type.name === "blockContainer") return selection;
@@ -173,11 +190,6 @@ export const gooseCopyCurrentBlockExtension = createExtension({
             if (!clipboard) return false;
 
             const { state } = view;
-            if (state.selection.empty) {
-              event.preventDefault();
-              return true;
-            }
-
             const blockSelection = resolveCopyBlockSelection(state);
             if (!blockSelection) return false;
 
@@ -196,11 +208,7 @@ export const gooseCopyCurrentBlockExtension = createExtension({
             clipboard.setData("text/html", dom.innerHTML);
             clipboard.setData(
               "text/plain",
-              serializeDocRangePlainText(
-                state.doc,
-                state.selection.from,
-                state.selection.to,
-              ),
+              copySelectionPlainText(state, blockSelection),
             );
             clipboard.setData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME, "1");
             return true;

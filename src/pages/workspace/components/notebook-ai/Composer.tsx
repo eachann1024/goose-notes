@@ -505,7 +505,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
                     "text-muted-foreground transition-colors duration-150",
-                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                    "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                     "disabled:cursor-not-allowed disabled:opacity-40",
                     isStreaming && "invisible pointer-events-none",
@@ -560,7 +560,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               <span ref={sendWrapRef} className="flex shrink-0 items-center">
                 {isStreaming ? (
                   <ComposerPrimitive.Cancel
-                    className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#f4f4f5] dark:text-[#171717]"
+                    className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--goose-color-danger-subtle-bg)] text-[var(--goose-color-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                     aria-label="停止生成"
                     title="停止生成"
                   >
@@ -577,7 +577,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                     onClick={handleSubmit}
                     disabled={!canClickSend}
                     className={cn(
-                      "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white dark:bg-[#f4f4f5] dark:text-[#171717]",
+                      "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                       !sendLooksReady && "cursor-not-allowed opacity-35",
                     )}
                     aria-label="发送消息"

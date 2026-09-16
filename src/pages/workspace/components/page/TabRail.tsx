@@ -25,7 +25,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AiGradientIcon } from "@/components/ui/ai-gradient-icon";
+import { Sparkles } from "lucide-react";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { getPageTitle } from "@/components/editor/utils/page-title";
@@ -220,7 +220,7 @@ function SortableTabItem({
             }
           }}
           className={cn(
-            "group relative @container flex items-center gap-1 px-2 text-sm",
+            "goose-interactive group relative @container flex items-center gap-1 px-2 text-sm",
             tabRailItemClassName(tabCount),
             tab.preview && "italic",
             isDragging && "opacity-60",
@@ -260,8 +260,8 @@ function SortableTabItem({
                   className={cn(
                     "hidden h-5 w-5 shrink-0 rounded-md p-0 transition-colors @[64px]:group-hover:flex",
                     isActive
-                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]"
-                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
@@ -341,7 +341,7 @@ interface TabRailProps {
 }
 
 const actionButtonClass =
-  "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-selected-fg)]";
+  "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-selected-fg)]";
 
 export function TabRail({
   variant,
@@ -354,7 +354,6 @@ export function TabRail({
   showAiOnTabRail = false,
 }: TabRailProps) {
   const aiPhase = useAiStatus((state) => state.phase);
-  const aiDoneToken = useAiStatus((state) => state.doneToken);
   const getPage = usePages((s) => s.getPage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const {
@@ -667,11 +666,7 @@ export function TabRail({
                 aria-label={aiPanelOpen ? "关闭 AI" : "打开 AI"}
                 aria-pressed={aiPanelOpen}
               >
-                <AiGradientIcon
-                  key={aiPhase === "done" ? `done-${aiDoneToken}` : aiPhase}
-                  className="h-4 w-4"
-                  state={aiPhase}
-                />
+                <Sparkles className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
@@ -732,7 +727,7 @@ export function TabRail({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]"
+                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   onClick={onOpenSearch}
                 >
                   <LucideIcons.Plus className="h-4 w-4" />
@@ -748,7 +743,7 @@ export function TabRail({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
                   aria-label="全部标签页"
                 >
                   <LucideIcons.ChevronDown
@@ -778,8 +773,9 @@ export function TabRail({
                   return (
                     <DropdownMenuItem
                       key={tab.id}
+                      aria-selected={isActive}
                       className={cn(
-                        "flex items-center gap-2 text-[13px]",
+                        "goose-interactive flex items-center gap-2 text-[13px]",
                         isActive &&
                           "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]",
                       )}

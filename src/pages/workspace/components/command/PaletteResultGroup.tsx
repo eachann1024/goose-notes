@@ -17,7 +17,7 @@ function BreadcrumbPath({
   if (parts.length === 0) {
     if (!fallback) return null;
     return (
-      <span className="shrink-0 text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
+      <span className="shrink-0 text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
         {fallback}
       </span>
     );
@@ -29,13 +29,13 @@ function BreadcrumbPath({
           {i > 0 && (
             <span
               aria-hidden="true"
-              className="text-muted-foreground/60 text-[10px] shrink-0 group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]"
+              className="text-muted-foreground/60 text-[10px] shrink-0 group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]"
             >
               ›
             </span>
           )}
           <span
-            className={`truncate text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)] ${i === 0 ? "font-medium" : ""}`}
+            className={`truncate text-xs text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)] ${i === 0 ? "font-medium" : ""}`}
           >
             {part}
           </span>
@@ -46,7 +46,7 @@ function BreadcrumbPath({
 }
 
 const MARK_CLASS =
-  "rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]";
+  "rounded-[4px] bg-[hsl(var(--goose-selected-bg))] px-0.5 text-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]";
 
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -159,7 +159,7 @@ export function PaletteResultGroup({
                     e.stopPropagation();
                     onHideRecent();
                   }}
-                  className="p-0.5 rounded hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer transition-colors"
+                  className="p-0.5 rounded hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] cursor-pointer transition-colors"
                 >
                   <X
                     aria-hidden="true"
@@ -178,7 +178,7 @@ export function PaletteResultGroup({
                   onSelect={() => {
                     onOpenPage(page, null);
                   }}
-                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                  className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                 >
                   <div className="mr-2 h-4 w-4 shrink-0 flex items-center justify-center relative group/icon">
                     <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-200 group-hover/icon:opacity-0 group-focus-within/icon:opacity-0">
@@ -196,7 +196,7 @@ export function PaletteResultGroup({
                         e.stopPropagation();
                         onRemoveRecent(page.id);
                       }}
-                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
+                      className="absolute inset-0 h-4 w-4 cursor-pointer rounded flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/icon:opacity-100 focus-visible:opacity-100 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_svg]:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)]"
                     >
                       <X
                         aria-hidden="true"
@@ -234,7 +234,7 @@ export function PaletteResultGroup({
                   const highlightQuery = searchQuery.trim() || null;
                   onOpenPage(page, highlightQuery);
                 }}
-                className="group relative flex cursor-pointer select-none items-start rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                className="group relative flex cursor-pointer select-none items-start rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
               >
                 <span className="mr-2 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
                   {renderPageIcon(page)}
@@ -250,7 +250,7 @@ export function PaletteResultGroup({
                     <BreadcrumbPath parts={breadcrumb.slice(0, -1)} />
                   </div>
                   {searchResults.hasQuery && page.contentSnippet && (
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate group-hover:text-[var(--goose-interactive-selected-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]">
                       <HighlightText
                         text={page.contentSnippet}
                         query={searchQuery}

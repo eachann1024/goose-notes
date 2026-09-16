@@ -44,14 +44,15 @@ test("仓库切换菜单宽度跟随触发条", () => {
     ),
     "utf8",
   );
-  expect(switcher).toContain("w-[var(--goose-popover-trigger-width)]");
+  expect(switcher).toContain("w-[calc(var(--goose-popover-trigger-width)+14px)]");
   expect(readFileSync("src/components/ui/popover.tsx", "utf8")).toMatch(
     /style\.setProperty\(\s*"--goose-popover-trigger-width",\s*`\$\{rects\.reference\.width\}px`/,
   );
-  expect(switcher).toContain("min-w-[13.75rem]");
-  expect(switcher).toContain("minWidth: 220");
+  expect(switcher).not.toContain("min-w-[13.75rem]");
+  expect(switcher).not.toContain("minWidth: 220");
   expect(switcher).toContain('side="top"');
-  expect(switcher).toContain("data-[side=top]:before:-bottom-2");
+  expect(switcher).toContain('className="goose-notebook-shell"');
+  expect(switcher).not.toContain("data-[side=top]:before:-bottom-2");
   expect(switcher).toContain("onOpenSettings()");
   expect(switcher).toContain("onClick={toggleDarkMode}");
   const titleBar = readFileSync(

@@ -25,7 +25,10 @@ import {
   pasteLinesAsBlocks,
   shouldPasteHtmlAsBlocks,
 } from "@/components/editor/hooks/useEditorPaste";
-import { GOOSE_BLOCKNOTE_BLOCK_COPY_MIME } from "@/components/editor/extensions/copyCurrentBlockExtension";
+import {
+  GOOSE_BLOCKNOTE_BLOCK_COPY_MIME,
+  resolveCopyBlockSelection,
+} from "@/components/editor/extensions/copyCurrentBlockExtension";
 import {
   getEditorSelectionPlainText,
   looksLikeMarkdownFragment,
@@ -56,6 +59,7 @@ const CONTEXT_MENU_EXCLUDED_BLOCK_TYPES = new Set([
 ]);
 
 function isExcludedBlockTarget(target: HTMLElement): boolean {
+  if (target.closest(".bn-side-menu")) return true;
   const blockContent = target.closest(".bn-block-content");
   if (!blockContent) return false;
   const contentType = (blockContent as HTMLElement).dataset.contentType ?? "";
@@ -102,6 +106,7 @@ export function EditorContextMenu({
 }: EditorContextMenuProps) {
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
   const [selectedText, setSelectedText] = useState("");
+  const [canCopy, setCanCopy] = useState(false);
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
@@ -135,6 +140,14 @@ export function EditorContextMenu({
     const trimmedText = text.trim();
     setSelectedText(trimmedText);
     selectedTextRef.current = trimmedText;
+    let copyable = Boolean(trimmedText);
+    try {
+      copyable =
+        copyable || Boolean(resolveCopyBlockSelection(editor.prosemirrorState));
+    } catch {
+      /* ignore */
+    }
+    setCanCopy(copyable);
 
     if (showSelectionImageExport) {
       const blocks = getEditorSelectedBlocksForExport(editor);
@@ -238,13 +251,21 @@ export function EditorContextMenu({
   }, [editable, editor]);
 
   const handleCopySelection = useCallback(() => {
+    try {
+      editor.focus();
+    } catch {
+      /* ignore */
+    }
+    if (typeof document !== "undefined" && document.execCommand("copy")) {
+      return;
+    }
     let text = selectedTextRef.current;
     try {
       text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
     } catch {
       /* ignore */
     }
-    void platform.clipboard.copyText(text);
+    if (text) void platform.clipboard.copyText(text);
   }, [editor, platform]);
 
   const handleCutSelection = useCallback(() => {
@@ -377,7 +398,7 @@ export function EditorContextMenu({
             </ContextMenuItem>
           )}
           <ContextMenuItem
-            disabled={!selectedText}
+            disabled={!canCopy}
             onSelect={handleCopySelection}
           >
             <LucideIcons.Copy className="mr-2 h-4 w-4" />

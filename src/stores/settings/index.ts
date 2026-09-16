@@ -161,9 +161,6 @@ export const useSettings = create<SettingsState>()(
         if (state && typeof state.defaultCodeBlockWrap !== "boolean") {
           useSettings.setState({ defaultCodeBlockWrap: false });
         }
-        if (state && typeof state.hideExpandArrows !== "boolean") {
-          useSettings.setState({ hideExpandArrows: false });
-        }
         if (state && typeof state.randomIconOnCreate !== "boolean") {
           useSettings.setState({ randomIconOnCreate: true });
         }

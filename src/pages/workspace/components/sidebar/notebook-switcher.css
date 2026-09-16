@@ -1,8 +1,75 @@
-/* Match PageMenu's surface and preserve its shadow through Radix autofocus. */
+/* 原入口仍在原位；单一外壳覆盖入口与浮层，不参与布局。 */
+.sidebar-notebook-trigger {
+  position: relative;
+  isolation: isolate;
+}
+
+.sidebar-notebook-trigger[data-present="true"] {
+  /* 高于树行及拖放提示（z-20/21），让单一外壳挡住底下的文字和图标。 */
+  z-index: 30;
+}
+
+.goose-notebook-shell {
+  position: absolute;
+  z-index: -2;
+  pointer-events: none;
+  box-sizing: border-box;
+  top: var(--notebook-shell-top);
+  left: var(--notebook-shell-left);
+  width: var(--notebook-shell-width);
+  height: var(--notebook-shell-height);
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: var(--goose-menu-radius);
+  background-color: hsl(var(--goose-menu-surface));
+  box-shadow: var(--goose-menu-shadow);
+}
+
+.sidebar-notebook-trigger[data-present="false"] .goose-notebook-shell {
+  visibility: hidden;
+}
+
+/* Keyboard opens are immediate; reduced motion preserves only the fade. */
+.sidebar-notebook-trigger[data-motion="instant"] .goose-notebook-shell,
+.sidebar-notebook-trigger[data-motion="reduced"] .goose-notebook-shell {
+  transform: scaleY(1) !important;
+}
+
+.sidebar-notebook-trigger[data-motion="instant"] .goose-notebook-shell {
+  opacity: 1 !important;
+}
+
+.sidebar-notebook-trigger[data-present="true"]::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--goose-interactive-hover);
+}
+
+.goose-notebook-menu-surface.goose-floating-surface {
+  /* 透明边框保留定位尺寸，实际边框只由单一外壳绘制。 */
+  border-color: transparent;
+  background-color: transparent;
+  padding: 6px;
+}
+
 @layer properties {
-  .goose-notebook-menu-surface,
-  .goose-notebook-menu-surface:focus,
-  .goose-notebook-menu-surface:focus-visible {
-    box-shadow: var(--goose-menu-shadow) !important;
+  .sidebar-notebook-trigger:focus-visible,
+  .goose-notebook-row:focus-visible {
+    outline: 1px solid currentColor !important;
+    outline-offset: -2px !important;
+  }
+
+  .sidebar-notebook-trigger[data-state="open"],
+  .goose-notebook-menu-surface.goose-floating-surface,
+  .goose-notebook-menu-surface.goose-floating-surface:focus,
+  .goose-notebook-menu-surface.goose-floating-surface:focus-visible {
+    box-shadow: none !important;
+  }
+
+  .goose-notebook-row button:focus-visible {
+    box-shadow: inset 0 0 0 1px currentColor !important;
   }
 }

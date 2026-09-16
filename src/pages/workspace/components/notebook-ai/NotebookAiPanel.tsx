@@ -70,6 +70,7 @@ import {
 import type { NotebookAiImageAttachment } from "./Composer";
 import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { cn } from "@/lib/utils";
 import { readEditorScale } from "./artifactPanZoomScale";
 import { FOCUS_AI_COMPOSER_EVENT } from "@/components/editor/ai/composer/selectionQuote";
@@ -319,6 +320,29 @@ export function NotebookAiPanel({
     [onClose],
   );
 
+  // 全屏覆盖主区：Esc 在输入框失焦（点消息、侧栏、空白）后仍须退出。
+  // ChatChrome onKeyDown 只在焦点位于面板子树时冒泡；Composer onEscape 只在输入框内。
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isImeKeyboardEvent(event)) return;
+      if (
+        document.querySelector(
+          '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+        )
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen, onClose]);
+
   const composerPlaceholder = unavailableReason
     ? "请先在设置中配置 AI 模型"
     : isBusy
@@ -380,7 +404,7 @@ export function NotebookAiPanel({
   // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
     const iconBtn =
-      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-icon-chip-on-selected)] hover:text-[var(--goose-interactive-selected-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-icon-chip-on-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]";
+      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-interactive-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]";
     return (
       <div
         className="flex items-center gap-0.5"

@@ -55,8 +55,24 @@ export function dropLineTopPx(
   return last + lastRowHeight;
 }
 
-export function shouldHideSortLineForLocalFolder(
-  parentItem: string | undefined | null,
-): boolean {
-  return !!parentItem && parentItem !== "root";
+/**
+ * 本地文件夹落线是否隐藏：只有同目录内的拖动才会改变顺序（落点 = 插入位置），
+ * 其余落点（落在行上 / 落到别的目录）都只是「把条目移进某个目录」，
+ * 顺序由名称排序或手动顺序末尾决定，画落线反而误导。
+ */
+export function shouldHideLocalFolderSortLine({
+  nestParent,
+  draggedParentId,
+  isBetweenItems,
+}: {
+  /** 本次拖动将要落进的目录（captured 优先，否则 rct 给的 parentItem） */
+  nestParent: string | undefined | null;
+  /** 被拖条目当前所在目录；无拖动中条目时 undefined */
+  draggedParentId: string | undefined;
+  isBetweenItems: boolean;
+}): boolean {
+  if (!isBetweenItems) return true;
+  const targetDirId =
+    nestParent === "root" ? undefined : (nestParent ?? undefined);
+  return targetDirId !== draggedParentId;
 }

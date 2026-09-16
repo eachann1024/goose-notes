@@ -43,6 +43,14 @@ type TableExtendButtonProps = {
   hideOtherElements: (hide: boolean) => void;
 };
 
+const CHROME_HIDDEN_CLASS = "goose-table-chrome-hidden";
+
+/** BlockNote 的 hideOtherElements 只管自家手柄，加号按钮是 portal，
+ * 只能靠根节点 class 在菜单打开期间藏掉，否则会在菜单边缘露出被裁切的圆环。 */
+function setTableChromeHidden(hidden: boolean) {
+  document.documentElement.classList.toggle(CHROME_HIDDEN_CLASS, hidden);
+}
+
 const roundTableExtendDelta = (value: number, margin = 0.3) => {
   const lowerBound = Math.floor(value) + margin;
   const upperBound = Math.ceil(value) - margin;
@@ -334,10 +342,14 @@ export function GooseTableHandle({
 
   const closeMenu = useCallback(() => {
     setOpen(false);
+    setTableChromeHidden(false);
     tableHandles?.unfreezeHandles();
     hideOtherElements(false);
     editor.focus();
   }, [editor, hideOtherElements, tableHandles]);
+
+  // 卸载兜底：菜单打开时手柄被移除也要复位，否则加号永久隐身。
+  useEffect(() => () => setTableChromeHidden(false), []);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
@@ -505,6 +517,7 @@ export function GooseTableHandle({
       open={open}
       onOpenChange={(open) => {
         setOpen(open);
+        setTableChromeHidden(open);
         if (open) {
           tableHandles?.freezeHandles();
           hideOtherElements(true);
@@ -578,7 +591,10 @@ export function GooseTableHandle({
               </>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleDelete}>
+            <DropdownMenuItem
+              className="goose-menu-item-danger"
+              onSelect={handleDelete}
+            >
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除行
             </DropdownMenuItem>
           </>
@@ -599,7 +615,10 @@ export function GooseTableHandle({
               <LucideIcons.ArrowRight className="mr-2 h-4 w-4" /> 右侧添加列
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleDelete}>
+            <DropdownMenuItem
+              className="goose-menu-item-danger"
+              onSelect={handleDelete}
+            >
               <LucideIcons.Trash2 className="mr-2 h-4 w-4" /> 删除列
             </DropdownMenuItem>
           </>

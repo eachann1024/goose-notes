@@ -18,15 +18,14 @@ import type {
 } from "react-complex-tree";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "../SidebarContextMenu";
-import { IconSelector } from "../../shared/IconSelector";
 import {
-  canCustomizePageIcon,
+  isSidebarFolderRow,
   LocalFileIcon,
+  shouldShowEmptyFolderPlaceholder,
   shouldShowFolderExpandArrow,
 } from "../local-file-icon";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
-import { useSettings } from "@/stores/useSettings";
 import { toggleSidebarFolder } from "@/stores/useSidebarView";
 import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
 import { isElectronHost } from "@/lib/local-vault";
@@ -35,7 +34,7 @@ import { setLocalFolderFileDropTarget } from "@/lib/local-folder-file-drop-targe
 import {
   MAIN_TREE_INDENT,
   MAIN_TREE_ROW_PADDING_LEFT,
-  shouldHideSortLineForLocalFolder,
+  shouldHideLocalFolderSortLine,
 } from "./mainTreeDragGeometry";
 import { MainTreeRowDisclosure, MainTreeRowShell } from "./MainTreeRowShell";
 import {
@@ -46,6 +45,8 @@ import {
 
 const INDENT = MAIN_TREE_INDENT;
 const ROW_PADDING_LEFT = MAIN_TREE_ROW_PADDING_LEFT;
+/** 子行标题相对父行的左偏移：箭头槽（ml-1.5 + w-5 + gap-0.5）+ 图标槽（w-5 + mr-0.5） */
+const CHILD_TITLE_OFFSET = 6 + 20 + 2 + 20 + 2;
 let activeMainTreeDragId: string | null = null;
 
 function TreeRowIcon({
@@ -53,7 +54,6 @@ function TreeRowIcon({
   isLocalFolder,
   isRenaming,
   hasChildren,
-  hideExpandArrows,
   isExpanded,
   onToggleExpanded,
 }: {
@@ -61,13 +61,18 @@ function TreeRowIcon({
   isLocalFolder: boolean;
   isRenaming: boolean;
   hasChildren: boolean;
-  hideExpandArrows: boolean;
   isExpanded: boolean;
   onToggleExpanded: () => void;
 }) {
   const iconName = usePages((s) => {
     const live = s.pages[page.id];
     return live ? live.icon : page?.icon;
+  });
+  // 文件与文件夹均显示图标，只有文件夹图标负责展开。
+  const isFolderRow = isSidebarFolderRow({
+    isFolder: !!page.isFolder,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
   });
   const renderedIcon = (
     <LocalFileIcon
@@ -78,97 +83,46 @@ function TreeRowIcon({
       isExpanded={isExpanded}
     />
   );
-  const canCustomize = canCustomizePageIcon(page, isLocalFolder);
-  const showExpandControl = shouldShowFolderExpandArrow({
-    isFolder: !!page.isFolder,
-    hasChildren,
-    isLocalNotebook: isLocalFolder,
-  });
 
-  const stopBubble = {
-    onPointerDown: (e: PointerEvent) => {
-      e.stopPropagation();
-    },
-    onMouseDown: (e: MouseEvent) => e.stopPropagation(),
-    onDoubleClick: (e: MouseEvent) => e.stopPropagation(),
-    onDragStart: (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    },
+  const toggleFromPointer = (e: PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.button !== 0 || e.ctrlKey) return;
+    onToggleExpanded();
+  };
+  const toggleFromClick = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 键盘激活的 click 才补一次；指针已在 pointerdown 翻转，避免连点打成同向两次。
+    if (e.detail === 0) onToggleExpanded();
+  };
+  const stopDoubleClick = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const blockDragStart = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
-  if (hideExpandArrows && showExpandControl && !isRenaming) {
+  // 文件夹图标就是展开控件，换图标走右键菜单。
+  if (isFolderRow && !isRenaming) {
     return (
       <button
         type="button"
-        className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
+        className="main-tree-folder-icon group/folder-icon relative z-10 flex items-center justify-center h-5 w-5 shrink-0 mr-0.5 rounded-[6px] cursor-pointer transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
         draggable={false}
         aria-label={isExpanded ? "折叠子项" : "展开子项"}
         aria-expanded={isExpanded}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.button !== 0 || e.ctrlKey) return;
-          onToggleExpanded();
-        }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          // 键盘激活的 click 才补一次；指针已在 pointerdown 翻转，避免连点打成同向两次。
-          if (e.detail === 0) onToggleExpanded();
-        }}
-        onDoubleClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onDragStart={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        onPointerDown={toggleFromPointer}
+        onClick={toggleFromClick}
+        onDoubleClick={stopDoubleClick}
+        onDragStart={blockDragStart}
       >
-        <span className="flex h-4 w-4 items-center justify-center transition-opacity duration-150 group-hover/main-row:opacity-0 group-focus-visible/hidden-toggle:opacity-0">
+        <span className="flex h-4 w-4 items-center justify-center">
           {renderedIcon}
         </span>
-        <LucideIcons.ChevronRight
-          className={cn(
-            "pointer-events-none absolute h-3.5 w-3.5 text-muted-foreground/80 opacity-0 transition-[opacity,transform] duration-150 group-hover/main-row:opacity-100 group-focus-visible/hidden-toggle:opacity-100",
-            isExpanded && "rotate-90",
-          )}
-        />
       </button>
-    );
-  }
-
-  if (canCustomize && !isRenaming) {
-    return (
-      <IconSelector
-        value={iconName}
-        onChange={(newIcon) =>
-          usePages.getState().updatePage(page.id, { icon: newIcon })
-        }
-      >
-        <button
-          type="button"
-          className="goose-page-icon-trigger relative z-10 flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] transition-colors cursor-pointer shrink-0 mr-0.5"
-          draggable={false}
-          {...stopBubble}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <div className="flex h-4 w-4 items-center justify-center">
-            {renderedIcon}
-          </div>
-        </button>
-      </IconSelector>
-    );
-  }
-
-  if (isLocalFolder && page.isFolder && !hideExpandArrows) {
-    return (
-      <div className="main-tree-local-folder-icon flex items-center justify-center h-5 w-5 shrink-0 mr-0.5">
-        {renderedIcon}
-      </div>
     );
   }
 
@@ -387,7 +341,6 @@ export function renderItem({
   onItemDragEnd,
   onActivateLocalDirectory,
 }: RenderItemArgs) {
-  const hideExpandArrows = useSettings.getState().hideExpandArrows;
   const page = item.data;
   if (item.index === "root") {
     return <>{children}</>;
@@ -411,14 +364,27 @@ export function renderItem({
     page.localPendingCreate === "folder" || page.localPendingCreate === "file";
   const isLocalDirectory = isLocalFolder && !!page.isFolder;
   const isDragging = activeMainTreeDragId === String(item.index);
-
+  const isFolderRow = isSidebarFolderRow({
+    isFolder: !!page.isFolder,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
+  });
+  // 空文件夹占位只在扫完之后才显示：读取中/失败时不能冒充空目录。
+  const showEmptyFolderPlaceholder = shouldShowEmptyFolderPlaceholder({
+    isFolderRow,
+    isExpanded: !!context.isExpanded,
+    hasChildren,
+    isLocalNotebook: isLocalFolder,
+    localLoadStatus: isLocalFolder
+      ? useNotebooks.getState().localFolderLoadStates[page.workspaceId]?.status
+      : undefined,
+  });
   const iconNode = (
     <TreeRowIcon
       page={page}
       isLocalFolder={isLocalFolder}
       isRenaming={!!context.isRenaming}
       hasChildren={hasChildren}
-      hideExpandArrows={hideExpandArrows}
       isExpanded={!!context.isExpanded}
       onToggleExpanded={() =>
         toggleSidebarFolder(page.workspaceId, String(item.index))
@@ -436,6 +402,11 @@ export function renderItem({
         | undefined
     )?.(e);
     if (!e.dataTransfer) return;
+    if (page.localFilePath && !isPendingCreate && !page.localUnsaved) {
+      e.dataTransfer.setData("text/plain", page.localFilePath);
+      // 外部软件复制路径文本；应用内仍允许移动节点。
+      e.dataTransfer.effectAllowed = "copyMove";
+    }
     activeMainTreeDragId = String(item.index);
     onItemDragStart?.(String(item.index));
 
@@ -556,7 +527,6 @@ export function renderItem({
           isPendingCreate && "pointer-events-none",
         )}
       />
-      {hideExpandArrows ? null : arrow}
       {iconNode}
       {/* leading-snug 抵消行容器的 leading-none：truncate(overflow hidden) 配 1 倍行高
           会把 g/y/p 等字母的降部裁掉 */}
@@ -579,12 +549,24 @@ export function renderItem({
     <li {...withChildren} className="list-none">
       <SidebarContextMenu
         page={page}
+        isFolderRow={isFolderRow}
         onCreateLocalFile={onCreateLocalFile}
         onCreateLocalFolder={onCreateLocalFolder}
       >
         {row}
       </SidebarContextMenu>
       {children}
+      {showEmptyFolderPlaceholder ? (
+        <div
+          className="flex items-center text-[13px] text-muted-foreground/70"
+          style={{
+            paddingLeft: (depth + 1) * INDENT + ROW_PADDING_LEFT + CHILD_TITLE_OFFSET,
+            minHeight: "var(--main-tree-row-height)",
+          }}
+        >
+          暂无文件
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -595,39 +577,8 @@ interface RenderArrowArgs {
   info: TreeInformation;
 }
 
-export function renderItemArrow({ item, context }: RenderArrowArgs) {
-  const hideExpandArrows = useSettings.getState().hideExpandArrows;
-  if (hideExpandArrows) {
-    return null;
-  }
-  const page = item.data;
-  const notebook = page?.workspaceId
-    ? useNotebooks.getState().notebooks[page.workspaceId]
-    : undefined;
-  const isLocalFolder = notebook?.source === "local-folder";
-  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
-  const showArrow = shouldShowFolderExpandArrow({
-    isFolder: !!item.isFolder,
-    hasChildren,
-    isLocalNotebook: isLocalFolder,
-  });
-  if (!showArrow) {
-    // 占位区：不抢 hit area，让外层 row 的 interactive 覆盖层接管点击
-    return (
-      <span
-        className="ml-1.5 w-5 h-5 shrink-0 pointer-events-none"
-        aria-hidden="true"
-      />
-    );
-  }
-  return (
-    <MainTreeRowDisclosure
-      expanded={!!context.isExpanded}
-      label={context.isExpanded ? "折叠子项" : "展开子项"}
-      onToggle={() => toggleSidebarFolder(page.workspaceId, String(item.index))}
-      nativeProps={context.arrowProps as HTMLProps<HTMLButtonElement>}
-    />
-  );
+export function renderItemArrow() {
+  return null;
 }
 
 interface RenderItemsContainerArgs {
@@ -694,8 +645,18 @@ function MainTreeDragBetweenLine({
   const capturedParent = peekLocalFolderDropParent();
   const nestParent =
     capturedParent === null ? parentItem : capturedParent;
+  // 只有「被拖条目当前所在目录 === 本次落进的目录」才是同目录内排序，
+  // 这时落线才表示真实插入位置（本地文件夹默认按名称排序）。
+  const draggedParentId = activeMainTreeDragId
+    ? usePages.getState().pages[activeMainTreeDragId]?.parentId
+    : undefined;
   const hideSortLine =
-    isLocalFolder && shouldHideSortLineForLocalFolder(nestParent);
+    isLocalFolder &&
+    shouldHideLocalFolderSortLine({
+      nestParent,
+      draggedParentId,
+      isBetweenItems: draggingPosition.targetType === "between-items",
+    });
 
   useLayoutEffect(() => {
     const lineEl = lineRef.current;
@@ -709,13 +670,8 @@ function MainTreeDragBetweenLine({
 
   const depth = draggingPosition.depth ?? 0;
   const style = (lineProps.style ?? {}) as CSSProperties;
-  const hideExpandArrows = useSettings.getState().hideExpandArrows;
-  // 行结构：paddingLeft → (展开箭头槽位) → 图标。
-  // 蓝点必须以图标左缘为起点，避免落在箭头区被误读成“成为子页面”。
-  // 箭头槽：ml-1.5(6) + w-5(20) + gap-0.5(2) = 28
-  const ARROW_SLOT = 6 + 20 + 2;
-  const lineStart =
-    depth * INDENT + ROW_PADDING_LEFT + (hideExpandArrows ? 0 : ARROW_SLOT);
+  // 紧凑布局：文件夹本体承载展开控件，不额外保留箭头列。
+  const lineStart = depth * INDENT + ROW_PADDING_LEFT;
   return (
     <div
       ref={lineRef}
