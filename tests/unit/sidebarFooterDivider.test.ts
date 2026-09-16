@@ -62,5 +62,7 @@ test("Popover 退出保留 DOM 但立即退出交互，定位 transform 不由 M
   expect(popover).toContain("const keyboard = React.useRef(true)");
   expect(popover).toContain("useReducedMotion()");
   expect(popover).toContain("...state.floatingStyles");
-  expect(popover).not.toMatch(/animate\(scope\.current,[\s\S]*?transform:/);
+  expect(popover).toContain("transform: false");
+  expect(popover).toContain("floatingMenuMotionStyle");
+  expect(popover).not.toMatch(/animate\([\s\S]*?transform:/);
 });

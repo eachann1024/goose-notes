@@ -241,7 +241,7 @@ export function sortLocalFolderChildren(
 
 /**
  * 同目录拖动落点 → 新的手动顺序并落盘。
- * @param insertIndex react-complex-tree 给的子项下标（基于含被拖项的列表）
+ * @param insertIndex react-complex-tree 给的子项下标（基于含被拖项的列表）；负数表示末尾
  * @returns 是否真的写入了新顺序；落回原位（或写盘失败）返回 false，不切手动模式
  */
 export function applyLocalFolderReorder(
@@ -257,7 +257,7 @@ export function applyLocalFolderReorder(
   );
 
   // 落点下标基于含被拖项的列表，过滤后 splice 前要补偿前面被移除的项数
-  let index = insertIndex;
+  let index = insertIndex < 0 ? current.length : insertIndex;
   if (index > 0) {
     index -= movedIds.filter((id) => {
       const at = current.indexOf(id);
@@ -265,12 +265,47 @@ export function applyLocalFolderReorder(
     }).length;
   }
 
+  return writeLocalFolderOrder(notebookId, dirKey, current, movedIds, index);
+}
+
+/** 把 movedIds 插到 current 的 index 处并落盘；index 由调用方归一为非负。 */
+function writeLocalFolderOrder(
+  notebookId: string,
+  dirKey: string,
+  current: string[],
+  movedIds: string[],
+  index: number,
+): boolean {
   const rest = current.filter((id) => !movedIds.includes(id));
-  const next =
-    index < 0
-      ? [...rest, ...movedIds]
-      : [...rest.slice(0, index), ...movedIds, ...rest.slice(index)];
+  const next = [...rest.slice(0, index), ...movedIds, ...rest.slice(index)];
 
   if (next.join("\n") === current.join("\n")) return false;
   return setLocalFolderOrder(notebookId, dirKey, next);
+}
+
+/**
+ * 跨目录移动成功后的落点：把移入的 id 放到目标目录的 insertIndex 处并落盘。
+ * rct 的 childIndex 基于目标目录当时的子项列表，跨目录移动时该列表不含被拖项，
+ * 所以不做 applyLocalFolderReorder 那种「前面被移除项」补偿；否则按名称排序的
+ * 目标目录会把落点前移。目标目录没有手动顺序时以当前显示顺序为基准建立，
+ * 与同目录落点一致。移动失败不应调用（顺序会和磁盘不一致）。
+ */
+export function insertLocalFolderOrder(
+  notebookId: string,
+  dirKey: string,
+  children: Page[],
+  movedIds: string[],
+  insertIndex: number,
+): boolean {
+  const manualOrder = getLocalFolderOrders(notebookId)[dirKey];
+  const current = sortLocalFolderChildren(children, manualOrder).map(
+    (page) => page.id,
+  );
+  return writeLocalFolderOrder(
+    notebookId,
+    dirKey,
+    current,
+    movedIds,
+    Math.max(insertIndex, 0),
+  );
 }

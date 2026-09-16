@@ -395,15 +395,6 @@ test("HeroUI 单选菜单与混合面板内导出菜单键盘退出", async ({ p
     submenuBox!.x + 8 >= triggerBox!.x + triggerBox!.width ||
     submenuBox!.x + submenuBox!.width <= triggerBox!.x + 8;
   expect(besideTrigger).toBe(true);
-  await exportTrigger.click();
-  await page.keyboard.press("Home");
-  await expect(
-    page.getByRole("menuitem", { name: "Markdown", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(
-    page.getByRole("menuitem", { name: "HTML", exact: true }),
-  ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(

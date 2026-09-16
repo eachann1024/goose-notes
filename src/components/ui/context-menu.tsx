@@ -21,11 +21,19 @@ import {
   useListNavigation,
   useMergeRefs,
   useRole,
+  useTransitionStatus,
   useTypeahead,
 } from "@floating-ui/react";
+import { useReducedMotion } from "motion/react";
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { cn } from "@/lib/utils";
 import { TriggerChild } from "./trigger-child";
+import {
+  FLOATING_MENU_CLOSE_MS,
+  FLOATING_MENU_OPEN_MS,
+  floatingMenuMotionStyle,
+  type FloatingMotionMode,
+} from "./floating-menu-motion";
 
 function isDescendantNode(
   tree: ReturnType<typeof useFloatingTree>,
@@ -67,13 +75,23 @@ function useMenuState(
 ) {
   const nodeId = useFloatingNodeId();
   const tree = useFloatingTree();
+  const keyboard = React.useRef(true);
+  const reducedMotion = useReducedMotion();
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
   const elements = React.useRef<Array<HTMLElement | null>>([]);
   const labels = React.useRef<Array<string | null>>([]);
   const floating = useFloating({
     nodeId,
     open,
-    onOpenChange,
+    transform: false,
+    onOpenChange: (next, event) => {
+      if (event) {
+        keyboard.current =
+          event.type === "keydown" ||
+          (event.type === "click" && (event as MouseEvent).detail === 0);
+      }
+      onOpenChange(next);
+    },
     placement: nested ? "right-start" : "bottom-start",
     strategy: "fixed",
     whileElementsMounted: autoUpdate,
@@ -83,6 +101,15 @@ function useMenuState(
       shift({ padding: 8, crossAxis: !nested }),
     ],
   });
+  const presence = useTransitionStatus(floating.context, {
+    duration: {
+      open: FLOATING_MENU_OPEN_MS,
+      close: keyboard.current ? 0 : FLOATING_MENU_CLOSE_MS,
+    },
+  });
+  React.useEffect(() => {
+    if (!presence.isMounted) keyboard.current = true;
+  }, [presence.isMounted]);
   const hover = useHover(floating.context, {
     enabled: nested,
     delay: { open: 100 },
@@ -144,11 +171,18 @@ function useMenuState(
   }, [open, onOpenChange, tree, nodeId, floating.refs]);
   return {
     ...floating,
+    ...presence,
     ...useInteractions([hover, dismiss, role, navigation, typeahead]),
     open,
     nested,
     nodeId,
     tree,
+    keyboard,
+    motionMode: (keyboard.current
+      ? "instant"
+      : reducedMotion
+        ? "reduced"
+        : "full") as FloatingMotionMode,
     activeIndex,
     setActiveIndex,
     elements,
@@ -273,10 +307,10 @@ const ContextMenuTrigger = React.forwardRef<
             event.pointerType !== "mouse"
           ) {
             const { clientX, clientY, currentTarget } = event;
-            longPress.current = setTimeout(
-              () => openAt(clientX, clientY, currentTarget),
-              700,
-            );
+            longPress.current = setTimeout(() => {
+              state.keyboard.current = false;
+              openAt(clientX, clientY, currentTarget);
+            }, 700);
           }
         },
         onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
@@ -297,6 +331,7 @@ const ContextMenuTrigger = React.forwardRef<
           if (disabled || event.defaultPrevented) return;
           event.preventDefault();
           event.stopPropagation();
+          state.keyboard.current = false;
           openAt(event.clientX, event.clientY, event.currentTarget);
         },
         onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
@@ -308,6 +343,7 @@ const ContextMenuTrigger = React.forwardRef<
           ) {
             event.preventDefault();
             event.stopPropagation();
+            state.keyboard.current = true;
             const rect = (event.target as HTMLElement).getBoundingClientRect();
             openAt(rect.left, rect.bottom, event.currentTarget);
           }
@@ -460,7 +496,7 @@ const ContextMenuContent = React.forwardRef<HTMLDivElement, ContentProps>(
       }),
       [state.refs],
     );
-    if (!state.open) return null;
+    if (!state.isMounted) return null;
     const surface =
       "goose-menu-surface min-w-[9.5rem] max-h-[calc(100dvh-16px)] overflow-y-auto overscroll-contain p-1 text-popover-foreground";
     return (
@@ -468,6 +504,7 @@ const ContextMenuContent = React.forwardRef<HTMLDivElement, ContentProps>(
         <FloatingFocusManager
           context={state.context}
           modal={false}
+          disabled={!state.open}
           initialFocus={state.nested ? -1 : 0}
           returnFocus={restore}
         >
@@ -480,8 +517,12 @@ const ContextMenuContent = React.forwardRef<HTMLDivElement, ContentProps>(
             }
             ref={ref}
             tabIndex={-1}
-            data-state="open"
+            hidden={!state.isMounted}
+            inert={!state.open}
+            aria-hidden={!state.open || undefined}
+            data-state={state.open ? "open" : "closed"}
             data-side={state.placement.split("-")[0]}
+            data-motion={state.motionMode}
             data-goose-floating-content=""
             className={cn(
               "z-[20000] outline-none",
@@ -491,6 +532,13 @@ const ContextMenuContent = React.forwardRef<HTMLDivElement, ContentProps>(
             style={{
               ...state.floatingStyles,
               ...style,
+              ...floatingMenuMotionStyle(
+                state.status,
+                state.placement,
+                state.motionMode,
+                { shift: state.nested },
+              ),
+              pointerEvents: state.open ? style?.pointerEvents : "none",
             }}
           >
             <FloatingList elementsRef={state.elements} labelsRef={state.labels}>

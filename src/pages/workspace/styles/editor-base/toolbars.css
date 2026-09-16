@@ -144,18 +144,6 @@
   outline-offset: 1px;
 }
 
-[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat-kbd {
-  height: 18px;
-  padding: 0 5px;
-  font-size: 10px;
-}
-
-@media (max-width: 720px) {
-  [data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat-kbd {
-    display: none;
-  }
-}
-
 /* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
 
 /* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。

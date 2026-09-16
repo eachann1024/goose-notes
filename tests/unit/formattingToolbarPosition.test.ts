@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import { findNonOverlappingToolbarPosition } from "../../src/components/editor/utils/formattingToolbarPosition";
 import { getMultiBlockToolbarEdgeRect } from "../../src/components/editor/utils/formattingToolbarReference";
@@ -208,4 +209,41 @@ test("color panel opens above a bottom-docked quicknote toolbar trigger", () => 
       gap: 8,
     }),
   ).toEqual({ top: 402, left: 166, showAbove: true });
+});
+
+test("color panel animates opacity/transform in place, not top/left", () => {
+  const source = readFileSync(
+    new URL(
+      "../../src/components/editor/toolbars/formatting/ColorPicker.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const css = readFileSync(
+    new URL("../../src/pages/workspace/styles/editor-base/shell.css", import.meta.url),
+    "utf8",
+  );
+  expect(source).not.toContain("transition-all");
+  expect(source).toContain("goose-color-picker-float");
+  expect(source).toContain("colorPanelBoxStyle");
+  expect(css).toContain(".goose-color-picker-float");
+  expect(css).toContain("transform-origin: top center");
+  expect(css).toContain("prefers-reduced-motion");
+  expect(css).not.toContain("-96%");
+  expect(css).not.toContain("-100%");
+});
+
+test("color panel can lock its opening side so enter animation does not flip", () => {
+  const trigger = { top: 104, right: 279, bottom: 143, left: 240, width: 39 };
+  expect(
+    getColorPanelPosition({
+      trigger,
+      panelWidth: 246,
+      panelHeight: 270,
+      viewportWidth: 914,
+      viewportHeight: 480,
+      gap: 12,
+      forceShowAbove: true,
+    }),
+  ).toEqual({ top: 92, left: 259.5, showAbove: true });
 });

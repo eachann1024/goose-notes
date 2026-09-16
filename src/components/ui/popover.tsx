@@ -19,6 +19,12 @@ import {
 import { useAnimate, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { TriggerChild } from "./trigger-child";
+import {
+  FLOATING_MENU_CLOSE_MS,
+  FLOATING_MENU_OPEN_MS,
+  floatingMenuMotionStyle,
+  type FloatingMotionMode,
+} from "./floating-menu-motion";
 
 type PopoverProps = React.PropsWithChildren<{
   open?: boolean;
@@ -49,6 +55,7 @@ function usePopoverState({
   }>({});
   const floating = useFloating({
     open,
+    transform: false,
     onOpenChange: (next, event) => {
       if (event) keyboard.current = event.type === "keydown" || (event.type === "click" && (event as MouseEvent).detail === 0);
       if (controlled === undefined) setLocal(next);
@@ -76,7 +83,10 @@ function usePopoverState({
     ],
   });
   const presence = useTransitionStatus(floating.context, {
-    duration: { open: 200, close: keyboard.current ? 0 : 150 },
+    duration: {
+      open: FLOATING_MENU_OPEN_MS,
+      close: keyboard.current ? 0 : FLOATING_MENU_CLOSE_MS,
+    },
   });
   React.useEffect(() => {
     if (!presence.isMounted) keyboard.current = true;
@@ -95,7 +105,11 @@ function usePopoverState({
     ...floating,
     ...presence,
     keyboard,
-    motionMode: keyboard.current ? "instant" : reducedMotion ? "reduced" : "full",
+    motionMode: (keyboard.current
+      ? "instant"
+      : reducedMotion
+        ? "reduced"
+        : "full") as FloatingMotionMode,
     ...useInteractions([click, dismiss, role]),
     open,
     modal,
@@ -232,21 +246,40 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         : actualSide === "right"
           ? "inset(0% 100% 0% 0%)"
           : "inset(0% 0% 100% 0%)";
+    const menuMotion =
+      animation === "reveal"
+        ? undefined
+        : floatingMenuMotionStyle(
+            state.status,
+            state.placement,
+            state.motionMode,
+          );
     React.useLayoutEffect(() => {
-      if (!mountedNode || !state.isMounted) return;
-      if (animation === "reveal" && state.motionMode !== "full") {
+      if (animation !== "reveal" || !mountedNode || !state.isMounted) return;
+      if (state.motionMode !== "full") {
         mountedNode.style.clipPath = "none";
       }
-      const controls = animate(mountedNode, {
-        opacity: state.open ? 1 : 0,
-        ...(animation === "reveal" ? {
-          clipPath: state.motionMode !== "full" ? "none" : state.open
-            ? "inset(0% 0% 0% 0%)" : collapsedClip,
-        } : {}),
-      }, {
-        duration: state.motionMode === "instant" ? 0 : state.open && state.motionMode === "full" ? 0.2 : 0.15,
-        ease: state.open ? [0.23, 1, 0.32, 1] : "easeIn",
-      });
+      const controls = animate(
+        mountedNode,
+        {
+          opacity: state.open ? 1 : 0,
+          clipPath:
+            state.motionMode !== "full"
+              ? "none"
+              : state.open
+                ? "inset(0% 0% 0% 0%)"
+                : collapsedClip,
+        },
+        {
+          duration:
+            state.motionMode === "instant"
+              ? 0
+              : state.open && state.motionMode === "full"
+                ? FLOATING_MENU_OPEN_MS / 1000
+                : FLOATING_MENU_CLOSE_MS / 1000,
+          ease: state.open ? [0.23, 1, 0.32, 1] : "easeIn",
+        },
+      );
       return () => controls.stop();
     }, [animate, mountedNode, state.open, state.isMounted, state.motionMode, animation, collapsedClip]);
     const callbacks = React.useRef({ onOpenAutoFocus, onCloseAutoFocus });
@@ -332,8 +365,15 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             style={{
               ...state.floatingStyles,
               ...style,
-              opacity: 0,
-              ...(animation === "reveal" ? { clipPath: collapsedClip } : {}),
+              ...menuMotion,
+              ...(animation === "reveal"
+                ? {
+                    opacity: 0,
+                    ...(state.motionMode === "full"
+                      ? { clipPath: collapsedClip }
+                      : { clipPath: "none" }),
+                  }
+                : {}),
               pointerEvents: state.open ? style?.pointerEvents : "none",
             }}
           >

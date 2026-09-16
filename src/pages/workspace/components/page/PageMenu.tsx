@@ -32,6 +32,23 @@ function captureEditorSelectedBlocks(): BlockNoteContent {
 
 const EXPORT_OPEN_DELAY_MS = 80;
 const EXPORT_CLOSE_DELAY_MS = 150;
+const EXPORT_MENU_PAD_PX = 8;
+
+function pointInElement(
+  x: number,
+  y: number,
+  element: HTMLElement | null,
+  pad = 0,
+) {
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  return (
+    x >= rect.left - pad &&
+    x <= rect.right + pad &&
+    y >= rect.top - pad &&
+    y <= rect.bottom + pad
+  );
+}
 
 function PageExportSubmenu({
   enabled,
@@ -49,13 +66,13 @@ function PageExportSubmenu({
   onExportPdf: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const hovering = useRef(false);
-  const pointerOnTrigger = useRef(false);
-  const blockClickToggle = useRef(false);
+  const openRef = useRef(false);
   const suppressHoverOpen = useRef(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
+  openRef.current = open;
 
   const clearTimers = () => {
     if (openTimer.current != null) {
@@ -69,70 +86,65 @@ function PageExportSubmenu({
   };
 
   const closeNow = () => {
-    hovering.current = false;
-    pointerOnTrigger.current = false;
     suppressHoverOpen.current = true;
     clearTimers();
     setOpen(false);
   };
 
-  const onTriggerEnter = () => {
-    hovering.current = true;
-    pointerOnTrigger.current = true;
-    if (suppressHoverOpen.current) return;
-    if (closeTimer.current != null) {
-      window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-    if (open || openTimer.current != null) return;
-    openTimer.current = window.setTimeout(() => {
-      openTimer.current = null;
-      setOpen(true);
-    }, EXPORT_OPEN_DELAY_MS);
-  };
-
-  const onContentEnter = () => {
-    hovering.current = true;
-    pointerOnTrigger.current = false;
-    clearTimers();
-    setOpen(true);
-  };
-
-  const onLeave = () => {
-    hovering.current = false;
-    pointerOnTrigger.current = false;
-    suppressHoverOpen.current = false;
-    if (openTimer.current != null) {
-      window.clearTimeout(openTimer.current);
-      openTimer.current = null;
-    }
-    if (closeTimer.current != null) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => {
-      closeTimer.current = null;
-      setOpen(false);
-    }, EXPORT_CLOSE_DELAY_MS);
-  };
+  const pointerInHoverZone = (x: number, y: number) =>
+    pointInElement(x, y, triggerRef.current, 2) ||
+    pointInElement(x, y, menuRef.current, EXPORT_MENU_PAD_PX);
 
   useEffect(() => () => clearTimers(), []);
   useEffect(() => {
-    if (enabled) return;
-    hovering.current = false;
-    pointerOnTrigger.current = false;
-    suppressHoverOpen.current = false;
-    clearTimers();
-    setOpen(false);
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const menu = document.querySelector<HTMLDivElement>(".goose-page-menu-export");
+      if (menu) menuRef.current = menu;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+  useEffect(() => {
+    if (!enabled) {
+      suppressHoverOpen.current = false;
+      clearTimers();
+      setOpen(false);
+      return;
+    }
+    const onMove = (event: PointerEvent) => {
+      if (pointerInHoverZone(event.clientX, event.clientY)) {
+        if (suppressHoverOpen.current) return;
+        if (closeTimer.current != null) {
+          window.clearTimeout(closeTimer.current);
+          closeTimer.current = null;
+        }
+        if (openRef.current || openTimer.current != null) return;
+        openTimer.current = window.setTimeout(() => {
+          openTimer.current = null;
+          setOpen(true);
+        }, EXPORT_OPEN_DELAY_MS);
+        return;
+      }
+      suppressHoverOpen.current = false;
+      if (openTimer.current != null) {
+        window.clearTimeout(openTimer.current);
+        openTimer.current = null;
+      }
+      if (!openRef.current || closeTimer.current != null) return;
+      closeTimer.current = window.setTimeout(() => {
+        closeTimer.current = null;
+        setOpen(false);
+      }, EXPORT_CLOSE_DELAY_MS);
+    };
+    document.addEventListener("pointermove", onMove);
+    return () => document.removeEventListener("pointermove", onMove);
   }, [enabled]);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
-      suppressHoverOpen.current = true;
-      hovering.current = false;
-      pointerOnTrigger.current = false;
-      blockClickToggle.current = false;
-      clearTimers();
-      setOpen(false);
+      closeNow();
       triggerRef.current?.focus();
     };
     document.addEventListener("keydown", onKey, true);
@@ -144,43 +156,36 @@ function PageExportSubmenu({
     action();
   };
 
+  const itemClass =
+    "goose-interactive group grid min-h-[32px] w-full cursor-default grid-cols-[16px_minmax(0,1fr)] items-center gap-x-2 rounded-lg px-2 text-left text-xs";
+
   return (
-    <DropdownMenu
+    <Popover
       open={open}
+      modal={false}
       onOpenChange={(next) => {
         if (next) {
           clearTimers();
           setOpen(true);
-          return;
         }
-        const ignoreClickToggle =
-          hovering.current &&
-          pointerOnTrigger.current &&
-          blockClickToggle.current;
-        blockClickToggle.current = false;
-        if (ignoreClickToggle) return;
-        hovering.current = false;
-        pointerOnTrigger.current = false;
-        clearTimers();
-        setOpen(false);
       }}
     >
-      <DropdownMenuTrigger asChild>
+      <PopoverTrigger asChild>
         <button
           ref={triggerRef}
           type="button"
           data-state={open ? "open" : "closed"}
           aria-haspopup="menu"
           aria-expanded={open}
-          onPointerEnter={onTriggerEnter}
-          onPointerLeave={onLeave}
-          onPointerDown={() => {
-            blockClickToggle.current = open;
-          }}
-          onPointerUp={() => {
-            window.setTimeout(() => {
-              blockClickToggle.current = false;
-            }, 0);
+          onPointerEnter={(event) => {
+            if (suppressHoverOpen.current) return;
+            if (pointerInHoverZone(event.clientX, event.clientY) && !open) {
+              if (openTimer.current != null) return;
+              openTimer.current = window.setTimeout(() => {
+                openTimer.current = null;
+                setOpen(true);
+              }, EXPORT_OPEN_DELAY_MS);
+            }
           }}
           className="goose-interactive group grid min-h-[32px] w-full cursor-default grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-lg px-2 text-left text-xs"
         >
@@ -188,16 +193,17 @@ function PageExportSubmenu({
           <span className="min-w-0 truncate">导出</span>
           <LucideIcons.ChevronRight className="ml-auto h-4 w-4" />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="goose-page-menu-export min-w-[144px] rounded-[12px] p-1"
+      </PopoverTrigger>
+      <PopoverContent
+        ref={menuRef}
         side="right"
         align="start"
         sideOffset={4}
         alignOffset={-4}
         collisionPadding={8}
-        onPointerEnter={onContentEnter}
-        onPointerLeave={onLeave}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        className="goose-page-menu-export goose-page-menu-surface min-w-[144px] w-auto rounded-[12px] p-1"
         style={{
           maxHeight:
             viewportHeight <= 0
@@ -205,36 +211,46 @@ function PageExportSubmenu({
               : `${Math.max(120, viewportHeight - 16)}px`,
         }}
       >
-        <DropdownMenuItem
-          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-          onSelect={() => select(onExportMarkdown)}
-        >
-          <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-          <span className="min-w-0 truncate">Markdown</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-          onSelect={() => select(onExportHtml)}
-        >
-          <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-          <span className="min-w-0 truncate">HTML</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-          onSelect={() => select(onExportWord)}
-        >
-          <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-          <span className="min-w-0 truncate">Word</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="group grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-xs"
-          onSelect={() => select(onExportPdf)}
-        >
-          <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
-          <span className="min-w-0 truncate">PDF</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <div role="menu" aria-label="导出">
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => select(onExportMarkdown)}
+          >
+            <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <span className="min-w-0 truncate">Markdown</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => select(onExportHtml)}
+          >
+            <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <span className="min-w-0 truncate">HTML</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => select(onExportWord)}
+          >
+            <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <span className="min-w-0 truncate">Word</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => select(onExportPdf)}
+          >
+            <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <span className="min-w-0 truncate">PDF</span>
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

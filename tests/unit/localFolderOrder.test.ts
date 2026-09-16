@@ -7,6 +7,7 @@ import {
   clearLocalFolderOrder,
   ensureLocalFolderOrdersLoaded,
   getLocalFolderOrders,
+  insertLocalFolderOrder,
   reassignLocalFolderOrder,
   setLocalFolderOrder,
   sortLocalFolderChildren,
@@ -125,6 +126,52 @@ test("移出清源目录旧槽位、移入追加目标末尾，目录自身移�
   const before = JSON.stringify(getLocalFolderOrders("nb"));
   reassignLocalFolderOrder("nb", "x", undefined, undefined);
   expect(JSON.stringify(getLocalFolderOrders("nb"))).toBe(before);
+});
+
+test("跨目录移动后按落点插入：顶部落根级第一、末位仍在末尾、写盘失败不改顺序", () => {
+  // 根已有手动顺序，empty 在子目录 sub 里（截图场景：empty 拖到根级顶部落点）
+  setLocalFolderOrder("nb", ROOT, ["a", "b"]);
+  setLocalFolderOrder("nb", "sub", ["empty"]);
+  const rootChildren = [page("a"), page("b"), page("empty")];
+
+  // 移动成功后移动动作先清源目录槽位、把 empty 追加到根手动序末尾
+  reassignLocalFolderOrder("nb", "empty", "sub", undefined);
+  expect(getLocalFolderOrders("nb").sub).toEqual([]);
+  expect(rootOrder()).toEqual(["a", "b", "empty"]);
+
+  // edge 顶部目标 childIndex = 0：empty 应落根级第一，而不是停在末尾
+  expect(insertLocalFolderOrder("nb", ROOT, rootChildren, ["empty"], 0)).toBe(
+    true,
+  );
+  expect(rootOrder()).toEqual(["empty", "a", "b"]);
+  expect(ids(rootChildren, rootOrder())).toEqual(["empty", "a", "b"]);
+
+  // 在同一个顶部落点再落一次：顺序不变，不重复落盘
+  expect(insertLocalFolderOrder("nb", ROOT, rootChildren, ["empty"], 0)).toBe(
+    false,
+  );
+  expect(rootOrder()).toEqual(["empty", "a", "b"]);
+
+  // edge 底部目标 childIndex = 根子项数：回到末尾，不往前插
+  expect(
+    insertLocalFolderOrder("nb", ROOT, rootChildren, ["empty"], rootChildren.length),
+  ).toBe(true);
+  expect(ids(rootChildren, rootOrder())).toEqual(["a", "b", "empty"]);
+
+  // 写盘失败：不谎报成功、内存顺序不变（磁盘上的移动不强回滚）
+  failWrites = true;
+  expect(insertLocalFolderOrder("nb", ROOT, rootChildren, ["empty"], 0)).toBe(
+    false,
+  );
+  expect(rootOrder()).toEqual(["a", "b", "empty"]);
+  failWrites = false;
+
+  // 目标目录还没手动顺序时，顶部落点仍能建立顺序并把移入项放第一
+  clearLocalFolderOrder("nb", ROOT);
+  expect(insertLocalFolderOrder("nb", ROOT, rootChildren, ["empty"], 0)).toBe(
+    true,
+  );
+  expect(ids(rootChildren, rootOrder())).toEqual(["empty", "a", "b"]);
 });
 
 test("加载时消毒损坏的持久化数据（null / 数组 / 非字符串 / 重复 id / 坏 JSON）", () => {

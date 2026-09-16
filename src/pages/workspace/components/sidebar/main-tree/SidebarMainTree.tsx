@@ -20,6 +20,11 @@ import {
 } from "@/stores/useSidebarView";
 import { LocalFolderLoadingSkeleton } from "../LocalFolderLoadingSkeleton";
 import { TreeEmptyState } from "../tree/TreeEmptyState";
+import { MainTreeEdgeDropWatcher } from "./MainTreeEdgeDropWatcher";
+import {
+  mainTreeEdgeDropTarget,
+  type MainTreeEdgeZone,
+} from "./mainTreeEdgeDrop";
 import { pagesToTreeItems, getPageTitle } from "./treeAdapter";
 import {
   renderItem,
@@ -48,6 +53,7 @@ import {
   LOCAL_FOLDER_ROOT_DIR_KEY,
   applyLocalFolderReorder,
   clearLocalFolderOrder,
+  insertLocalFolderOrder,
   useLocalFolderManualOrder,
   useLocalFolderOrders,
 } from "@/stores/localFolderOrder";
@@ -370,6 +376,7 @@ export function SidebarMainTree({
   };
 
   const treeRef = useRef<TreeRef>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastClickModRef = useRef({ meta: false, ctrl: false });
   // react-complex-tree 的方向键默认只移动焦点，不会激活页面。
   // 仅记录从树内发起的上下导航，避免鼠标点击、自动定位和左右展开/折叠误触发切页。
@@ -672,12 +679,28 @@ export function SidebarMainTree({
       }
 
       void (async () => {
+        const movedIds: string[] = [];
         for (const id of dragIds) {
           try {
             await moveLocalPage(id, newParentId);
+            movedIds.push(id);
           } catch (err) {
             toast.error(`移动失败：${(err as Error).message ?? String(err)}`);
           }
+        }
+        // 跨目录移动成功后补落点：文件系统移动本身不表达位置，同目录那种
+        // applyLocalFolderReorder 又只在同目录才走。edge 顶部 childIndex 为 0、
+        // 底部为根子项数，都按目标目录落点插入，否则一律被追加到末尾。
+        if (!sameDirDrop && insertIndex >= 0 && movedIds.length > 0) {
+          insertLocalFolderOrder(
+            activeNotebookId,
+            newParentId ?? LOCAL_FOLDER_ROOT_DIR_KEY,
+            getChildren(newParentId, activeNotebookId).filter(
+              (page) => !page.localUnsaved,
+            ),
+            movedIds,
+            insertIndex,
+          );
         }
         if (newParentId && !expandedIds.includes(newParentId)) {
           expandView(activeNotebookId, newParentId);
@@ -720,6 +743,16 @@ export function SidebarMainTree({
     keepDragSelection();
   };
 
+  const handleMainTreeEdgeDrop = (
+    zone: MainTreeEdgeZone,
+    item: TreeItem<Page>,
+  ) => {
+    // 边缘落点属于根级：先清掉悬停行推断出的目录，
+    // 否则本地文件夹的 capturedDir 会盖掉根级首/末目标
+    clearLocalFolderDropParent();
+    handleDrop([item], mainTreeEdgeDropTarget(zone, rootChildren.length));
+  };
+
   return (
     <>
       {localLoadError && (
@@ -742,6 +775,7 @@ export function SidebarMainTree({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
+            ref={scrollContainerRef}
             className="flex-1 min-h-0 overflow-auto"
             style={
               {
@@ -794,6 +828,14 @@ export function SidebarMainTree({
               openPageFromSidebar(pageId, "permanent");
             }}
           >
+            <MainTreeEdgeDropWatcher
+              containerRef={scrollContainerRef}
+              draggingItemId={draggingItemId}
+              draggedItem={
+                draggingItemId ? items[draggingItemId] : undefined
+              }
+              onEdgeDrop={handleMainTreeEdgeDrop}
+            />
             <ControlledTreeEnvironment<Page>
               items={items}
               getItemTitle={(item) =>

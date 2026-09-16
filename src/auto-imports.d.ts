@@ -87,6 +87,12 @@ declare global {
   const FILE_NAV_AI_PANEL: typeof import('./stores/useFileNavHistory').FILE_NAV_AI_PANEL
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
+  const FLOATING_MENU_CLOSE_MS: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_CLOSE_MS
+  const FLOATING_MENU_EASE_IN: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_EASE_IN
+  const FLOATING_MENU_EASE_OUT: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_EASE_OUT
+  const FLOATING_MENU_OPEN_MS: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_OPEN_MS
+  const FLOATING_MENU_SCALE: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_SCALE
+  const FLOATING_MENU_SHIFT_PX: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_SHIFT_PX
   const FeatureToastCard: typeof import('./components/ui/feature-toast-card').FeatureToastCard
   const FormattingToolbarHoldContext: typeof import('./components/editor/state/formattingToolbarHold').FormattingToolbarHoldContext
   const Fragment: typeof import('react').Fragment
@@ -321,6 +327,9 @@ declare global {
   const findTabLeaf: typeof import('./stores/useEditorSplit').findTabLeaf
   const finishPasteAtAnchor: typeof import('./components/editor/hooks/useEditorPaste').finishPasteAtAnchor
   const flattenParsedBlocksToSoftWrapInline: typeof import('./components/editor/utils/softWrapPaste').flattenParsedBlocksToSoftWrapInline
+  const floatingMenuFromTransform: typeof import('./components/ui/floating-menu-motion').floatingMenuFromTransform
+  const floatingMenuMotionStyle: typeof import('./components/ui/floating-menu-motion').floatingMenuMotionStyle
+  const floatingMenuOrigin: typeof import('./components/ui/floating-menu-motion').floatingMenuOrigin
   const flushEditorContent: typeof import('./stores/pages/index').flushEditorContent
   const flushLocalStorageWrites: typeof import('./lib/storage').flushLocalStorageWrites
   const flushSidebarViewPersist: typeof import('./stores/useSidebarView').flushSidebarViewPersist
@@ -401,6 +410,7 @@ declare global {
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
   const importTextFilesToLocalFolder: typeof import('./lib/local-folder-import').importTextFilesToLocalFolder
   const inferProviderIdFromSettings: typeof import('./lib/ai-provider/index').inferProviderIdFromSettings
+  const insertLocalFolderOrder: typeof import('./stores/localFolderOrder').insertLocalFolderOrder
   const insertSoftWrappedInline: typeof import('./components/editor/utils/softWrapPaste').insertSoftWrappedInline
   const insertSoftWrappedLines: typeof import('./components/editor/utils/softWrapPaste').insertSoftWrappedLines
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
@@ -853,6 +863,9 @@ declare global {
   // @ts-ignore
   export type { DialogProps } from './components/ui/dialog'
   import('./components/ui/dialog')
+  // @ts-ignore
+  export type { FloatingMotionMode, FloatingMotionStatus } from './components/ui/floating-menu-motion'
+  import('./components/ui/floating-menu-motion')
   // @ts-ignore
   export type { IconButtonProps } from './components/ui/icon-button'
   import('./components/ui/icon-button')

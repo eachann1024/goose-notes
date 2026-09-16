@@ -346,6 +346,13 @@
   cursor: row-resize;
 }
 
+/* 行/列手柄菜单打开时藏掉加号（含被菜单裁切的一半圆环）。
+   加号在 portal 里，编辑器内部的手柄隐藏类选不到它。 */
+html.goose-table-chrome-hidden .goose-table-extend-button {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .workspace-editor-surface .bn-table-drop-cursor {
   background-color: hsl(var(--primary) / 0.72);
   border-radius: 999px;

@@ -1,5 +1,5 @@
 import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/editor/ui/button";
@@ -18,6 +18,25 @@ interface PositionState {
   showAbove: boolean;
 }
 
+function colorPanelBoxStyle(position: PositionState): {
+  top: number | "auto";
+  bottom: number | "auto";
+  left: number;
+} {
+  if (position.showAbove) {
+    return {
+      top: "auto",
+      bottom: document.documentElement.clientHeight - position.top,
+      left: position.left,
+    };
+  }
+  return {
+    top: position.top,
+    bottom: "auto",
+    left: position.left,
+  };
+}
+
 const PANEL_BASE_WIDTH = 172;
 const PANEL_BASE_HEIGHT = 190;
 const PANEL_VIEWPORT_PADDING = 8;
@@ -29,6 +48,7 @@ export function getColorPanelPosition({
   viewportWidth,
   viewportHeight,
   gap,
+  forceShowAbove,
 }: {
   trigger: Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width">;
   panelWidth: number;
@@ -36,6 +56,7 @@ export function getColorPanelPosition({
   viewportWidth: number;
   viewportHeight: number;
   gap: number;
+  forceShowAbove?: boolean;
 }): PositionState {
   const padding = PANEL_VIEWPORT_PADDING;
   const spaceAbove = trigger.top - padding;
@@ -44,10 +65,12 @@ export function getColorPanelPosition({
   // 底栏 / 小窗场景：触发器靠近视口下半区时优先向上展开，
   // 避免色板开到窗口外只露出「文本颜色」标题，看起来像坏掉的 tooltip。
   const nearBottom = trigger.bottom > viewportHeight * 0.55;
-  const showAbove = nearBottom
-    ? spaceAbove >= Math.min(needed, spaceBelow + 1) || spaceAbove > spaceBelow
-    : spaceAbove >= needed ||
-      (spaceBelow < needed && spaceAbove > spaceBelow);
+  const showAbove =
+    forceShowAbove ??
+    (nearBottom
+      ? spaceAbove >= Math.min(needed, spaceBelow + 1) || spaceAbove > spaceBelow
+      : spaceAbove >= needed ||
+        (spaceBelow < needed && spaceAbove > spaceBelow));
   const halfWidth = panelWidth / 2;
   const preferredLeft = trigger.left + trigger.width / 2;
   const minLeft = padding + halfWidth;
@@ -61,6 +84,32 @@ export function getColorPanelPosition({
         : viewportWidth / 2,
     showAbove,
   };
+}
+
+function readEditorUiScale(): number {
+  const scale = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--editor-ui-scale",
+    ),
+  );
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+function measureColorPanelPosition(
+  button: HTMLElement,
+  panel: HTMLElement | null,
+  forceShowAbove?: boolean,
+): PositionState {
+  const scale = readEditorUiScale();
+  return getColorPanelPosition({
+    trigger: button.getBoundingClientRect(),
+    panelWidth: panel?.offsetWidth ?? PANEL_BASE_WIDTH * scale,
+    panelHeight: panel?.offsetHeight ?? PANEL_BASE_HEIGHT * scale,
+    viewportWidth: document.documentElement.clientWidth,
+    viewportHeight: document.documentElement.clientHeight,
+    gap: 8 * scale,
+    forceShowAbove,
+  });
 }
 
 /** BlockNote 命名颜色 —— 必须与 BlockNote CSS 中定义的颜色名一致 */
@@ -267,7 +316,11 @@ function useSelectionColorState(editor: BlockNoteEditor<any, any, any>) {
   });
 }
 
-export function FormattingToolbarColorPicker() {
+export function FormattingToolbarColorPicker({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void;
+} = {}) {
   const editor = useBlockNoteEditor();
   const selectionColors = useSelectionColorState(editor);
   const [lastColors, setLastColors] = useState<LastFormatColors>(
@@ -275,42 +328,25 @@ export function FormattingToolbarColorPicker() {
   );
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [position, setPosition] = useState<PositionState>({
-    top: 0,
-    left: 0,
-    showAbove: true,
-  });
+  const [position, setPosition] = useState<PositionState | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeAnimTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const openFrameRef = useRef<number | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const sideLockRef = useRef<boolean | null>(null);
 
-  const updatePanelPosition = useCallback(() => {
+  const updatePanelPosition = useCallback((allowFlip = false) => {
     if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    const scale = Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--editor-ui-scale",
-      ),
+    const next = measureColorPanelPosition(
+      buttonRef.current,
+      panelRef.current,
+      allowFlip ? undefined : (sideLockRef.current ?? undefined),
     );
-    const effectiveScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-    const panelWidth =
-      panelRef.current?.offsetWidth ?? PANEL_BASE_WIDTH * effectiveScale;
-    const panelHeight =
-      panelRef.current?.offsetHeight ?? PANEL_BASE_HEIGHT * effectiveScale;
-    const gap = 8 * effectiveScale;
-    setPosition(
-      getColorPanelPosition({
-        trigger: rect,
-        panelWidth,
-        panelHeight,
-        viewportWidth: document.documentElement.clientWidth,
-        viewportHeight: document.documentElement.clientHeight,
-        gap,
-      }),
-    );
+    sideLockRef.current = next.showAbove;
+    setPosition(next);
   }, []);
 
   useEffect(() => {
@@ -318,27 +354,54 @@ export function FormattingToolbarColorPicker() {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
       if (closeAnimTimeoutRef.current)
         clearTimeout(closeAnimTimeoutRef.current);
+      if (openFrameRef.current != null) {
+        cancelAnimationFrame(openFrameRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    onOpenChange?.(isMounted);
+  }, [isMounted, onOpenChange]);
+
+  useEffect(() => {
+    return () => onOpenChange?.(false);
+  }, [onOpenChange]);
 
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
+    if (!buttonRef.current) return;
 
-    updatePanelPosition();
+    if (isMounted) {
+      setIsOpen(true);
+      return;
+    }
 
+    const next = measureColorPanelPosition(buttonRef.current, panelRef.current);
+    sideLockRef.current = next.showAbove;
+    setPosition(next);
     setIsMounted(true);
-    setIsOpen(true);
+    if (openFrameRef.current != null) cancelAnimationFrame(openFrameRef.current);
+    openFrameRef.current = requestAnimationFrame(() => {
+      openFrameRef.current = requestAnimationFrame(() => {
+        setIsOpen(true);
+        openFrameRef.current = null;
+      });
+    });
   };
+
+  useLayoutEffect(() => {
+    if (!isMounted || !buttonRef.current) return;
+    updatePanelPosition(false);
+  }, [isMounted, updatePanelPosition]);
 
   useEffect(() => {
     if (!isMounted) return;
-    const frame = requestAnimationFrame(updatePanelPosition);
-    const update = () => updatePanelPosition();
+    const update = () => updatePanelPosition(true);
     window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
     window.addEventListener("resize", update);
     return () => {
-      cancelAnimationFrame(frame);
       window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
       window.removeEventListener("resize", update);
     };
@@ -357,7 +420,9 @@ export function FormattingToolbarColorPicker() {
     }
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
     closeAnimTimeoutRef.current = setTimeout(() => {
+      sideLockRef.current = null;
       setIsMounted(false);
+      setPosition(null);
     }, 180);
   }, [isOpen]);
 
@@ -459,27 +524,14 @@ export function FormattingToolbarColorPicker() {
     }
   };
 
-  const panelContent = isMounted ? (
+  const panelContent = isMounted && position ? (
     <div
       ref={panelRef}
-      className={cn(
-        "fixed z-[20000] w-fit transition-all duration-180 ease-out",
-        isOpen
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none",
-      )}
+      className="goose-color-picker-float"
+      data-open={isOpen ? "true" : "false"}
+      data-side={position.showAbove ? "above" : "below"}
       onMouseDown={(e) => e.preventDefault()}
-      style={{
-        top: position.top,
-        left: position.left,
-        transform: position.showAbove
-          ? isOpen
-            ? "translate(-50%, -100%)"
-            : "translate(-50%, calc(-100% - 4px))"
-          : isOpen
-            ? "translate(-50%, 0)"
-            : "translate(-50%, -4px)",
-      }}
+      style={colorPanelBoxStyle(position)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onContextMenu={(e) => {

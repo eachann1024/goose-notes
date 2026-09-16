@@ -56,12 +56,16 @@ test("页面菜单保持视口尺寸及独立表面层次", () => {
 
   expect(pageMenu).toContain("function PageExportSubmenu");
   expect(pageMenu).toContain('side="right"');
-  expect(pageMenu).toContain("onPointerEnter");
+  expect(pageMenu).toContain("pointermove");
+  expect(pageMenu).toContain("pointInElement");
+  expect(pageMenu).toContain("modal={false}");
   expect(pageMenu).toContain("goose-page-menu-export");
   expect(pageMenu).toContain("EXPORT_OPEN_DELAY_MS");
+  expect(pageMenu).not.toContain("onPointerLeave");
+  expect(pageMenu).not.toContain('animation="reveal"');
   expect(surfaceCss).toContain('[data-slot="popover-trigger"]');
   expect(surfaceCss).toContain("width: 100%");
-  expect(surfaceCss).toContain(".goose-page-menu-export[data-entering=\"true\"]");
+  expect(surfaceCss).not.toContain(".goose-page-menu-export[data-entering=\"true\"]");
 });
 
 test("页面字体选项用边框表达选中，避免 focus 清掉 ring 时闪框", () => {

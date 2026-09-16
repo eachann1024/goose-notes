@@ -69,6 +69,33 @@ test("设置类下拉 hover 使用强调色，不被右键菜单灰底覆盖", (
   expect(indexCss).toContain("[data-slot=\"menu-item\"]:hover");
 });
 
+test("下拉菜单覆盖 HeroUI zoom-in-90，改用从触发边 scale(0.96) 的入场", () => {
+  const indexCss = readFileSync("src/index.css", "utf8");
+  expect(indexCss).toContain(
+    "[data-goose-floating-content].dropdown__popover[data-entering=\"true\"]",
+  );
+  expect(indexCss).toContain("goose-floating-in-bottom");
+  expect(indexCss).toContain("scale(0.96)");
+  expect(indexCss).toContain("cubic-bezier(0.23, 1, 0.32, 1)");
+  expect(indexCss).toContain("@media (prefers-reduced-motion: reduce)");
+  expect(indexCss).toContain("goose-floating-fade-in");
+});
+
+test("右键菜单与弹出层共用同一套入退场，键盘打开即时", () => {
+  const contextMenu = readFileSync("src/components/ui/context-menu.tsx", "utf8");
+  const motion = readFileSync(
+    "src/components/ui/floating-menu-motion.ts",
+    "utf8",
+  );
+  expect(contextMenu).toContain("useTransitionStatus");
+  expect(contextMenu).toContain("floatingMenuMotionStyle");
+  expect(contextMenu).toContain("transform: false");
+  expect(contextMenu).toContain("{ shift: state.nested }");
+  expect(motion).toContain("FLOATING_MENU_OPEN_MS = 200");
+  expect(motion).toContain("FLOATING_MENU_CLOSE_MS = 150");
+  expect(motion).toContain("FLOATING_MENU_SCALE = 0.96");
+});
+
 test("操作列表 variant=menu 走右键菜单灰底，而不是下拉强调色", () => {
   const dropdown = readFileSync("src/components/ui/dropdown-menu.tsx", "utf8");
   expect(dropdown).toContain('variant === "menu"');
