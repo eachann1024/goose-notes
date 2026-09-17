@@ -89,13 +89,6 @@
   border-left-color: hsl(var(--muted-foreground));
 }
 
-/* 默认底色随主题；用户设置的块背景优先，光标高亮不覆盖引用底色。 */
-.workspace-editor-surface .bn-editor .bn-block-outer > .bn-block
-  > .bn-block-content[data-content-type="quote"]:not([data-background-color]) {
-  background-color: var(--goose-editor-highlight-gray-bg);
-  border-radius: var(--radius-sm);
-}
-
 /*
  * 点击行尾空白时光标跳到行首。
  * Chromium（含 Electron）对 flex 容器的 caretRangeFromPoint 会落到第一个子节点；
