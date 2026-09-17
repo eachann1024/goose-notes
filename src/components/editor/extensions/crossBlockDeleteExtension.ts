@@ -75,8 +75,10 @@ export function hasPositiveBlockContentOverlap(
       );
     }
 
-    // 空文本块没有可覆盖的字符；只在选区真正跨过整个空块时纳入。
-    return selection.from < content.from && selection.to > content.to;
+    // 空文本块没有可覆盖的字符。划选到空列表项时，终点常落在
+    // 零宽内容点上；若要求严格跨过（to > contentTo），删除后会留下空编号。
+    // 选区闭区间覆盖该点即算选中；塌缩选区已在入口排除。
+    return selection.from <= content.from && selection.to >= content.to;
   }
 
   return (

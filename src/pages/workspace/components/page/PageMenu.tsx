@@ -69,7 +69,7 @@ function PageExportSubmenu({
   const openRef = useRef(false);
   const suppressHoverOpen = useRef(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLElement | null>(null);
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
   openRef.current = open;
@@ -99,7 +99,7 @@ function PageExportSubmenu({
   useEffect(() => {
     if (!open) return;
     const frame = window.requestAnimationFrame(() => {
-      const menu = document.querySelector<HTMLDivElement>(".goose-page-menu-export");
+      const menu = document.querySelector<HTMLElement>(".goose-page-menu-export");
       if (menu) menuRef.current = menu;
     });
     return () => window.cancelAnimationFrame(frame);

@@ -250,6 +250,7 @@ export function EditorFormattingToolbar() {
   // 拖选按住期间选区会先塌成空：不要卸掉工具栏，否则被挡住的上一行会闪一下。
   if (
     !aiActive &&
+    !colorPickerOpen &&
     !holdDuringPointerSelect &&
     (!selectionState.hasTextSelection ||
       selectionState.disallowsFormattingToolbar ||

@@ -217,19 +217,90 @@ test("嵌套块部分选中时只删文字；完整选中时由祖先块去重�
   expect(editor2.document.map((block) => block.id)).toEqual(["title", "after"]);
 });
 
-test("空文本块只有被选区严格跨过时才算选中", () => {
+test("空文本块在选区闭区间覆盖其零宽点时算选中", () => {
   expect(
     hasPositiveBlockContentOverlap(
       { from: 10, to: 12 },
       { from: 10, to: 10, isTextblock: true },
     ),
-  ).toBe(false);
+  ).toBe(true);
+  expect(
+    hasPositiveBlockContentOverlap(
+      { from: 9, to: 10 },
+      { from: 10, to: 10, isTextblock: true },
+    ),
+  ).toBe(true);
   expect(
     hasPositiveBlockContentOverlap(
       { from: 9, to: 11 },
       { from: 10, to: 10, isTextblock: true },
     ),
   ).toBe(true);
+  expect(
+    hasPositiveBlockContentOverlap(
+      { from: 11, to: 13 },
+      { from: 10, to: 10, isTextblock: true },
+    ),
+  ).toBe(false);
+});
+
+function createNestedNumberedListEditor() {
+  return BlockNoteEditor.create({
+    initialContent: [
+      { id: "title", type: "heading", props: { level: 1 }, content: "未命名" },
+      {
+        id: "parent",
+        type: "numberedListItem",
+        content: "图片增强",
+        children: [
+          { id: "c1", type: "numberedListItem", content: "光标展示图片" },
+          { id: "c2", type: "numberedListItem", content: "点击打开图片" },
+          { id: "c3", type: "numberedListItem", content: "图片收纳折叠" },
+          { id: "c4", type: "numberedListItem", content: "" },
+        ],
+      },
+      { id: "next", type: "numberedListItem", content: "自带主题" },
+    ],
+  });
+}
+
+test("嵌套有序列表划选到空编号项时，删除会去掉空项且不留选区", () => {
+  const editor = createNestedNumberedListEditor();
+  const c1 = contentRanges(editor).get("c1")!;
+  const c4 = contentRanges(editor).get("c4")!;
+
+  // 终点落在空项零宽内容点：旧逻辑不把 c4 算进选区，删除后留下「4.」
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, c1.from, c4.from)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  const parent = editor.getBlock("parent")!;
+  expect(parent.children.map((child) => child.id)).toEqual([]);
+  expect(editor.getBlock("c4")).toBeUndefined();
+  expect(editor.document.map((block) => block.id)).toEqual([
+    "title",
+    "parent",
+    "next",
+  ]);
+  expect(editor.prosemirrorState.selection.empty).toBe(true);
+});
+
+test("嵌套有序列表完整选中子项时整项删除，不留下空编号壳", () => {
+  const editor = createNestedNumberedListEditor();
+  const c1 = contentRanges(editor).get("c1")!;
+  const c3 = contentRanges(editor).get("c3")!;
+
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, c1.from, c3.to)),
+  );
+
+  expect(deleteSelectedBlocks(editor)).toBe(true);
+  const parent = editor.getBlock("parent")!;
+  expect(parent.children.map((child) => child.id)).toEqual(["c4"]);
+  expect(editor.getBlock("c1")).toBeUndefined();
+  expect(editor.getBlock("c3")).toBeUndefined();
+  expect(editor.prosemirrorState.selection.empty).toBe(true);
 });
 
 function insertHardBreakLine(

@@ -37,11 +37,7 @@ import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import { ChatChrome } from "./beautiful-ui/ChatChrome";
 import { ChatMessages } from "./ChatMessages";
 import { Composer, type ComposerHandle } from "./Composer";
-import {
-  usePanelWidth,
-  PANEL_WIDTH_MIN,
-  PANEL_WIDTH_MAX,
-} from "./usePanelWidth";
+import { usePanelWidth } from "./usePanelWidth";
 import { AiPanelResizeEdge } from "./AiPanelResizeEdge";
 import { ConversationHistoryList } from "./ConversationHistoryPopover";
 import type {
@@ -158,10 +154,10 @@ export function NotebookAiPanel({
     const recompute = () => {
       const parentW = parent.clientWidth;
       const room = parentW - EDITOR_MIN - GAP;
-      // room 足够时：不超过 stored / MAX，且留给编辑区至少 EDITOR_MIN
+      // room 足够时：不超过 stored，且留给编辑区至少 EDITOR_MIN
       // 极窄时（如 Electron 窄窗口）：让面板占用扣除 flex gap 后的可用宽度，避免右侧裁切
       const availableRoom = room > 0 ? room : Math.max(0, parentW - GAP);
-      const next = Math.min(width, Math.min(PANEL_WIDTH_MAX, availableRoom));
+      const next = Math.min(width, availableRoom);
       setEffectiveWidth(next);
     };
 

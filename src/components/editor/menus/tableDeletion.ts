@@ -16,6 +16,14 @@ export type TableDeletionPlan =
       toIndex: number;
     };
 
+export function getTableDeletionLabel(plan: TableDeletionPlan) {
+  return plan.kind === "delete-table"
+    ? "删除表格"
+    : plan.kind === "delete-rows"
+      ? "删除行"
+      : "删除列";
+}
+
 export type TableDeletionSnapshot = {
   blockId: string;
   orientation: "row" | "column";

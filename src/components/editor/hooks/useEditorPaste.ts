@@ -17,6 +17,7 @@ import {
 import {
   inspectPasteContainer,
   htmlHasRichPasteContent,
+  htmlLooksLikeBlockNoteClipboard,
   planMultilinePaste,
   resolvePasteLines,
   shouldSplitMultilinePaste,
@@ -260,9 +261,12 @@ export function useEditorPaste({
         clipboard.getData("text/plain"),
       );
       const htmlText = clipboard.getData("text/html");
-      const blockNoteHtml = clipboard.getData("blocknote/html");
+      const nativeBlockNoteHtml = clipboard.getData("blocknote/html");
+      const recoveredBlockNoteHtml =
+        nativeBlockNoteHtml ||
+        (htmlLooksLikeBlockNoteClipboard(htmlText) ? htmlText : "");
       const normalizedBlockNoteHtml = normalizeBlockNoteClipboardHtml(
-        blockNoteHtml,
+        recoveredBlockNoteHtml,
       );
 
       if (looksLikeMermaidDiagram(plainText)) {
@@ -335,12 +339,26 @@ export function useEditorPaste({
         // 仅在需要清除旧 data URL 默认 caption 时接管原生 MIME。直接保留内部
         // slice，并清空 blockContainer ID 让 UniqueID appendTransaction 重新生成；
         // 不把完整结构转写为 Markdown 或外部 HTML。
-        if (normalizedBlockNoteHtml !== blockNoteHtml) {
+        if (normalizedBlockNoteHtml !== recoveredBlockNoteHtml) {
           event.preventDefault();
           event.stopPropagation();
           editor.pasteHTML(
             withoutBlockNoteClipboardIds(normalizedBlockNoteHtml),
             true,
+          );
+          return;
+        }
+
+        // Electron 系统剪贴板常丢掉自定义 MIME，只剩 text/html。
+        // 默认 paste 随后会被多行纯文本拆行，把 1. 2. 3. 变成 123/333。
+        if (!nativeBlockNoteHtml) {
+          if (!target) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void pasteClipboardHtmlAsBlocks(
+            editor,
+            normalizedBlockNoteHtml,
+            target,
           );
           return;
         }

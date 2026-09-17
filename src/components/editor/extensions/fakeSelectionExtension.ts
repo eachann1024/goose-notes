@@ -40,6 +40,17 @@ export function setFakeSelection(
 ) {
   const view = editor.prosemirrorView;
   if (!view) return;
+  const current = fakeSelectionKey.getState(view.state);
+  if (current === range) return;
+  if (
+    current &&
+    range &&
+    current.from === range.from &&
+    current.to === range.to
+  ) {
+    return;
+  }
+  if (!current && !range) return;
   view.dispatch(view.state.tr.setMeta(fakeSelectionKey, range));
 }
 

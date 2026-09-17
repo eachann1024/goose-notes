@@ -5,6 +5,7 @@ import {
   buildInheritedPasteBlocks,
   htmlHasNonTextPasteBlocks,
   htmlHasRichPasteContent,
+  htmlLooksLikeBlockNoteClipboard,
   htmlToPlainTextForPaste,
   inspectPasteContainer,
   planMultilinePaste,
@@ -138,6 +139,22 @@ test("多行带可保留格式 HTML 不按纯文本拆行", () => {
       multiBlockSelection: false,
     }),
   ).toBe(true);
+});
+
+test("BlockNote 内部列表 HTML 不按纯文本拆行", () => {
+  const html =
+    '<div data-node-type="blockContainer"><div data-content-type="numberedListItem">123</div></div><div data-node-type="blockContainer"><div data-content-type="numberedListItem">333</div></div>';
+  expect(htmlLooksLikeBlockNoteClipboard(html)).toBe(true);
+  expect(htmlHasRichPasteContent(html)).toBe(true);
+  expect(
+    shouldSplitMultilinePaste({
+      lines: ["123", "333"],
+      htmlText: html,
+      inSoftWrap: false,
+      inTable: false,
+      multiBlockSelection: false,
+    }),
+  ).toBe(false);
 });
 
 test("多行无格式 HTML 仍按纯文本拆行", () => {

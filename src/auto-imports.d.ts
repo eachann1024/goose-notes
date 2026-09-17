@@ -402,6 +402,7 @@ declare global {
   const htmlHasNonTextPasteBlocks: typeof import('./components/editor/utils/multilinePaste').htmlHasNonTextPasteBlocks
   const htmlHasPreservableFormatting: typeof import('./components/editor/utils/clipboard').htmlHasPreservableFormatting
   const htmlHasRichPasteContent: typeof import('./components/editor/utils/multilinePaste').htmlHasRichPasteContent
+  const htmlLooksLikeBlockNoteClipboard: typeof import('./components/editor/utils/multilinePaste').htmlLooksLikeBlockNoteClipboard
   const htmlToPlainTextForPaste: typeof import('./components/editor/utils/multilinePaste').htmlToPlainTextForPaste
   const importFile: typeof import('./lib/export/index').importFile
   const importFromJSON: typeof import('./lib/export/index').importFromJSON
@@ -465,6 +466,7 @@ declare global {
   const isValidImageUrl: typeof import('./lib/imageProcessor').isValidImageUrl
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
   const isVideoUploadFile: typeof import('./lib/videoProcessor').isVideoUploadFile
+  const isWholeTableCellSelection: typeof import('./components/editor/utils/selection').isWholeTableCellSelection
   const isWikiMediaTarget: typeof import('./lib/wikiLink').isWikiMediaTarget
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
@@ -878,6 +880,9 @@ declare global {
   // @ts-ignore
   export type { BlockNoteContent, LegacyPageContent, PageContent } from './components/editor/utils/blocknote-content/index'
   import('./components/editor/utils/blocknote-content/index')
+  // @ts-ignore
+  export type { SerializePlainTextOptions } from './components/editor/utils/clipboard'
+  import('./components/editor/utils/clipboard')
   // @ts-ignore
   export type { ToolbarRect, ToolbarPoint } from './components/editor/utils/formattingToolbarPosition'
   import('./components/editor/utils/formattingToolbarPosition')

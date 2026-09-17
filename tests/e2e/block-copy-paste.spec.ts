@@ -1,9 +1,7 @@
 import { expect, test, type Page } from "playwright/test";
 
-// 验证「完整选中块正文 Ctrl/Cmd+C → 粘贴」后块类型与内联格式完整还原。
-// 折叠光标 Cmd+C 复制当前块（与显式选中整块正文相同的块级剪贴板 MIME）。
-// 粘贴到空 inline 块：就地替换，不在下方再插一块；光标落在粘贴产物末尾。
-// 非空目标段落：块级粘贴插在目标段落之后（doc[targetIdx + 1]）。
+// 单行 / 同一块多行复制只带纯文本；跨多个块才保留原格式。
+// 折叠光标在无 children 的块上等同单块纯文本；带 children 则按多块带格式。
 
 // helper 会被序列化进浏览器上下文执行，必须自包含。
 function browserHelpers() {
@@ -94,6 +92,59 @@ function browserHelpers() {
     });
     editor.focus();
   }
+  function selectBlocksText(
+    editor: {
+      document: Array<Record<string, unknown>>;
+      transact: (fn: (tr: {
+        doc: {
+          descendants: (
+            fn: (
+              node: {
+                type: { name: string };
+                attrs: { id?: unknown };
+                isTextblock?: boolean;
+                content: { size: number };
+              },
+              pos: number,
+            ) => boolean | void,
+          ) => void;
+          nodeAt: (pos: number) => {
+            isTextblock?: boolean;
+            content: { size: number };
+          } | null;
+        };
+        selection: { constructor: { create: (doc: unknown, from: number, to: number) => unknown } };
+        setSelection: (sel: unknown) => void;
+      }) => void) => void;
+      focus: () => void;
+    },
+    startText: string,
+    endText: string,
+  ) {
+    const start = editor.document.find((b) => blockText(b) === startText);
+    const end = editor.document.find((b) => blockText(b) === endText);
+    if (!start || !end) throw new Error("block missing: " + startText + " / " + endText);
+    const startId = String(start.id);
+    const endId = String(end.id);
+    editor.transact((tr) => {
+      let startFrom = -1;
+      let endTo = -1;
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name !== "blockContainer") return true;
+        const content = tr.doc.nodeAt(pos + 1);
+        if (!content?.isTextblock) return true;
+        const from = pos + 2;
+        const to = from + content.content.size;
+        if (String(node.attrs.id) === startId) startFrom = from;
+        if (String(node.attrs.id) === endId) endTo = to;
+        return true;
+      });
+      if (startFrom < 0 || endTo < 0) throw new Error("range missing");
+      const TextSelection = tr.selection.constructor;
+      tr.setSelection(TextSelection.create(tr.doc, startFrom, endTo));
+    });
+    editor.focus();
+  }
   function findEmptyParagraph(
     doc: Array<Record<string, unknown>>,
   ): Record<string, unknown> | undefined {
@@ -101,14 +152,13 @@ function browserHelpers() {
       (block) => block.type === "paragraph" && blockText(block) === "",
     );
   }
-  return { blockText, hasBoldText, hasTextColor, selectFullBlockText, findEmptyParagraph };
+  return { blockText, hasBoldText, hasTextColor, selectFullBlockText, selectBlocksText, findEmptyParagraph };
 }
 
 // Node 侧断言用的副本（实现保持一致）。
-const { blockText, hasBoldText, hasTextColor, findEmptyParagraph } =
-  browserHelpers();
+const { blockText, hasBoldText, hasTextColor } = browserHelpers();
 
-const HELPERS = `const { blockText, hasBoldText, hasTextColor, selectFullBlockText, findEmptyParagraph } = (${browserHelpers.toString()})();`;
+const HELPERS = `const { blockText, hasBoldText, hasTextColor, selectFullBlockText, selectBlocksText, findEmptyParagraph } = (${browserHelpers.toString()})();`;
 
 type Doc = Array<Record<string, unknown>>;
 
@@ -209,6 +259,46 @@ async function copyThenPaste(page: Page, sourceText: string, targetText: string)
   return getDocument(page);
 }
 
+async function copyRangeThenPaste(
+  page: Page,
+  startText: string,
+  endText: string,
+  targetText: string,
+) {
+  await page.evaluate(
+    `${HELPERS}
+     (() => {
+       const editor = (window).__gooseNoteEditor;
+       selectBlocksText(
+         editor,
+         ${JSON.stringify(startText)},
+         ${JSON.stringify(endText)},
+       );
+     })()
+   `,
+  );
+  await page.keyboard.press("ControlOrMeta+c");
+  await page.waitForTimeout(300);
+
+  await page.evaluate(
+    `${HELPERS}
+     (() => {
+       const editor = (window).__gooseNoteEditor;
+       const target = editor.document.find(
+         (block) => blockText(block) === ${JSON.stringify(targetText)},
+       );
+       if (!target) throw new Error("target block missing: " + ${JSON.stringify(targetText)});
+       editor.setTextCursorPosition(target, "end");
+       editor.focus();
+     })()
+   `,
+  );
+  await page.keyboard.press("ControlOrMeta+v");
+  await page.waitForTimeout(800);
+
+  return getDocument(page);
+}
+
 /** 折叠光标在源块内复制，再移到目标段落末尾粘贴。 */
 async function copyCollapsedThenPaste(
   page: Page,
@@ -262,33 +352,7 @@ function pastedBlockAfterTarget(doc: Doc, targetText: string) {
   return doc[targetIdx + 1] as Record<string, unknown> | undefined;
 }
 
-async function waitForCursorOnBlock(
-  page: Page,
-  blockId: string,
-  timeout = 5_000,
-) {
-  await page.waitForFunction(
-    (expectedId) => {
-      const editor = (
-        window as unknown as {
-          __gooseNoteEditor?: {
-            getTextCursorPosition: () => { block: { id: string } };
-          };
-        }
-      ).__gooseNoteEditor;
-      if (!editor) return false;
-      try {
-        return editor.getTextCursorPosition().block.id === expectedId;
-      } catch {
-        return false;
-      }
-    },
-    blockId,
-    { timeout },
-  );
-}
-
-test.describe("block copy paste keeps formatting", () => {
+test.describe("block copy paste formatting rules", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__ = true;
@@ -297,7 +361,7 @@ test.describe("block copy paste keeps formatting", () => {
     await waitForHydration(page);
   });
 
-  test("list block pastes back as a bold bulletListItem", async ({ page }) => {
+  test("single list item pastes as plain text", async ({ page }) => {
     test.setTimeout(120_000);
     await openEditorPage(page);
     await setupBlocks(page, [
@@ -309,38 +373,17 @@ test.describe("block copy paste keeps formatting", () => {
       { type: "paragraph", content: "目标段落" },
     ]);
 
-    const sourceId = await page.evaluate(
-      `${HELPERS}
-       (() => {
-         const editor = (window).__gooseNoteEditor;
-         const source = editor.document.find((b) => blockText(b) === "加粗项目");
-         return source?.id ?? null;
-       })()`,
-    );
-
+    const countBefore = (await getDocument(page)).length;
     const doc = await copyThenPaste(page, "加粗项目", "目标段落");
 
-    const pasted = pastedBlockAfterTarget(doc, "目标段落");
-    expect(pasted, "pasted block should exist after target").toBeTruthy();
-    expect(pasted!.type).toBe("bulletListItem");
-    expect(hasBoldText(pasted!, "加粗项目")).toBe(true);
-
-    await waitForCursorOnBlock(page, pasted!.id as string);
-    const cursorId = await page.evaluate(
-      () =>
-        (
-          window as unknown as {
-            __gooseNoteEditor: {
-              getTextCursorPosition: () => { block: { id: string } };
-            };
-          }
-        ).__gooseNoteEditor.getTextCursorPosition().block.id,
-    );
-    expect(cursorId).toBe(pasted!.id);
-    expect(cursorId).not.toBe(sourceId);
+    expect(doc.length).toBe(countBefore);
+    const target = doc.find((block) => blockText(block).includes("目标段落"));
+    expect(target?.type).toBe("paragraph");
+    expect(blockText(target!)).toBe("目标段落加粗项目");
+    expect(hasBoldText(target!, "加粗项目")).toBe(false);
   });
 
-  test("heading block pastes back as a level-2 heading", async ({ page }) => {
+  test("single heading pastes as plain text", async ({ page }) => {
     test.setTimeout(120_000);
     await openEditorPage(page);
     await setupBlocks(page, [
@@ -356,16 +399,17 @@ test.describe("block copy paste keeps formatting", () => {
       },
     ]);
 
+    const countBefore = (await getDocument(page)).length;
     const doc = await copyThenPaste(page, "二级标题", "目标段落");
 
-    const pasted = pastedBlockAfterTarget(doc, "目标段落");
-    expect(pasted, "pasted block should exist after target").toBeTruthy();
-    expect(pasted!.type).toBe("heading");
-    expect((pasted!.props as { level?: number } | undefined)?.level).toBe(2);
-    expect(hasBoldText(pasted!, "二级")).toBe(true);
+    expect(doc.length).toBe(countBefore);
+    const target = doc.find((block) => blockText(block).includes("目标段落"));
+    expect(target?.type).toBe("paragraph");
+    expect(blockText(target!)).toBe("目标段落二级标题");
+    expect(hasBoldText(target!, "二级")).toBe(false);
   });
 
-  test("multi-line rich paragraph keeps bold and line break", async ({
+  test("multi-line single block pastes without formatting", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -384,23 +428,17 @@ test.describe("block copy paste keeps formatting", () => {
 
     const doc = await copyThenPaste(page, "第一行\n第二行", "目标段落");
 
-    const pasted = pastedBlockAfterTarget(doc, "目标段落");
-    expect(pasted, "pasted block should exist after target").toBeTruthy();
-    expect(pasted!.type).toBe("paragraph");
-    // bold 片段实际为「第一行\n」（软换行并入 bold 段），按前缀匹配
-    const boldFirstLine = (
-      (pasted!.content as Array<{ text?: string; styles?: { bold?: boolean } }> | undefined) ?? []
-    ).some(
-      (node) =>
-        typeof node?.text === "string" &&
-        node.text.startsWith("第一行") &&
-        node.styles?.bold === true,
-    );
-    expect(boldFirstLine).toBe(true);
-    expect(blockText(pasted!)).toContain("第二行");
+    const target = doc.find((block) => blockText(block).includes("目标段落"));
+    expect(target?.type).toBe("paragraph");
+    expect(blockText(target!)).toBe("目标段落第一行");
+    expect(hasBoldText(target!, "第一行")).toBe(false);
+    const pasted = pastedBlockAfterTarget(doc, "目标段落第一行");
+    expect(pasted?.type).toBe("paragraph");
+    expect(blockText(pasted!)).toBe("第二行");
+    expect(hasBoldText(pasted!, "第二行")).toBe(false);
   });
 
-  test("collapsed cursor copy pastes current block after target", async ({
+  test("collapsed leaf copy pastes as plain text", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -417,16 +455,14 @@ test.describe("block copy paste keeps formatting", () => {
     const countBefore = (await getDocument(page)).length;
     const doc = await copyCollapsedThenPaste(page, "加粗项目", "目标段落");
 
-    expect(doc.length).toBe(countBefore + 1);
-    const pasted = pastedBlockAfterTarget(doc, "目标段落");
-    expect(pasted, "pasted block should exist after target").toBeTruthy();
-    expect(pasted!.type).toBe("bulletListItem");
-    expect(hasBoldText(pasted!, "加粗项目")).toBe(true);
-    const matches = doc.filter((block) => blockText(block) === "加粗项目");
-    expect(matches).toHaveLength(2);
+    expect(doc.length).toBe(countBefore);
+    const target = doc.find((block) => blockText(block).includes("目标段落"));
+    expect(target?.type).toBe("paragraph");
+    expect(blockText(target!)).toBe("目标段落加粗项目");
+    expect(hasBoldText(target!, "加粗项目")).toBe(false);
   });
 
-  test("paste into empty paragraph replaces in place with block colors", async ({
+  test("single block into empty paragraph stays plain", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -463,17 +499,35 @@ test.describe("block copy paste keeps formatting", () => {
     const replaced = doc.find((block) => block.id === emptyBlockId);
     expect(replaced, "empty paragraph should be replaced in place").toBeTruthy();
     expect(blockText(replaced!)).toBe("鸿蒙开发");
-    expect(replaced!.type).toBe("heading");
-    expect((replaced!.props as { level?: number; backgroundColor?: string })?.level).toBe(2);
-    expect(
-      (replaced!.props as { backgroundColor?: string })?.backgroundColor,
-    ).toBe("yellow");
-    expect(hasBoldText(replaced!, "鸿蒙开发")).toBe(true);
-    expect(hasTextColor(replaced!, "鸿蒙开发", "orange")).toBe(true);
+    expect(replaced!.type).toBe("paragraph");
+    expect(hasBoldText(replaced!, "鸿蒙开发")).toBe(false);
+    expect(hasTextColor(replaced!, "鸿蒙开发", "orange")).toBe(false);
 
     const harmonyBlocks = doc.filter((block) => blockText(block) === "鸿蒙开发");
     expect(harmonyBlocks).toHaveLength(2);
+  });
 
-    await waitForCursorOnBlock(page, emptyBlockId as string);
+  test("multi-block list copy keeps original formatting", async ({ page }) => {
+    test.setTimeout(120_000);
+    await openEditorPage(page);
+    await setupBlocks(page, [
+      { type: "heading", content: "复制粘贴测试" },
+      {
+        type: "numberedListItem",
+        content: [{ type: "text", text: "一项", styles: { bold: true } }],
+      },
+      { type: "numberedListItem", content: "二项" },
+      { type: "paragraph", content: "目标段落" },
+    ]);
+
+    const doc = await copyRangeThenPaste(page, "一项", "二项", "目标段落");
+    const pasted = pastedBlockAfterTarget(doc, "目标段落");
+    expect(pasted, "pasted block should exist after target").toBeTruthy();
+    expect(pasted!.type).toBe("numberedListItem");
+    expect(hasBoldText(pasted!, "一项")).toBe(true);
+
+    const second = doc[doc.findIndex((block) => block.id === pasted!.id) + 1];
+    expect(second?.type).toBe("numberedListItem");
+    expect(blockText(second!)).toBe("二项");
   });
 });

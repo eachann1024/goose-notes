@@ -6,6 +6,7 @@ import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   createTableDeletionSnapshot,
   findBlockDocumentRange,
+  getTableDeletionLabel,
   isCellSelectionInsideBlock,
 } from "../../src/components/editor/menus/tableDeletion";
 
@@ -119,6 +120,46 @@ test("最后一行或最后一列使用整表删除兜底", () => {
   ).toEqual({ kind: "delete-table" });
 });
 
+test("删除文案与计划一致，跨轴整表删除不伪装成删除单行列", () => {
+  const cases = [
+    {
+      orientation: "column" as const,
+      selection: { ...base, top: 1, bottom: 2, left: 0, right: 3 },
+      kind: "delete-table",
+      label: "删除表格",
+    },
+    {
+      orientation: "row" as const,
+      selection: { ...base, top: 0, bottom: 4, left: 1, right: 2 },
+      kind: "delete-table",
+      label: "删除表格",
+    },
+    { orientation: "row" as const, kind: "delete-rows", label: "删除行" },
+    { orientation: "column" as const, kind: "delete-columns", label: "删除列" },
+    {
+      orientation: "row" as const,
+      rowCount: 1,
+      kind: "delete-table",
+      label: "删除表格",
+    },
+    {
+      orientation: "column" as const,
+      columnCount: 1,
+      kind: "delete-table",
+      label: "删除表格",
+    },
+  ];
+  for (const { kind, label, ...input } of cases) {
+    const snapshot = createTableDeletionSnapshot({
+      ...base,
+      handleIndex: 1,
+      ...input,
+    });
+    expect(snapshot.plan.kind).toBe(kind);
+    expect(getTableDeletionLabel(snapshot.plan)).toBe(label);
+  }
+});
+
 test("菜单关闭后实时 selection 改变不会改写已快照的删除范围", () => {
   const liveSelection = {
     blockId: "table-1",
@@ -147,6 +188,7 @@ test("菜单关闭后实时 selection 改变不会改写已快照的删除范围
     toIndex: 3,
   });
   expect(snapshot.cellSelection).toEqual({ anchorCell: 21, headCell: 42 });
+  expect(getTableDeletionLabel(snapshot.plan)).toBe("删除行");
 });
 
 test("忽略来自另一张表的旧 CellSelection", () => {

@@ -8,7 +8,7 @@ import {
   type TableContent,
 } from "@blocknote/core";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
-import { Selection } from "prosemirror-state";
+import { Selection, TextSelection } from "prosemirror-state";
 import { CellSelection } from "prosemirror-tables";
 
 export const NON_FORMATTABLE_TYPES = new Set([
@@ -844,23 +844,66 @@ function applyAlignmentToSelection(
   }
 }
 
-function restoreSelectionAfterFormat(
+export function snapshotCurrentSelection(editor: BlockNoteEditor<any, any, any>) {
+  return { json: editor.prosemirrorState.selection.toJSON() };
+}
+
+export function restoreSelectionAfterFormat(
   editor: BlockNoteEditor<any, any, any>,
   snapshot: { json: any },
 ) {
   try {
     const view = editor.prosemirrorView;
-    const sel = Selection.fromJSON(view.state.doc, snapshot.json);
-    if (!view.state.selection.eq(sel)) {
-      view.dispatch(view.state.tr.setSelection(sel));
+    if (view) {
+      const sel = Selection.fromJSON(view.state.doc, snapshot.json);
+      if (!view.state.selection.eq(sel)) {
+        view.dispatch(view.state.tr.setSelection(sel));
+      }
+      return;
     }
+    editor.transact((tr) => {
+      tr.setSelection(Selection.fromJSON(tr.doc, snapshot.json));
+    });
   } catch {
     /* 文档结构变了就保持当前选区 */
   }
 }
 
-function snapshotCurrentSelection(editor: BlockNoteEditor<any, any, any>) {
-  return { json: editor.prosemirrorState.selection.toJSON() };
+export function restoreTextSelectionRange(
+  editor: BlockNoteEditor<any, any, any>,
+  range: { from: number; to: number } | null,
+): boolean {
+  if (!range || range.from === range.to) return false;
+  try {
+    const view = editor.prosemirrorView;
+    if (view) {
+      const sel = TextSelection.create(view.state.doc, range.from, range.to);
+      if (!view.state.selection.eq(sel)) {
+        view.dispatch(view.state.tr.setSelection(sel));
+      }
+    } else {
+      editor.transact((tr) => {
+        tr.setSelection(TextSelection.create(tr.doc, range.from, range.to));
+      });
+    }
+    return !editor.prosemirrorState.selection.empty;
+  } catch {
+    return false;
+  }
+}
+
+export function withPreservedSelection(
+  editor: BlockNoteEditor<any, any, any>,
+  apply: () => void,
+): void {
+  const snapshot = snapshotCurrentSelection(editor);
+  try {
+    editor.focus();
+  } catch {
+    /* ignore */
+  }
+  apply();
+  restoreSelectionAfterFormat(editor, snapshot);
 }
 
 export function applySelectionTextAlignment(
@@ -870,16 +913,11 @@ export function applySelectionTextAlignment(
   // transact 回调内读 prosemirrorState 会抛错，选区解析必须先于事务完成
   const blocks = getSelectedBlocksSafe(editor);
   const cellSelection = getCellSelectionSafe(editor);
-  const snapshot = snapshotCurrentSelection(editor);
-  try {
-    editor.focus();
-  } catch {
-    /* ignore */
-  }
-  editor.transact(() => {
-    applyAlignmentToSelection(editor, alignment, blocks, cellSelection);
+  withPreservedSelection(editor, () => {
+    editor.transact(() => {
+      applyAlignmentToSelection(editor, alignment, blocks, cellSelection);
+    });
   });
-  restoreSelectionAfterFormat(editor, snapshot);
 }
 
 /**
@@ -890,27 +928,22 @@ export function clearSelectionFormatting(
 ): void {
   const blocks = getSelectedBlocksSafe(editor);
   const cellSelection = getCellSelectionSafe(editor);
-  const snapshot = snapshotCurrentSelection(editor);
-  try {
-    editor.focus();
-  } catch {
-    /* ignore */
-  }
-  editor.transact(() => {
-    try {
-      editor.removeStyles({
-        bold: true,
-        italic: true,
-        underline: true,
-        strike: true,
-        code: true,
-        textColor: true,
-        backgroundColor: true,
-      } as any);
-    } catch {
-      /* ignore */
-    }
-    applyAlignmentToSelection(editor, "left", blocks, cellSelection);
+  withPreservedSelection(editor, () => {
+    editor.transact(() => {
+      try {
+        editor.removeStyles({
+          bold: true,
+          italic: true,
+          underline: true,
+          strike: true,
+          code: true,
+          textColor: true,
+          backgroundColor: true,
+        } as any);
+      } catch {
+        /* ignore */
+      }
+      applyAlignmentToSelection(editor, "left", blocks, cellSelection);
+    });
   });
-  restoreSelectionAfterFormat(editor, snapshot);
 }

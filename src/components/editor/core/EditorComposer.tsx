@@ -11,7 +11,6 @@ import {
   FilePanelController,
   LinkToolbarController,
   SuggestionMenuController,
-  TableHandlesController,
   useEditorState,
   useExtensionState,
   type FloatingUIOptions,
@@ -74,10 +73,7 @@ import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
-import {
-  GooseTableHandle,
-  GooseTableExtendButton,
-} from "@/components/editor/menus/GooseTableHandle";
+import { GooseTableHandlesController } from "@/components/editor/menus/GooseTableHandlesController";
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
 import { getPageMentionMenuItems } from "@/components/editor/inline/pageMentionMenuItems";
@@ -113,6 +109,7 @@ export {
   isBottomEditorBlankClick,
   getSelectedPlainTextContext,
   getSelectedCellPlainText,
+  isWholeTableCellSelection,
   getSelectedImageUrl,
   getElementFromNode,
   isInteractiveEditorTarget,
@@ -679,10 +676,7 @@ export function EditorComposer({
       >
         {showSideMenu && editable ? <EditorSideMenu /> : null}
         {editable ? (
-          <TableHandlesController
-            tableHandle={GooseTableHandle}
-            extendButton={GooseTableExtendButton}
-          />
+          <GooseTableHandlesController />
         ) : null}
         <FormattingToolbarHoldContext.Provider value={holdFormattingToolbar}>
           {__GOOSE_EDITOR_COMPACT__ ? (

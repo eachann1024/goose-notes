@@ -156,6 +156,14 @@ test("连续 bullet / numbered / toggleListItem 复制紧凑", () => {
     numberedTo,
     "Number one\nNumber two",
   );
+  expect(
+    serializeDocRangePlainText(
+      editor.prosemirrorState.doc,
+      numberedFrom,
+      numberedTo,
+      { includeBlockMarkers: true },
+    ),
+  ).toBe("1. Number one\n2. Number two");
 
   const toggleFrom = findBlockContentRange(editor, "g1").from;
   const toggleTo = findBlockContentRange(editor, "g2").to;
@@ -211,6 +219,47 @@ test("代码块内部空白保持原样", () => {
   });
   const text = serializeDocRangePlainText(editor.prosemirrorState.doc, from, to);
   expect(text).toBe("line one  \n  line two");
+});
+
+test("整表纯文本按行列输出", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      {
+        id: "tbl",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [
+            {
+              cells: [
+                [{ type: "text", text: "维度" }],
+                [{ type: "text", text: "pi-mono" }],
+              ],
+            },
+            {
+              cells: [
+                [{ type: "text", text: "用途" }],
+                [{ type: "text", text: "Agent" }],
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  });
+  let from = -1;
+  let to = -1;
+  editor.prosemirrorState.doc.descendants((node, pos) => {
+    if (node.type.name !== "blockContainer") return true;
+    if (String(node.attrs.id) !== "tbl") return true;
+    from = pos;
+    to = pos + node.nodeSize;
+    return false;
+  });
+  expect(
+    serializeDocRangePlainText(editor.prosemirrorState.doc, from, to),
+  ).toBe("维度\tpi-mono\n用途\tAgent");
 });
 
 test("复制无序列表使用短横线，保留嵌套、格式、代码与分隔线", () => {

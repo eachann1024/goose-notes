@@ -1,4 +1,4 @@
-import { CellSelection } from "prosemirror-tables";
+import { CellSelection, TableMap } from "prosemirror-tables";
 import { NodeSelection, type EditorState } from "prosemirror-state";
 
 import { clonePageContent, type BlockNoteContent } from "./blocknote-content";
@@ -147,6 +147,37 @@ export function getSelectedCellPlainText(state: EditorState): string | null {
 
   const text = rows.map((cells) => cells.join("\t")).join("\n");
   return normalizeClipboardLineEndings(text);
+}
+
+/** 当前 CellSelection 是否覆盖整张表（相对只选部分单元格）。 */
+export function isWholeTableCellSelection(state: EditorState): boolean {
+  const selection = state.selection;
+  if (!(selection instanceof CellSelection)) return false;
+
+  const $cell = selection.$anchorCell;
+  let tableStart = -1;
+  let table: ReturnType<typeof $cell.node> | null = null;
+  for (let depth = $cell.depth; depth > 0; depth -= 1) {
+    const node = $cell.node(depth);
+    if (node.type.spec.tableRole !== "table") continue;
+    table = node;
+    tableStart = $cell.start(depth);
+    break;
+  }
+  if (!table || tableStart < 0) return false;
+
+  const allPositions = new Set(
+    TableMap.get(table).map.map((offset) => tableStart + offset),
+  );
+  const selected = new Set<number>();
+  selection.forEachCell((_cell, pos) => {
+    selected.add(pos);
+  });
+  if (selected.size !== allPositions.size) return false;
+  for (const pos of allPositions) {
+    if (!selected.has(pos)) return false;
+  }
+  return true;
 }
 
 export function getElementFromNode(node: Node | null): HTMLElement | null {

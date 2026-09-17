@@ -43,7 +43,7 @@ function isCodePreservingBlock(node: PMNode): boolean {
 }
 
 function shouldEmitPlainTextBlock(node: PMNode): boolean {
-  if (isCodePreservingBlock(node)) return true;
+  if (isCodePreservingBlock(node) || node.type.name === "table") return true;
   if (
     COMPACT_LIST_BLOCK_TYPES.has(node.type.name) ||
     PARAGRAPH_LIKE_BLOCK_TYPES.has(node.type.name)
@@ -51,6 +51,60 @@ function shouldEmitPlainTextBlock(node: PMNode): boolean {
     return true;
   }
   return node.isTextblock;
+}
+
+export type SerializePlainTextOptions = {
+  /** 多块格式复制时带上 1. / - / # ，方便系统剪贴板丢掉内部 MIME 后仍能还原。 */
+  includeBlockMarkers?: boolean;
+};
+
+function blockClipboardMarker(
+  node: PMNode,
+  numbered: { value: number },
+): string {
+  switch (node.type.name) {
+    case "numberedListItem":
+      numbered.value += 1;
+      return `${numbered.value}. `;
+    case "bulletListItem":
+    case "toggleListItem":
+      numbered.value = 0;
+      return "- ";
+    case "checkListItem":
+      numbered.value = 0;
+      return node.attrs.checked ? "- [x] " : "- [ ] ";
+    case "heading": {
+      numbered.value = 0;
+      const level = Number(node.attrs.level) || 1;
+      return `${"#".repeat(Math.min(6, Math.max(1, level)))} `;
+    }
+    case "quote":
+    case "callout":
+      numbered.value = 0;
+      return "> ";
+    default:
+      numbered.value = 0;
+      return "";
+  }
+}
+
+function serializeTablePlainText(table: PMNode): string {
+  const rows: string[] = [];
+  table.forEach((row) => {
+    if (row.type.spec.tableRole !== "row") return;
+    const cells: string[] = [];
+    row.forEach((cell) => {
+      if (
+        cell.type.spec.tableRole !== "cell" &&
+        cell.type.spec.tableRole !== "header_cell"
+      ) {
+        return;
+      }
+      cells.push(cell.textContent);
+    });
+    if (cells.length > 0) rows.push(cells.join("\t"));
+  });
+  return normalizeClipboardLineEndings(rows.join("\n"));
 }
 
 /**
@@ -61,6 +115,7 @@ export function serializeDocRangePlainText(
   doc: PMNode,
   from: number,
   to: number,
+  options?: SerializePlainTextOptions,
 ): string {
   if (from >= to) return "";
 
@@ -76,6 +131,8 @@ export function serializeDocRangePlainText(
   }
 
   const segments: { text: string; type: string }[] = [];
+  const numbered = { value: 0 };
+  const includeBlockMarkers = options?.includeBlockMarkers === true;
 
   doc.nodesBetween(from, to, (node, pos, parent) => {
     if (
@@ -87,15 +144,27 @@ export function serializeDocRangePlainText(
     }
     if (!shouldEmitPlainTextBlock(node)) return true;
 
+    if (node.type.name === "table") {
+      segments.push({
+        type: node.type.name,
+        text: serializeTablePlainText(node),
+      });
+      return false;
+    }
+
     const contentFrom = pos + 1;
     const contentTo = pos + node.nodeSize - 1;
     const sliceFrom = Math.max(from, contentFrom);
     const sliceTo = Math.min(to, contentTo);
     if (sliceFrom >= sliceTo) return true;
 
+    const raw = doc.textBetween(sliceFrom, sliceTo, "\n", "\n");
+    const marker = includeBlockMarkers
+      ? blockClipboardMarker(node, numbered)
+      : "";
     segments.push({
       type: node.type.name,
-      text: doc.textBetween(sliceFrom, sliceTo, "\n", "\n"),
+      text: marker ? `${marker}${raw}` : raw,
     });
     return isCodePreservingBlock(node) ? false : true;
   });
@@ -115,11 +184,14 @@ export function serializeDocRangePlainText(
   return hasCode ? normalizeClipboardLineEndings(result) : trimPlainTextLines(result);
 }
 
-export function serializeSlicePlainText(slice: Slice): string {
+export function serializeSlicePlainText(
+  slice: Slice,
+  options?: SerializePlainTextOptions,
+): string {
   const first = slice.content.firstChild;
   if (!first || slice.content.size === 0) return "";
   const doc = first.type.schema.nodes.doc.create(null, slice.content);
-  return serializeDocRangePlainText(doc, 1, doc.content.size - 1);
+  return serializeDocRangePlainText(doc, 1, doc.content.size - 1, options);
 }
 
 export function getEditorSelectionPlainText(state: EditorState): string {

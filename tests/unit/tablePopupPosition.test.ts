@@ -27,12 +27,13 @@ test("表格行列菜单与右键菜单共用表面，删除前有分隔", () =>
   );
 });
 
-test("表格把手用 transform 保持缩放视觉并保留旋转方向", () => {
+test("表格把手保留安全缩放，行列采用各自原生六点图标", () => {
   expect(popupCss).toContain(".goose-editor-position-safe-trigger");
   expect(popupCss).toContain("zoom: 1");
   expect(popupCss).toContain("scale(var(--editor-scale, 1))");
   expect(popupCss).toContain(
     "rotate(var(--goose-popup-trigger-rotate, 0turn))",
   );
-  expect(tableHandleSource).toContain('"--goose-popup-trigger-rotate"');
+  expect(tableHandleSource).toContain("LucideIcons.GripVertical");
+  expect(tableHandleSource).toContain("LucideIcons.GripHorizontal");
 });

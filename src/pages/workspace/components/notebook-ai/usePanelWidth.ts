@@ -1,18 +1,16 @@
 /**
- * 持久化 AI 面板宽度（320–560px）
+ * 持久化 AI 面板宽度（至少 320px，展示上限由可用空间决定）
  */
 import { useState, useCallback, useRef } from "react";
 
 const STORAGE_KEY = "goose-note-ai-panel-width";
 /** 用户拖拽与持久化的合法区间（展示宽度可能因父级极窄而低于 MIN） */
 export const PANEL_WIDTH_MIN = 320;
-export const PANEL_WIDTH_MAX = 560;
 const MIN_WIDTH = PANEL_WIDTH_MIN;
-const MAX_WIDTH = PANEL_WIDTH_MAX;
 const DEFAULT_WIDTH = 360;
 
 function clamp(v: number) {
-  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, v));
+  return Number.isFinite(v) ? Math.max(MIN_WIDTH, v) : DEFAULT_WIDTH;
 }
 
 function readStoredWidth(): number {

@@ -1,6 +1,15 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
-import { CellSelection, tableEditing } from "prosemirror-tables";
+import {
+  CellSelection,
+  tableEditing,
+  TableMap,
+  selectedRect,
+  mergeCells,
+  deleteRow,
+  addRowBefore,
+} from "prosemirror-tables";
+import type { DecorationSet } from "prosemirror-view";
 import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
@@ -290,4 +299,238 @@ test("isCrossCellPointer 只在两个不同单元格时为 true", () => {
   expect(isCrossCellPointer(start, start)).toBe(false);
   expect(isCrossCellPointer(null, other)).toBe(false);
   expect(isCrossCellPointer(start, null)).toBe(false);
+});
+
+function selectionChromeFixture(merged = false) {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      {
+        id: "chrome-table",
+        type: "table",
+        content: {
+          type: "tableContent",
+          columnWidths: [80, 210, 130],
+          rows: merged
+            ? [
+                { cells: ["a", "b", "c"] },
+                {
+                  cells: [
+                    "d",
+                    {
+                      type: "tableCell",
+                      props: { rowspan: 2, backgroundColor: "green" },
+                      content: "multi\nline\ncell",
+                    },
+                    "e",
+                  ],
+                },
+                { cells: ["f", "g"] },
+              ]
+            : [
+                { cells: ["a", "b", "c"] },
+                { cells: ["d", "multi\nline\ncell", "e"] },
+                { cells: ["f", "g", "h"] },
+              ],
+        },
+      },
+    ] as any,
+  });
+  const plugin = gooseTableCellSelectionExtension().prosemirrorPlugins![0];
+  const state = EditorState.create({
+    schema: editor.prosemirrorState.schema,
+    doc: editor.prosemirrorState.doc,
+    plugins: [plugin],
+  });
+  const table = state.doc.firstChild!.firstChild!.firstChild!;
+  const map = TableMap.get(table);
+  let tableStart = 0;
+  state.doc.descendants((node, pos) => {
+    if (node.type.spec.tableRole === "table") tableStart = pos + 1;
+  });
+  const select = (anchor: number, head = anchor) =>
+    state.apply(
+      state.tr.setSelection(
+        CellSelection.create(
+          state.doc,
+          tableStart + map.map[anchor],
+          tableStart + map.map[head],
+        ),
+      ),
+    );
+  const chrome = (current: EditorState) => {
+    const set = plugin.props.decorations!.call(
+      plugin,
+      current,
+    ) as DecorationSet;
+    return set.find().map((decoration) => ({
+      pos: decoration.from,
+      edges: (decoration as any).type.attrs.class
+        .split(" ")
+        .filter(Boolean)
+        .map((name: string) => name.replace("goose-table-selection-", "")),
+    }));
+  };
+  return { state, select, chrome, map, tableStart };
+}
+
+test("选区装饰只画连续矩形外边：单格、整表、反向、多行多列，不按列宽或行高猜测位置", () => {
+  const { state, select, chrome, map, tableStart } = selectionChromeFixture();
+  expect(chrome(state)).toEqual([]);
+  expect(chrome(select(4))).toEqual([
+    {
+      pos: tableStart + map.map[4],
+      edges: ["top", "right", "bottom", "left"],
+    },
+  ]);
+  for (const [anchor, head, expected] of [
+    [
+      0,
+      8,
+      [
+        ["top", "left"],
+        ["top"],
+        ["top", "right"],
+        ["left"],
+        [],
+        ["right"],
+        ["bottom", "left"],
+        ["bottom"],
+        ["right", "bottom"],
+      ],
+    ],
+    [
+      4,
+      8,
+      [
+        ["top", "left"],
+        ["top", "right"],
+        ["bottom", "left"],
+        ["right", "bottom"],
+      ],
+    ],
+  ] as const) {
+    const selected = select(anchor, head);
+    expect(chrome(selected).map(({ edges }) => edges)).toEqual(expected);
+    expect(chrome(select(head, anchor))).toEqual(chrome(selected));
+    expect(selected.doc).toBe(state.doc);
+  }
+});
+
+test("跨界 rowspan 以真实 selected set 为准，部分外露边降级无边而非内部粗框，取消恢复文档颜色", () => {
+  const { state, select, chrome, map, tableStart } =
+    selectionChromeFixture(true);
+  const selected = select(1, 5);
+  const before = state.doc.toJSON();
+  const cells: number[] = [];
+  (selected.selection as CellSelection).forEachCell((_node, pos) =>
+    cells.push(pos),
+  );
+  expect(chrome(selected).map(({ pos }) => pos)).toEqual(cells);
+  expect(chrome(selected)).toEqual([
+    { pos: tableStart + map.map[1], edges: ["top", "left"] },
+    { pos: tableStart + map.map[2], edges: ["top", "right"] },
+    { pos: tableStart + map.map[4], edges: ["bottom", "left"] },
+    { pos: tableStart + map.map[5], edges: ["right", "bottom"] },
+  ]);
+  expect(chrome(select(4))).toEqual([
+    {
+      pos: tableStart + map.map[4],
+      edges: ["top", "right", "bottom", "left"],
+    },
+  ]);
+  expect(
+    chrome(select(0, 8)).filter(({ pos }) => pos === tableStart + map.map[4])[0]
+      .edges,
+  ).toEqual(["bottom"]);
+  const cancelled = selected.apply(
+    selected.tr.setSelection(TextSelection.near(selected.doc.resolve(1))),
+  );
+  expect(chrome(cancelled)).toEqual([]);
+  expect(cancelled.doc.toJSON()).toEqual(before);
+  expect(
+    cancelled.doc.nodeAt(tableStart + map.map[4])!.attrs.backgroundColor,
+  ).toBe("green");
+});
+
+test("colspan 左跨界未入选格不加装饰，文档增删事务后装饰按最新 CellSelection 重算", () => {
+  const { state, select, chrome, map, tableStart } = selectionChromeFixture();
+  let selected = select(0, 8);
+  const original = chrome(selected);
+  expect(
+    addRowBefore(selected, (tr) => {
+      selected = selected.apply(tr);
+    }),
+  ).toBe(true);
+  expect(chrome(selected).map(({ edges }) => edges)).toEqual(
+    original.map(({ edges }) => edges),
+  );
+  selected = select(0, 8);
+  // Edit inside a cell changes every subsequent cell position, without changing selected membership.
+  selected = selected.apply(
+    selected.tr.insertText("longer harmless text", tableStart + map.map[0] + 2),
+  );
+  expect(chrome(selected).map(({ edges }) => edges)).toEqual(
+    original.map(({ edges }) => edges),
+  );
+  expect(chrome(selected)[1].pos).toBeGreaterThan(original[1].pos);
+  const updated = selectedRect(selected);
+  selected = selected.apply(
+    selected.tr.setSelection(
+      CellSelection.create(
+        selected.doc,
+        updated.tableStart + updated.map.map[3],
+        updated.tableStart + updated.map.map[5],
+      ),
+    ),
+  );
+  expect(
+    deleteRow(selected, (tr) => {
+      selected = selected.apply(tr);
+    }),
+  ).toBe(true);
+  expect(chrome(selected)).toEqual([]);
+  const table = selected.doc.firstChild!.firstChild!.firstChild!;
+  selected = selected.apply(
+    selected.tr.delete(tableStart - 1, tableStart - 1 + table.nodeSize),
+  );
+  expect(chrome(selected)).toEqual([]);
+
+  let merged = state.apply(
+    state.tr.setSelection(
+      CellSelection.create(
+        state.doc,
+        tableStart + map.map[3],
+        tableStart + map.map[4],
+      ),
+    ),
+  );
+  expect(
+    mergeCells(merged, (tr) => {
+      merged = merged.apply(tr);
+    }),
+  ).toBe(true);
+  const rect = selectedRect(merged);
+  merged = merged.apply(
+    merged.tr.setSelection(
+      CellSelection.create(
+        merged.doc,
+        rect.tableStart + rect.map.map[1],
+        rect.tableStart + rect.map.map[8],
+      ),
+    ),
+  );
+  const positions: number[] = [];
+  (merged.selection as CellSelection).forEachCell((_node, pos) =>
+    positions.push(pos),
+  );
+  expect(chrome(merged).map(({ pos }) => pos)).toEqual(positions);
+  expect(positions).not.toContain(rect.tableStart + rect.map.map[3]);
+  expect(chrome(merged).map(({ edges }) => edges)).toEqual([
+    ["top", "bottom", "left"],
+    ["top", "right"],
+    ["right", "left"],
+    ["top", "bottom", "left"],
+    ["right", "bottom"],
+  ]);
 });

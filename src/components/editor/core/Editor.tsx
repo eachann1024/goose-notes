@@ -74,7 +74,11 @@ import {
 import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
 import { gooseTableCellSelectionExtension } from "@/components/editor/extensions/tableCellSelectionExtension";
-import { gooseCopyCurrentBlockExtension } from "@/components/editor/extensions/copyCurrentBlockExtension";
+import {
+  GOOSE_BLOCKNOTE_BLOCK_COPY_MIME,
+  gooseCopyCurrentBlockExtension,
+  shouldCopyClipboardWithFormatting,
+} from "@/components/editor/extensions/copyCurrentBlockExtension";
 import { gooseMoveBlockExtension } from "@/components/editor/extensions/moveBlockExtension";
 import {
   createGooseLinkKeyboardExtension,
@@ -124,6 +128,7 @@ import {
   editorSchema,
   clearEditorSelectedBlocksCache,
   getSelectedCellPlainText,
+  isWholeTableCellSelection,
   getSelectedImageUrl,
   isBottomEditorBlankClick,
   readLiveEditorSelectedBlocks,
@@ -870,29 +875,39 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       if (!clipboardData) return;
 
       // BlockNote 默认会把 NodeSelection 图片块复制成 Markdown：
-      // ![name](att:...)。复制操作应给系统剪贴板写入真正的图片数据。
-      if (event.type === "copy") {
-        const selectedImageUrl = getSelectedImageUrl(editor.prosemirrorState);
-        if (selectedImageUrl) {
-          event.preventDefault();
-          void copyImageSrcToClipboard(
-            selectedImageUrl,
-            platformRef.current,
-            getActivePageLocalFilePathRef.current(),
-          ).catch((error) => {
-            console.error("[editor] Failed to copy selected image", error);
-          });
-          return;
+      // ![name](att:...)。复制 / 剪切都应给系统剪贴板写入真正的图片数据。
+      const selectedImageUrl = getSelectedImageUrl(editor.prosemirrorState);
+      if (selectedImageUrl) {
+        event.preventDefault();
+        void copyImageSrcToClipboard(
+          selectedImageUrl,
+          platformRef.current,
+          getActivePageLocalFilePathRef.current(),
+        ).catch((error) => {
+          console.error("[editor] Failed to copy selected image", error);
+        });
+        if (event.type === "cut") {
+          const view = editor.prosemirrorView;
+          if (view && !view.state.selection.empty) {
+            view.dispatch(view.state.tr.deleteSelection());
+          }
         }
+        return;
       }
 
       const cellText = getSelectedCellPlainText(editor.prosemirrorState);
-      if (cellText != null) {
+      if (cellText != null && !isWholeTableCellSelection(editor.prosemirrorState)) {
         event.preventDefault();
         clipboardData.setData("text/plain", cellText);
         clipboardData.setData("text/html", "");
+        clipboardData.setData("blocknote/html", "");
         return;
       }
+
+      // 插件已 preventDefault 并写入权威 MIME，冒泡阶段不要再清 HTML。
+      if (event.defaultPrevented) return;
+      // 多块格式复制不要再用无编号纯文本覆盖，否则粘贴只会剩下 123/333。
+      if (shouldCopyClipboardWithFormatting(editor.prosemirrorState)) return;
 
       const { selection } = editor.prosemirrorState;
       if (!selection.empty) {
@@ -901,6 +916,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           getEditorSelectionPlainText(editor.prosemirrorState),
         );
       }
+      clipboardData.setData("text/html", "");
+      clipboardData.setData("blocknote/html", "");
+      clipboardData.setData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME, "");
     };
 
     container.addEventListener("copy", patchClipboardPlainText);

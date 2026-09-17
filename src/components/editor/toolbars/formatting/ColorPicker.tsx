@@ -6,6 +6,11 @@ import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
+import {
+  restoreTextSelectionRange,
+  withPreservedSelection,
+} from "@/components/editor/toolbars/formatting/helpers";
 import {
   applyHeadingBlockBackground,
   getHeadingBackgroundSelectionState,
@@ -194,6 +199,46 @@ type LastFormatColors = {
   backgroundColor?: string;
 };
 
+export function resolveHeldTextSelection(
+  current: { empty: boolean; from: number; to: number },
+  held: { from: number; to: number } | null,
+): { from: number; to: number } | null {
+  if (!current.empty && current.from !== current.to) {
+    return {
+      from: Math.min(current.from, current.to),
+      to: Math.max(current.from, current.to),
+    };
+  }
+  return held;
+}
+
+export function resolveHeldColorState<T>(
+  live: T,
+  held: T | null,
+  hasLiveSelection: boolean,
+): T {
+  return hasLiveSelection || held == null ? live : held;
+}
+
+export function resolveOpenColorState<T>(
+  live: T,
+  held: T | null,
+  isOpen: boolean,
+): T {
+  return isOpen && held != null ? held : live;
+}
+
+export function applyHeldColorPatch<T extends { textColor: string; backgroundColor: string }>(
+  held: T,
+  patch: Partial<Pick<T, "textColor" | "backgroundColor">>,
+): T {
+  return { ...held, ...patch };
+}
+
+export function isColorSwatchSelected(current: string, swatch: string): boolean {
+  return current !== MIXED && current === swatch;
+}
+
 export function selectionUsesLastFormatColors(
   selection: { textColor: string; backgroundColor: string },
   last: LastFormatColors,
@@ -337,6 +382,10 @@ export function FormattingToolbarColorPicker({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const sideLockRef = useRef<boolean | null>(null);
+  const heldSelectionRef = useRef<{ from: number; to: number } | null>(null);
+  const selectionColorsRef = useRef(selectionColors);
+  selectionColorsRef.current = selectionColors;
+  const [heldColors, setHeldColors] = useState(selectionColors);
 
   const updatePanelPosition = useCallback((allowFlip = false) => {
     if (!buttonRef.current) return;
@@ -368,10 +417,39 @@ export function FormattingToolbarColorPicker({
     return () => onOpenChange?.(false);
   }, [onOpenChange]);
 
+  const holdCurrentSelection = useCallback(() => {
+    const { selection } = editor.prosemirrorState;
+    const next = resolveHeldTextSelection(selection, heldSelectionRef.current);
+    heldSelectionRef.current = next;
+    if (next) setFakeSelection(editor, next);
+    return next;
+  }, [editor]);
+
+  const applyWithHeldSelection = useCallback(
+    (
+      apply: () => void,
+      patch?: Partial<Pick<typeof heldColors, "textColor" | "backgroundColor">>,
+    ) => {
+      restoreTextSelectionRange(editor, heldSelectionRef.current);
+      withPreservedSelection(editor, apply);
+      if (patch) {
+        setHeldColors((prev) => applyHeldColorPatch(prev, patch));
+      }
+      holdCurrentSelection();
+    },
+    [editor, holdCurrentSelection],
+  );
+
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
     if (!buttonRef.current) return;
+
+    onOpenChange?.(true);
+    if (!isMounted && !editor.prosemirrorState.selection.empty) {
+      setHeldColors(selectionColorsRef.current);
+    }
+    holdCurrentSelection();
 
     if (isMounted) {
       setIsOpen(true);
@@ -421,13 +499,25 @@ export function FormattingToolbarColorPicker({
     if (closeAnimTimeoutRef.current) clearTimeout(closeAnimTimeoutRef.current);
     closeAnimTimeoutRef.current = setTimeout(() => {
       sideLockRef.current = null;
+      heldSelectionRef.current = null;
+      setFakeSelection(editor, null);
       setIsMounted(false);
       setPosition(null);
     }, 180);
-  }, [isOpen]);
+  }, [editor, isOpen]);
 
-  const currentTextColor = selectionColors.textColor;
-  const currentBgColor = selectionColors.backgroundColor;
+  useEffect(() => {
+    if (!isMounted) return;
+    holdCurrentSelection();
+  }, [editor, holdCurrentSelection, isMounted]);
+
+  const displayColors = resolveOpenColorState(
+    selectionColors,
+    heldColors,
+    isMounted,
+  );
+  const currentTextColor = displayColors.textColor;
+  const currentBgColor = displayColors.backgroundColor;
   const isTextMixed = currentTextColor === MIXED;
   const isBgMixed = currentBgColor === MIXED;
 
@@ -437,45 +527,51 @@ export function FormattingToolbarColorPicker({
     !isBgMixed && currentBgColor && currentBgColor !== "default";
 
   const applyTextColor = (color: string) => {
-    if (color === "default") {
-      editor.removeStyles({ textColor: true } as any);
-    } else {
-      editor.addStyles({ textColor: color });
-    }
-    rememberLastFormatColors({ textColor: color });
+    applyWithHeldSelection(() => {
+      if (color === "default") {
+        editor.removeStyles({ textColor: true } as any);
+      } else {
+        editor.addStyles({ textColor: color });
+      }
+      rememberLastFormatColors({ textColor: color });
+    }, { textColor: color });
   };
 
   const applyBackgroundColor = (color: string) => {
-    if (applyHeadingBlockBackground(editor, color)) {
+    applyWithHeldSelection(() => {
+      if (applyHeadingBlockBackground(editor, color)) {
+        rememberLastFormatColors({ backgroundColor: color });
+        return;
+      }
+      if (color === "default") {
+        editor.removeStyles({ backgroundColor: true } as any);
+      } else {
+        editor.addStyles({ backgroundColor: color });
+      }
       rememberLastFormatColors({ backgroundColor: color });
-      return;
-    }
-    if (color === "default") {
-      editor.removeStyles({ backgroundColor: true } as any);
-    } else {
-      editor.addStyles({ backgroundColor: color });
-    }
-    rememberLastFormatColors({ backgroundColor: color });
+    }, { backgroundColor: color });
   };
 
   const applyColorPair = (index: number) => {
     const textColor = TEXT_COLORS[index]?.color;
     const backgroundColor = HIGHLIGHT_COLORS[index]?.color;
     if (!textColor || !backgroundColor) return;
-    // 先应用样式再一次写入，避免两次 localStorage 读写
-    if (textColor === "default") {
-      editor.removeStyles({ textColor: true } as any);
-    } else {
-      editor.addStyles({ textColor: textColor });
-    }
-    if (applyHeadingBlockBackground(editor, backgroundColor)) {
-      // 标题背景已按完整块应用。
-    } else if (backgroundColor === "default") {
-      editor.removeStyles({ backgroundColor: true } as any);
-    } else {
-      editor.addStyles({ backgroundColor: backgroundColor });
-    }
-    rememberLastFormatColors({ textColor, backgroundColor });
+    applyWithHeldSelection(() => {
+      // 先应用样式再一次写入，避免两次 localStorage 读写
+      if (textColor === "default") {
+        editor.removeStyles({ textColor: true } as any);
+      } else {
+        editor.addStyles({ textColor: textColor });
+      }
+      if (applyHeadingBlockBackground(editor, backgroundColor)) {
+        // 标题背景已按完整块应用。
+      } else if (backgroundColor === "default") {
+        editor.removeStyles({ backgroundColor: true } as any);
+      } else {
+        editor.addStyles({ backgroundColor: backgroundColor });
+      }
+      rememberLastFormatColors({ textColor, backgroundColor });
+    }, { textColor, backgroundColor });
   };
 
   const rememberLastFormatColors = (patch: LastFormatColors) => {
@@ -498,30 +594,46 @@ export function FormattingToolbarColorPicker({
     if (last.textColor === undefined && last.backgroundColor === undefined) {
       return;
     }
-    if (selectionUsesLastFormatColors(selectionColors, last)) {
-      editor.removeStyles({ textColor: true } as any);
-      if (!applyHeadingBlockBackground(editor, "default")) {
-        editor.removeStyles({ backgroundColor: true } as any);
-      }
-      return;
-    }
-    if (last.textColor !== undefined) {
-      // 直接应用，不经 applyTextColor，避免把「未记忆的那一侧」误写成当前值
-      if (last.textColor === "default") {
+    const clearing = selectionUsesLastFormatColors(displayColors, last);
+    applyWithHeldSelection(() => {
+      if (clearing) {
         editor.removeStyles({ textColor: true } as any);
-      } else {
-        editor.addStyles({ textColor: last.textColor });
+        if (!applyHeadingBlockBackground(editor, "default")) {
+          editor.removeStyles({ backgroundColor: true } as any);
+        }
+        return;
       }
-    }
-    if (last.backgroundColor !== undefined) {
-      if (applyHeadingBlockBackground(editor, last.backgroundColor)) {
-        // 标题背景已按完整块应用。
-      } else if (last.backgroundColor === "default") {
-        editor.removeStyles({ backgroundColor: true } as any);
-      } else {
-        editor.addStyles({ backgroundColor: last.backgroundColor });
+      if (last.textColor !== undefined) {
+        // 直接应用，不经 applyTextColor，避免把「未记忆的那一侧」误写成当前值
+        if (last.textColor === "default") {
+          editor.removeStyles({ textColor: true } as any);
+        } else {
+          editor.addStyles({ textColor: last.textColor });
+        }
       }
-    }
+      if (last.backgroundColor !== undefined) {
+        if (applyHeadingBlockBackground(editor, last.backgroundColor)) {
+          // 标题背景已按完整块应用。
+        } else if (last.backgroundColor === "default") {
+          editor.removeStyles({ backgroundColor: true } as any);
+        } else {
+          editor.addStyles({ backgroundColor: last.backgroundColor });
+        }
+      }
+    }, clearing
+      ? {
+          textColor: last.textColor !== undefined ? "default" : displayColors.textColor,
+          backgroundColor:
+            last.backgroundColor !== undefined
+              ? "default"
+              : displayColors.backgroundColor,
+        }
+      : {
+          ...(last.textColor !== undefined ? { textColor: last.textColor } : {}),
+          ...(last.backgroundColor !== undefined
+            ? { backgroundColor: last.backgroundColor }
+            : {}),
+        });
   };
 
   const panelContent = isMounted && position ? (
@@ -554,7 +666,7 @@ export function FormattingToolbarColorPicker({
               size="icon"
               className={cn(
                 "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                isTextColorActive && currentTextColor === item.color
+                isColorSwatchSelected(currentTextColor, item.color)
                   ? "bg-accent border-primary/20 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                   : "",
               )}
@@ -596,7 +708,7 @@ export function FormattingToolbarColorPicker({
               size="icon"
               className={cn(
                 "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                isBgColorActive && currentBgColor === item.color
+                isColorSwatchSelected(currentBgColor, item.color)
                   ? "border-primary ring-1 ring-primary/25"
                   : "",
               )}
@@ -636,7 +748,11 @@ export function FormattingToolbarColorPicker({
         ref={buttonRef}
         data-goose-preserve-icon-color="true"
         aria-pressed={
-          isTextColorActive || isBgColorActive || isTextMixed || isBgMixed
+          isMounted ||
+          isTextColorActive ||
+          isBgColorActive ||
+          isTextMixed ||
+          isBgMixed
         }
         className={cn("goose-formatting-toolbar-control")}
         aria-label="颜色选择；点击应用上次颜色"

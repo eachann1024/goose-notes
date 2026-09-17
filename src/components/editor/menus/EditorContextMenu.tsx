@@ -270,13 +270,21 @@ export function EditorContextMenu({
 
   const handleCutSelection = useCallback(() => {
     if (!editable) return;
+    try {
+      editor.focus();
+    } catch {
+      /* ignore */
+    }
+    if (typeof document !== "undefined" && document.execCommand("cut")) {
+      return;
+    }
     let text = selectedTextRef.current;
     try {
       text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
     } catch {
       /* ignore */
     }
-    void platform.clipboard.copyText(text);
+    if (text) void platform.clipboard.copyText(text);
     editor.exec((state: any, dispatch: any) => {
       dispatch?.(state.tr.deleteSelection());
       return true;
@@ -387,7 +395,7 @@ export function EditorContextMenu({
           )}
           {editable && (
             <ContextMenuItem
-              disabled={!selectedText}
+              disabled={!canCopy}
               onSelect={handleCutSelection}
             >
               <LucideIcons.Scissors className="mr-2 h-4 w-4" />

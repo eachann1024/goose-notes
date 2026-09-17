@@ -1,11 +1,14 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { CellSelection } from "prosemirror-tables";
 import { expect, test } from "playwright/test";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   getCurrentBlockNodeSelection,
   resolveCopyBlockSelection,
+  shouldCopyClipboardWithFormatting,
 } from "../../src/components/editor/extensions/copyCurrentBlockExtension";
+import { isWholeTableCellSelection } from "../../src/components/editor/utils/selection";
 
 function createEditor() {
   return BlockNoteEditor.create({
@@ -195,4 +198,269 @@ test("跨选区命中待办及子图片时，Slice 只保留父块一次", () =>
     "task-image",
   );
   expect(resolved?.content.lastChild?.attrs.id).toBe("tail");
+});
+
+function findBlockTextRange(editor: BlockNoteEditor, blockId: string) {
+  const blockPos = findBlockContainerPos(editor, blockId);
+  const contentNode = editor.prosemirrorState.doc.nodeAt(blockPos + 1);
+  if (!contentNode?.isTextblock) {
+    throw new Error(`block ${blockId} is not a textblock`);
+  }
+  const from = blockPos + 2;
+  return { from, to: from + contentNode.content.size };
+}
+
+test("单行或部分选区复制不带格式", () => {
+  const editor = createEditor();
+  const { from } = findFirstTextRange(editor);
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, from, from + 2));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+
+  const heading = findBlockTextRange(editor, "heading");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, heading.from, heading.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+});
+
+test("同一块内多行复制不带格式", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      {
+        id: "heading",
+        type: "heading",
+        content: "标题",
+      },
+      {
+        id: "multi",
+        type: "paragraph",
+        content: [
+          { type: "text", text: "第一行", styles: { bold: true } },
+          { type: "text", text: "\n第二行" },
+        ],
+      },
+    ],
+  });
+  const range = findBlockTextRange(editor, "multi");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, range.from, range.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+});
+
+test("跨多个块复制带原格式", () => {
+  const editor = createEditor();
+  const headingRange = findBlockTextRange(editor, "heading");
+  const body = findBlockTextRange(editor, "body");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, headingRange.from, body.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+});
+
+test("折叠光标在带 children 的块上视为多块，要带格式", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "复制粘贴测试" },
+      {
+        id: "parent",
+        type: "numberedListItem",
+        content: "图片增强",
+        children: [
+          { id: "c1", type: "numberedListItem", content: "光标展示图片" },
+          { id: "c2", type: "numberedListItem", content: "点击打开图片" },
+        ],
+      },
+    ],
+  });
+
+  const parentRange = findBlockTextRange(editor, "parent");
+  editor.transact((tr) => {
+    tr.setSelection(
+      TextSelection.create(tr.doc, parentRange.from, parentRange.from),
+    );
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+
+  editor.transact((tr) => {
+    tr.setSelection(
+      TextSelection.create(tr.doc, parentRange.from, parentRange.to),
+    );
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+
+  const child = findBlockTextRange(editor, "c2");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, parentRange.from, child.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+});
+
+function selectBlockContainer(editor: BlockNoteEditor, blockId: string) {
+  const pos = findBlockContainerPos(editor, blockId);
+  editor.transact((tr) => {
+    tr.setSelection(NodeSelection.create(tr.doc, pos));
+  });
+}
+
+function findTableCellPositions(editor: BlockNoteEditor): number[] {
+  const cells: number[] = [];
+  editor.prosemirrorState.doc.descendants((node, pos) => {
+    if (
+      node.type.spec.tableRole === "cell" ||
+      node.type.spec.tableRole === "header_cell"
+    ) {
+      cells.push(pos);
+    }
+    return true;
+  });
+  return cells;
+}
+
+test("代码块整块保留结构，块内部分文字不带格式", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "标题" },
+      {
+        id: "code",
+        type: "codeBlock",
+        props: { language: "math" },
+        content: "E=mc^2",
+      },
+    ],
+  });
+  const range = findBlockTextRange(editor, "code");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, range.from, range.from));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, range.from, range.from + 1));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, range.from, range.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+});
+
+test("分隔线、图片、视频、文件整块保留结构", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "标题" },
+      { id: "div", type: "divider" },
+      {
+        id: "img",
+        type: "image",
+        props: { url: "data:image/png;base64,AAAA" },
+      },
+      {
+        id: "vid",
+        type: "video",
+        props: { url: "https://example.com/a.mp4" },
+      },
+      {
+        id: "file",
+        type: "file",
+        props: { url: "https://example.com/a.pdf", name: "a.pdf" },
+      },
+    ],
+  });
+  for (const id of ["div", "img", "vid", "file"]) {
+    selectBlockContainer(editor, id);
+    expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+      true,
+    );
+  }
+});
+
+test("整表保留结构，部分单元格不带格式", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "标题" },
+      {
+        id: "tbl",
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [
+            {
+              cells: [
+                [{ type: "text", text: "维度" }],
+                [{ type: "text", text: "pi-mono" }],
+              ],
+            },
+            {
+              cells: [
+                [{ type: "text", text: "用途" }],
+                [{ type: "text", text: "Agent" }],
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  });
+  const cells = findTableCellPositions(editor);
+  expect(cells.length).toBe(4);
+
+  editor.transact((tr) => {
+    tr.setSelection(CellSelection.create(tr.doc, cells[0], cells[0]));
+  });
+  expect(isWholeTableCellSelection(editor.prosemirrorState)).toBe(false);
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(
+    false,
+  );
+  expect(resolveCopyBlockSelection(editor.prosemirrorState)).toBeNull();
+
+  editor.transact((tr) => {
+    tr.setSelection(CellSelection.create(tr.doc, cells[0], cells[3]));
+  });
+  expect(isWholeTableCellSelection(editor.prosemirrorState)).toBe(true);
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+  const resolved = resolveCopyBlockSelection(editor.prosemirrorState);
+  expect(resolved).toBeInstanceOf(NodeSelection);
+  expect((resolved as NodeSelection).node.firstChild?.type.name).toBe("table");
+});
+
+test("跨多个有序列表即使选区越界也带格式", () => {
+  const editor = BlockNoteEditor.create({
+    schema: editorSchema,
+    initialContent: [
+      { id: "heading", type: "heading", content: "标题" },
+      { id: "n1", type: "numberedListItem", content: "123" },
+      { id: "n2", type: "numberedListItem", content: "333" },
+      { id: "n3", type: "numberedListItem", content: "444" },
+    ],
+  });
+  const first = findBlockTextRange(editor, "n1");
+  const last = findBlockTextRange(editor, "n3");
+  editor.transact((tr) => {
+    tr.setSelection(TextSelection.create(tr.doc, first.from + 1, last.to));
+  });
+  expect(shouldCopyClipboardWithFormatting(editor.prosemirrorState)).toBe(true);
+  expect(resolveCopyBlockSelection(editor.prosemirrorState)).not.toBeNull();
 });
