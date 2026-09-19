@@ -85,6 +85,11 @@ function startApp(): void {
   registerIpcHandlers();
 
   function installMenu(): void {
+    // Windows/Linux：不挂应用菜单，避免按 Alt 弹出 File/Edit/View/Window。
+    if (process.platform !== "darwin") {
+      Menu.setApplicationMenu(null);
+      return;
+    }
     const template: Electron.MenuItemConstructorOptions[] = [
       ...(process.platform === "darwin" ? [{ role: "appMenu" as const }] : []),
       {

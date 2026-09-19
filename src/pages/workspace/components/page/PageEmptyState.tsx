@@ -401,7 +401,7 @@ export function PageEmptyState() {
                   onPointerMove={isAi ? aiTilt.onPointerMove : undefined}
                   onPointerLeave={isAi ? aiTilt.onPointerLeave : undefined}
                   className={cn(
-                    "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--border))] hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[hsl(var(--goose-editor-bg))] dark:hover:bg-[var(--goose-interactive-hover)] dark:hover:border-[hsl(var(--border))] dark:hover:shadow-[0_16px_34px_rgba(2,6,23,0.48)]",
+                    "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--border))] hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-[hsl(var(--border))] dark:bg-[hsl(var(--goose-selected-bg))] dark:shadow-[0_10px_28px_rgba(2,6,23,0.35)] dark:hover:bg-[var(--goose-interactive-hover)] dark:hover:border-[var(--goose-interactive-hover-border)] dark:hover:shadow-[0_16px_34px_rgba(2,6,23,0.55)]",
                     isAi && "page-empty-ai-card",
                   )}
                   style={isAi ? aiTilt.tiltStyle : undefined}
@@ -411,13 +411,13 @@ export function PageEmptyState() {
                       "w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-[9px] md:rounded-[10px] flex items-center justify-center mb-3 sm:mb-4 transition-[background-color,box-shadow,transform] duration-200 ease-out",
                       isAi
                         ? "page-empty-ai-chip"
-                        : "bg-[hsl(var(--goose-selected-bg))] group-hover:scale-105 group-hover:bg-[var(--goose-interactive-selected)] group-hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] dark:bg-[hsl(var(--goose-selected-bg))] dark:group-hover:bg-[var(--goose-interactive-selected)] dark:group-hover:shadow-[0_10px_22px_rgba(0,0,0,0.26)]",
+                        : "bg-[hsl(var(--goose-selected-bg))] group-hover:scale-105 group-hover:bg-[var(--goose-interactive-selected)] group-hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] dark:bg-[var(--goose-interactive-selected)] dark:shadow-[0_8px_18px_rgba(37,99,235,0.18)] dark:group-hover:bg-[var(--goose-interactive-selected)] dark:group-hover:shadow-[0_10px_22px_rgba(37,99,235,0.28)]",
                     )}
                   >
                     {isAi ? <AiCrystalFx /> : null}
                     <Icon
                       className={cn(
-                        "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-[var(--goose-interactive-hover-fg)]",
+                        "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-[var(--goose-interactive-selected-fg)]",
                         isAi && "page-empty-ai-icon",
                       )}
                     />
@@ -429,7 +429,7 @@ export function PageEmptyState() {
                   >
                     {action.title}
                   </h3>
-                  <p className="hidden min-[420px]:block text-xs sm:text-sm text-muted-foreground text-left leading-relaxed transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-muted-foreground/80">
+                  <p className="hidden min-[420px]:block text-xs sm:text-sm text-muted-foreground text-left leading-relaxed transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-muted-foreground">
                     {action.description}
                   </p>
                 </button>

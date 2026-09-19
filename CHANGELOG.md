@@ -3,6 +3,12 @@
 ## 2026-09-19
 
 🪐 优化
+• 深色模式提高对比度与层次（更深壳层、更亮文字、更清晰边框），默认强调色为蓝色（ocean）；空态卡片在深色下默认显示蓝色图标底。
+
+🐛 修复
+• Windows / Linux 按下 Alt 不再弹出系统菜单栏（File / Edit / View / Window）。
+
+🪐 优化
 • Windows / Linux 全局快捷键支持 Win（Super）修饰键，录制与注册与 Raycast 一致。
 
 🪐 优化

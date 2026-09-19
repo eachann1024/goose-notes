@@ -524,6 +524,9 @@ export function createWorkspaceWindow(
       : {}),
     webPreferences: windowWebPrefs(id, "workspace"),
   });
+  if (process.platform !== "darwin") {
+    win.setMenuBarVisibility(false);
+  }
 
   const tabs =
     opts.mode === "currentTab" && opts.tab

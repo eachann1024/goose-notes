@@ -779,26 +779,25 @@
   }
 
   .dark {
-    --goose-shell-bg: 0 0% 12.55%;
-    --goose-search-overlay: rgba(0, 0, 0, 0.65);
+    /* 更深壳层 + 抬升编辑面，拉开层次 */
+    --goose-shell-bg: 222 14% 8.5%;
+    --goose-search-overlay: rgba(0, 0, 0, 0.72);
     --goose-search-overlay-fallback: var(--goose-search-overlay);
-    --goose-selected-bg: 60 2.4% 16.1%;
-    /* 暗色鸢尾靛蓝：浅底用 rgba 直写（Electron 旧内核安全） */
-    --goose-interactive-selected: rgba(99, 102, 241, 0.2);
-    --goose-interactive-selected-fg: #a5b4fc;
-    --goose-interactive-selected-border: var(--goose-interactive-selected-fg);
+    --goose-selected-bg: 220 12% 15.5%;
+    /* 默认强调色 fallback：ocean 蓝（无 data-goose-accent 时也不掉 iris 紫） */
+    --goose-interactive-selected: rgba(59, 130, 246, 0.28);
+    --goose-interactive-selected-fg: #93c5fd;
+    --goose-interactive-selected-border: #60a5fa;
     --goose-sidebar-hover: var(--goose-interactive-hover);
-    --goose-interactive-hover: #2c293d;
-    --goose-interactive-hover-fg: #a5b4fc;
-    --goose-interactive-hover-border: #9484e5;
-    /* 编辑器文字选区：略实于侧栏选中，无 accent 时与 iris fallback 一致 */
-    --goose-editor-selection-bg: rgba(99, 102, 241, 0.35);
+    --goose-interactive-hover: #243247;
+    --goose-interactive-hover-fg: #bfdbfe;
+    --goose-interactive-hover-border: #60a5fa;
+    --goose-editor-selection-bg: rgba(59, 130, 246, 0.38);
     --goose-control-hover-bg: var(--goose-interactive-hover);
     --goose-primary-hover-bg: var(--goose-interactive-hover);
     --goose-primary-active-bg: var(--goose-interactive-selected);
     --goose-icon-chip-on-selected: var(--goose-interactive-selected);
     --goose-pin-accent: #f87171;
-    /* 深色模式语义实色变量覆盖 */
     --goose-color-danger: #f87171;
     --goose-color-danger-hover: #dc2626;
     --goose-color-danger-subtle-bg: #3f1919;
@@ -819,49 +818,48 @@
     --goose-color-lock-text: #fef9c3;
     --goose-color-restore-hover: #b45309;
     --goose-color-capture-hint: #f87171;
-    --goose-ai-approval-check-bg: #6366f1;
+    --goose-ai-approval-check-bg: #3b82f6;
     --goose-ai-approval-check-fg: #ffffff;
-    --goose-block-subtle-bg: #252525;
-    --goose-block-subtle-border: #363636;
-    --goose-block-subtle-hover: #2e2e2e;
-    --goose-table-control-hover: rgba(255, 255, 255, 0.08);
-    --goose-block-subtle-inset: #222222;
-    --goose-active-line-bg: #353432;
-    --goose-callout-accent: #6366f1;
-    --goose-callout-bg: #2f2f2f;
-    --goose-callout-border: #3d3d3d;
+    --goose-block-subtle-bg: #1c2430;
+    --goose-block-subtle-border: #334155;
+    --goose-block-subtle-hover: #243041;
+    --goose-table-control-hover: rgba(255, 255, 255, 0.1);
+    --goose-block-subtle-inset: #161d27;
+    --goose-active-line-bg: #2a3545;
+    --goose-callout-accent: #3b82f6;
+    --goose-callout-bg: #1e293b;
+    --goose-callout-border: #334155;
     --goose-inline-code-bg: var(--goose-icon-chip-on-selected);
     --goose-inline-code-fg: var(--goose-interactive-selected-fg);
-    /* 中性 hover 边框：避免 fallback 再锁死 iris；具体 accent 由 runtime/preset 覆盖 */
-    --goose-inline-code-border-hover: #737373;
-    --goose-accent-link: #a5b4fc;
-    --goose-accent-link-hover: #c7d2fe;
-    --goose-accent-focus: #6366f1;
-    --goose-accent-drag-line: #6366f1;
-    --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.42);
-    --goose-editor-bg: 60 2.2% 18%;
-    --goose-nav-title: 0 0% 66%;
+    --goose-inline-code-border-hover: #64748b;
+    --goose-accent-link: #93c5fd;
+    --goose-accent-link-hover: #bfdbfe;
+    --goose-accent-focus: #3b82f6;
+    --goose-accent-drag-line: #3b82f6;
+    --goose-accent-drag-glow: 0 0 8px rgba(59, 130, 246, 0.45);
+    --goose-editor-bg: 220 13% 12.5%;
+    --goose-nav-title: 210 16% 78%;
     --background: var(--goose-shell-bg);
-    --foreground: 0 0% 90%;
+    --foreground: 210 20% 96%;
     --card: var(--goose-editor-bg);
-    --card-foreground: 0 0% 90%;
-    --popover: 60 2.2% 19.5%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 99%;
+    --card-foreground: 210 20% 96%;
+    --popover: 220 13% 14%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
     --secondary: var(--goose-selected-bg);
-    --secondary-foreground: 210 40% 90%;
+    --secondary-foreground: 210 40% 96%;
     --muted: var(--goose-selected-bg);
-    --muted-foreground: 0 0% 66%;
+    --muted-foreground: 215 16% 72%;
     --accent: var(--goose-selected-bg);
-    --accent-foreground: 210 40% 90%;
+    --accent-foreground: 210 40% 96%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 0 0% 24%;
-    --input: 0 0% 24%;
-    --ring: 239 84% 67%;
+    --border: 215 16% 28%;
+    --input: 215 16% 28%;
+    --ring: 217 91% 60%;
     --workspace-drag-line-color: hsl(var(--primary));
-    --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.42);
+    --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.45);
   }
 }
 
