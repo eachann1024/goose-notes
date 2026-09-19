@@ -70,3 +70,22 @@ test("仓库切换菜单宽度跟随触发条", () => {
   expect(switcher).toContain("!hideTrash &&");
   expect(switcher).not.toContain("min-w-[var(--goose-popover-trigger-width)]");
 });
+
+
+test("Electron chrome：全宽底栏与顶栏对位挂载", () => {
+  const layout = readFileSync(
+    "src/pages/workspace/WorkspaceLayout.tsx",
+    "utf8",
+  );
+  const statusBar = readFileSync(
+    "src/pages/workspace/components/page/DesktopStatusBar.tsx",
+    "utf8",
+  );
+  expect(layout).toContain("DesktopStatusBar");
+  expect(layout).toContain("<DesktopTitleBar");
+  expect(statusBar).toContain("electron-statusbar");
+  expect(statusBar).toContain('aria-label="窗口状态栏"');
+  expect(
+    readFileSync("src/pages/workspace/styles/index.css", "utf8"),
+  ).toContain(".electron-statusbar");
+});

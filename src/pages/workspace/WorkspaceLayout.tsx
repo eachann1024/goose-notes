@@ -11,6 +11,7 @@ import { PageEmptyState } from "./components/page/PageEmptyState";
 import { FolderHomePage } from "./components/page/FolderHomePage";
 import { PageHeader } from "./components/page/PageHeader";
 import { DesktopTitleBar } from "./components/page/DesktopTitleBar";
+import { DesktopStatusBar } from "./components/page/DesktopStatusBar";
 import { useDesktopWindowTitleSync } from "@/hooks/useDesktopWindowTitle";
 import { CommandPalette } from "./components/command/CommandPalette";
 import { LocalFolderTargetPicker } from "./components/sidebar/LocalFolderTargetPicker";
@@ -511,6 +512,9 @@ export function WorkspaceLayout({
             )}
           </main>
         </div>
+        {isElectronChrome && (
+          <DesktopStatusBar page={page} isWelcomeTab={isWelcomeTab} />
+        )}
       </div>
     </>
   );

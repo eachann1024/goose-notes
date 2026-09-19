@@ -488,3 +488,15 @@ html[data-sidebar-collapsed] .bn-side-menu {
     border-radius: 0;
   }
 }
+
+
+/* Electron 全宽底栏：与顶栏对位，盖住侧栏+主区全宽。 */
+.workspace-shell[data-electron-chrome] .electron-statusbar {
+  height: var(--electron-statusbar-height, 1.75rem);
+  min-height: var(--electron-statusbar-height, 1.75rem);
+  background: var(--workspace-sidebar-surface);
+  -webkit-app-region: no-drag;
+}
+html.is-electron {
+  --electron-statusbar-height: 1.75rem;
+}
