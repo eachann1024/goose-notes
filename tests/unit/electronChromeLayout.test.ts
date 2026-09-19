@@ -20,7 +20,8 @@ test("C 布局：窗口控制在顶栏，仓库入口在底部", () => {
     new URL("../../electron/main/ipc.ts", import.meta.url),
     "utf8",
   );
-  expect(footer).toContain("<NotebookSwitcher {...props}");
+  expect(footer).toContain("<NotebookSwitcher");
+  expect(footer).toContain("sidebar-footer-control");
   expect(footer).not.toContain("useWindowAlwaysOnTop");
   expect(titleBar).toContain("LucideIcons.Pin");
   expect(titleBar).toContain("useWindowAlwaysOnTop");
