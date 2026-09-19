@@ -89,3 +89,16 @@ test("Electron chrome：全宽底栏与顶栏对位挂载", () => {
     readFileSync("src/pages/workspace/styles/index.css", "utf8"),
   ).toContain(".electron-statusbar");
 });
+
+
+test("Electron chrome：工作区窗启用系统材质", () => {
+  const windows = readFileSync("electron/main/windows.ts", "utf8");
+  const material = readFileSync("electron/main/systemMaterial.ts", "utf8");
+  expect(windows).toContain("applySystemMaterial");
+  expect(windows).toContain("workspaceWindowMaterialOptions");
+  expect(material).toContain('setBackgroundMaterial("mica")');
+  expect(material).toContain('setVibrancy("under-window")');
+  expect(
+    readFileSync("src/pages/workspace/styles/index.css", "utf8"),
+  ).toContain("系统材质：壳层");
+});

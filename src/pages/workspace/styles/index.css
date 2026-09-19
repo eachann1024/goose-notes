@@ -500,3 +500,45 @@ html[data-sidebar-collapsed] .bn-side-menu {
 html.is-electron {
   --electron-statusbar-height: 1.75rem;
 }
+
+
+/* Electron 系统材质：壳层/侧栏/顶底栏半透明，露出 Win Mica / Mac vibrancy。
+   主内容卡片保持较高不透明度，保证阅读。 */
+html.is-electron .workspace-shell {
+  background: transparent;
+}
+html.is-electron .workspace-shell[data-electron-chrome] .electron-titlebar,
+html.is-electron .workspace-shell[data-electron-chrome] .electron-statusbar {
+  background: color-mix(
+    in srgb,
+    var(--workspace-sidebar-surface) 78%,
+    transparent
+  );
+}
+html.is-electron .workspace-shell .workspace-sidebar-pane {
+  background: color-mix(
+    in srgb,
+    var(--workspace-sidebar-surface) 72%,
+    transparent
+  );
+}
+html.is-electron.dark .workspace-shell[data-electron-chrome] .electron-titlebar,
+html.is-electron.dark .workspace-shell[data-electron-chrome] .electron-statusbar,
+html.is-electron .dark .workspace-shell[data-electron-chrome] .electron-titlebar,
+html.is-electron .dark .workspace-shell[data-electron-chrome] .electron-statusbar {
+  background: color-mix(
+    in srgb,
+    var(--workspace-sidebar-surface) 82%,
+    transparent
+  );
+}
+html.is-electron .workspace-shell .workspace-main-sheet {
+  background: color-mix(
+    in srgb,
+    var(--workspace-main-surface) 92%,
+    transparent
+  );
+}
+html.is-electron body {
+  background: transparent;
+}

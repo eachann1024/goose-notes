@@ -46,6 +46,7 @@ import {
   WindowRegistry,
 } from "./windowRegistry";
 import { createQuicknoteActivateSuppression } from "./quicknoteActivateSuppression";
+import { applySystemMaterial, workspaceWindowMaterialOptions } from "./systemMaterial";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -503,6 +504,7 @@ export function createWorkspaceWindow(
   const isMac = process.platform === "darwin";
   const id = allocWindowId(opts.windowId);
   const bounds = resolveCreateBounds(opts);
+  const material = workspaceWindowMaterialOptions();
   const win = new BrowserWindow({
     title: "Goose Note",
     width: bounds.width ?? MAIN_WIDTH,
@@ -511,15 +513,22 @@ export function createWorkspaceWindow(
     minWidth: MIN_WORKSPACE_WIDTH,
     minHeight: MIN_WORKSPACE_HEIGHT,
     show: false,
-    backgroundColor: "#ffffff",
+    backgroundColor: material.backgroundColor,
     transparent: false,
     autoHideMenuBar: true,
     frame: true,
+    ...(material.backgroundMaterial
+      ? { backgroundMaterial: material.backgroundMaterial }
+      : {}),
     ...(isMac
       ? {
           // hidden：自定义 y 就是按钮顶部偏移。inset 样式会额外下移，对不齐 web 顶栏。
           titleBarStyle: "hidden" as const,
           trafficLightPosition: trafficLightPosition(),
+          ...(material.vibrancy ? { vibrancy: material.vibrancy } : {}),
+          ...(material.visualEffectState
+            ? { visualEffectState: material.visualEffectState }
+            : {}),
         }
       : {}),
     webPreferences: windowWebPrefs(id, "workspace"),
@@ -527,6 +536,7 @@ export function createWorkspaceWindow(
   if (process.platform !== "darwin") {
     win.setMenuBarVisibility(false);
   }
+  applySystemMaterial(win);
 
   const tabs =
     opts.mode === "currentTab" && opts.tab
