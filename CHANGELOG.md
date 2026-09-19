@@ -3,6 +3,9 @@
 ## 2026-09-19
 
 🪐 优化
+• Windows / Linux 全局快捷键支持 Win（Super）修饰键，录制与注册与 Raycast 一致。
+
+🪐 优化
 • 桌面端应用图标换成黄本子小鹅（与 uTools 版 logo 一致）。
 
 🐛 修复

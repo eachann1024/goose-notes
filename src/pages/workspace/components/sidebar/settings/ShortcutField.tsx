@@ -11,7 +11,7 @@ import { getShortcutFromMouseEvent } from "@/lib/shortcut-match"
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]"
 
-const MODIFIER_KEYS = new Set(["control", "ctrl", "meta", "alt", "shift"])
+const MODIFIER_KEYS = new Set(["control", "ctrl", "meta", "alt", "shift", "super", "os", "win", "windows"])
 const MODIFIER_ORDER = ["Ctrl", "Meta", "Alt", "Shift"]
 
 function normalizeShortcutKey(rawKey: string) {
@@ -20,7 +20,7 @@ function normalizeShortcutKey(rawKey: string) {
   const key = rawKey.trim().toLowerCase()
   if (!key) return ""
   if (key === "control" || key === "ctrl") return "Ctrl"
-  if (key === "meta" || key === "command" || key === "cmd") return "Meta"
+  if (key === "meta" || key === "command" || key === "cmd" || key === "super" || key === "os" || key === "win" || key === "windows") return "Meta"
   if (key === "alt" || key === "option") return "Alt"
   if (key === "shift") return "Shift"
   if (key === "escape" || key === "esc") return "Esc"

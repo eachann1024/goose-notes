@@ -2,7 +2,28 @@
  * 应用内快捷键格式 → Electron accelerator。
  * 主进程与渲染进程共用；无法识别时返回空串。
  */
-export function toElectronAccelerator(shortcut: string): string {
+export type AcceleratorPlatform = "darwin" | "win32" | "linux" | string;
+
+function resolveAcceleratorPlatform(
+  platform?: AcceleratorPlatform,
+): AcceleratorPlatform {
+  if (platform) return platform;
+  if (typeof process !== "undefined" && typeof process.platform === "string") {
+    return process.platform;
+  }
+  return "darwin";
+}
+
+/**
+ * 应用内快捷键 → Electron accelerator。
+ * Windows/Linux 上 Meta/Cmd 必须映射为 Super（Win 键）；Electron 文档写明
+ * Command 在 Win/Linux 上无效，否则 globalShortcut 注册失败或根本不触发。
+ */
+export function toElectronAccelerator(
+  shortcut: string,
+  platform?: AcceleratorPlatform,
+): string {
+  const resolvedPlatform = resolveAcceleratorPlatform(platform);
   const parts = shortcut
     .split("+")
     .map((part) => part.trim())
@@ -22,7 +43,9 @@ export function toElectronAccelerator(shortcut: string): string {
       continue;
     }
     if (["meta", "command", "cmd"].includes(lower)) {
-      if (!modifiers.includes("Command")) modifiers.push("Command");
+      // macOS → Command；Windows/Linux → Super（物理 Win/Super 键）
+      const token = resolvedPlatform === "darwin" ? "Command" : "Super";
+      if (!modifiers.includes(token)) modifiers.push(token);
       continue;
     }
     if (["ctrl", "control"].includes(lower)) {
@@ -73,8 +96,6 @@ export function toElectronAccelerator(shortcut: string): string {
   return [...modifiers, key].join("+");
 }
 
-type AcceleratorPlatform = "darwin" | "win32" | "linux" | string;
-
 /** 同一组合的 Electron 写法（unregister 必须用当时真正 register 的那条）。 */
 export function electronAcceleratorAliases(
   accelerator: string,
@@ -90,6 +111,21 @@ export function electronAcceleratorAliases(
         platform === "darwin" ? "Command" : "Control",
       ),
     );
+  }
+  // Win/Linux：Super / Meta / Win 互通（录制存 Super，旧数据可能是 Meta）
+  if (platform !== "darwin") {
+    if (accelerator.includes("Super")) {
+      aliases.push(accelerator.replaceAll("Super", "Meta"));
+      aliases.push(accelerator.replaceAll("Super", "Win"));
+    }
+    if (accelerator.includes("Meta")) {
+      aliases.push(accelerator.replaceAll("Meta", "Super"));
+      aliases.push(accelerator.replaceAll("Meta", "Win"));
+    }
+    if (/(^|\+)Win(\+|$)/.test(accelerator)) {
+      aliases.push(accelerator.replaceAll("Win", "Super"));
+      aliases.push(accelerator.replaceAll("Win", "Meta"));
+    }
   }
   return [...new Set(aliases)];
 }
@@ -164,25 +200,27 @@ function inputMatchesExactAccelerator(
 
   const commandOrControl =
     modifiers.has("commandorcontrol") || modifiers.has("cmdorctrl");
-  const wantMeta =
-    modifiers.has("command") ||
-    modifiers.has("cmd") ||
-    modifiers.has("meta") ||
-    (commandOrControl && platform === "darwin");
-  const wantControl =
-    modifiers.has("control") ||
-    modifiers.has("ctrl") ||
-    (commandOrControl && platform !== "darwin");
   const wantAlt = modifiers.has("alt") || modifiers.has("option");
   const wantShift = modifiers.has("shift");
   const wantSuper =
     modifiers.has("super") || modifiers.has("win") || modifiers.has("windows");
+  const wantCommand =
+    modifiers.has("command") || modifiers.has("cmd") || modifiers.has("meta");
 
-  if (Boolean(input.meta) !== wantMeta) return false;
+  // Chromium：macOS Command 与 Windows Win / Linux Super 都体现在 meta 位上。
+  const wantMetaKey =
+    platform === "darwin"
+      ? wantCommand || wantSuper || (commandOrControl && true)
+      : wantSuper || wantCommand;
+  const wantControl =
+    modifiers.has("control") ||
+    modifiers.has("ctrl") ||
+    (commandOrControl && platform !== "darwin");
+
+  if (Boolean(input.meta) !== Boolean(wantMetaKey)) return false;
   if (Boolean(input.control) !== wantControl) return false;
   if (Boolean(input.alt) !== wantAlt) return false;
   if (Boolean(input.shift) !== wantShift) return false;
-  if (wantSuper && !input.meta) return false;
   return acceleratorKeyMatches(input, key);
 }
 

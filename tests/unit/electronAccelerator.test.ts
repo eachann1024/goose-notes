@@ -21,7 +21,11 @@ test("default desktop hotkeys convert to Electron accelerators", () => {
     "CommandOrControl+Shift+K",
   );
   expect(toElectronAccelerator("Mod+Alt+N")).toBe("CommandOrControl+Alt+N");
-  expect(toElectronAccelerator("Meta+Alt+N")).toBe("Command+Alt+N");
+  expect(toElectronAccelerator("Meta+Alt+N", "darwin")).toBe("Command+Alt+N");
+  expect(toElectronAccelerator("Meta+Alt+N", "win32")).toBe("Super+Alt+N");
+  expect(toElectronAccelerator("Super+N", "win32")).toBe("Super+N");
+  expect(toElectronAccelerator("Win+Shift+K", "win32")).toBe("Super+Shift+K");
+  expect(toElectronAccelerator("Meta+N", "linux")).toBe("Super+N");
 });
 
 test("CommandOrControl aliases match so a second register of the same default is a no-op", () => {
@@ -122,4 +126,28 @@ test("before-input matches default wake and search accelerators", () => {
   expect(
     inputMatchesAccelerator({ ...search, shift: false }, "CommandOrControl+Shift+K", "darwin"),
   ).toBe(false);
+});
+
+test("Windows Super/Win accelerators match meta key bit from Chromium", () => {
+  const winN = {
+    type: "keyDown" as const,
+    key: "n",
+    code: "KeyN",
+    meta: true,
+    alt: false,
+    control: false,
+    shift: false,
+  };
+  expect(inputMatchesAccelerator(winN, "Super+N", "win32")).toBe(true);
+  expect(inputMatchesAccelerator(winN, "Meta+N", "win32")).toBe(true);
+  expect(inputMatchesAccelerator(winN, "Win+N", "win32")).toBe(true);
+  expect(inputMatchesAccelerator(winN, "Control+N", "win32")).toBe(false);
+  expect(inputMatchesAccelerator({ ...winN, meta: false, control: true }, "Super+N", "win32")).toBe(false);
+
+  expect(
+    electronAcceleratorsMatch("Super+N", "Meta+N", "win32"),
+  ).toBe(true);
+  expect(
+    electronAcceleratorAliases("Super+K", "win32"),
+  ).toEqual(expect.arrayContaining(["Super+K", "Meta+K", "Win+K"]));
 });
