@@ -220,6 +220,11 @@ const gooseDesktop = {
   }) => invoke("desktop:createWindow", opts) as Promise<{ windowId: string }>,
   closeWindow: (windowId?: string) =>
     invoke("desktop:closeWindow", windowId) as Promise<void>,
+  minimizeWindow: () => invoke("desktop:minimizeWindow") as Promise<void>,
+  toggleMaximizeWindow: () =>
+    invoke("desktop:toggleMaximizeWindow") as Promise<boolean>,
+  isWindowMaximized: () =>
+    invoke("desktop:isWindowMaximized") as Promise<boolean>,
   finishTabDrag: (opts: {
     tab: WindowTabSnapshot;
     cursor: { x: number; y: number };

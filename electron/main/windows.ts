@@ -516,7 +516,9 @@ export function createWorkspaceWindow(
     backgroundColor: material.backgroundColor,
     transparent: false,
     autoHideMenuBar: true,
-    frame: true,
+    // Win：去掉原生顶栏，由 DesktopTitleBar 右侧自定义 min/max/close。
+    // Mac：保留 frame + hidden titleBar，红绿灯仍走系统。
+    frame: isMac,
     ...(material.backgroundMaterial
       ? { backgroundMaterial: material.backgroundMaterial }
       : {}),

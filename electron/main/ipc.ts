@@ -656,6 +656,24 @@ export function registerIpcHandlers(): void {
     );
   });
 
+  ipcMain.handle("desktop:minimizeWindow", async (event) => {
+    const win = senderWindow(event);
+    if (win && !win.isDestroyed()) win.minimize();
+  });
+
+  ipcMain.handle("desktop:toggleMaximizeWindow", async (event) => {
+    const win = senderWindow(event);
+    if (!win || win.isDestroyed()) return false;
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+    return win.isMaximized();
+  });
+
+  ipcMain.handle("desktop:isWindowMaximized", async (event) => {
+    const win = senderWindow(event);
+    return Boolean(win && !win.isDestroyed() && win.isMaximized());
+  });
+
   ipcMain.handle("desktop:finishTabDrag", async (event, payload) => {
     return finishTabDrag(senderWindow(event), payload ?? {});
   });

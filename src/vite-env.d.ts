@@ -150,6 +150,9 @@ declare global {
       bounds?: { x: number; y: number; width: number; height: number }
     }) => Promise<{ windowId: string }>
     closeWindow: (windowId?: string) => Promise<void>
+    minimizeWindow: () => Promise<void>
+    toggleMaximizeWindow: () => Promise<boolean>
+    isWindowMaximized: () => Promise<boolean>
     finishTabDrag: (opts: {
       tab: { id: string; pageId: string; type?: string; pinned?: boolean; workspaceId?: string }
       cursor: { x: number; y: number }

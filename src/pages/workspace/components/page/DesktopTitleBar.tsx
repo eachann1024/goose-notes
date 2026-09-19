@@ -13,6 +13,7 @@
  */
 import * as LucideIcons from "lucide-react";
 import { useWindowAlwaysOnTop } from "@/hooks/useWindowAlwaysOnTop";
+import { WinWindowControls } from "./WinWindowControls";
 import type { Page } from "@/types";
 import { cn, formatShortcut } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,9 @@ export function DesktopTitleBar({
   const aiFullscreenOpen =
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
 
+  const isWinElectron =
+    typeof navigator !== "undefined" && /Win/i.test(navigator.platform);
+
   const windowControls = (
     <div
       className="electron-window-controls flex shrink-0 items-center gap-2"
@@ -161,11 +165,12 @@ export function DesktopTitleBar({
   if (inHistoryMode) {
     return (
       <div
-        className="electron-titlebar w-full shrink-0"
+        className="electron-titlebar flex w-full shrink-0 items-center"
         data-sidebar-collapsed={sidebarCollapsed}
       >
         {windowControls}
         <HistoryToolbar />
+        {isWinElectron ? <WinWindowControls /> : null}
       </div>
     );
   }
@@ -349,12 +354,13 @@ export function DesktopTitleBar({
 
   return (
     <div
-      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-3"
+      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-0"
       data-ai-conversation-header={aiFullscreenOpen || undefined}
       data-sidebar-collapsed={sidebarCollapsed}
     >
       {windowControls}
       {titleBarRow}
+      {isWinElectron ? <WinWindowControls /> : null}
     </div>
   );
 }

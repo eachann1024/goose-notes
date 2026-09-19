@@ -72,22 +72,33 @@ test("仓库切换菜单宽度跟随触发条", () => {
 });
 
 
-test("Electron chrome：全宽底栏与顶栏对位挂载", () => {
+test("Electron chrome：不挂全宽底栏", () => {
   const layout = readFileSync(
     "src/pages/workspace/WorkspaceLayout.tsx",
     "utf8",
   );
-  const statusBar = readFileSync(
-    "src/pages/workspace/components/page/DesktopStatusBar.tsx",
+  expect(layout).toContain("<DesktopTitleBar");
+  expect(layout).not.toContain("DesktopStatusBar");
+});
+
+test("Win：工作区无边框 + 顶栏右侧窗控", () => {
+  const windows = readFileSync("electron/main/windows.ts", "utf8");
+  const titleBar = readFileSync(
+    "src/pages/workspace/components/page/DesktopTitleBar.tsx",
     "utf8",
   );
-  expect(layout).toContain("DesktopStatusBar");
-  expect(layout).toContain("<DesktopTitleBar");
-  expect(statusBar).toContain("electron-statusbar");
-  expect(statusBar).toContain('aria-label="窗口状态栏"');
-  expect(
-    readFileSync("src/pages/workspace/styles/index.css", "utf8"),
-  ).toContain(".electron-statusbar");
+  const controls = readFileSync(
+    "src/pages/workspace/components/page/WinWindowControls.tsx",
+    "utf8",
+  );
+  expect(windows).toMatch(/frame:\s*isMac/);
+  expect(titleBar).toContain("WinWindowControls");
+  expect(controls).toContain("minimizeWindow");
+  expect(controls).toContain("toggleMaximizeWindow");
+  expect(controls).toContain("closeWindow");
+  expect(readFileSync("electron/main/ipc.ts", "utf8")).toContain(
+    "desktop:minimizeWindow",
+  );
 });
 
 

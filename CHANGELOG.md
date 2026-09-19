@@ -2,6 +2,11 @@
 
 ## 2026-09-19
 
+🐛 修复
+• Windows：去掉系统原生顶栏，改为自定义顶栏右侧最小化/最大化/关闭；移除误加的全宽底栏（仅 Win）。
+
+## 2026-09-19
+
 🪐 优化
 • Electron 工作区窗接入系统材质：Windows 11 Mica、macOS under-window vibrancy；壳层/侧栏/顶底栏半透明以露出材质（Linux 保持实心）。
 
