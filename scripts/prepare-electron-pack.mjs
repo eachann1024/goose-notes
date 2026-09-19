@@ -155,7 +155,8 @@ mac:
         - x64
 win:
   icon: icon.ico
-  signAndEditExecutable: false
+  # true：把 icon/版本信息写入 exe；CI 已关 CSC_IDENTITY_AUTO_DISCOVERY，不会真签名
+  signAndEditExecutable: true
   target:
     - target: nsis
       arch:
@@ -163,6 +164,9 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  installerIcon: icon.ico
+  uninstallerIcon: icon.ico
+  installerHeaderIcon: icon.ico
   artifactName: \${productName}-\${version}-x64-setup.\${ext}
 linux:
   icon: icon.png

@@ -44,7 +44,8 @@ mac:
     NSAppleEventsUsageDescription: Goose Note 需要发送系统事件，以便用快捷键唤出主窗口和速记小窗。
     NSAccessibilityUsageDescription: Goose Note 需要辅助功能权限，以便在其他应用处于前台时用全局快捷键唤出主窗口和速记小窗。
 win:
-  signAndEditExecutable: false
+  icon: electron/icons/icon.ico
+  signAndEditExecutable: true
 linux:
   icon: electron/icons/icon.png
   category: Utility
