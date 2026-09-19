@@ -22,6 +22,7 @@ import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
 import { commitPendingEditorChange } from "./editorPendingCommit";
 import { pageUndoHistory } from "./pageUndoHistory";
+import { replacePageContent } from "./replacePageContent";
 import {
   useEditorSettings,
   useEditorPageContext,
@@ -604,7 +605,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     syncedContentSignatureRef.current = nextSig;
 
     try {
-      editor.replaceBlocks(editor.document, nextEditorContent as any);
+      editor.transact((tr) => replacePageContent(tr, nextEditorContent as any));
     } catch (error) {
       console.error(
         "[goose-note] replace editor blocks failed during page switch",

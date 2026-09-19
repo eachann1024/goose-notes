@@ -68,7 +68,7 @@ export function getPageTitle(page: Page): string {
       // 本地文件：tab/侧栏用文件名（去 .md/.markdown 后缀），不取编辑器内的 H1——
       // 文件名与文档标题是两件独立的事。
       const name = page.localFilePath.split(/[\\/]/).pop() || "";
-      const stripped = name.replace(/\.(md|markdown)$/i, "").trim();
+      const stripped = page.isFolder ? name : name.replace(/\.(md|markdown)$/i, "").trim();
       return normalizePageTitle(stripped);
     }
 

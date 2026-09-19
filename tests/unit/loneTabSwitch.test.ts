@@ -79,6 +79,21 @@ test.afterEach(() => {
   discardPendingLocalSave("a");
 });
 
+test("置顶页面用正式标签打开，保留其他标签并复用已打开页面", () => {
+  useTabs.getState().openPermanentTab("a");
+  useTabs.getState().openPermanentTab("b");
+  const originalIds = useTabs.getState().openTabs.map((tab) => tab.id);
+
+  useTabs.getState().openPermanentTab("c");
+  useTabs.getState().openPermanentTab("a");
+
+  const { openTabs, activeTabId } = useTabs.getState();
+  expect(openTabs.map((tab) => tab.pageId)).toEqual(["a", "b", "c"]);
+  expect(openTabs.slice(0, 2).map((tab) => tab.id)).toEqual(originalIds);
+  expect(activeTabId).toBe(originalIds[0]);
+  expect(openTabs.every((tab) => !tab.preview)).toBe(true);
+});
+
 test("只有一个标签时列表打开是切换而不是新增", () => {
   useTabs.getState().openPermanentTab("a");
   const firstId = useTabs.getState().openTabs[0]?.id;

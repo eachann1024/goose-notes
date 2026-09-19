@@ -1,7 +1,6 @@
 import {
   AlignmentType,
   BorderStyle,
-  CheckBox,
   HeadingLevel,
   ImageRun,
   Paragraph,
@@ -101,6 +100,10 @@ function scaleImage(
     width: Math.max(1, Math.round(width * ratio)),
     height: Math.max(1, Math.round(height * ratio)),
   };
+}
+
+function isCheckedProp(value: unknown): boolean {
+  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 function mediaLabel(block: Record<string, unknown>, fallback: string): string {
@@ -442,22 +445,28 @@ export async function processBlockChildren(
         break;
       }
       case "checkListItem": {
-        const checked = Boolean(props.checked);
+        const checked = isCheckedProp(props.checked);
         const contentRuns = inlineContentToChildren(block.content, ctx.font, {
           color: checked ? DOCX_COLORS.muted : undefined,
+          strike: checked,
         });
         result.push(
-          ...markerBox({
-            marker: tightParagraph({
-              children: [new CheckBox({ checked })],
-            }),
-            content: tightParagraph({
+          ...blockBox({
+            inner: tightParagraph({
               alignment,
-              children: contentRuns.length ? contentRuns : [emptyRun(ctx.font)],
+              children: [
+                new TextRun({
+                  text: checked ? "☑ " : "☐ ",
+                  font: runFont(ctx.font.body),
+                  size: DOCX_BODY_SIZE,
+                  color: checked ? DOCX_COLORS.muted : DOCX_COLORS.text,
+                }),
+                ...(contentRuns.length ? contentRuns : [emptyRun(ctx.font)]),
+              ],
             }),
             shading,
             padY: DOCX_CHECK_PAD_Y,
-            markerWidth: DOCX_CHECK_MARKER_DXA,
+            padX: 0,
             indent: convertInchesToTwip(0.18 * depth),
           }),
         );

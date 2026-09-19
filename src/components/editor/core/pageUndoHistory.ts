@@ -65,8 +65,13 @@ export class PageUndoHistory {
     const plugin = historyKey.get(current);
     if (!plugin?.spec.state) return current;
     try {
-      const historyState = migrateHistory(historyKey.getState(snapshot.state), current.schema);
-      const doc = current.schema.nodeFromJSON(snapshot.state.doc.toJSON());
+      const sameSchema = snapshot.state.schema === current.schema;
+      const historyState = sameSchema
+        ? historyKey.getState(snapshot.state)
+        : migrateHistory(historyKey.getState(snapshot.state), current.schema);
+      const doc = sameSchema
+        ? snapshot.state.doc
+        : current.schema.nodeFromJSON(snapshot.state.doc.toJSON());
       const restoredPlugin = new Plugin({
         ...plugin.spec,
         state: { ...plugin.spec.state, init: () => historyState },

@@ -69,6 +69,51 @@ test.describe("local folder stable page ids", () => {
     await waitForLocalHarness(page);
   });
 
+  test("sidebar renames folders and files without changing IDs or file contents", async ({ page }) => {
+    const before = await page.evaluate(async () => {
+      const h = (window as LocalHarnessWindow).__gooseTest!;
+      const { notebookId } = await h.setupMockNotebook();
+      const pages = Object.values(h.stores.usePages.getState().pages);
+      const folder = pages.find(p => p.workspaceId === notebookId && p.localFilePath === "/mock-notes/sub")!;
+      const child = pages.find(p => p.workspaceId === notebookId && p.localFilePath === "/mock-notes/sub/nested.md")!;
+      h.stores.useTabs.getState().openPreviewTab(child.id);
+      return { folderId: folder.id, childId: child.id, content: h.readMockFile(child.localFilePath!) };
+    });
+    const rename = async (label: string, name: string) => {
+      await page.locator(`.main-tree-row [aria-label="${label}"]`).click({ button: "right" });
+      await page.getByRole("menuitem", { name: "重命名", exact: true }).click();
+      await page.getByRole("textbox", { name: "新名称", exact: true }).fill(name);
+      await page.getByRole("button", { name: "确认", exact: true }).click();
+    };
+    await rename("sub", "资料.md");
+    await expect(page.locator('.main-tree-row [aria-label="资料.md"]')).toBeVisible();
+    await rename("nested", "改名文件");
+    await expect(page.locator('.main-tree-row [aria-label="改名文件"]')).toBeVisible();
+    const after = await page.evaluate(({ folderId, childId }) => {
+      const h = (window as LocalHarnessWindow).__gooseTest!;
+      const state = h.stores.usePages.getState();
+      return {
+        folderPath: state.pages[folderId].localFilePath,
+        childPath: state.pages[childId].localFilePath,
+        content: h.readMockFile("/mock-notes/资料.md/改名文件.md"),
+        old: h.readMockFile("/mock-notes/sub/nested.md"),
+        tabOpen: h.stores.useTabs.getState().openTabs.some(t => t.pageId === childId),
+      };
+    }, before);
+    expect(after).toEqual({ folderPath: "/mock-notes/资料.md", childPath: "/mock-notes/资料.md/改名文件.md", content: before.content, old: null, tabOpen: true });
+    const failures = await page.evaluate(async ({ folderId }) => {
+      const h = (window as LocalHarnessWindow).__gooseTest!;
+      const state = h.stores.usePages.getState();
+      const errors: string[] = [];
+      for (const name of ["../escape", "plain.md"]) {
+        try { await state.renameLocalPageFile(folderId, name); }
+        catch (error) { errors.push(String(error)); }
+      }
+      return errors;
+    }, before);
+    expect(failures).toHaveLength(2);
+  });
+
   test("expanding a local folder preserves the open child and does not create a folder tab", async ({
     page,
   }) => {

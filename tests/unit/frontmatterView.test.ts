@@ -55,6 +55,23 @@ test.describe("yaml-frontmatter roundtrip", () => {
     expect(secondPass.startsWith("---\n")).toBe(true);
   });
 
+  test("仅 goose 设置的 frontmatter 不进编辑器", () => {
+    const rawMd = [
+      "---",
+      "goose-favorite: true",
+      "goose-font: serif",
+      "---",
+      "",
+      "# 正文",
+    ].join("\n");
+    const parsed = markdownToJsonContent(rawMd);
+    expect(parsed[0]?.type).not.toBe("codeBlock");
+    expect(parsed[0]?.props?.language).not.toBe("yaml-frontmatter");
+    const exportedMd = jsonContentToMarkdown(parsed);
+    expect(exportedMd.startsWith("---\n")).toBe(false);
+    expect(exportedMd).toContain("# 正文");
+  });
+
   test("无 frontmatter 的 markdown 不凭空造 --- 头", () => {
     const rawMd = "# Pearl\n\n正文内容";
     const parsed = markdownToJsonContent(rawMd);

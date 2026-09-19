@@ -2,6 +2,8 @@ import { expect, test } from "playwright/test";
 import {
   GOOSE_FONT_KEY,
   GOOSE_LOCKED_KEY,
+  applyFrontmatterBodyToContent,
+  frontmatterBodyHasUserVisibleKeys,
   isLocalPageFrontmatterSettingsUpdate,
   mergeLocalPageSettingsIntoFrontmatter,
   parseLocalFrontmatterBlob,
@@ -152,6 +154,27 @@ test.describe("local-frontmatter", () => {
       true,
     );
     expect(isLocalPageFrontmatterSettingsUpdate({ content: [] as any })).toBe(
+      false,
+    );
+  });
+
+  test("仅 goose 键不算用户可见属性", () => {
+    expect(frontmatterBodyHasUserVisibleKeys("goose-favorite: true")).toBe(
+      false,
+    );
+    expect(
+      frontmatterBodyHasUserVisibleKeys("name: pearl\ngoose-favorite: true"),
+    ).toBe(true);
+  });
+
+  test("applyFrontmatterBodyToContent 不为纯 goose YAML 插入首块", () => {
+    const content = [{ type: "paragraph", content: "hi" }];
+    const next = applyFrontmatterBodyToContent(
+      content as any,
+      "goose-favorite: true",
+    ) as any[];
+    expect(next[0]?.type).toBe("paragraph");
+    expect(next.some((b) => b?.props?.language === "yaml-frontmatter")).toBe(
       false,
     );
   });

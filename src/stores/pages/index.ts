@@ -205,21 +205,17 @@ export const usePages = create<PagesState>()((set, get) => ({
           isFavorite: Boolean(updatedPage.isFavorite),
         });
         if (!mergeResult.parseFailed) {
+          const yamlBody = mergeResult.blob
+            ? mergeResult.blob
+                .replace(/^---\r?\n/, "")
+                .replace(/\r?\n---$/, "")
+            : null;
           updatedPage = {
             ...updatedPage,
             localFrontmatter: mergeResult.blob,
+            // 仅用户属性同步进编辑器首块；只有收藏/置顶等 goose 键时去掉该块。
+            content: applyFrontmatterBodyToContent(updatedPage.content, yamlBody),
           };
-          // 把 merge 后的内容同步进编辑器首块，否则设置面板改了字体/锁定，
-          // 编辑器看到的还是旧 YAML。blob 为空时不动首块（无 goose 键需写）。
-          if (mergeResult.blob !== undefined) {
-            const yamlBody = mergeResult.blob
-              .replace(/^---\r?\n/, "")
-              .replace(/\r?\n---$/, "");
-            updatedPage = {
-              ...updatedPage,
-              content: applyFrontmatterBodyToContent(updatedPage.content, yamlBody),
-            };
-          }
         } else if (mergeResult.error) {
           console.warn(
             "[local-frontmatter] 无法安全写入设置，已保留原 frontmatter：",

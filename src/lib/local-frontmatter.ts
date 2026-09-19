@@ -203,6 +203,23 @@ export type MergeFrontmatterResult = {
   settings: LocalPageFrontmatterSettings;
 };
 
+/** goose 命名空间键：只服务应用设置，单独存在时不在编辑器展示 YAML 块。 */
+export function isGooseFrontmatterKey(key: string): boolean {
+  return key.startsWith("goose-");
+}
+
+/**
+ * YAML 里是否有用户可见属性（非 goose-*）。
+ * 解析失败时视为可见，避免把坏 YAML 从编辑器藏起来。
+ */
+export function frontmatterBodyHasUserVisibleKeys(
+  yamlBody: string | null | undefined,
+): boolean {
+  const parsed = parseLocalFrontmatterBlob(yamlBody);
+  if (!parsed.ok) return Boolean((yamlBody ?? "").trim());
+  return Object.keys(parsed.data).some((key) => !isGooseFrontmatterKey(key));
+}
+
 /** 取内容首块 yaml-frontmatter 的 YAML 正文（不含 --- 定界符），无则 null。 */
 export function getContentFrontmatterBody(
   content: PageContent | null | undefined,
@@ -219,7 +236,10 @@ export function getContentFrontmatterBody(
   return null;
 }
 
-/** 用某一段 YAML 正文替换内容首块 yaml-frontmatter；无首块时在顶部插入该块。 */
+/**
+ * 用某一段 YAML 正文替换内容首块 yaml-frontmatter。
+ * 仅 goose 设置（收藏/置顶/字体/锁定）或空 YAML 时不插入、并去掉已有首块。
+ */
 export function applyFrontmatterBodyToContent(
   content: PageContent | null | undefined,
   yamlBody: string | null | undefined,
@@ -228,7 +248,8 @@ export function applyFrontmatterBodyToContent(
     ? content
     : (content?.content as any[] | undefined) ?? [];
   const trimmed = (yamlBody ?? "").replace(/\s+$/, "");
-  const fmBlock = trimmed
+  const shouldShow = Boolean(trimmed) && frontmatterBodyHasUserVisibleKeys(trimmed);
+  const fmBlock = shouldShow
     ? { type: "codeBlock", props: { language: "yaml-frontmatter" }, content: trimmed }
     : null;
 

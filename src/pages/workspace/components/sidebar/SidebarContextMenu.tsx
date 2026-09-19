@@ -1,3 +1,5 @@
+import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { ReactNode } from "react";
 import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
@@ -172,6 +174,7 @@ export function SidebarContextMenu({
   const singleTabMode = effectiveSingleTabMode(
     useSettings((s) => s.singleTabMode),
   );
+  const rename = useRenameDialog();
   const hasParent = !!page.parentId;
   const createParentId = page.isFolder ? page.id : page.parentId;
 
@@ -226,6 +229,21 @@ export function SidebarContextMenu({
               scheduleAfterMenuClose(() => setIconPickerOpen(true));
 
             const sections: ReactNode[] = [];
+
+            if (!isTrashed && !page.localPendingCreate && !page.localUnsaved) {
+              sections.push(
+                <ContextMenuGroup key="rename">
+                  <ContextMenuItem onSelect={() => scheduleAfterMenuClose(() =>
+                    rename.openRenameDialog(page.id, page.isFolder && page.localFilePath
+                      ? page.localFilePath.split(/[\\/]/).pop() || ""
+                      : getPageTitle(page)),
+                  )}>
+                    <LucideIcons.Pencil className="h-4 w-4" />
+                    <span>重命名</span>
+                  </ContextMenuItem>
+                </ContextMenuGroup>,
+              );
+            }
 
             if (showCreate) {
               sections.push(
@@ -531,6 +549,17 @@ export function SidebarContextMenu({
           })()}
         </ContextMenuContent>
       </ContextMenu>
+      <SidebarRenameDialog
+        open={rename.renameDialogOpen}
+        onOpenChange={rename.setRenameDialogOpen}
+        renamePageId={rename.renamePageId}
+        renameValue={rename.renameValue}
+        onRenameValueChange={rename.setRenameValue}
+        isLocalFolder={isLocalFolder}
+        isDirectory={!!page.isFolder}
+        busy={rename.busy}
+        onConfirm={() => void rename.confirmRename()}
+      />
       <IconSelector
         value={iconName}
         onChange={(nextIcon) => updatePage(page.id, { icon: nextIcon })}

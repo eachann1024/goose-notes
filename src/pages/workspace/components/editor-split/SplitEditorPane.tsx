@@ -75,7 +75,7 @@ export function SplitEditorPane({
           </span>
         </div>
       ) : null}
-      <EditorHostBridge key={leaf.pageId} page={page} isEditorFullWidth>
+      <EditorHostBridge page={page} isEditorFullWidth>
         <div
           ref={(el) => {
             scrollElRef.current = el;
@@ -85,8 +85,7 @@ export function SplitEditorPane({
         >
           <div className="flex min-h-full flex-col px-14 pt-1">
             <ErrorBoundary
-              key={leaf.id}
-              resetKey={leaf.id}
+              resetKey={leaf.pageId}
               fallback={(_, reset) => (
                 <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
                   <p>当前格子渲染失败，已阻止整窗白屏。</p>

@@ -69,6 +69,18 @@ test("外部修改使旧历史失效", () => {
   expect(undoDepth(restored)).toBe(0);
 });
 
+test("同一 schema 切回时复用文档，撤销仍正常", () => {
+  const cache = new PageUndoHistory();
+  const initial = createState();
+  const edited = initial.apply(initial.tr.insertText("edit", 1));
+  cache.visit("a");
+  cache.save("a", edited, "same");
+  let restored = cache.restore("a", initial, "same");
+  expect(restored.doc).toBe(edited.doc);
+  undo(restored, (tr) => { restored = restored.apply(tr); });
+  expect(restored.doc.textContent).toBe("base");
+});
+
 test("没有历史快照时直接复用当前 state，调用方无需重建 NodeView", () => {
   const cache = new PageUndoHistory();
   const current = createState("首次打开");

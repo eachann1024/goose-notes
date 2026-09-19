@@ -1,3 +1,4 @@
+import { withInternalPageTitle } from "@/components/editor/utils/page-title";
 import { toast } from "@/components/ui/sonner";
 import { DialogShell } from "@/components/ui/dialog-shell";
 
@@ -9,6 +10,8 @@ interface SidebarRenameDialogProps {
   onRenameValueChange: (value: string) => void;
   isLocalFolder: boolean;
   onConfirm: () => void;
+  isDirectory?: boolean;
+  busy?: boolean;
 }
 
 export function SidebarRenameDialog({
@@ -19,21 +22,24 @@ export function SidebarRenameDialog({
   onRenameValueChange,
   isLocalFolder,
   onConfirm,
+  isDirectory = false,
+  busy = false,
 }: SidebarRenameDialogProps) {
+  const kind = isLocalFolder ? (isDirectory ? "文件夹" : "文件") : "页面";
   return (
     <DialogShell
       open={open}
-      onOpenChange={onOpenChange}
-      title={isLocalFolder ? "重命名文件" : "重命名页面"}
-      description={isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"}
+      onOpenChange={(next) => { if (!busy) onOpenChange(next); }}
+      title={`重命名${kind}`}
+      description={`输入新的${kind}名称`}
       footer={
         <>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button disabled={busy} variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button
             onClick={onConfirm}
-            disabled={!renamePageId || renameValue.trim() === ""}
+            disabled={busy || !renamePageId || renameValue.trim() === ""}
           >
             确认
           </Button>
@@ -45,10 +51,13 @@ export function SidebarRenameDialog({
           <Label htmlFor="rename-input">新名称</Label>
           <Input
             id="rename-input"
+            disabled={busy}
             value={renameValue}
             onChange={(e) => onRenameValueChange(e.target.value)}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || busy) return;
               if (e.key === "Enter") {
+                e.preventDefault();
                 onConfirm();
               } else if (e.key === "Escape") {
                 onOpenChange(false);
@@ -56,7 +65,7 @@ export function SidebarRenameDialog({
             }}
             autoFocus
             placeholder={
-              isLocalFolder ? "输入新的文件名称" : "输入新的页面名称"
+              `输入新的${kind}名称`
             }
           />
         </div>
@@ -70,7 +79,8 @@ export function useRenameDialog() {
   const [renameValue, setRenameValue] = useState("");
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
 
-  const { pages, updatePage } = usePages();
+  const [busy, setBusy] = useState(false);
+  const committing = useRef(false);
 
   const openRenameDialog = (pageId: string, currentTitle: string) => {
     setRenamePageId(pageId);
@@ -84,78 +94,35 @@ export function useRenameDialog() {
   }, []);
 
   const confirmRename = useCallback(async () => {
-    if (!renamePageId) return;
-    const page = pages[renamePageId];
+    if (!renamePageId || committing.current) return;
+    const page = usePages.getState().pages[renamePageId];
     const nextTitle = renameValue.trim();
-    if (!page || nextTitle === "") return;
-
-    const newContent = structuredClone(page.content);
-    if (!newContent || newContent.type !== "doc") {
-      newContent.type = "doc";
-      newContent.content = [];
+    if (!page || !nextTitle) return;
+    if (/[\\/:*?"<>|\x00-\x1f\x7f]/.test(nextTitle) || /^\.+$/.test(nextTitle)) {
+      toast.error("名称不能包含路径分隔符或非法字符");
+      return;
     }
-    if (
-      newContent.content?.[0]?.type === "heading" &&
-      newContent.content[0].attrs?.level === 1
-    ) {
-      newContent.content[0].content = nextTitle
-        ? [{ type: "text", text: nextTitle }]
-        : undefined;
-    } else {
-      newContent.content = [
-        {
-          type: "heading",
-          attrs: { level: 1 },
-          content: [{ type: "text", text: nextTitle }],
-        },
-        ...(newContent.content || []),
-      ];
-    }
-
-    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-    const isLocalFolder = notebook?.source === "local-folder";
-    if (isLocalFolder && page.localFilePath && (window as any).gooseFs) {
-      const gooseFs = (window as any).gooseFs as GooseFs;
-      const dir = page.localFilePath.replace(/[^\/\\]+$/, "");
-      const extMatch = page.localFilePath.match(/\.(md|markdown)$/i);
-      const ext = extMatch ? extMatch[0] : ".md";
-      const rawTitle = nextTitle.replace(/[\/\\]/g, "-").trim();
-      const safeTitle = rawTitle.replace(/\.(md|markdown)$/i, "");
-      const newPath = `${dir}${safeTitle}${ext}`;
-
-      const exists = gooseFs.existsAsync
-        ? await gooseFs.existsAsync(newPath)
-        : gooseFs.exists(newPath);
-      if (exists) {
-        toast.error("重命名失败：目标文件已存在");
-        return;
-      }
-      if (newPath !== page.localFilePath) {
-        const renamedResult = gooseFs.rename(page.localFilePath, newPath);
-        const renamed =
-          renamedResult instanceof Promise
-            ? await renamedResult
-            : renamedResult;
-        if (!renamed) {
-          toast.error("重命名失败：文件系统错误");
-          return;
-        }
-        updatePage(renamePageId, {
-          content: newContent,
-          localFilePath: newPath,
-        });
+    committing.current = true;
+    setBusy(true);
+    try {
+      if (page.localFilePath) {
+        await usePages.getState().renameLocalPageFile(page.id, nextTitle);
       } else {
-        updatePage(renamePageId, { content: newContent });
+        usePages.getState().updatePage(page.id, {
+          content: withInternalPageTitle(page.content, nextTitle),
+        });
       }
-    } else {
-      updatePage(renamePageId, { content: newContent });
+      closeRenameDialog();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "重命名失败");
+    } finally {
+      committing.current = false;
+      setBusy(false);
     }
-
-    setRenameDialogOpen(false);
-    setRenamePageId(null);
-  }, [pages, renamePageId, renameValue, updatePage]);
+  }, [renamePageId, renameValue, closeRenameDialog]);
 
   return {
+    busy,
     renameDialogOpen,
     setRenameDialogOpen,
     renameValue,

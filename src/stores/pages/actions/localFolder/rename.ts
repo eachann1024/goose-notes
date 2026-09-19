@@ -174,6 +174,72 @@ async function maybeRenameLocalFileForTitle(
   return { pageId: nextPageId, collision: false };
 }
 
+async function renameLocalDirectory(
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+  name: string,
+): Promise<string> {
+  const page = get().pages[pageId];
+  const fs = window.gooseFs;
+  const basePath = useNotebooks.getState().notebooks[page.workspaceId]?.localPath;
+  if (!fs || !basePath || !page.localFilePath) throw new Error("文件系统不可用");
+  const oldPath = page.localFilePath.replace(/\\/g, "/");
+  const nextPath = oldPath.slice(0, oldPath.lastIndexOf("/") + 1) + name;
+  if (oldPath === nextPath) return pageId;
+  const affected = Object.values(get().pages).filter((p) =>
+    p.workspaceId === page.workspaceId && p.localFilePath &&
+    (p.localFilePath.replace(/\\/g, "/") === oldPath ||
+      p.localFilePath.replace(/\\/g, "/").startsWith(oldPath + "/")),
+  ).sort((a, b) => a.id.localeCompare(b.id));
+
+  // 先提交编辑器和子文件防抖，再锁住写盘；后续保存只能读到改名后的路径。
+  window.dispatchEvent(new CustomEvent("goose-note:flush-editor", {
+    detail: { immediate: true },
+  }));
+  for (const p of affected) {
+    if (!p.isFolder) await flushPendingLocalSaveByPageIdInternal(p.id, get);
+  }
+  const releases: Array<() => void> = [];
+  try {
+    for (const p of affected) releases.push(await acquireLocalPageFileOperation(p.id));
+    if (affected.some((p) => get().pages[p.id]?.localFilePath !== p.localFilePath)) {
+      throw new Error("路径已发生变化，请重新重命名");
+    }
+    const exists = fs.existsAsync ? await fs.existsAsync(nextPath) : await fs.exists(nextPath);
+    if (exists) throw new Error("重命名失败：目标名称已存在");
+    if (!(await fs.rename(page.localFilePath, nextPath))) throw new Error("重命名操作未成功");
+    markSelfMoved(oldPath);
+    markSelfMoved(nextPath);
+    // 磁盘成功后先更新全部路径，保持页面 ID、收藏、标签页与手动顺序不变。
+    set((state) => {
+      const pages = { ...state.pages };
+      for (const p of affected) {
+        if (!pages[p.id]) continue;
+        pages[p.id] = { ...pages[p.id], localFilePath:
+          nextPath + p.localFilePath!.replace(/\\/g, "/").slice(oldPath.length) };
+      }
+      return { pages };
+    });
+    const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
+      await import("@/lib/local-md-snapshot");
+    for (const p of affected) {
+      const previous = p.localFilePath!;
+      const next = nextPath + previous.replace(/\\/g, "/").slice(oldPath.length);
+      const snapshot = getLocalMdSnapshot(previous);
+      if (snapshot !== undefined) {
+        setLocalMdSnapshot(next, snapshot);
+        deleteLocalMdSnapshot(previous);
+      }
+      migrateLocalPageIdMapEntry(page.workspaceId,
+        toRelativePath(basePath, previous), toRelativePath(basePath, next), p.id);
+    }
+    return pageId;
+  } finally {
+    releases.reverse().forEach((release) => release());
+  }
+}
+
 /**
  * 显式重命名 local-folder 页面文件。
  * 由虚拟标题组件在用户提交新名称时调用。
@@ -192,10 +258,15 @@ export async function renameLocalPageFileAction(
     throw new Error("页面不存在或非本地文件夹页面");
   }
 
+  if (/[\\/:*?"<>|\x00-\x1f\x7f]/.test(newBaseName) || /^\.+$/.test(newBaseName.trim())) {
+    throw new Error("名称不能包含路径分隔符或非法字符");
+  }
   const sanitized = sanitizeFilenameSegment(newBaseName);
   if (!sanitized) {
     throw new Error("文件名不能为空");
   }
+
+  if (page.isFolder) return renameLocalDirectory(set, get, pageId, sanitized);
 
   const { dir, base, ext } = splitFilePath(page.localFilePath);
   if (sanitized === base) {
@@ -237,6 +308,9 @@ export async function renameLocalPageFileAction(
   // 在 localFilePath 切换前读取旧路径。同页并发 rename 也会自然串行。
   const releaseFileOperation = await acquireLocalPageFileOperation(pageId);
   try {
+    if (get().pages[pageId]?.localFilePath !== page.localFilePath) {
+      throw new Error("路径已发生变化，请重新重命名");
+    }
     const renamed = Boolean(
       await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)),
     );

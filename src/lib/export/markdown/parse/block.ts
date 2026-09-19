@@ -1,4 +1,5 @@
 import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
+import { frontmatterBodyHasUserVisibleKeys } from "@/lib/local-frontmatter";
 import { parseInlineMarkdown } from "./inline";
 import {
   isLegacyCodeBlockMetaComment,
@@ -142,11 +143,15 @@ export function markdownToJsonContent(markdown: string): any {
       i++;
     }
     if (i < lines.length && lines[i].trim() === "---") {
-      content.push({
-        type: "codeBlock",
-        props: { language: "yaml-frontmatter" },
-        content: frontmatterLines.join("\n"),
-      });
+      const yamlBody = frontmatterLines.join("\n");
+      // 只有用户属性才展示 YAML 块；仅 goose-favorite 等应用设置不进编辑器。
+      if (frontmatterBodyHasUserVisibleKeys(yamlBody)) {
+        content.push({
+          type: "codeBlock",
+          props: { language: "yaml-frontmatter" },
+          content: yamlBody,
+        });
+      }
       i++;
     } else {
       i = 0;

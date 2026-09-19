@@ -38,7 +38,7 @@ export function SidebarHeader({
   const setPendingNavigatePageId = usePages(
     (state) => state.setPendingNavigatePageId,
   );
-  const openPreviewTab = useTabs((state) => state.openPreviewTab);
+  const openPermanentTab = useTabs((state) => state.openPermanentTab);
   const setActiveNotebook = useNotebooks((state) => state.setActiveNotebook);
   const pinnedScrollerRef = useRef<HTMLDivElement>(null);
   const activePinnedRef = useRef<HTMLButtonElement | null>(null);
@@ -377,12 +377,12 @@ export function SidebarHeader({
         setExpandPageId(targetPage.id);
         return;
       }
-      openPreviewTab(targetPage.id);
+      openPermanentTab(targetPage.id);
       setExpandPageId(targetPage.id);
     },
     [
       onOpenPinnedPage,
-      openPreviewTab,
+      openPermanentTab,
       setActiveNotebook,
       setExpandPageId,
       setPendingNavigatePageId,

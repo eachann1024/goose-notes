@@ -120,24 +120,6 @@ export function DesktopTitleBar({
             <button
               type="button"
               className={actionButtonClass}
-              onClick={toggleAlwaysOnTop}
-              aria-label={alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
-              aria-pressed={alwaysOnTop}
-            >
-              <LucideIcons.Pin
-                className={cn("h-4 w-4", alwaysOnTop && "fill-current")}
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={actionButtonClass}
               onClick={toggleSidebarCollapsed}
               aria-label={sidebarCollapsed ? "展开侧栏" : "收起侧栏"}
               aria-pressed={sidebarCollapsed}
@@ -152,6 +134,24 @@ export function DesktopTitleBar({
                 {toggleSidebarShortcutLabel}
               </span>
             )}
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={actionButtonClass}
+              onClick={toggleAlwaysOnTop}
+              aria-label={alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
+              aria-pressed={alwaysOnTop}
+            >
+              <LucideIcons.Pin
+                className={cn("h-4 w-4", alwaysOnTop && "fill-current")}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

@@ -102,6 +102,7 @@ export type InlineRunDefaults = {
   italics?: boolean;
   color?: string;
   underline?: boolean;
+  strike?: boolean;
 };
 
 function runFromText(
@@ -126,7 +127,7 @@ function runFromText(
     size: isCode ? DOCX_CODE_SIZE : defaults?.size ?? DOCX_BODY_SIZE,
     bold: Boolean(styles?.bold) || Boolean(defaults?.bold),
     italics: Boolean(styles?.italic) || Boolean(defaults?.italics),
-    strike: Boolean(styles?.strike),
+    strike: Boolean(styles?.strike) || Boolean(defaults?.strike),
     ...(styles?.underline || defaults?.underline
       ? { underline: { type: UnderlineType.SINGLE } }
       : {}),

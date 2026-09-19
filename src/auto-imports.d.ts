@@ -342,6 +342,7 @@ declare global {
   const formatShortcutToken: typeof import('./lib/shortcut-platform').formatShortcutToken
   const formatSystemModifier: typeof import('./lib/shortcut-platform').formatSystemModifier
   const forwardRef: typeof import('react').forwardRef
+  const frontmatterBodyHasUserVisibleKeys: typeof import('./lib/local-frontmatter').frontmatterBodyHasUserVisibleKeys
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
   const generateExportZip: typeof import('./lib/export/index').generateExportZip
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
@@ -433,6 +434,7 @@ declare global {
   const isEmptyInlineBlock: typeof import('./components/editor/utils/pasteAtCursor').isEmptyInlineBlock
   const isExternalFileDrag: typeof import('./lib/local-folder-target').isExternalFileDrag
   const isGithubDownloadUrl: typeof import('./lib/appUpdateRelease').isGithubDownloadUrl
+  const isGooseFrontmatterKey: typeof import('./lib/local-frontmatter').isGooseFrontmatterKey
   const isImageUploadFile: typeof import('./components/editor/utils/pasteClipboardImage').isImageUploadFile
   const isImeKeyboardEvent: typeof import('./hooks/useImeInput').isImeKeyboardEvent
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle

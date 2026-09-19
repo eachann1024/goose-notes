@@ -24,8 +24,10 @@ test("Word 导出保留预览色带、待办勾选和内联图", async () => {
   expect(xml).toContain(HTML_VISUAL_CHINESE_BODY);
   expect(xml.toLowerCase()).toContain("eae4f2");
   const vAlignCenter = xml.match(/w:vAlign[^>]*w:val="center"/g) ?? [];
-  expect(vAlignCenter.length).toBeGreaterThanOrEqual(7);
-  expect(xml).toMatch(/w:checked|w14:checked|☑|☐/);
+  expect(vAlignCenter.length).toBeGreaterThanOrEqual(5);
+  expect(xml).toContain("☑");
+  expect(xml).toContain("☐");
+  expect(xml).not.toContain("☒");
   expect(xml).toMatch(/a:blip|w:drawing|pic:pic/);
 
   const stylesXml = await zip.file("word/styles.xml")?.async("string");

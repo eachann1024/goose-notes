@@ -258,8 +258,8 @@ export async function parseLocalMarkdownContent(
     };
   }
 
-  // 1) 抽出 frontmatter：仍填 localFrontmatter + goose 设置（font/locked/pinned/favorite），
-  //    但 frontmatter 同时作为编辑器首块 yaml-frontmatter 出现，可查看可修改。
+  // 1) 抽出 frontmatter：仍填 localFrontmatter + goose 设置（font/locked/pinned/favorite）。
+  //    仅当 YAML 含用户属性时才作为编辑器首块 yaml-frontmatter 出现。
   // 2) 对整份 markdown 做 encode（包住非标 HTML 块等），避免被 markdown-it 误解析；
   //    文件头 --- 由 markdownToJsonContent 识别成 yaml-frontmatter 代码块。
   // 3) 内容保持解析原样：preserveStructure 关闭「首块提升 H1」的标题注入，

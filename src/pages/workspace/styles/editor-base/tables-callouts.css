@@ -316,7 +316,7 @@
   zoom: 1;
   border: 0;
   border-radius: calc(var(--radius-sm) * var(--editor-scale, 1));
-  background: var(--goose-callout-bg);
+  background: transparent;
   color: hsl(var(--muted-foreground));
   box-shadow: none;
 }
@@ -331,8 +331,15 @@
   pointer-events: none;
 }
 .goose-table-extend-button:hover,
-.goose-table-extend-button.is-editing {
-  background: var(--goose-block-subtle-hover);
+.goose-table-extend-button.is-editing,
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  background: var(--goose-table-control-hover);
+  color: hsl(var(--foreground));
+}
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  outline: none !important;
 }
 .goose-table-extend-button-columns {
   inline-size: calc(24px * var(--editor-scale, 1));
@@ -341,7 +348,7 @@
 }
 .goose-table-extend-button-rows {
   inline-size: 100%;
-  block-size: calc(24px * var(--editor-scale, 1));
+  block-size: calc(32px * var(--editor-scale, 1));
   cursor: row-resize;
 }
 .workspace-editor-surface .bn-table-drop-cursor {
@@ -366,13 +373,8 @@
 }
 .goose-table-handle-btn:hover,
 .goose-table-handle-btn[aria-expanded="true"] {
-  background: var(--goose-block-subtle-hover);
+  background: var(--goose-table-control-hover);
   color: hsl(var(--foreground));
-}
-.goose-table-handle-btn:focus-visible,
-.goose-table-extend-button:focus-visible {
-  outline: 2px solid var(--goose-accent-focus);
-  outline-offset: 2px;
 }
 .goose-table-menu .goose-table-menu-note {
   white-space: normal;

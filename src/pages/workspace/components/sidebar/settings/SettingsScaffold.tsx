@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { Settings as SettingsIcon, X } from "lucide-react";
 import type { SettingsTab, SettingsTabConfig } from "./types";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { isElectronRuntime } from "@/lib/electron/runtime";
 
 interface SettingsScaffoldProps {
@@ -61,13 +63,13 @@ export function SettingsScaffold({
       <div
         className={
           isElectronRuntime()
-            ? "electron-titlebar flex w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] pl-[calc(var(--electron-traffic-inset,78px)+0.75rem)] pr-6"
+            ? "electron-titlebar flex w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] pl-[var(--electron-traffic-inset,78px)] pr-3"
             : "flex h-14 w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] px-6"
         }
       >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[hsl(var(--goose-selected-bg))]">
-            <SettingsIcon className="h-4 w-4 text-foreground/80" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px]">
+            <SettingsIcon className="h-4 w-4 text-foreground" />
           </div>
           <h1 className="truncate text-lg font-semibold leading-none text-foreground">
             设置
@@ -75,7 +77,7 @@ export function SettingsScaffold({
         </div>
         <button
           type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--goose-selected-bg))] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
           aria-label="关闭"
           onClick={onClose}
         >
