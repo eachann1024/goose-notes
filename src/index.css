@@ -670,18 +670,18 @@
 
 @layer base {
   :root {
-    --goose-shell-bg: 0 0% 95.69%; /* #f4f4f4 */
+    --goose-shell-bg: 0 0% 94.51%; /* #F1F1F1 主界面壳层/侧栏/舞台留白共用 */
     --goose-search-overlay: rgba(0, 0, 0, 0.34);
     --goose-search-overlay-fallback: rgba(0, 0, 0, 0.55);
     --goose-selected-bg: 60 6.67% 94.12%;
     /* 鸢尾靛蓝：激活导航/选中项浅底（实色 hex，Electron 旧内核安全） */
     --goose-interactive-selected: #e0e7ff;
     --goose-interactive-selected-fg: #4f46e5;
-    --goose-interactive-selected-border: var(--goose-interactive-selected-fg);
+    --goose-interactive-selected-border: transparent;
     --goose-sidebar-hover: var(--goose-interactive-hover);
-    --goose-interactive-hover: #f3f1fb;
-    --goose-interactive-hover-fg: #4f46e5;
-    --goose-interactive-hover-border: #8174cb;
+    --goose-interactive-hover: var(--goose-interactive-selected);
+    --goose-interactive-hover-fg: var(--goose-interactive-selected-fg);
+    --goose-interactive-hover-border: transparent;
     --goose-editor-selection-bg: #e0e7ff;
     /* 紧凑按钮状态：实色，避免 Electron 旧内核解析 hsl(var(...)/alpha) 失败 */
     --goose-control-hover-bg: var(--goose-interactive-hover);

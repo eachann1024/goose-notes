@@ -12,7 +12,6 @@
  * 非 Electron 构建不渲染本组件，PageHeader 保持原样。
  */
 import * as LucideIcons from "lucide-react";
-import { useWindowAlwaysOnTop } from "@/hooks/useWindowAlwaysOnTop";
 import { WinWindowControls } from "./WinWindowControls";
 import type { Page } from "@/types";
 import { cn, formatShortcut } from "@/lib/utils";
@@ -74,7 +73,6 @@ export function DesktopTitleBar({
   aiLayoutMode = "fullscreen",
   onToggleAiPanel,
 }: DesktopTitleBarProps) {
-  const { alwaysOnTop, toggleAlwaysOnTop } = useWindowAlwaysOnTop();
   const activePageId = usePages((s) => s.activePageId);
   const notebooks = useNotebooks((s) => s.notebooks);
   const sidebarCollapsed = useEffectiveSidebarCollapsed();
@@ -82,20 +80,6 @@ export function DesktopTitleBar({
     (s) => s.toggleSidebarCollapsed,
   );
   const appShortcuts = useSettings((s) => s.appShortcuts);
-  const theme = useSettings((s) => s.theme);
-  const toggleDarkMode = useSettings((s) => s.toggleDarkMode);
-  const themeLabel =
-    theme === "system"
-      ? "跟随系统"
-      : theme === "dark"
-        ? "深色模式"
-        : "浅色模式";
-  const ThemeIcon =
-    theme === "system"
-      ? LucideIcons.Laptop
-      : theme === "dark"
-        ? LucideIcons.Moon
-        : LucideIcons.Sun;
   const aiPhase = useAiStatus((s) => s.phase);
   const aiHeaderActions = useAiHeaderActions();
   const aiHeaderTitle = useAiHeaderTitle();
@@ -138,24 +122,6 @@ export function DesktopTitleBar({
                 {toggleSidebarShortcutLabel}
               </span>
             )}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={actionButtonClass}
-              onClick={toggleAlwaysOnTop}
-              aria-label={alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
-              aria-pressed={alwaysOnTop}
-            >
-              <LucideIcons.Pin
-                className={cn("h-4 w-4", alwaysOnTop && "fill-current")}
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -316,38 +282,6 @@ export function DesktopTitleBar({
         ) : showPageActions && page && activePageId ? (
           <PageMenu />
         ) : null}
-        <TooltipProvider delayDuration={600}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={actionButtonClass}
-                onClick={toggleDarkMode}
-                aria-label={`外观：${themeLabel}`}
-              >
-                <ThemeIcon className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">外观：{themeLabel}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={actionButtonClass}
-                onClick={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("goose-note:open-settings"),
-                  )
-                }
-                aria-label="设置"
-              >
-                <LucideIcons.Settings className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">设置</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
     </div>
   );

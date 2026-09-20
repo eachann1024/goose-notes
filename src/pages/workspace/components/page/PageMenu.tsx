@@ -650,7 +650,7 @@ export function PageMenu() {
               <LucideIcons.Trash2 className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
             )}
             <span className="min-w-0 truncate">
-              {isLocalItem ? "移到系统回收站" : "移至垃圾箱"}
+              {isLocalItem ? "移到系统回收站" : "删除"}
             </span>
           </PopoverAction>
 

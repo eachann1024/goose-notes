@@ -276,7 +276,6 @@ declare global {
   const createPageBodyBlockTypeTransformSnapshot: typeof import('./lib/ai-write/index').createPageBodyBlockTypeTransformSnapshot
   const createRef: typeof import('react').createRef
   const createStickyTargetFromResolvedTarget: typeof import('./lib/ai-write/index').createStickyTargetFromResolvedTarget
-  const createVaultNotebook: typeof import('./lib/local-vault').createVaultNotebook
   const currentLocalNotebookRoot: typeof import('./lib/currentLocalPagePath').currentLocalNotebookRoot
   const currentLocalPagePath: typeof import('./lib/currentLocalPagePath').currentLocalPagePath
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
@@ -549,7 +548,6 @@ declare global {
   const persistQuickNoteSlotNames: typeof import('./stores/useQuickNote').persistQuickNoteSlotNames
   const pickRandomPageIcon: typeof import('./lib/randomPageIcon').pickRandomPageIcon
   const pickUpdateAsset: typeof import('./lib/appUpdateRelease').pickUpdateAsset
-  const pickVaultParentDirectory: typeof import('./lib/local-vault').pickVaultParentDirectory
   const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const plainHasGooseMarkdownMarkers: typeof import('./components/editor/hooks/useEditorPaste').plainHasGooseMarkdownMarkers
   const planBlockTypeTransform: typeof import('./lib/ai-write/index').planBlockTypeTransform

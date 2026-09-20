@@ -94,7 +94,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   aiChatScale: 1.0,
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
   imageExportThemeId: "notebook",
-  randomIconOnCreate: true,
+  randomIconOnCreate: false,
 
   singleTabMode: true,
 };

@@ -571,28 +571,10 @@ export function SettingsAppearance({
 
       <SettingsSectionCard
         title="编辑器布局"
-        description="调整折叠标题、新建笔记图标等显示方式。"
+        description="调整新建笔记图标等显示方式。"
       >
         <div
           className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-        >
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.ChevronsDownUp
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              <Label htmlFor="hide-expand-arrows" className="cursor-pointer">
-                隐藏展开箭头
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              默认以图标下方短线提示可展开项；悬停该行时显示箭头，可点击展开或收起。
-            </p>
-          </div>
-        </div>
-        <div
-          className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
         >
           <div>
             <div className="flex items-center gap-3">

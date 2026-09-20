@@ -11,7 +11,7 @@ test("已有用户也会被迁到极简工作区", () => {
   expect(migrateSettingsPersistedState({ theme: "dark" })).toMatchObject({
     theme: "dark",
     singleTabMode: true,
-    randomIconOnCreate: true,
+    randomIconOnCreate: false,
   });
   expect(
     migrateSettingsPersistedState({ singleTabMode: false }).singleTabMode,

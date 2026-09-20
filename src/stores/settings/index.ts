@@ -162,7 +162,7 @@ export const useSettings = create<SettingsState>()(
           useSettings.setState({ defaultCodeBlockWrap: false });
         }
         if (state && typeof state.randomIconOnCreate !== "boolean") {
-          useSettings.setState({ randomIconOnCreate: true });
+          useSettings.setState({ randomIconOnCreate: false });
         }
         if (state && state.singleTabMode !== true) {
           useSettings.setState({ singleTabMode: true });

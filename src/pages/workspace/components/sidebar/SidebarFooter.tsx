@@ -5,28 +5,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useWindowAlwaysOnTop } from "@/hooks/useWindowAlwaysOnTop";
+import { isElectronHost } from "@/lib/local-vault";
 import { cn, formatShortcut } from "@/lib/utils";
 import { useSettings } from "@/stores/useSettings";
 import { useSidebarView } from "@/stores/useSidebarView";
-import { NotebookSwitcher } from "./NotebookSwitcher";
 
 export interface SidebarFooterProps {
-  currentView: "pages" | "trash" | "outline";
   isSettingsOpen: boolean;
-  hideTrash?: boolean;
-  onSwitchToTrash: () => void;
   onOpenSettings: () => void;
 }
 
-/**
- * 侧栏底栏：笔记本切换 + 快捷控制条。
- * 窗口置顶仍在 Electron 顶栏（布局 C），此处不重复挂 Pin。
- */
 export function SidebarFooter({
-  currentView,
   isSettingsOpen,
-  hideTrash = false,
-  onSwitchToTrash,
   onOpenSettings,
 }: SidebarFooterProps) {
   const theme = useSettings((s) => s.theme);
@@ -38,6 +29,7 @@ export function SidebarFooter({
   const toggleSidebarCollapsed = useSidebarView(
     (s) => s.toggleSidebarCollapsed,
   );
+  const { alwaysOnTop, toggleAlwaysOnTop } = useWindowAlwaysOnTop();
   const toggleSidebarShortcutLabel = toggleSidebarShortcut
     ? formatShortcut(toggleSidebarShortcut)
     : "";
@@ -56,18 +48,35 @@ export function SidebarFooter({
     "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]";
 
   return (
-    <div className="mt-auto shrink-0 border-t border-border/60 bg-[hsl(var(--goose-shell-bg))] pt-2">
-      <div className="pr-2">
-        <NotebookSwitcher
-          currentView={currentView}
-          isSettingsOpen={isSettingsOpen}
-          hideTrash={hideTrash}
-          onSwitchToTrash={onSwitchToTrash}
-          onOpenSettings={onOpenSettings}
-        />
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-1 px-2 pb-2 pt-1">
-        <div className="flex items-center gap-0.5">
+    <div className="mt-auto flex items-center justify-between gap-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-0 pt-1">
+      <div className="flex items-center gap-1">
+        {isElectronHost ? (
+          <TooltipProvider delayDuration={600}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(btnClass, alwaysOnTop && activeClass)}
+                  aria-label={alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}
+                  aria-pressed={alwaysOnTop}
+                  data-active={alwaysOnTop ? "true" : "false"}
+                  onClick={toggleAlwaysOnTop}
+                >
+                  <LucideIcons.Pin
+                    className={cn(
+                      "h-4 w-4",
+                      alwaysOnTop &&
+                        "fill-[var(--goose-interactive-selected-fg)]",
+                    )}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <span>{alwaysOnTop ? "取消窗口置顶" : "窗口置顶"}</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
           <TooltipProvider delayDuration={600}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -94,34 +103,7 @@ export function SidebarFooter({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {!hideTrash ? (
-            <button
-              type="button"
-              className={cn(
-                btnClass,
-                !isSettingsOpen && currentView === "trash" && activeClass,
-              )}
-              aria-label="垃圾箱"
-              aria-pressed={!isSettingsOpen && currentView === "trash"}
-              data-active={
-                !isSettingsOpen && currentView === "trash" ? "true" : "false"
-              }
-              onClick={onSwitchToTrash}
-            >
-              <LucideIcons.Trash2 className="h-4 w-4" />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={cn(btnClass, isSettingsOpen && activeClass)}
-            aria-label="设置"
-            aria-pressed={isSettingsOpen}
-            data-active={isSettingsOpen ? "true" : "false"}
-            onClick={onOpenSettings}
-          >
-            <LucideIcons.Settings className="h-4 w-4" />
-          </button>
-        </div>
+        )}
         <TooltipProvider delayDuration={600}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -141,6 +123,16 @@ export function SidebarFooter({
           </Tooltip>
         </TooltipProvider>
       </div>
+      <button
+        type="button"
+        className={cn(btnClass, isSettingsOpen && activeClass)}
+        aria-label="设置"
+        aria-pressed={isSettingsOpen}
+        data-active={isSettingsOpen ? "true" : "false"}
+        onClick={onOpenSettings}
+      >
+        <LucideIcons.Settings className="h-4 w-4" />
+      </button>
     </div>
   );
 }

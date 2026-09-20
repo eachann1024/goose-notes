@@ -26,7 +26,7 @@ export function migrateSettingsPersistedState(
   // 极简工作区已成为固定交互，不再保留可切换设置。
   state.singleTabMode = true;
   if (typeof state.randomIconOnCreate !== "boolean") {
-    state.randomIconOnCreate = true;
+    state.randomIconOnCreate = false;
   }
   delete state.showPinnedTitles;
 

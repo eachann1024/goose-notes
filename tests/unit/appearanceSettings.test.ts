@@ -17,7 +17,7 @@ import {
 
 test("强调色默认使用海洋配色，非法持久化值安全回退", () => {
   expect(APPEARANCE_INITIAL_STATE.accentColor).toBe("ocean");
-  expect(APPEARANCE_INITIAL_STATE.randomIconOnCreate).toBe(true);
+  expect(APPEARANCE_INITIAL_STATE.randomIconOnCreate).toBe(false);
   expect(normalizeAccentColor(undefined)).toBe("ocean");
   expect(normalizeAccentColor("unknown")).toBe("ocean");
   expect(normalizeAccentColor("ocean")).toBe("ocean");

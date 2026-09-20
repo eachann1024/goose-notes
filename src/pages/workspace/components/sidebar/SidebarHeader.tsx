@@ -6,6 +6,7 @@ import { isElectronHost } from "@/lib/local-vault";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
+import { NotebookSwitcher } from "./NotebookSwitcher";
 
 interface SidebarHeaderProps {
   dragGuide: {
@@ -392,23 +393,22 @@ export function SidebarHeader({
 
   return (
     <>
+      <div className="flex h-12 shrink-0 items-start pt-0 pr-2">
+        <div className="flex w-full items-center">
+          <NotebookSwitcher />
+        </div>
+      </div>
+
       <div className="pb-2 pr-2 pt-0">
         {(pinnedPages.length > 0 || dragGuide) && (
-          <div
-            className={cn(
-              "group/pinned relative min-h-10",
-              pinnedPages.length > 0 && !dragGuide
-                ? "inline-flex max-w-full"
-                : "flex w-full",
-            )}
-          >
-            {/* 贴合卡片底与滚动层分离：滚动裁切不会切掉边框和选中药丸 */}
+          <div className="group/pinned relative min-h-10">
+            {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--goose-editor-bg))]"
+              className="pointer-events-none absolute inset-0 rounded-full bg-[hsl(var(--goose-shell-bg))]"
             />
             {dragGuide && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
                 {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
                 {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
               </div>
@@ -424,9 +424,8 @@ export function SidebarHeader({
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute left-0 top-0 rounded-lg",
-                      "bg-[var(--goose-interactive-selected)]",
-                      "shadow-[inset_0_0_0_1px_var(--goose-interactive-selected-fg)]",
+                      "pointer-events-none absolute left-0 top-0 rounded-full",
+                      "bg-[var(--goose-interactive-selected)] shadow-sm",
                       pillReady
                         ? "transition-transform duration-[180ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
                         : "transition-none",
@@ -451,12 +450,12 @@ export function SidebarHeader({
                             aria-label={title}
                             aria-current={isActive ? "page" : undefined}
                             className={cn(
-                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-lg inline-flex items-center justify-center",
+                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center justify-center",
                               "transition-colors duration-150 active:[&_svg]:scale-[0.97]",
                               "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
                               isActive
                                 ? "text-[var(--goose-interactive-selected-fg)]"
-                                : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
+                                : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
@@ -475,13 +474,13 @@ export function SidebarHeader({
               <>
                 <div
                   className={cn(
-                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-lg bg-[hsl(var(--goose-editor-bg))] transition-opacity duration-200",
+                    "pointer-events-none absolute left-1 top-1 bottom-1 z-10 w-5 rounded-l-full bg-gradient-to-r from-[hsl(var(--goose-shell-bg))] to-transparent transition-opacity duration-200",
                     canScrollLeft ? "opacity-100" : "opacity-0",
                   )}
                 />
                 <div
                   className={cn(
-                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-lg bg-[hsl(var(--goose-editor-bg))] transition-opacity duration-200",
+                    "pointer-events-none absolute right-1 top-1 bottom-1 z-10 w-5 rounded-r-full bg-gradient-to-l from-[hsl(var(--goose-shell-bg))] to-transparent transition-opacity duration-200",
                     canScrollRight ? "opacity-100" : "opacity-0",
                   )}
                 />

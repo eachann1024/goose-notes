@@ -62,10 +62,10 @@ interface SettingsDialogProps {
 }
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
+  { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
   { id: "general", label: "通用设置", icon: LucideIcons.Settings },
   { id: "shortcuts", label: "快捷键", icon: LucideIcons.Keyboard },
   { id: "local-folder", label: "本地文件夹", icon: LucideIcons.FolderOpen },
-  { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
   { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
   { id: "about", label: "关于与许可", icon: LucideIcons.Info },
@@ -306,7 +306,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     useShallow((s) => ({ notebooks: s.notebooks })),
   );
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
 
   useEffect(() => {
     const handleTabChange = (event: Event) => {

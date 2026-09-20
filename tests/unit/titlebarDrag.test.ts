@@ -86,6 +86,8 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
     "utf8",
   );
   expect(css).toContain("--workspace-sidebar-width");
+  expect(css).toContain("--workspace-sidebar-motion");
+  expect(css).toContain("width var(--workspace-sidebar-motion)");
   expect(css).toContain("--electron-traffic-inset");
   expect(css).toContain("--electron-titlebar-height");
   expect(css).toContain("padding-left: max(");
@@ -105,6 +107,8 @@ test("桌面端顶栏标题左缘跟随侧栏，对齐主栏", () => {
     "utf8",
   );
   expect(sidebar).toContain("--workspace-sidebar-width");
+  expect(sidebar).toContain("data-sidebar-resizing");
+  expect(sidebar).not.toContain("transition-[opacity,transform]");
 });
 
 test("单标签拖窗走 start/end IPC，preload 与类型同步", () => {

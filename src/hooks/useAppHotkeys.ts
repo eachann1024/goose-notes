@@ -19,7 +19,6 @@ import {
 } from "@/lib/shortcut-match";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { isPlatformPrimaryModifierEvent } from "@/lib/shortcut-platform";
-import { getFocusedAiPanelLayout } from "@/pages/workspace/components/notebook-ai/aiPanelFocus";
 import {
   closeNotebookAiIfFullscreen,
   closeNotebookAiPanel,
@@ -167,11 +166,8 @@ export function useAppHotkeys() {
         );
         return;
       }
-      // 焦点在 AI 侧栏或全屏面板内：只收起 UI，不关 Tab / 分屏格 / 窗口，也不 stop 会话。
-      if (getFocusedAiPanelLayout(document.activeElement)) {
-        closeNotebookAiPanel();
-        return;
-      }
+      // AI 侧栏或独立全屏面板已打开：Cmd+W 只收起面板，不关 Tab / 分屏格 / 窗口，也不 stop 会话。
+      if (closeNotebookAiPanel()) return;
       // 已分屏时先关当前格；最后一格才走原来的关 Tab。
       if (closePaneOrTab() === "closed-pane") return;
       if (!isElectronRuntime() && effectiveSingleTabMode()) return;

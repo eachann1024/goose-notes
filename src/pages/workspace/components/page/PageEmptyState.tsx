@@ -1,4 +1,4 @@
-import { Search, Plus, Sparkles, FolderOpen, FolderPlus, type LucideIcon } from "lucide-react";
+import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import {
@@ -19,8 +19,7 @@ import { dialogs } from "@/lib/electron-platform/dialogs";
 import { useTabs } from "@/stores/useTabs";
 import { useSettings } from "@/stores/useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
-import { isElectronHost, pickVaultParentDirectory } from "@/lib/local-vault";
-import { CreateVaultDialog } from "@/pages/workspace/components/sidebar/CreateVaultDialog";
+import { isElectronHost } from "@/lib/local-vault";
 
 const isEmptyContent = (
   content:
@@ -161,10 +160,6 @@ export function PageEmptyState() {
   const [paused, setPaused] = useState(() => document.hidden);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
-  const [vaultDialog, setVaultDialog] = useState<{
-    open: boolean;
-    parentDir: string | null;
-  }>({ open: false, parentDir: null });
 
   const activateOrCreatePage = useCallback(async () => {
     // Electron 仅本地文件夹模式：无仓库时禁止建页，也绝不自动创建内置笔记本
@@ -278,13 +273,6 @@ export function PageEmptyState() {
     return () => document.removeEventListener("visibilitychange", syncPaused);
   }, []);
 
-  const onCreateVault = useCallback(async () => {
-    const parentDir = await pickVaultParentDirectory();
-    if (parentDir) {
-      setVaultDialog({ open: true, parentDir });
-    }
-  }, []);
-
   const actions = useMemo(() => {
     const list: Array<{
       key: string;
@@ -295,7 +283,7 @@ export function PageEmptyState() {
       variant?: "default" | "ai";
     }> = [];
 
-    // Electron 无仓库空态：只有「打开文件夹 / 新建仓库」，不展示新建页面
+    // Electron 无仓库空态：只有「打开文件夹」，不展示新建页面
     const showCreatePage = !isElectronHost || isLocalFolder;
     if (showCreatePage) {
       list.push({
@@ -316,16 +304,6 @@ export function PageEmptyState() {
       description: "批量管理 Markdown 笔记",
       onClick: onOpenLocalFolder,
     });
-
-    if (isElectronHost && !isLocalFolder) {
-      list.push({
-        key: "create-vault",
-        icon: FolderPlus,
-        title: "新建仓库",
-        description: "在磁盘上创建新的笔记文件夹",
-        onClick: onCreateVault,
-      });
-    }
 
     if (aiEnabled) {
       list.push({
@@ -352,7 +330,6 @@ export function PageEmptyState() {
     isLocalFolder,
     onCreatePage,
     onOpenLocalFolder,
-    onCreateVault,
     onOpenAi,
     onSearch,
   ]);
@@ -372,7 +349,7 @@ export function PageEmptyState() {
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
               {isElectronHost && !isLocalFolder
-                ? "打开一个本地文件夹，或新建仓库开始记录"
+                ? "打开一个本地文件夹开始记录"
                 : isLocalFolder
                   ? "点击左侧侧边栏新建文件，或选择现有文件开始记录"
                   : "点击左侧侧边栏新建页面，或选择现有页面开始记录"}
@@ -438,15 +415,6 @@ export function PageEmptyState() {
           </div>
         </div>
       </div>
-      {vaultDialog.open && (
-        <CreateVaultDialog
-          open={vaultDialog.open}
-          parentDir={vaultDialog.parentDir}
-          onOpenChange={(open) =>
-            setVaultDialog((prev) => ({ ...prev, open }))
-          }
-        />
-      )}
     </div>
   );
 }

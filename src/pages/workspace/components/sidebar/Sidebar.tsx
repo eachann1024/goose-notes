@@ -3,7 +3,6 @@ import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
-import { TrashList } from "./TrashList";
 import { useTabs } from "@/stores/useTabs";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
@@ -20,7 +19,7 @@ import { useHistoryView } from "@/stores/useHistoryView";
 import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 import { isElectronHost } from "@/lib/local-vault";
 
-type SidebarView = "pages" | "trash" | "outline";
+type SidebarView = "pages" | "outline";
 type SidebarDragGuideMode = "sort" | "nest-ready";
 
 interface SidebarDragGuideState {
@@ -44,7 +43,6 @@ export function Sidebar({
   scrollContainerRef,
 }: SidebarProps) {
   const activePageId = usePages((s) => s.activePageId);
-  const setActivePage = usePages((s) => s.setActivePage);
   const createPage = usePages((s) => s.createPage);
   const createLocalPage = usePages((s) => s.createLocalPage);
   const getPage = usePages((s) => s.getPage);
@@ -60,16 +58,12 @@ export function Sidebar({
 
   const itemHeight = useSidebarItemHeight();
   const rowHeight = itemHeight + 1;
-  const trashItemHeight = Math.max(itemHeight + 20, 48);
 
   const { width, isResizing, handleResizeMouseDown, handleResizePointerDown } =
     useSidebarResize({ disableResize });
 
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
-  const [selectedTrashPageId, setSelectedTrashPageId] = useState<string | null>(
-    null,
-  );
   const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(
     null,
   );
@@ -102,16 +96,10 @@ export function Sidebar({
     onOpenSettings: () => setShowSettings(true),
   });
 
-  const exitTrashView = useCallback(() => {
-    setCurrentView((view) => (view === "trash" ? "pages" : view));
-    setSelectedTrashPageId(null);
-  }, []);
-
   const previousNotebookIdRef = useRef<string | null | undefined>(undefined);
   const resetSidebarAfterNotebookChange = useCallback(
     (options: { exitHistory: boolean }) => {
       setCurrentView("pages");
-      setSelectedTrashPageId(null);
       setShowSettings(false);
       closeRenameDialog();
       if (options.exitHistory) exitHistoryView();
@@ -134,31 +122,6 @@ export function Sidebar({
     isLocalFolder,
     resetSidebarAfterNotebookChange,
   ]);
-
-  useEffect(() => {
-    const handleWindowExit = () => {
-      exitTrashView();
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        exitTrashView();
-      }
-    };
-
-    window.addEventListener("goose-note:plugin-out", handleWindowExit);
-    window.addEventListener("goose-note:plugin-enter", handleWindowExit);
-    window.addEventListener("pagehide", handleWindowExit);
-    window.addEventListener("beforeunload", handleWindowExit);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("goose-note:plugin-out", handleWindowExit);
-      window.removeEventListener("goose-note:plugin-enter", handleWindowExit);
-      window.removeEventListener("pagehide", handleWindowExit);
-      window.removeEventListener("beforeunload", handleWindowExit);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [exitTrashView]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -225,16 +188,15 @@ export function Sidebar({
       ref={sidebarRef}
       className={cn(
         "pb-0 bg-[hsl(var(--goose-shell-bg))] h-full flex flex-col relative group/sidebar",
-        "transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
         sidebarCollapsed && "pointer-events-none",
         className,
       )}
+      data-sidebar-resizing={isResizing || undefined}
       style={{
         width: sidebarCollapsed ? 0 : width,
-        minWidth: sidebarCollapsed ? 0 : undefined,
+        minWidth: 0,
         opacity: sidebarCollapsed ? 0 : 1,
         transform: sidebarCollapsed ? "translateX(-8px)" : "translateX(0)",
-        overflow: sidebarCollapsed ? "hidden" : "visible",
       }}
       aria-hidden={sidebarCollapsed}
     >
@@ -246,10 +208,14 @@ export function Sidebar({
         />
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden rounded-[inherit]">
+      <div
+        className="flex h-full min-h-0 flex-col"
+        style={{ width, minWidth: width }}
+      >
         {inHistoryMode ? (
-          // 历史模式：整块侧栏主体交给页面历史模块，不露出笔记本切换器。
-          <HistoryVersionList />
+          <div className="flex-1 overflow-hidden rounded-[inherit]">
+            <HistoryVersionList />
+          </div>
         ) : (
           <>
             <SidebarHeader
@@ -261,119 +227,91 @@ export function Sidebar({
               }}
             />
 
-            {currentView === "trash" ? (
-              <div className="flex-1 overflow-hidden">
-                <TrashList
-                  showHeader={false}
-                  itemHeight={trashItemHeight}
-                  selectedPageId={selectedTrashPageId}
-                  onSelectPage={setSelectedTrashPageId}
-                />
-              </div>
-            ) : (
-              <>
-                <FavoritesSection
-                  width={width}
-                  rowHeight={rowHeight}
-                  itemHeight={itemHeight}
-                  onCreatePage={handleCreatePage}
-                />
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[inherit]">
+              <FavoritesSection
+                width={width}
+                rowHeight={rowHeight}
+                itemHeight={itemHeight}
+                onCreatePage={handleCreatePage}
+              />
 
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <div className="mt-1 shrink-0">
-                    <SidebarSectionHeader
-                      title={
-                        isLocalFolder ? "本地" : electronNoVault ? "仓库" : "页面"
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="mt-1 shrink-0">
+                  <SidebarSectionHeader
+                    title={
+                      isLocalFolder ? "本地" : electronNoVault ? "仓库" : "页面"
+                    }
+                    onSearch={handleSearch}
+                    onCreate={electronNoVault ? undefined : handleCreatePage}
+                    createTitle={isLocalFolder ? "新建文件" : "新建页面"}
+                    view={currentView}
+                    onSwitchToPages={() => {
+                      if (currentView === "pages" && activeNotebookId) {
+                        setExpanded(activeNotebookId, []);
+                      } else {
+                        setCurrentView("pages");
                       }
-                      onSearch={handleSearch}
-                      onCreate={electronNoVault ? undefined : handleCreatePage}
-                      createTitle={isLocalFolder ? "新建文件" : "新建页面"}
-                      view={currentView}
-                      onSwitchToPages={() => {
-                        if (currentView === "pages" && activeNotebookId) {
-                          setExpanded(activeNotebookId, []);
-                        } else {
-                          setCurrentView("pages");
-                        }
-                      }}
-                      onSwitchToOutline={() => {
-                        closeNotebookAiIfFullscreen();
-                        setCurrentView("outline");
-                      }}
+                    }}
+                    onSwitchToOutline={() => {
+                      closeNotebookAiIfFullscreen();
+                      setCurrentView("outline");
+                    }}
+                  />
+                </div>
+                {currentView === "pages" ? (
+                  <div
+                    ref={scrollAreaRef}
+                    className="pl-0 flex-1 min-h-0 flex flex-col"
+                    data-sidebar-page-list=""
+                  >
+                    <SidebarMainTree
+                      activeNotebookId={activeNotebookId}
+                      selectedPageId={selectedPageId}
+                      width={width}
+                      rowHeight={rowHeight}
+                      itemHeight={itemHeight}
+                      viewportHeight={scrollAreaHeight}
+                      onCreatePage={handleCreatePage}
                     />
                   </div>
-                  {currentView === "pages" ? (
-                    <div
-                      ref={scrollAreaRef}
-                      className="pl-0 flex-1 min-h-0 flex flex-col"
-                      data-sidebar-page-list=""
-                    >
-                      <SidebarMainTree
-                        activeNotebookId={activeNotebookId}
-                        selectedPageId={selectedPageId}
-                        width={width}
-                        rowHeight={rowHeight}
-                        itemHeight={itemHeight}
-                        viewportHeight={scrollAreaHeight}
-                        onCreatePage={handleCreatePage}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-1 min-h-0 overflow-hidden pl-0 pr-2">
-                      <SidebarOutline
-                        editorRef={editorRef}
-                        scrollContainerRef={scrollContainerRef}
-                        pageId={activePageId}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+                ) : (
+                  <div className="flex-1 min-h-0 overflow-hidden pl-0 pr-2">
+                    <SidebarOutline
+                      editorRef={editorRef}
+                      scrollContainerRef={scrollContainerRef}
+                      pageId={activePageId}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
+
+        <SidebarFooter
+          isSettingsOpen={showSettings}
+          onOpenSettings={() => {
+            if (inHistoryMode) exitHistoryView();
+            setShowSettings(true);
+          }}
+        />
+
+        <SidebarRenameDialog
+          open={renameDialogOpen}
+          onOpenChange={(open) => {
+            setRenameDialogOpen(open);
+          }}
+          renamePageId={renamePageId}
+          renameValue={renameValue}
+          onRenameValueChange={setRenameValue}
+          isLocalFolder={isLocalFolder}
+          onConfirm={() => {
+            void confirmRename();
+          }}
+        />
+
+        <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
       </div>
-
-      <SidebarFooter
-        currentView={currentView}
-        isSettingsOpen={showSettings}
-        hideTrash={isLocalFolder}
-        onSwitchToTrash={() => {
-          // 再点一次回收箱图标即返回页面视图（回收箱视图隐藏了页面/大纲分区头，
-          // 没有别的返回入口，靠这个图标做开关，避免卡在回收箱里出不来）。
-          if (currentView === "trash") {
-            setCurrentView("pages");
-            setSelectedTrashPageId(null);
-            return;
-          }
-          if (inHistoryMode) exitHistoryView();
-          closeNotebookAiIfFullscreen();
-          setCurrentView("trash");
-          setShowSettings(false);
-          setSelectedTrashPageId(null);
-          setActivePage(null);
-        }}
-        onOpenSettings={() => {
-          if (inHistoryMode) exitHistoryView();
-          setShowSettings(true);
-        }}
-      />
-
-      <SidebarRenameDialog
-        open={renameDialogOpen}
-        onOpenChange={(open) => {
-          setRenameDialogOpen(open);
-        }}
-        renamePageId={renamePageId}
-        renameValue={renameValue}
-        onRenameValueChange={setRenameValue}
-        isLocalFolder={isLocalFolder}
-        onConfirm={() => {
-          void confirmRename();
-        }}
-      />
-
-      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
   );
 }

@@ -113,11 +113,11 @@ export function closeNotebookAiIfFullscreen(): void {
 
 /**
  * 只收起 AI 面板 UI，不 abort / stop 会话。
- * 侧栏 Cmd+W、全屏 Esc / Cmd+W 共用这条路径。
+ * 侧栏 / 独立全屏面板的 Cmd+W、全屏 Esc 共用这条路径。
  */
 export function closeNotebookAiPanel(): boolean {
-  if (!readStoredOpen()) return false;
-  closeAiPanelHandler?.();
+  if (!readStoredOpen() || !closeAiPanelHandler) return false;
+  closeAiPanelHandler();
   return true;
 }
 

@@ -35,14 +35,13 @@
   --workspace-stage-pad-left: 10px;
   --workspace-stage-pad-bottom: 12px;
   --workspace-sidebar-gap: 8px;
-  --workspace-sidebar-width: 240px;
+  --workspace-sidebar-width: 180px;
+  --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
   --workspace-resize-line: var(--goose-interactive-hover-border);
   --workspace-resize-line-active: var(--goose-interactive-selected-fg);
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
-  --workspace-main-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.03), 0 0 8px rgba(15, 23, 42, 0.05);
   background: hsl(var(--goose-shell-bg));
 }
 
@@ -56,8 +55,6 @@
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
-  --workspace-main-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 12px rgba(0, 0, 0, 0.32);
 }
 
 .workspace-shell .workspace-divider {
@@ -77,7 +74,8 @@
   height: 100%;
   width: 100%;
   gap: var(--workspace-sidebar-gap);
-  padding: 10px 10px 0 var(--workspace-stage-pad-left);
+  padding: 10px 10px 12px var(--workspace-stage-pad-left);
+  transition: gap var(--workspace-sidebar-motion);
 }
 
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
@@ -103,6 +101,7 @@
         var(--workspace-sidebar-gap)
     )
   );
+  transition: padding-left var(--workspace-sidebar-motion);
 }
 
 /* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
@@ -218,7 +217,22 @@ html[data-sidebar-collapsed] .bn-side-menu {
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
+  flex-shrink: 0;
   font-size: var(--sidebar-font-size, 13px);
+  transition:
+    opacity var(--workspace-sidebar-motion),
+    transform var(--workspace-sidebar-motion),
+    width var(--workspace-sidebar-motion);
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-resizing] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .workspace-stage,
+  .workspace-shell .workspace-sidebar-pane,
+  .workspace-shell[data-electron-chrome] .electron-titlebar {
+    transition: none;
+  }
 }
 
 .workspace-shell .workspace-sidebar-pane .sidebar-section-label {
@@ -238,7 +252,6 @@ html[data-sidebar-collapsed] .bn-side-menu {
   border-radius: 12px;
   box-shadow: none;
   margin-left: 0;
-  margin-bottom: var(--workspace-stage-pad-bottom);
   overflow: hidden;
 }
 
@@ -492,42 +505,10 @@ html[data-sidebar-collapsed] .bn-side-menu {
 
 
 
-/* Electron 系统材质：壳层/侧栏/顶底栏半透明，露出 Win Mica / Mac vibrancy。
-   主内容卡片保持较高不透明度，保证阅读。 */
-html.is-electron .workspace-shell {
-  background: transparent;
-}
-html.is-electron .workspace-shell[data-electron-chrome] .electron-titlebar {
-  background: color-mix(
-    in srgb,
-    var(--workspace-sidebar-surface) 78%,
-    transparent
-  );
-}
-html.is-electron .workspace-shell .workspace-sidebar-pane {
-  background: color-mix(
-    in srgb,
-    var(--workspace-sidebar-surface) 72%,
-    transparent
-  );
-}
-html.is-electron.dark .workspace-shell[data-electron-chrome] .electron-titlebar,
-html.is-electron .dark .workspace-shell[data-electron-chrome] .electron-titlebar {
-  background: color-mix(
-    in srgb,
-    var(--workspace-sidebar-surface) 82%,
-    transparent
-  );
-}
-html.is-electron .workspace-shell .workspace-main-sheet {
-  background: color-mix(
-    in srgb,
-    var(--workspace-main-surface) 92%,
-    transparent
-  );
-}
+/* Electron 工作区用壳层实色：侧栏、舞台留白、顶栏同一底，避免半透明把侧栏衬成独立一栏。 */
+html.is-electron .workspace-shell,
 html.is-electron body {
-  background: transparent;
+  background: hsl(var(--goose-shell-bg));
 }
 
 /* Win frameless：右侧自定义窗控贴齐顶栏高度 */

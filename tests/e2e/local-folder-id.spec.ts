@@ -62,7 +62,7 @@ test.describe("local folder stable page ids", () => {
       (window as LocalHarnessWindow).__GOOSE_E2E__ = true;
       window.localStorage.setItem(
         "goose-note-settings",
-        JSON.stringify({ state: { hideExpandArrows: true }, version: 0 }),
+        JSON.stringify({ state: {}, version: 0 }),
       );
     });
     await page.goto("/?e2eLocalMock");

@@ -49,6 +49,7 @@ test("关 AI 面板只收起 UI，不 stop 会话", () => {
   expect(closeBlock).not.toMatch(/\bstop\s*\(/);
   expect(closeBlock).not.toMatch(/\babort\s*\(/);
   expect(hook).toContain("export function closeNotebookAiPanel");
+  expect(hook).toContain("if (!readStoredOpen() || !closeAiPanelHandler) return false");
   expect(hook).toContain("goose-note:close-ai-panel");
 });
 
