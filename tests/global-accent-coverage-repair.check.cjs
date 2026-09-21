@@ -17,7 +17,7 @@ assert.match(aiMenu, /bn-suggestion-menu-item\[aria-selected="true"\][\s\S]*?var
 assert.ok(!aiMenu.includes("color-mix("));
 
 const workspace = read("src/pages/workspace/styles/index.css");
-assert.match(workspace, /--workspace-resize-line: var\(--goose-interactive-hover-border\)/);
+assert.match(workspace, /--workspace-resize-line: linear-gradient\(/);
 assert.match(workspace, /history-version-item\[data-selected="true"\][\s\S]*?var\(--goose-interactive-selected\)/);
 assert.ok(!workspace.includes("page-menu-text-shimmer"));
 assert.ok(!workspace.includes("#10b981"));

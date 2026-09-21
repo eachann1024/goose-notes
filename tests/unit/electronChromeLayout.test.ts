@@ -49,13 +49,13 @@ test("仓库切换菜单宽度跟随触发条", () => {
     ),
     "utf8",
   );
-  expect(switcher).toContain("w-[calc(var(--goose-popover-trigger-width)+14px)]");
+  expect(switcher).toContain("w-[calc(var(--goose-popover-trigger-width)+16px)]");
   expect(readFileSync("src/components/ui/popover.tsx", "utf8")).toMatch(
     /style\.setProperty\(\s*"--goose-popover-trigger-width",\s*`\$\{rects\.reference\.width\}px`/,
   );
   expect(switcher).toContain('className="goose-notebook-shell"');
   expect(switcher).toContain('animation="reveal"');
-  expect(switcher).toContain("alignOffset={-7}");
+  expect(switcher).toContain("alignOffset={-8}");
   expect(switcher).toContain("sideOffset={0}");
   expect(switcher).toContain('side="bottom"');
   expect(switcher).toContain("onOpenSettings?.()");
@@ -130,4 +130,27 @@ test("Electron chrome：工作区窗启用系统材质", () => {
   expect(
     readFileSync("src/pages/workspace/styles/index.css", "utf8"),
   ).not.toContain("html.is-electron .workspace-shell .workspace-sidebar-pane");
+});
+
+test("侧栏展开时 overflow visible，拖宽把手才能伸出侧栏", () => {
+  const sidebar = readFileSync(
+    "src/pages/workspace/components/sidebar/Sidebar.tsx",
+    "utf8",
+  );
+  const edge = readFileSync(
+    "src/pages/workspace/components/sidebar/SidebarResizeEdge.tsx",
+    "utf8",
+  );
+  expect(sidebar).toContain(
+    'overflow: sidebarCollapsed ? "hidden" : "visible"',
+  );
+  expect(edge).toContain('right: "-18px"');
+  const workspaceCss = readFileSync(
+    "src/pages/workspace/styles/index.css",
+    "utf8",
+  );
+  expect(workspaceCss).toContain("var(--goose-accent-drag-line) 22%");
+  expect(workspaceCss).toMatch(
+    /\.workspace-shell \.workspace-sidebar-pane \{[\s\S]*?z-index: 2;/,
+  );
 });

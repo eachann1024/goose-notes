@@ -49,10 +49,11 @@
 }
 
 .goose-notebook-menu-surface.goose-floating-surface {
-  /* 透明边框保留定位尺寸，实际边框只由单一外壳绘制。 */
+  /* 透明边框保留定位尺寸，实际边框只由单一外壳绘制。
+   * 内边距与外壳相对入口的 8px 外扩一致，列表不贴白底。 */
   border-color: transparent;
   background-color: transparent;
-  padding: 6px;
+  padding: 8px;
 }
 
 @layer properties {

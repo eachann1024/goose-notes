@@ -35,6 +35,9 @@ import {
   useNotebooks,
 } from "@/stores/useNotebooks";
 
+const NOTEBOOK_SHELL_INSET = 8;
+const NOTEBOOK_SHELL_INSET_TOP = 12;
+
 interface SortableNotebookItemProps {
   notebook: Notebook;
   isActive: boolean;
@@ -201,8 +204,8 @@ export function NotebookSwitcher({
     const syncShell = () => {
       const menu = menuElement.getBoundingClientRect();
       const button = trigger.getBoundingClientRect();
-      const top = Math.min(menu.top, button.top - 7);
-      const left = Math.min(menu.left, button.left - 7);
+      const top = Math.min(menu.top, button.top - NOTEBOOK_SHELL_INSET_TOP);
+      const left = Math.min(menu.left, button.left - NOTEBOOK_SHELL_INSET);
       trigger.style.setProperty(
         "--notebook-shell-top",
         `${top - button.top}px`,
@@ -213,11 +216,16 @@ export function NotebookSwitcher({
       );
       trigger.style.setProperty(
         "--notebook-shell-width",
-        `${Math.max(menu.right, button.right + 7) - left}px`,
+        `${Math.max(menu.right, button.right + NOTEBOOK_SHELL_INSET) - left}px`,
       );
-      const height = Math.max(menu.bottom, button.bottom + 7) - top;
+      const height =
+        Math.max(menu.bottom, button.bottom + NOTEBOOK_SHELL_INSET) - top;
       trigger.style.setProperty("--notebook-shell-height", `${height}px`);
-      const collapsed = Math.min(1, (button.height + 14) / Math.max(1, height));
+      const collapsed = Math.min(
+        1,
+        (button.height + NOTEBOOK_SHELL_INSET + NOTEBOOK_SHELL_INSET_TOP) /
+          Math.max(1, height),
+      );
       // 顶部入口向下展开，原点在上；空间不够翻转时改从底部向上。
       const origin = menuElement.dataset.side === "bottom" ? "top" : "bottom";
       setShellGeometry((previous) =>
@@ -421,10 +429,11 @@ export function NotebookSwitcher({
             type="button"
             aria-label={`当前笔记本 ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
             className={cn(
-              "sidebar-notebook-trigger group flex h-9 w-full items-center justify-between gap-2 rounded-lg border-0 px-2 py-0 text-left font-medium",
+              "sidebar-notebook-trigger group flex min-h-10 w-full items-center gap-2 rounded-lg bg-[var(--workspace-main-surface)] p-2 text-left font-medium",
               "text-foreground outline-none transition-colors duration-150 motion-reduce:transition-none",
-              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-selected-fg)]",
+              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
               "data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
+              "focus-visible:bg-muted",
               isOpen &&
                 "bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-selected-fg)]",
             )}
@@ -459,35 +468,35 @@ export function NotebookSwitcher({
                 style={{ transformOrigin: shellGeometry.origin }}
               />
             )}
-            <div className="flex min-w-0 items-center gap-2 truncate">
-              {activeNotebook ? (
-                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-[16px] leading-none text-foreground/70">
-                  {renderNotebookIcon(
-                    activeNotebook.icon || "BookOpen",
-                    "h-[18px] w-[18px] leading-none",
-                  )}
-                </span>
-              ) : null}
-              <span className="truncate tracking-[0.01em] leading-snug">
-                {activeNotebook?.name ||
-                  (isElectronHost ? "打开文件夹" : "选择记事本")}
-              </span>
-            </div>
-            {isOpen ? (
-              <LucideIcons.ChevronUp className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
-            ) : (
-              <LucideIcons.ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
-            )}
+            <span
+              aria-hidden="true"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--workspace-main-surface)] text-muted-foreground"
+            >
+              {renderNotebookIcon(
+                activeNotebook?.icon || "BookOpen",
+                "h-4 w-4 leading-none",
+              )}
+            </span>
+            <span
+              className="min-w-0 flex-1 truncate leading-snug"
+              title={activeNotebook?.name}
+            >
+              {activeNotebook?.name ||
+                (isElectronHost ? "打开文件夹" : "选择记事本")}
+            </span>
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]">
+              <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5" />
+            </span>
           </button>
         </PopoverTrigger>
         <PopoverContent
           aria-label="切换笔记本"
           ref={setMenuElement}
-          className="goose-notebook-menu-surface goose-floating-surface w-[calc(var(--goose-popover-trigger-width)+14px)] max-w-[calc(100vw-1rem)] backdrop-blur-0"
+          className="goose-notebook-menu-surface goose-floating-surface w-[calc(var(--goose-popover-trigger-width)+16px)] max-w-[calc(100vw-1rem)] p-2 backdrop-blur-0"
           animation="reveal"
           side="bottom"
           align="start"
-          alignOffset={-7}
+          alignOffset={-8}
           sideOffset={0}
           collisionPadding={0}
           forceMount
