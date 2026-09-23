@@ -43,6 +43,8 @@ export { createSplitBlankPage } from "./createBlankPage";
 
 export {
   closePaneOrTab,
+  closeSplitPaneById,
+  closeSplitPaneFromUi,
   focusNeighbor,
   splitDown,
   splitRight,

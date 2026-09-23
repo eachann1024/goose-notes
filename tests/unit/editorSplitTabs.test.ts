@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import {
   closePaneOrTab,
+  closeSplitPaneById,
   focusNeighbor,
   focusNextSplitPane,
   focusPreviousSplitPane,
@@ -736,6 +737,52 @@ test("分屏里删除另一格的页面也只关那一格", () => {
   expect(tabs[0].id).toBe(tabId);
   expect(tabs[0].pageId).toBe("b");
   expect(useEditorSplit.getState().isSplit(tabId)).toBe(false);
+});
+
+test("失踪分屏格仍可聚焦并关掉，且不把活动页切走", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  useTabs.getState().syncTabPageId(tabId, "a");
+  usePages.setState({ activePageId: "a" });
+
+  const missingLeaf = walkLeaves(
+    useEditorSplit.getState().getStateForTab(tabId)!.root,
+  ).find((leaf) => leaf.pageId === "b");
+  expect(missingLeaf).toBeTruthy();
+  const { b: _removed, ...pages } = usePages.getState().pages;
+  usePages.setState({ pages });
+
+  expect(focusSplitPane(tabId, missingLeaf!.id, { focusEditor: false })).toBe(
+    "b",
+  );
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("b");
+  expect(usePages.getState().activePageId).toBe("a");
+  expect(useTabs.getState().openTabs[0]?.pageId).toBe("a");
+
+  expect(closePaneOrTab()).toBe("closed-pane");
+  expect(useEditorSplit.getState().isSplit(tabId)).toBe(false);
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
+});
+
+test("未聚焦的失踪格也能从标题栏关掉", () => {
+  useTabs.getState().openPermanentTab("a");
+  const tabId = useTabs.getState().activeTabId!;
+  splitTab(tabId, "b");
+  const missingLeaf = walkLeaves(
+    useEditorSplit.getState().getStateForTab(tabId)!.root,
+  ).find((leaf) => leaf.pageId === "b");
+  expect(missingLeaf).toBeTruthy();
+  const focusedLeafId = walkLeaves(
+    useEditorSplit.getState().getStateForTab(tabId)!.root,
+  ).find((leaf) => leaf.pageId === "a")!.id;
+  useEditorSplit.getState().focusPane(tabId, focusedLeafId);
+  const { b: _removed, ...pages } = usePages.getState().pages;
+  usePages.setState({ pages, activePageId: "a" });
+
+  expect(closeSplitPaneById(tabId, missingLeaf!.id)).toBe("closed-pane");
+  expect(useEditorSplit.getState().isSplit(tabId)).toBe(false);
+  expect(usePages.getState().activePageId).toBe("a");
 });
 
 test("多标签删除某个已打开的页面只关对应标签", () => {

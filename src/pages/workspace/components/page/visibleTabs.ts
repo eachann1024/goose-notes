@@ -13,9 +13,15 @@ export function isWorkspaceTabVisible(
   if (tab.type === "notebook-ai") return false;
   if (tab.type === "welcome") return true;
   const tabPage = getPage(tab.pageId);
+  if (!tabPage) {
+    return (
+      !activeNotebookId ||
+      !tab.workspaceId ||
+      tab.workspaceId === activeNotebookId
+    );
+  }
   return Boolean(
-    tabPage &&
-      !tabPage.trashedAt &&
+    !tabPage.trashedAt &&
       (!activeNotebookId || tabPage.workspaceId === activeNotebookId),
   );
 }
