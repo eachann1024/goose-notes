@@ -120,6 +120,13 @@ const gooseDesktop = {
           releaseUrl: string;
         }
     >,
+  getReadyUpdate: () => invoke("desktop:getReadyUpdate") as Promise<string>,
+  installReadyUpdate: () => invoke("desktop:installReadyUpdate") as Promise<void>,
+  onUpdateReady: (cb: (version: string) => void) => {
+    const listener = (_event: unknown, version: string) => cb(version);
+    ipcRenderer.on("desktop:update-ready", listener);
+    return () => ipcRenderer.removeListener("desktop:update-ready", listener);
+  },
   downloadUpdate: (downloadUrl: string, filename: string) =>
     invoke("desktop:downloadUpdate", downloadUrl, filename) as Promise<{
       path: string;

@@ -141,8 +141,8 @@ fileAssociations:
 mac:
   icon: icon.icns
   category: public.app-category.productivity
-  identity: null
-  hardenedRuntime: false
+  ${process.env.CSC_LINK ? '# CI Developer ID signing via CSC_LINK' : 'identity: null'}
+  hardenedRuntime: ${Boolean(process.env.CSC_LINK)}
   gatekeeperAssess: false
   extendInfo:
     LSMultipleInstancesProhibited: true

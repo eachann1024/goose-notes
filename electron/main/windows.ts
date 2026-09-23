@@ -384,6 +384,7 @@ export function requestCloseActiveTab(
   if (!win || win.isDestroyed()) return;
   const context = lookupWindowContext(win);
   if (context?.kind === "quicknote") {
+    markQuicknoteActivateSuppressed();
     win.close();
     return;
   }
@@ -988,6 +989,7 @@ export async function toggleQuicknoteWindow(): Promise<void> {
 export function closeQuicknote(): void {
   const win = getQuicknoteWindow();
   if (!win || win.isDestroyed()) return;
+  markQuicknoteActivateSuppressed();
   win.close();
 }
 

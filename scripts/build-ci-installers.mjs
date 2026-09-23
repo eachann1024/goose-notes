@@ -36,7 +36,9 @@ for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'BUI
 }
 const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 writeFileSync(resolve(output, 'BUILD.json'), JSON.stringify({
-  commit, version: pkg.version, platform, arch, signed: false, notarized: false,
+  commit, version: pkg.version, platform, arch,
+  signed: platform === 'mac' && Boolean(process.env.CSC_LINK),
+  notarized: platform === 'mac' && Boolean(process.env.CSC_LINK && process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID),
   run: process.env.GITHUB_RUN_ID || null,
   sourceArtifact: `source-${commit}`, files,
 }, null, 2) + '\n');

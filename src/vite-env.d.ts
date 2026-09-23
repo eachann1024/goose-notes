@@ -119,6 +119,9 @@ declare global {
         }
     >
     downloadUpdate: (downloadUrl: string, filename: string) => Promise<{ path: string }>
+    getReadyUpdate: () => Promise<string>
+    installReadyUpdate: () => Promise<void>
+    onUpdateReady: (cb: (version: string) => void) => () => void
     writeText: (t: string) => Promise<void>
     writeImage: (dataUrl: string) => Promise<void>
     readText: () => Promise<string>

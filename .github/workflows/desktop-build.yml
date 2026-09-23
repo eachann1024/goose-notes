@@ -96,6 +96,11 @@ jobs:
       contents: write
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
@@ -114,7 +119,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Compile renderer, main and preload
         run: bun run build:electron
-      - name: Build unsigned installers and checksums
+      - name: Build installers and checksums
         run: node scripts/build-ci-installers.mjs ${{ matrix.platform }} ${{ matrix.arch }}
       - name: Verify Arch package installs with dependencies
         if: matrix.platform == 'linux'
@@ -206,7 +211,7 @@ jobs:
 
           Windows x64：exe；macOS Apple Silicon：arm64.dmg，Intel：无 arm64 后缀的 dmg；Linux x64：AppImage / deb / rpm；Arch Linux：pacman。
 
-          本版本未签名，macOS 未公证。已通过多平台打包和 Arch 容器安装检查，未代替各平台桌面功能验收。
+          签名与公证状态见各平台 BUILD.json。已通过多平台打包和 Arch 容器安装检查，未代替各平台桌面功能验收。
           附对应项目源码归档、构建记录与 SHA256SUMS.txt。依赖源码及第三方声明的公开分发核对事项见随附 SOURCE-CODE 文档。
 
           构建记录：https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}

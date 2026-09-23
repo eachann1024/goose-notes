@@ -22,6 +22,24 @@ const ROOT = resolve(__dirname, '..');
 
 const INSTALLER_EXTENSIONS = new Set(['.exe', '.dmg', '.zip', '.AppImage', '.deb', '.rpm', '.pacman']);
 
+export function updateFeeds(version, tag, publicRepo, installers, hashesByName, automaticMac = false) {
+  const assets = installers.map(({ name }) => ({
+    name,
+    browser_download_url: `https://github.com/${publicRepo}/releases/download/${tag}/${encodeURIComponent(name)}`,
+    sha256: hashesByName.get(name),
+  }));
+  const result = { 'latest.json': { tag_name: tag, html_url: `https://github.com/${publicRepo}/releases/tag/${tag}`, assets } };
+  for (const arch of automaticMac ? ['arm64', 'x64'] : []) {
+    const zip = assets.find(({ name }) => name.endsWith('.zip') && (arch === 'arm64' ? name.includes('arm64') : !name.includes('arm64')));
+    if (!zip) throw new Error(`Missing macOS ${arch} update ZIP`);
+    result[`mac-${arch}.json`] = {
+      currentRelease: version,
+      releases: [{ version, updateTo: { url: zip.browser_download_url, name: version, notes: `Goose Note ${version}`, pub_date: new Date().toISOString() } }],
+    };
+  }
+  return result;
+}
+
 export function transformReadme(content, publicRepo = 'eachann1024/goose-note-app') {
   let out = content;
   // 1. Point releases to public repository latest release
@@ -110,7 +128,7 @@ export function selectMacDmgs(installers) {
   return { arm, intel };
 }
 
-export function generateCask({ version, tag, armSha256, intelSha256, publicRepo }) {
+export function generateCask({ version, tag, armSha256, intelSha256, publicRepo, automaticMac = false }) {
   const prefix = `v${version}-`;
   const sha7 = tag.startsWith(prefix) ? tag.slice(prefix.length) : tag.replace(/^v/, '');
   return `cask "goose-note" do
@@ -135,13 +153,10 @@ export function generateCask({ version, tag, armSha256, intelSha256, publicRepo 
     "~/Library/Saved Application State/com.goosenote.desktop.savedState",
   ]
 
-  caveats <<~EOS
-    Goose Note is currently unsigned and not notarized.
-    After installing, macOS Gatekeeper may block it. Allow it in
-    System Settings → Privacy & Security, or run:
-
-      xattr -cr "/Applications/Goose Note.app"
-  EOS
+  ${automaticMac ? '' : `caveats <<~EOS
+    This release has no automatic macOS installation. If macOS blocks it,
+    allow the app in System Settings → Privacy & Security.
+  EOS`}
 end
 `;
 }
@@ -176,6 +191,13 @@ export function cloneOrInitRepo(cloneDir, authUrl, token, baseDir = ROOT) {
 
 export function runSelfTest() {
   console.log('Running self-check for publish-public-app...');
+  const feeds = updateFeeds('9.21.0', 'v9.21.0-abcdef0', 'eachann1024/goose-note-app', [
+    { name: 'Goose.Note-9.21.0-arm64.zip' }, { name: 'Goose.Note-9.21.0.zip' },
+  ], new Map([['Goose.Note-9.21.0-arm64.zip', 'a'.repeat(64)], ['Goose.Note-9.21.0.zip', 'b'.repeat(64)]]), true);
+  assert.equal(feeds['mac-arm64.json'].currentRelease, '9.21.0');
+  assert.equal(feeds['mac-x64.json'].releases[0].updateTo.url, feeds['latest.json'].assets[1].browser_download_url);
+  assert.equal(feeds['latest.json'].assets[0].sha256, 'a'.repeat(64));
+  assert.equal(Object.keys(updateFeeds('9.21.0', 'v9.21.0-abcdef0', 'eachann1024/goose-note-app', [], new Map())).length, 1);
   const sampleReadme = readFileSync(join(ROOT, 'README.md'), 'utf8');
   const transformed = transformReadme(sampleReadme, 'eachann1024/goose-note-app');
 
@@ -275,7 +297,8 @@ export function runSelfTest() {
     cask.includes('https://github.com/eachann1024/goose-note-app/releases/download/v#{version.csv.first}-#{version.csv.second}/Goose.Note-#{version.csv.first}#{arch}.dmg'),
     'Cask download URL must use public tag and Goose.Note dmg name',
   );
-  assert.ok(/unsigned/i.test(cask) && cask.includes('xattr'), 'Cask caveats must mention unsigned and xattr');
+  assert.ok(cask.includes('no automatic macOS installation'), 'Unsigned cask must explain manual installation');
+  assert.ok(!generateCask({ version: '9.0.1', tag: 'v9.0.1-b96400a', armSha256: 'a', intelSha256: 'b', publicRepo: 'eachann1024/goose-note-app', automaticMac: true }).includes('caveats'), 'Signed cask should not show manual-install warning');
   assert.ok(cask.includes('depends_on :macos'), 'Cask must declare macOS-only so Linux sha256 is not audited as nil');
   assert.ok(cask.includes('com.goosenote.desktop'), 'Cask zap must include appId');
 
@@ -343,6 +366,12 @@ async function main() {
 
   const installers = findInstallers(searchCandidates);
   checkPlatformCoverage(installers);
+  const automaticMac = ['arm64', 'x64'].every(arch => {
+    const file = join(ROOT, 'artifacts', `goose-note-mac-${arch}-BUILD.json`);
+    if (!existsSync(file)) return false;
+    const build = JSON.parse(readFileSync(file, 'utf8'));
+    return build.signed === true && build.notarized === true;
+  });
 
   const stageDir = mkdtempSync(join(tmpdir(), 'goose-public-assets-'));
   try {
@@ -372,6 +401,7 @@ async function main() {
       armSha256: hashesByName.get(arm.name),
       intelSha256: hashesByName.get(intel.name),
       publicRepo,
+      automaticMac,
     });
 
     const cloneDir = mkdtempSync(join(tmpdir(), 'goose-public-repo-'));
@@ -416,7 +446,7 @@ async function main() {
     }
 
     const title = `Goose Note ${version}`;
-    // ponytail: unsigned/unnotarized release assets; add codesign/notarization when signing certificates are configured.
+    // ponytail: unsigned builds remain manual; provide signing credentials to enable macOS auto-install.
     const notes = [
       `正式版本 ${version}（构建对应提交：${sha}）`,
       '',
@@ -426,7 +456,7 @@ async function main() {
       '- macOS Intel：dmg / .zip',
       '- Linux x64：AppImage / deb / rpm / pacman',
       '',
-      '本版本未签名，macOS 未公证。',
+      automaticMac ? 'macOS 已启用后台更新与重启安装。' : 'macOS 自动安装未启用；需要 Developer ID 签名与公证。',
       '各平台安装包与校验值见随附 Release Assets 和 SHA256SUMS.txt。',
     ].join('\n');
 
@@ -466,6 +496,25 @@ async function main() {
       '--latest',
     ], { env: ghEnv, stdio: 'inherit' });
 
+    // Publish the pointer only after all assets are available, so clients never see a partial release.
+    const feedDir = mkdtempSync(join(tmpdir(), 'goose-public-feed-'));
+    try {
+      const authUrl = `https://x-access-token:${encodeURIComponent(token)}@github.com/${publicRepo}.git`;
+      cloneOrInitRepo(feedDir, authUrl, token);
+      mkdirSync(join(feedDir, 'updates'), { recursive: true });
+      for (const [name, data] of Object.entries(updateFeeds(version, tag, publicRepo, installers, hashesByName, automaticMac))) {
+        writeFileSync(join(feedDir, 'updates', name), JSON.stringify(data) + '\n');
+      }
+      runGit(['config', 'user.name', 'github-actions[bot]'], feedDir, token);
+      runGit(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], feedDir, token);
+      runGit(['add', 'updates'], feedDir, token);
+      if (runGit(['status', '--porcelain'], feedDir, token).trim()) {
+        runGit(['commit', '-m', `Update feeds for ${tag}`], feedDir, token);
+        runGit(['push', 'origin', 'main'], feedDir, token);
+      }
+    } finally {
+      rmSync(feedDir, { recursive: true, force: true });
+    }
     console.log(`Successfully published ${tag} to ${publicRepo}!`);
   } finally {
     rmSync(stageDir, { recursive: true, force: true });

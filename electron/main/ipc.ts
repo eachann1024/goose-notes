@@ -35,6 +35,8 @@ import { listOpenApps, openTerminalAtPath, openWithApp } from "./apps";
 import {
   checkForAppUpdate,
   downloadAppUpdate,
+  getReadyUpdate,
+  installReadyUpdate,
   getAppVersion,
   revealDownloadedUpdate,
 } from "./appUpdate";
@@ -530,6 +532,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("desktop:getAppVersion", async () => getAppVersion());
 
   ipcMain.handle("desktop:checkForUpdate", async () => checkForAppUpdate());
+  ipcMain.handle("desktop:getReadyUpdate", () => getReadyUpdate());
+  ipcMain.handle("desktop:installReadyUpdate", () => installReadyUpdate());
 
   ipcMain.handle(
     "desktop:downloadUpdate",

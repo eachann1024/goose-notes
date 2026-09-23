@@ -1,4 +1,7 @@
 import * as LucideIcons from "lucide-react";
+import { useEffect, useState } from "react";
+import { getGooseDesktop } from "@/lib/electron/runtime";
+import { checkAppUpdate } from "@/lib/electron/appUpdate";
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +33,28 @@ export function SidebarFooter({
     (s) => s.toggleSidebarCollapsed,
   );
   const { alwaysOnTop, toggleAlwaysOnTop } = useWindowAlwaysOnTop();
+  const [readyVersion, setReadyVersion] = useState("");
+  const [availableVersion, setAvailableVersion] = useState("");
+  useEffect(() => {
+    const desktop = getGooseDesktop();
+    if (!desktop) return;
+    const unsubscribe = desktop.onUpdateReady(setReadyVersion);
+    void desktop.getReadyUpdate().then(setReadyVersion).catch(() => {});
+    return unsubscribe;
+  }, []);
+  useEffect(() => {
+    if (!getGooseDesktop()) return;
+    let active = true;
+    const check = async () => {
+      try {
+        const result = await checkAppUpdate();
+        if (active) setAvailableVersion(result?.status === "available" ? result.latestVersion : "");
+      } catch { /* Network errors stay silent; manual check in About shows details. */ }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 4 * 60 * 60 * 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
   const toggleSidebarShortcutLabel = toggleSidebarShortcut
     ? formatShortcut(toggleSidebarShortcut)
     : "";
@@ -123,6 +148,30 @@ export function SidebarFooter({
           </Tooltip>
         </TooltipProvider>
       </div>
+      {readyVersion ? (
+        <button
+          type="button"
+          className={cn(btnClass, activeClass)}
+          aria-label={`更新 ${readyVersion} 已下载，点击重启安装`}
+          title={`更新 ${readyVersion} 已下载，点击重启安装`}
+          onClick={() => void getGooseDesktop()?.installReadyUpdate()}
+        >
+          <LucideIcons.RotateCw className="h-4 w-4" />
+        </button>
+      ) : availableVersion ? (
+        <button
+          type="button"
+          className={cn(btnClass, activeClass)}
+          aria-label={`发现新版本 ${availableVersion}，打开更新说明`}
+          title={`发现新版本 ${availableVersion}，打开更新说明`}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("goose-note:settings-tab-change", { detail: { tab: "about" } }));
+            onOpenSettings();
+          }}
+        >
+          <LucideIcons.Download className="h-4 w-4" />
+        </button>
+      ) : null}
       <button
         type="button"
         className={cn(btnClass, isSettingsOpen && activeClass)}

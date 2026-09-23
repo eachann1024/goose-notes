@@ -2,6 +2,7 @@ import { app, Menu } from "electron";
 import { loadVaultRoots } from "./allowlist";
 import { registerHotkeys, unregisterAllHotkeys } from "./hotkeys";
 import { closeAllWatchers, registerIpcHandlers } from "./ipc";
+import { startAutomaticUpdates } from "./appUpdate";
 import {
   enqueueMarkdownPathsFromArgv,
   flushQueuedMarkdownOpenPaths,
@@ -160,6 +161,7 @@ function startApp(): void {
       // 等待渲染进程设置水合，避免启动时抢占用户已关闭或改过的搜索键。
       search: "",
     });
+    startAutomaticUpdates();
     if (pendingFocus) {
       pendingFocus = false;
       focusExistingWorkspace();

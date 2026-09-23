@@ -1,17 +1,21 @@
-import { app, shell } from "electron";
-import { createWriteStream, existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { app, autoUpdater, BrowserWindow, shell } from "electron";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { addSessionAllowed } from "./allowlist";
+import { markQuitting } from "./windows";
 import {
   nextAvailableDownloadName,
   sanitizeDownloadFilename,
 } from "./saveToDownloads";
 import {
-  PUBLIC_RELEASES_API_URL,
+  PUBLIC_UPDATE_URL,
   PUBLIC_RELEASES_LATEST_URL,
+  PUBLIC_RELEASES_REPO,
   compareSemver,
   isGithubDownloadUrl,
   parseReleaseTag,
@@ -47,6 +51,49 @@ type GithubLatestRelease = {
   assets?: GithubReleaseAsset[];
 };
 
+let readyVersion = "";
+let updaterStarted = false;
+let updateChecking = false;
+
+export function getReadyUpdate(): string {
+  return readyVersion;
+}
+
+export function installReadyUpdate(): void {
+  if (!readyVersion) throw new Error("没有已下载的更新");
+  markQuitting();
+  autoUpdater.quitAndInstall();
+}
+
+export function startAutomaticUpdates(): void {
+  if (updaterStarted || !app.isPackaged || process.platform !== "darwin") return;
+  // ponytail: only Developer ID signed macOS bundles use Squirrel.Mac; unsigned builds keep manual installation.
+  // Enable this path for unsigned builds only after a platform-supported, verified installer exists.
+  const signature = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=2", process.execPath], { encoding: "utf8" });
+  if (signature.status !== 0 || !/^Authority=Developer ID Application/m.test(signature.stderr)) return;
+  updaterStarted = true;
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  autoUpdater.setFeedURL({ url: `https://raw.githubusercontent.com/${PUBLIC_RELEASES_REPO}/main/updates/mac-${arch}.json`, serverType: "json" });
+  autoUpdater.on("update-downloaded", (_event, _notes, version) => {
+    updateChecking = false;
+    readyVersion = version;
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send("desktop:update-ready", version);
+  });
+  autoUpdater.on("update-not-available", () => { updateChecking = false; });
+  autoUpdater.on("error", (error) => {
+    updateChecking = false;
+    console.error("[update] 自动更新失败:", error.message);
+  });
+  const check = () => {
+    if (updateChecking || readyVersion) return;
+    updateChecking = true;
+    try { autoUpdater.checkForUpdates(); }
+    catch (error) { updateChecking = false; console.error("[update] 检查失败:", error); }
+  };
+  setTimeout(check, 15_000);
+  setInterval(check, 4 * 60 * 60 * 1000);
+}
+
 function userAgent(): string {
   return `Goose-Note/${app.getVersion()}`;
 }
@@ -59,9 +106,8 @@ export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
   const currentVersion = getAppVersion();
   const releaseUrl = PUBLIC_RELEASES_LATEST_URL;
   try {
-    const response = await fetch(PUBLIC_RELEASES_API_URL, {
+    const response = await fetch(`${PUBLIC_UPDATE_URL}?t=${Date.now()}`, {
       headers: {
-        Accept: "application/vnd.github+json",
         "User-Agent": userAgent(),
       },
     });
@@ -126,7 +172,11 @@ export async function downloadAppUpdate(
   downloadUrl: string,
   filename: string,
 ): Promise<{ path: string }> {
-  if (!isGithubDownloadUrl(downloadUrl)) {
+  const latest = await fetch(`${PUBLIC_UPDATE_URL}?t=${Date.now()}`);
+  if (!latest.ok) throw new Error(`无法校验更新信息（${latest.status}）`);
+  const manifest = (await latest.json()) as GithubLatestRelease;
+  const asset = manifest.assets?.find((item) => item.name === filename && item.browser_download_url === downloadUrl);
+  if (!asset?.sha256 || !/^[a-f0-9]{64}$/i.test(asset.sha256) || !isGithubDownloadUrl(downloadUrl)) {
     throw new Error("更新地址不受信任");
   }
   const response = await fetch(downloadUrl, {
@@ -145,7 +195,16 @@ export async function downloadAppUpdate(
   );
   const target = path.join(downloads, uniqueName);
   const nodeStream = Readable.fromWeb(response.body as never);
-  await pipeline(nodeStream, createWriteStream(target));
+  const file = await open(target, "wx");
+  try {
+    const digest = createHash("sha256");
+    nodeStream.on("data", (chunk: Buffer) => digest.update(chunk));
+    await pipeline(nodeStream, file.createWriteStream());
+    if (digest.digest("hex").toLowerCase() !== asset.sha256.toLowerCase()) throw new Error("安装包校验失败");
+  } catch (error) {
+    await rm(target, { force: true });
+    throw error;
+  }
   addSessionAllowed(target);
   return { path: target };
 }
