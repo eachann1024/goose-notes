@@ -1,8 +1,10 @@
 name: Desktop installers
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    # ponytail: GitHub cron 按月中日期隔日运行；月底可能连续两天，严格 48 小时需每日轻量检查。
+    - cron: '0 7 */2 * *'
+      timezone: 'Asia/Shanghai'
   workflow_dispatch:
 
 permissions:
@@ -17,9 +19,24 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.staging.outputs.tag }}
+      publish: ${{ steps.check.outputs.publish }}
     steps:
+      - name: Skip unchanged scheduled builds
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
+            latest=$(gh release view --repo eachann1024/goose-note-app --json tagName --jq .tagName)
+            if [[ "$latest" == *"-${GITHUB_SHA:0:7}" ]]; then
+              echo 'publish=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo 'publish=true' >> "$GITHUB_OUTPUT"
       - name: Create staging draft
         id: staging
+        if: steps.check.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -30,6 +47,7 @@ jobs:
   source:
     name: Source archive
     needs: [prepare]
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -55,6 +73,7 @@ jobs:
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
     needs: [prepare]
+    if: needs.prepare.outputs.publish == 'true'
     strategy:
       fail-fast: false
       matrix:
