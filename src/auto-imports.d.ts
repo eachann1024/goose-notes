@@ -99,6 +99,7 @@ declare global {
   const GLM_BASE_URL: typeof import('./lib/ai-provider/index').GLM_BASE_URL
   const GOOSE_FAVORITE_KEY: typeof import('./lib/local-frontmatter').GOOSE_FAVORITE_KEY
   const GOOSE_FONT_KEY: typeof import('./lib/local-frontmatter').GOOSE_FONT_KEY
+  const GOOSE_LAYOUT_KEY: typeof import('./lib/local-frontmatter').GOOSE_LAYOUT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
   const GOOSE_PINNED_KEY: typeof import('./lib/local-frontmatter').GOOSE_PINNED_KEY
   const IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH: typeof import('./lib/imageExport/index').IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH
@@ -123,6 +124,8 @@ declare global {
   const MINIMAX_BASE_URL: typeof import('./lib/ai-provider/index').MINIMAX_BASE_URL
   const NON_CUSTOMIZABLE_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').NON_CUSTOMIZABLE_APP_SHORTCUT_IDS
   const NOTEBOOK_AI_TAB_PAGE_ID_PREFIX: typeof import('./stores/useTabs').NOTEBOOK_AI_TAB_PAGE_ID_PREFIX
+  const NOTEBOOK_MENU_CLOSE_MS: typeof import('./components/ui/floating-menu-motion').NOTEBOOK_MENU_CLOSE_MS
+  const NOTEBOOK_MENU_OPEN_MS: typeof import('./components/ui/floating-menu-motion').NOTEBOOK_MENU_OPEN_MS
   const NOTEBOOK_THEME: typeof import('./lib/imageExport/index').NOTEBOOK_THEME
   const ONBOARDING_CHILD_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_CHILD_PAGE_CONTENT
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
@@ -133,6 +136,7 @@ declare global {
   const PUBLIC_RELEASES_API_URL: typeof import('./lib/appUpdateRelease').PUBLIC_RELEASES_API_URL
   const PUBLIC_RELEASES_LATEST_URL: typeof import('./lib/appUpdateRelease').PUBLIC_RELEASES_LATEST_URL
   const PUBLIC_RELEASES_REPO: typeof import('./lib/appUpdateRelease').PUBLIC_RELEASES_REPO
+  const PUBLIC_UPDATE_URL: typeof import('./lib/appUpdateRelease').PUBLIC_UPDATE_URL
   const Popover: typeof import('./components/ui/popover').Popover
   const PopoverAction: typeof import('./components/ui/popover').PopoverAction
   const PopoverAnchor: typeof import('./components/ui/popover').PopoverAnchor
@@ -159,6 +163,7 @@ declare global {
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
   const Separator: typeof import('./components/ui/separator').Separator
+  const SuccessToastIcon: typeof import('./components/ui/sonner').SuccessToastIcon
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
   const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
@@ -442,6 +447,7 @@ declare global {
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
   const isListPasteBlockType: typeof import('./components/editor/utils/multilinePaste').isListPasteBlockType
   const isLocalFolderDirectoryPage: typeof import('./lib/sidebarPageNavigation').isLocalFolderDirectoryPage
+  const isLocalFontAvailable: typeof import('./lib/fontLoader').isLocalFontAvailable
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isLocalPageFrontmatterSettingsUpdate: typeof import('./lib/local-frontmatter').isLocalPageFrontmatterSettingsUpdate
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
@@ -509,9 +515,11 @@ declare global {
   const normalizeGeneratedStructureMarkdown: typeof import('./lib/ai-write/index').normalizeGeneratedStructureMarkdown
   const normalizeHeadingSectionFold: typeof import('./components/editor/utils/blocknote-content/index').normalizeHeadingSectionFold
   const normalizeHeadingToggleableFlags: typeof import('./components/editor/utils/blocknote-content/index').normalizeHeadingToggleableFlags
+  const normalizeLocalFontName: typeof import('./lib/fontLoader').normalizeLocalFontName
   const normalizeLocalPathSlashes: typeof import('./lib/canonicalLocalPath').normalizeLocalPathSlashes
   const normalizeMarkdownPasteText: typeof import('./components/editor/utils/clipboard').normalizeMarkdownPasteText
   const normalizePageContent: typeof import('./components/editor/utils/blocknote-content/index').normalizePageContent
+  const normalizePageLayout: typeof import('./lib/local-frontmatter').normalizePageLayout
   const normalizePageTitle: typeof import('./components/editor/utils/page-title').normalizePageTitle
   const normalizeRemoteDir: typeof import('./lib/webdavSync').normalizeRemoteDir
   const normalizeShortcutForConflict: typeof import('./lib/shortcut-platform').normalizeShortcutForConflict
@@ -640,6 +648,7 @@ declare global {
   const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPasteClipboardAsBlocks: typeof import('./components/editor/hooks/useEditorPaste').shouldPasteClipboardAsBlocks
   const shouldPasteHtmlAsBlocks: typeof import('./components/editor/hooks/useEditorPaste').shouldPasteHtmlAsBlocks
+  const shouldPreferPlainMultilinePaste: typeof import('./components/editor/utils/multilinePaste').shouldPreferPlainMultilinePaste
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
   const shouldPreserveStartupSelection: typeof import('./lib/workspaceStartup').shouldPreserveStartupSelection
   const shouldShowImageExportLivePreview: typeof import('./lib/imageExport/index').shouldShowImageExportLivePreview
@@ -648,6 +657,7 @@ declare global {
   const shouldSplitMultilinePaste: typeof import('./components/editor/utils/multilinePaste').shouldSplitMultilinePaste
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
   const shouldUploadViaImageStorage: typeof import('./components/editor/utils/pasteClipboardImage').shouldUploadViaImageStorage
+  const showDeleteReceipt: typeof import('./components/ui/delete-receipt').showDeleteReceipt
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
   const sortLocalFolderChildren: typeof import('./stores/localFolderOrder').sortLocalFolderChildren
   const sortNotebooksByOrder: typeof import('./stores/useNotebooks').sortNotebooksByOrder
@@ -674,6 +684,7 @@ declare global {
   const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const tryCollapseSidebarListOnEscape: typeof import('./lib/sidebarListCollapse').tryCollapseSidebarListOnEscape
   const tryPasteGooseMarkdownFragment: typeof import('./components/editor/hooks/useEditorPaste').tryPasteGooseMarkdownFragment
+  const undoLocalTrash: typeof import('./lib/page-delete-actions').undoLocalTrash
   const updateQuickNoteSlotName: typeof import('./stores/useQuickNote').updateQuickNoteSlotName
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
   const updateSnapshotStat: typeof import('./lib/local-md-snapshot').updateSnapshotStat

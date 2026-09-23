@@ -7,7 +7,7 @@ import { usePages } from "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 import { useSidebarView } from "@/stores/useSidebarView";
 
-/** 本地文件夹文件操作的固定快捷键，与 Cursor 资源管理器默认接近。 */
+/** 本地文件夹打开快捷键与 GitHub Desktop 的打开/显示命令一致。 */
 export const LOCAL_FOLDER_FILE_SHORTCUTS = {
   openInExternalApp: "Mod+Shift+A",
   revealInFileManager: "Mod+Shift+F",
