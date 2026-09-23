@@ -136,6 +136,15 @@ export const EDITOR_FONT_SIZE_MIN = 12;
 export const EDITOR_FONT_SIZE_MAX = 24;
 export const EDITOR_FONT_SIZE_DEFAULT = 16;
 
+export const EDITOR_LINE_HEIGHT_MIN = 1.2;
+export const EDITOR_LINE_HEIGHT_MAX = 2.4;
+export const EDITOR_LINE_HEIGHT_DEFAULT = 1.5;
+
+export function normalizeEditorLineHeight(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return EDITOR_LINE_HEIGHT_DEFAULT;
+  return Math.round(Math.min(EDITOR_LINE_HEIGHT_MAX, Math.max(EDITOR_LINE_HEIGHT_MIN, value)) * 10) / 10;
+}
+
 // 侧栏字体大小边界（与编辑器字号独立持久化）
 export const SIDEBAR_FONT_SIZE_MIN = 12;
 export const SIDEBAR_FONT_SIZE_MAX = 18;

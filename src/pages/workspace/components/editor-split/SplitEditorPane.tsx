@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
@@ -10,6 +10,8 @@ import { EditorHostBridge } from "@/pages/workspace/components/editor-host/Edito
 import { useScrollRestoration } from "@/pages/workspace/hooks/useScrollRestoration";
 import { usePages } from "@/stores/usePages";
 import { useEditorPaneRegistry } from "./editorPaneRegistry";
+import { useSettings } from "@/stores/useSettings";
+import { PageContents } from "./PageContents";
 
 function SplitPaneCloseButton({
   tabId,
@@ -54,7 +56,13 @@ export function SplitEditorPane({
   showChrome: boolean;
 }) {
   const registry = useEditorPaneRegistry();
+  const defaultLayout = useSettings(state => state.defaultPageLayout);
   const editorRef = useRef<EditorRef | null>(null);
+  const [editor, setEditor] = useState<EditorRef["editor"]>(null);
+  const attachEditor = useCallback((instance: EditorRef | null) => {
+    editorRef.current = instance;
+    setEditor(instance?.editor ?? null);
+  }, []);
   const scrollElRef = useRef<HTMLDivElement | null>(null);
   useScrollRestoration(leaf.pageId, scrollElRef);
   const page = usePages((state) => state.pages[leaf.pageId]);
@@ -108,6 +116,7 @@ export function SplitEditorPane({
     <div
       className="flex h-full min-h-0 min-w-0 flex-col"
       data-font-family={page.fontFamily ?? "default"}
+      data-page-layout={page.pageLayout ?? defaultLayout}
       data-local-file-page={isLocalFilePage ? "true" : undefined}
     >
       {showChrome ? (
@@ -129,6 +138,10 @@ export function SplitEditorPane({
         </div>
       ) : null}
       <EditorHostBridge page={page} isEditorFullWidth>
+        <div className="page-layout-body flex min-h-0 min-w-0 flex-1">
+        {(page.pageLayout ?? defaultLayout) === "compact" && (
+          <PageContents editor={editor} pageId={page.id} scrollRef={scrollElRef} />
+        )}
         <div
           ref={(el) => {
             scrollElRef.current = el;
@@ -136,7 +149,7 @@ export function SplitEditorPane({
           }}
           className="page-scroll-container h-full min-h-0 min-w-0 flex-1 overflow-y-auto bg-[hsl(var(--goose-editor-bg))]"
         >
-          <div className="flex min-h-full flex-col px-14 pt-1">
+          <div className="page-layout-document flex min-h-full flex-col">
             <ErrorBoundary
               resetKey={leaf.pageId}
               fallback={(_, reset) => (
@@ -153,12 +166,13 @@ export function SplitEditorPane({
               )}
             >
               <Editor
-                ref={editorRef}
+                ref={attachEditor}
                 editable={editable}
                 isActiveEditor={focused}
               />
             </ErrorBoundary>
           </div>
+        </div>
         </div>
       </EditorHostBridge>
     </div>

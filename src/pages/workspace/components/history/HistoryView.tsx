@@ -278,11 +278,17 @@ function useHistoryViewLogic() {
         const updates: Parameters<typeof updatePage>[1] = {
           content: safeContent,
         };
-        if (result.localFrontmatter !== undefined) {
+        if (latest.localFilePath || result.localFrontmatter !== undefined) {
           updates.localFrontmatter = result.localFrontmatter;
           // 还原 frontmatter 时同步 goose 设置，避免随后写盘用当前内存设置覆盖
           const fm = parseLocalFrontmatterBlob(result.localFrontmatter);
+          if (!fm.ok) {
+            toast.error("历史版本 YAML 格式异常，未还原");
+            setIsRestoring(false);
+            return;
+          }
           updates.fontFamily = fm.settings.fontFamily;
+          updates.pageLayout = fm.settings.pageLayout;
           updates.isLocked = fm.settings.isLocked;
         }
         updatePage(pageId, updates);

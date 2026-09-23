@@ -8,12 +8,15 @@ import type {
 import {
   DEFAULT_ACCENT_COLOR,
   EDITOR_FONT_SIZE_DEFAULT,
+  EDITOR_LINE_HEIGHT_DEFAULT,
+  normalizeEditorLineHeight,
   DEFAULT_UI_FONT_SIZE,
   SIDEBAR_FONT_SIZE_DEFAULT,
   normalizeEditorFontSize,
   normalizeSidebarFontSize,
 } from "../types";
 import type { CardThemeId } from "@/lib/imageExport/themes";
+import { normalizeLocalFontName } from "@/lib/fontLoader";
 import type { WatermarkConfig } from "@/lib/imageExport/watermark";
 import {
   DEFAULT_WATERMARK_CONFIG,
@@ -26,8 +29,11 @@ export interface AppearanceSliceState {
   codeStyle: CodeStyle;
   defaultCodeBlockWrap: boolean;
   customFonts: CustomFonts;
+  uiFontFamily: string | null;
+  sidebarFontFamily: string | null;
   uiFontSize: UIFontSize;
   editorFontSize: number;
+  editorLineHeight: number;
   /** 左侧栏树/分区标题字号（px），与编辑器字号独立。 */
   sidebarFontSize: number;
   /** AI 聊天界面字号缩放比。可选值：0.8 / 0.9 / 1.0 / 1.1 / 1.2。副作用：影响 AI 聊天面板所有文字大小。 */
@@ -58,8 +64,11 @@ export interface AppearanceSliceActions {
     font: string | null,
   ) => void;
   resetCustomFont: (type: "default" | "serif" | "mono") => void;
+  setUIFontFamily: (font: string | null) => void;
+  setSidebarFontFamily: (font: string | null) => void;
   setUIFontSize: (size: UIFontSize) => void;
   setEditorFontSize: (size: number) => void;
+  setEditorLineHeight: (height: number) => void;
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
   resetEditorFontSize: () => void;
@@ -88,8 +97,11 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     serif: { label: null, font: null },
     mono: { label: null, font: null },
   },
+  uiFontFamily: null,
+  sidebarFontFamily: null,
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
+  editorLineHeight: EDITOR_LINE_HEIGHT_DEFAULT,
   sidebarFontSize: SIDEBAR_FONT_SIZE_DEFAULT,
   aiChatScale: 1.0,
   imageExportWatermark: DEFAULT_WATERMARK_CONFIG,
@@ -164,11 +176,17 @@ export function createAppearanceSlice(
           [type]: { label: null, font: null },
         },
       })),
+    setUIFontFamily: (font) =>
+      set({ uiFontFamily: normalizeLocalFontName(font) }),
+    setSidebarFontFamily: (font) =>
+      set({ sidebarFontFamily: normalizeLocalFontName(font) }),
     setUIFontSize: (uiFontSize) => set({ uiFontSize }),
     setEditorFontSize: (size) =>
       set({
         editorFontSize: normalizeEditorFontSize(size),
       }),
+    setEditorLineHeight: (height) =>
+      set({ editorLineHeight: normalizeEditorLineHeight(height) }),
     increaseEditorFontSize: () =>
       set((state) => ({
         editorFontSize: normalizeEditorFontSize(state.editorFontSize + 1),
@@ -210,7 +228,7 @@ export function createAppearanceSlice(
     setImageExportWatermark: (config) =>
       set({ imageExportWatermark: normalizeWatermarkConfig(config) }),
     setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
-      setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
+    setRandomIconOnCreate: (randomIconOnCreate) => set({ randomIconOnCreate }),
 
     setSingleTabMode: (singleTabMode) => set({ singleTabMode }),
   };

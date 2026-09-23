@@ -1,8 +1,10 @@
+import { normalizePageLayout } from "@/lib/local-frontmatter";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { localStorageAdapter } from "@/lib/storage";
 import { applyAccentColor, syncAccentColorCssVars } from "@/lib/accentColor";
 import { normalizeCardThemeId } from "@/lib/imageExport/themes";
+import { normalizeLocalFontName } from "@/lib/fontLoader";
 
 import type {
   Theme,
@@ -16,6 +18,7 @@ import {
   resolveCodeTheme,
   normalizeUIFontSize,
   normalizeEditorFontSize,
+  normalizeEditorLineHeight,
   normalizeSidebarFontSize,
   normalizeAutoCloseInactiveTabsHours,
   normalizeAISettings,
@@ -60,6 +63,10 @@ export type SettingsState = AISlice &
   LocalFolderSlice &
   WebdavSlice & {
     _hasHydrated: boolean;
+    defaultPageLayout: import("@/types").PageLayout;
+    contentsWidth: number;
+    setupGuideSeen: boolean;
+    setupGuideOpen: boolean;
   };
 
 // 应用主题到 DOM
@@ -129,6 +136,10 @@ export const useSettings = create<SettingsState>()(
       ),
       ...createWebdavSlice(set as Parameters<typeof createWebdavSlice>[0]),
       _hasHydrated: false,
+      defaultPageLayout: "full",
+      contentsWidth: 180,
+      setupGuideSeen: false,
+      setupGuideOpen: false,
     }),
     {
       name: "goose-note-settings",
@@ -137,7 +148,16 @@ export const useSettings = create<SettingsState>()(
         migrateSettingsPersistedState(persistedState, version),
       storage: createJSONStorage(() => localStorageAdapter),
       skipHydration: true,
+      partialize: ({ setupGuideOpen: _open, ...state }) => state,
       onRehydrateStorage: () => (state) => {
+        if (state) {
+          useSettings.setState({
+            defaultPageLayout: state.defaultPageLayout == null ? "full" : normalizePageLayout(state.defaultPageLayout),
+            contentsWidth: Number.isFinite(state.contentsWidth) ? Math.min(360, Math.max(128, state.contentsWidth)) : 180,
+            setupGuideSeen: state.setupGuideSeen === true,
+            setupGuideOpen: false,
+          });
+        }
         const theme = state?.theme || "system";
         const accentColor = normalizeAccentColor(state?.accentColor);
         const codeStyle = normalizeCodeStyle(
@@ -180,11 +200,19 @@ export const useSettings = create<SettingsState>()(
         if (state && state.editorFontSize !== normalizedEditorFontSize) {
           useSettings.setState({ editorFontSize: normalizedEditorFontSize });
         }
+        const editorLineHeight = normalizeEditorLineHeight(state?.editorLineHeight);
+        if (state && state.editorLineHeight !== editorLineHeight) {
+          useSettings.setState({ editorLineHeight });
+        }
         const normalizedSidebarFontSize = normalizeSidebarFontSize(
           state?.sidebarFontSize,
         );
         if (state && state.sidebarFontSize !== normalizedSidebarFontSize) {
           useSettings.setState({ sidebarFontSize: normalizedSidebarFontSize });
+        }
+        for (const key of ["uiFontFamily", "sidebarFontFamily"] as const) {
+          const font = normalizeLocalFontName(state?.[key]);
+          if (state && state[key] !== font) useSettings.setState({ [key]: font });
         }
 
         const normalizedAI = normalizeAISettings(

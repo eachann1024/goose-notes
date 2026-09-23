@@ -13,11 +13,13 @@ import {
 import { editorSchema } from "@/components/editor/core/EditorComposer";
 import { cn } from "@/lib/utils";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import type { Page } from "@/types";
 
 interface HistoryReadOnlyEditorProps {
   content: BlockNoteContent;
   /** 当前版本标识；变化时用 replaceBlocks 换内容，而非重建实例 */
   versionKey: string;
+  sourcePage?: Page;
 }
 
 /**
@@ -34,10 +36,13 @@ interface HistoryReadOnlyEditorProps {
 export function HistoryReadOnlyEditor({
   content,
   versionKey,
+  sourcePage,
 }: HistoryReadOnlyEditorProps) {
   const { theme } = useSettings();
   const { activePageId } = usePages();
-  const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+  const activePage = sourcePage ?? (activePageId ? usePages.getState().pages[activePageId] : null);
+  const sourcePageRef = useRef(sourcePage);
+  sourcePageRef.current = sourcePage;
   const effectiveTheme = useResolvedTheme(theme);
   const [renderError, setRenderError] = useState(false);
 
@@ -61,7 +66,7 @@ export function HistoryReadOnlyEditor({
       const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
       const { usePages } = await import("@/stores/usePages");
       const activePageId = usePages.getState().activePageId;
-      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+      const activePage = sourcePageRef.current ?? (activePageId ? usePages.getState().pages[activePageId] : null);
       return resolveImageRefToUrl(url, activePage?.localFilePath ?? null);
     },
   });
@@ -78,28 +83,21 @@ export function HistoryReadOnlyEditor({
   const renderedContentRef = useRef(normalized);
   useEffect(() => {
     if (renderedContentRef.current === normalized) return; // 首次渲染由 initialContent 承担
-    renderedContentRef.current = normalized;
-    setRenderError(false);
-    try {
-      editor.replaceBlocks(editor.document, normalized as any);
-    } catch (error) {
-      console.error("[history] replace read-only blocks failed", {
-        versionKey,
-        error,
-      });
-      setRenderError(true);
+    let cancelled = false;
+    // BlockNote 的 React 节点会同步刷新；移出 React effect，避免 flushSync 重入。
+    queueMicrotask(() => {
+      if (cancelled) return;
+      renderedContentRef.current = normalized;
+      setRenderError(false);
       try {
-        const fallbackContent = createEditorSafeContent(undefined, editor.schema);
-        editor.replaceBlocks(editor.document, fallbackContent as any);
-      } catch {
-        // 如果 fallback 也失败，下面的内联状态会接管 UI，避免整窗白屏。
+        editor.replaceBlocks(editor.document, normalized as any);
+      } catch (error) {
+        console.error("[history] replace read-only blocks failed", { versionKey, error });
+        setRenderError(true);
       }
-    }
+    });
+    return () => { cancelled = true; };
   }, [editor, normalized, versionKey]);
-
-  useEffect(() => {
-    setRenderError(false);
-  }, [versionKey]);
 
   if (renderError) {
     return (
@@ -108,9 +106,9 @@ export function HistoryReadOnlyEditor({
           <LucideIcons.FileWarning className="h-5 w-5" strokeWidth={1.75} />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">此历史版本无法显示</p>
+          <p className="text-sm font-medium text-foreground">{sourcePage ? "此笔记无法预览" : "此历史版本无法显示"}</p>
           <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-            这条历史记录可能来自旧版格式或包含脏数据，已阻止历史视图白屏。
+            内容可能来自旧版格式或包含无法解析的数据。
           </p>
         </div>
       </div>

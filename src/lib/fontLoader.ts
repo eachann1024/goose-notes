@@ -101,6 +101,27 @@ const formatFontFamily = (family: string) => {
 export const toCssFontFamily = (family: string) =>
   formatFontFamily(family) ?? family;
 
+export function normalizeLocalFontName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim();
+  return value.length <= 80 && /^[\p{L}\p{N} ._+-]+$/u.test(value) && name
+    ? value
+    : null;
+}
+
+/** Probe a locally installed face without mistaking the CSS fallback for a match. */
+export async function isLocalFontAvailable(value: string): Promise<boolean> {
+  const name = normalizeLocalFontName(value);
+  if (!name) return false;
+  if (GENERIC_FAMILIES.has(name)) return true;
+  try {
+    await new FontFace("goose-local-font-probe", `local("${name}")`).load();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const normalizeFontList = (families: string[]) =>
   Array.from(
     new Set(
@@ -274,11 +295,31 @@ export async function ensureEditorFontAvailable(
   void waitForFonts(serifFamilies);
 }
 
-export function applyFontVariables(customFonts: CustomFonts) {
+export function applyFontVariables(
+  customFonts: CustomFonts,
+  fonts: {
+    uiFontFamily?: string | null;
+    sidebarFontFamily?: string | null;
+  } = {},
+) {
   if (typeof document === "undefined") return;
   ensureHarmonyOSSplitCss();
   const fallbacks = getPlatformFallbacks();
   const root = document.documentElement;
+  const uiFont = normalizeLocalFontName(fonts.uiFontFamily);
+  const sidebarFont = normalizeLocalFontName(fonts.sidebarFontFamily);
+  root.style.setProperty(
+    "--font-ui",
+    uiFont
+      ? `${toCssFontFamily(uiFont)}, var(--font-default)`
+      : "var(--font-default)",
+  );
+  root.style.setProperty(
+    "--font-sidebar",
+    sidebarFont
+      ? `${toCssFontFamily(sidebarFont)}, -apple-system, BlinkMacSystemFont, sans-serif`
+      : "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
+  );
   const customDefaultList = splitFontList(customFonts.default.font);
   const customSerifList = splitFontList(customFonts.serif.font);
   const customMonoList = splitFontList(customFonts.mono.font);

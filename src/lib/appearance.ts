@@ -2,6 +2,7 @@ import {
   EDITOR_FONT_SIZE_DEFAULT,
   SIDEBAR_FONT_SIZE_DEFAULT,
   normalizeSidebarFontSize,
+  normalizeEditorLineHeight,
   type UIFontSize,
 } from "@/stores/settings/types";
 import { titleBarHeightPx } from "@/lib/electron/titlebarLayout";
@@ -62,6 +63,7 @@ export function computeSidebarRowHeight(sidebarFontSize: number): number {
 export function applyAppearanceScaleVariables(options: {
   uiFontSize: UIFontSize;
   editorFontSize: number;
+  editorLineHeight?: number;
   sidebarFontSize?: number;
 }): void {
   if (typeof document === "undefined") return;
@@ -73,6 +75,7 @@ export function applyAppearanceScaleVariables(options: {
   );
   root.style.setProperty("font-size", `${targetUiSize}px`);
   root.style.setProperty("--editor-font-size", `${options.editorFontSize}px`);
+  root.style.setProperty("--editor-line-height", String(normalizeEditorLineHeight(options.editorLineHeight)));
   root.style.setProperty("--sidebar-font-size", `${sidebarFontSize}px`);
   root.style.setProperty(
     "--editor-scale",

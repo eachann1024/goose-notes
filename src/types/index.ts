@@ -3,6 +3,7 @@ export type JSONContent = PageContent | any;
 
 export type SyncProvider = "local" | "jianguoyun" | "icloud";
 export type FontFamily = "default" | "serif" | "mono";
+export type PageLayout = "full" | "standard" | "compact";
 export type FontSize = "default" | "small";
 export type LocalFileReadState = "ready" | "error";
 
@@ -48,6 +49,7 @@ export interface Page {
   isLocked: boolean;
   fontSize: FontSize;
   fontFamily: FontFamily;
+  pageLayout?: PageLayout;
 
   // Metadata
   createdAt: number;

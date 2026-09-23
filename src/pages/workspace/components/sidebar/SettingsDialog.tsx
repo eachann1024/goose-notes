@@ -869,23 +869,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           )}
 
-          {activeTab === "about" && <SettingsAbout />}
+          {activeTab === "about" && (
+            <div className="settings-groups">
+              <SettingsAbout />
+            </div>
+          )}
 
           {activeTab === "data" && (
-            <SettingsDataPanel
-              importing={importing}
-              onImport={handleImport}
-              selectedIds={selectedIds}
-              notebookList={notebookList}
-              onToggleNotebook={toggleNotebook}
-              onSelectAll={selectAll}
-              format={format}
-              onFormatChange={setFormat}
-              exporting={exporting}
-              onExport={handleExport}
-              onOpenResetDialog={() => setResetDialogOpen(true)}
-              onResetAndImport={handleReset}
-            />
+            <div className="settings-groups">
+              <SettingsDataPanel
+                importing={importing}
+                onImport={handleImport}
+                selectedIds={selectedIds}
+                notebookList={notebookList}
+                onToggleNotebook={toggleNotebook}
+                onSelectAll={selectAll}
+                format={format}
+                onFormatChange={setFormat}
+                exporting={exporting}
+                onExport={handleExport}
+                onOpenResetDialog={() => setResetDialogOpen(true)}
+                onRestartGuide={() => {
+                  onOpenChange(false);
+                  useSettings.setState({ setupGuideOpen: true });
+                }}
+                onResetAndImport={handleReset}
+              />
+            </div>
           )}
         </SettingsScaffold>
       </DialogShell>

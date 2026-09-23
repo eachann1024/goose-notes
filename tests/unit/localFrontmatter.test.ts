@@ -15,6 +15,7 @@ test.describe("local-frontmatter", () => {
     const parsed = parseLocalFrontmatterBlob(undefined);
     expect(parsed.ok).toBe(true);
     expect(parsed.settings).toEqual({
+      pageLayout: undefined,
       fontFamily: "default",
       isLocked: false,
       isPinned: false,
@@ -37,6 +38,7 @@ test.describe("local-frontmatter", () => {
     const parsed = parseLocalFrontmatterBlob(blob);
     expect(parsed.ok).toBe(true);
     expect(parsed.settings).toEqual({
+      pageLayout: undefined,
       fontFamily: "serif",
       isLocked: true,
       isPinned: true,
@@ -58,6 +60,7 @@ test.describe("local-frontmatter", () => {
     const parsed = parseLocalFrontmatterBlob(blob);
     expect(parsed.ok).toBe(false);
     expect(parsed.settings).toEqual({
+      pageLayout: undefined,
       fontFamily: "default",
       isLocked: false,
       isPinned: false,
@@ -137,6 +140,7 @@ test.describe("local-frontmatter", () => {
       "# hello",
     ].join("\n");
     expect(pageSettingsFromMarkdown(md)).toEqual({
+      pageLayout: undefined,
       fontFamily: "serif",
       isLocked: false,
       isPinned: true,

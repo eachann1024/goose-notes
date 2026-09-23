@@ -95,6 +95,10 @@ export function QuickNoteApp() {
   // 编辑界面缩放（持久化：下次开窗沿用上次 Cmd +/- 的程度）。
   const zoom = useQuickNote((s) => s.editorZoom);
   const editorFontSize = useSettings((s) => s.editorFontSize);
+  const editorLineHeight = useSettings((s) => s.editorLineHeight);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--editor-line-height", String(editorLineHeight));
+  }, [editorLineHeight]);
 
   // 速记运行在独立 WebView：全局编辑字号与小窗局部缩放共同决定工具条等
   // 编辑器 UI 的有效尺寸。卸载时不清理，避免复用窗口期间退回错误的默认值。

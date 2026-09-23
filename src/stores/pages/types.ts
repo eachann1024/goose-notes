@@ -67,7 +67,7 @@ export interface PagesState {
   ) => void;
   deletePage: (
     id: string,
-    options?: { trashBatchId?: string },
+    options?: { trashBatchId?: string; onLocalTrash?: (token: string) => void },
   ) => Promise<boolean>;
   restorePage: (id: string) => {
     ok: boolean;

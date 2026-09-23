@@ -1,0 +1,71 @@
+/* 全局数值滑杆：原生键盘行为，细轨与空心圆柄；命中区域保持 32px。 */
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin: 4px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  --range-track: hsl(var(--muted-foreground) / 0.45);
+  --range-ink: hsl(var(--foreground));
+  --range-handle: hsl(var(--background));
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--range-ink) 0 var(--range-fill, 0%), var(--range-track) var(--range-fill, 0%) 100%);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-track);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-ink);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border: 1px solid var(--range-ink);
+  border-radius: 999px;
+  background: var(--range-handle);
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.12);
+}
+
+input[type="range"]::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--range-ink);
+  border-radius: 999px;
+  background: var(--range-handle);
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.12);
+}
+
+/* 焦点跟随滑块，不再给整行控件套大矩形。 */
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--range-ink);
+  outline-offset: 3px;
+}
+input[type="range"]:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--range-ink);
+  outline-offset: 3px;
+}
+input[type="range"]:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (forced-colors: active) {
+  input[type="range"] { --range-track: GrayText; --range-ink: CanvasText; --range-handle: Canvas; forced-color-adjust: none; }
+}

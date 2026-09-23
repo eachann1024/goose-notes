@@ -18,6 +18,7 @@
 @import "@heroui/styles";
 
 @import "./styles/goose-toast.css";
+@import "./styles/range.css";
 @import "./styles/goose-accent-colors.css";
 
 /* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
@@ -723,7 +724,6 @@
     --goose-active-line-bg: #f4f5f7;
     /* 与标题色条左右外扩对齐；文字/光标仍落在原基线 */
     --goose-active-line-outset: 8px;
-    --goose-editor-caret-width: 2px;
     --goose-callout-accent: #6366f1;
     --goose-callout-bg: #f7f6f3;
     --goose-callout-border: #e9e9e7;
@@ -869,6 +869,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    caret-color: var(--goose-accent-focus);
+    font-family: var(--font-ui, var(--font-default));
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;

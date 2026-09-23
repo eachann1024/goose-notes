@@ -1,3 +1,4 @@
+import { useSettings } from "@/stores/useSettings";
 import {
   Popover,
   PopoverTrigger,
@@ -69,7 +70,7 @@ function PageExportSubmenu({
   const openRef = useRef(false);
   const suppressHoverOpen = useRef(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
   openRef.current = open;
@@ -99,7 +100,7 @@ function PageExportSubmenu({
   useEffect(() => {
     if (!open) return;
     const frame = window.requestAnimationFrame(() => {
-      const menu = document.querySelector<HTMLElement>(".goose-page-menu-export");
+      const menu = document.querySelector<HTMLDivElement>(".goose-page-menu-export");
       if (menu) menuRef.current = menu;
     });
     return () => window.cancelAnimationFrame(frame);
@@ -255,6 +256,7 @@ function PageExportSubmenu({
 }
 
 export function PageMenu() {
+  const defaultLayout = useSettings(state => state.defaultPageLayout);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 0 : window.innerWidth,
     height: typeof window === "undefined" ? 0 : window.innerHeight,
@@ -437,6 +439,38 @@ export function PageMenu() {
           }}
           forceMount
         >
+          {!page.isFolder && (
+            <section aria-label="页面布局" className="px-1 py-2">
+              <div className="px-1 pb-2 text-xs text-muted-foreground">页面布局</div>
+              <div className="grid grid-cols-3 gap-1" role="group" aria-label="选择当前笔记布局">
+                {([
+                  ["full", "全宽", "铺满可用编辑区域"],
+                  ["standard", "标准", "均衡留白，日常编辑"],
+                  ["compact", "目录", "页内目录，点击章节快速跳转"],
+                ] as const).map(([value, label, description]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    title={description}
+                    aria-pressed={(page.pageLayout ?? defaultLayout) === value}
+                    onClick={() => updatePage(activePageId, { pageLayout: value })}
+                    className={cn(
+                      "rounded-lg border px-2 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      (page.pageLayout ?? defaultLayout) === value
+                        ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                        : "border-border hover:bg-[var(--goose-interactive-hover)]",
+                    )}
+                  >
+                    <span aria-hidden="true" className={cn("mx-auto mb-2 flex h-8 w-10 flex-col justify-center rounded border border-current opacity-60", value === "compact" ? "gap-0.5 px-1" : "gap-1 px-2")}>
+                      <span className="h-px w-2/3 bg-current" /><span className="h-px bg-current" /><span className="h-px bg-current" />
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {page.pageLayout !== undefined && <button type="button" className="mt-2 px-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => updatePage(activePageId, { pageLayout: undefined })}>恢复跟随默认布局</button>}
+            </section>
+          )}
           {/* Font Selector */}
           <div className="px-0.5 py-1">
             <FontSelector
@@ -454,7 +488,7 @@ export function PageMenu() {
             <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
               页面状态
             </div>
-            <div className="grid grid-cols-2 gap-1 px-1 pb-0.5">
+            <div className="grid grid-cols-3 gap-1 px-1 pb-0.5">
               <button
                 type="button"
                 aria-pressed={page.isFavorite}

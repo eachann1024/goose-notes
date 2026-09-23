@@ -232,6 +232,7 @@ export interface ParsedLocalMarkdown {
   content: JSONContent;
   frontmatter?: string;
   fontFamily: FontFamily;
+  pageLayout?: import("@/types").PageLayout;
   isLocked: boolean;
   isPinned: boolean;
   isFavorite: boolean;
@@ -268,6 +269,7 @@ export async function parseLocalMarkdownContent(
   //    首块 H1 约束仅对内部笔记本有效，local-folder 页面使用虚拟标题方案。
   // 4) 从 frontmatter 恢复 goose-font / goose-locked / goose-pinned / goose-favorite（解析失败则默认，blob 仍原样保留）
   const { frontmatter } = extractFrontmatter(markdown);
+  const unclosedFrontmatter = /^---[^\S\r\n]*(?:\r?\n|$)/.test(markdown) && !frontmatter;
   const fmSettings = parseLocalFrontmatterBlob(frontmatter).settings;
   // 先拆本地文件夹专用的最外层块级 span，再交给通用 inline parser，
   // 避免它把 wrapper 与内部颜色 span 误配成嵌套行内样式。
@@ -290,13 +292,14 @@ export async function parseLocalMarkdownContent(
     ) as unknown as JSONContent,
     frontmatter: frontmatter || undefined,
     fontFamily: fmSettings.fontFamily,
+    pageLayout: fmSettings.pageLayout,
     isLocked: fmSettings.isLocked,
     isPinned: fmSettings.isPinned,
     isFavorite: fmSettings.isFavorite,
-    readState: imported.success ? "ready" : "error",
-    readError: imported.success
-      ? undefined
-      : imported.error || "Markdown 解析失败",
+    readState: imported.success && !unclosedFrontmatter ? "ready" : "error",
+    readError: unclosedFrontmatter
+      ? "YAML 前置区未闭合，原文件已保留，请修复后重新载入"
+      : imported.success ? undefined : imported.error || "Markdown 解析失败",
   };
 }
 
@@ -346,6 +349,7 @@ async function buildMarkdownPage(
     isFavorite: parsed.isFavorite || undefined,
     fontSize: "default",
     fontFamily: parsed.fontFamily,
+    pageLayout: parsed.pageLayout,
     localFilePath: entry.path,
     localFrontmatter: parsed.frontmatter,
     localReadState: parsed.readState,

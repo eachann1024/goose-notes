@@ -4,7 +4,6 @@ import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 import { renderNotebookIcon } from "../notebookUtils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSettings } from "@/stores/settings";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -39,6 +38,7 @@ interface SettingsDataPanelProps {
   exporting: boolean;
   onExport: () => void;
   onOpenResetDialog: () => void;
+  onRestartGuide: () => void;
   onResetAndImport?: (blob: Blob) => Promise<void>;
 }
 
@@ -73,6 +73,7 @@ export function SettingsDataPanel({
   exporting,
   onExport,
   onOpenResetDialog,
+  onRestartGuide,
   onResetAndImport,
 }: SettingsDataPanelProps) {
   const selectedCount = selectedIds.length;
@@ -368,13 +369,10 @@ export function SettingsDataPanel({
         数据管理
       </h3>
 
-      <Tabs defaultValue="webdav" className="w-full">
-        <TabsList className="flex w-full mb-2 bg-muted/60 p-1 rounded-[12px]">
-          <TabsTrigger value="webdav" className="flex-1 rounded-[10px] py-1.5 text-sm font-medium">WebDAV备份</TabsTrigger>
-          <TabsTrigger value="local" className="flex-1 rounded-[10px] py-1.5 text-sm font-medium">本地备份</TabsTrigger>
-        </TabsList>
+      <SettingsSectionCard title="新手引导" description="重新选择书写布局与阅读偏好，已有笔记保持不变。" actions={<Button variant="outline" onClick={onRestartGuide}>重新开始引导</Button>} />
 
-        <TabsContent value="local" className="space-y-2 outline-none">
+      <div className="settings-data-grid">
+        <div className="space-y-2">
           <SettingsSectionCard
             title={<span className="flex items-center gap-2"><Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />导入与导出</span>}
             description="导入选 ZIP 文件；导出时会弹出系统保存对话框让你选路径。"
@@ -494,9 +492,9 @@ export function SettingsDataPanel({
               </Button>
             }
           />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="webdav" className="space-y-2 outline-none">
+        <div className="space-y-2">
           <SettingsSectionCard
             title={<span className="flex items-center gap-2"><Cloud className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />WebDAV 配置</span>}
             description="配置 WebDAV 服务以同步并自动管理云端备份。"
@@ -741,8 +739,8 @@ export function SettingsDataPanel({
               </div>
             )}
           </SettingsSectionCard>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <DialogShell
         open={confirmConfig?.open || false}

@@ -13,6 +13,7 @@ import {
 } from "./persistence";
 import {
   isLocalPageFrontmatterSettingsUpdate,
+  normalizePageLayout,
   mergeLocalPageSettingsIntoFrontmatter,
   applyFrontmatterBodyToContent,
   getContentFrontmatterBody,
@@ -123,6 +124,9 @@ export const usePages = create<PagesState>()((set, get) => ({
     materializeUnsavedLocalPageAction(set, get, pageId, options),
 
   updatePage: (id, updates, options) => {
+    if ("pageLayout" in updates) {
+      updates = { ...updates, pageLayout: updates.pageLayout === undefined ? undefined : normalizePageLayout(updates.pageLayout) };
+    }
     const page = get().pages[id];
     const shouldPersistLocalMeta =
       isLocalFolderPage(page) && shouldPersistLocalPageMetaUpdate(updates);
@@ -151,6 +155,11 @@ export const usePages = create<PagesState>()((set, get) => ({
     const shouldQueueLocalSettingsSave =
       shouldMergeFrontmatterSettings && page?.localReadState !== "error";
 
+    if (shouldMergeFrontmatterSettings && page?.localReadState === "error") {
+      toast.error("页面读取失败，未更改设置");
+      return;
+    }
+    let settingsRejected = false;
     set((state) => {
       const page = state.pages[id];
       if (!page) return state;
@@ -195,11 +204,12 @@ export const usePages = create<PagesState>()((set, get) => ({
         // 以编辑器当前首块 YAML 为基准（用户可能在编辑器里改过 name/description），
         // 而不是用过期的 localFrontmatter 覆盖手写内容。
         const contentYamlBody = getContentFrontmatterBody(updatedPage.content);
-        const baseBlob = contentYamlBody
+        const baseBlob = contentYamlBody !== null
           ? `---\n${contentYamlBody}\n---`
           : updatedPage.localFrontmatter;
         const mergeResult = mergeLocalPageSettingsIntoFrontmatter(baseBlob, {
           fontFamily: updatedPage.fontFamily ?? "default",
+          pageLayout: updatedPage.pageLayout,
           isLocked: Boolean(updatedPage.isLocked),
           isPinned: Boolean(updatedPage.isPinned),
           isFavorite: Boolean(updatedPage.isFavorite),
@@ -216,11 +226,9 @@ export const usePages = create<PagesState>()((set, get) => ({
             // 仅用户属性同步进编辑器首块；只有收藏/置顶等 goose 键时去掉该块。
             content: applyFrontmatterBodyToContent(updatedPage.content, yamlBody),
           };
-        } else if (mergeResult.error) {
-          console.warn(
-            "[local-frontmatter] 无法安全写入设置，已保留原 frontmatter：",
-            mergeResult.error,
-          );
+        } else {
+          settingsRejected = true;
+          return state;
         }
       }
 
@@ -259,6 +267,12 @@ export const usePages = create<PagesState>()((set, get) => ({
       };
     });
 
+    if (settingsRejected) {
+      toast.error("YAML 前置区格式异常，未更改设置", {
+        description: "原文已保留，请先修复 YAML 后重试。",
+      });
+      return;
+    }
     const updatedPage = get().pages[id];
     if (!updatedPage) return;
 

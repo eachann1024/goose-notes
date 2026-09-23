@@ -21,10 +21,6 @@ import {
   getPageTitle,
   withInternalPageTitle,
 } from "@/components/editor/utils/page-title";
-import {
-  listVisibleWorkspaceTabs,
-  shouldEditTitleInTabPill,
-} from "@/pages/workspace/components/page/visibleTabs";
 import { shouldUseRawEditorContent } from "./editorContentMode";
 import { EditorPlatformProvider } from "@/components/editor/platform/context";
 import {
@@ -78,15 +74,6 @@ export function EditorHostBridge({
   const ai = useSettings((s) => s.ai);
   const searchProviders = useSettings((s) => s.searchProviders);
   const customActions = useSettings((s) => s.customActions);
-  const singleTabModeSetting = useSettings((s) => s.singleTabMode);
-  const openTabs = useTabs((s) => s.openTabs);
-  const getPage = usePages((s) => s.getPage);
-  const activeNotebookId = useNotebooks((s) => s.activeNotebookId);
-  const showLocalFileTitle =
-    !effectiveSingleTabMode(singleTabModeSetting) &&
-    !shouldEditTitleInTabPill(
-      listVisibleWorkspaceTabs(openTabs, getPage, activeNotebookId),
-    );
 
   const settings = useMemo<EditorSettings>(
     () => {
@@ -175,7 +162,8 @@ export function EditorHostBridge({
           return true;
         }
         if (options?.splitOnly) return false;
-        useTabs.getState().openTab(resolved.page.id);
+        if (options?.newTab) useTabs.getState().openPermanentTab(resolved.page.id);
+        else useTabs.getState().openInCurrentTab(resolved.page.id);
         pagesStore.setExpandPageId(resolved.page.id);
         return true;
       },
@@ -228,9 +216,8 @@ export function EditorHostBridge({
       getLatestPage: (pageId: string) =>
         usePages.getState().pages[pageId] ?? null,
       onPromotePreview: () => useTabs.getState().promotePreviewTab(),
-      showLocalFileTitle,
     }),
-    [page, contentMode, isEditorFullWidth, onContentChangeOverride, showLocalFileTitle],
+    [page, contentMode, isEditorFullWidth, onContentChangeOverride],
   );
 
   return (

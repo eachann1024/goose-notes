@@ -1,3 +1,4 @@
+import { toast } from "@/components/ui/sonner";
 import type { JSONContent } from "@/types";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
 import {
@@ -250,6 +251,9 @@ export const saveLocalPageContentAction = async (
       content,
       options,
     );
+  } catch (error) {
+    toast.error("本地页面未保存", { description: "请检查 YAML 前置区或文件状态后重试，暂时不要关闭编辑器。" });
+    throw error;
   } finally {
     releaseFileOperation();
   }
@@ -392,14 +396,13 @@ const saveLocalPageContentUnlocked = async (
     encodeLocalBlockPropsWrappers(processedContent as any),
   );
 
-  // 写盘前用当前 Page 设置 merge 白名单键（goose-font / goose-locked / goose-pinned / goose-favorite），
-  // 解析失败则原样保留 blob，避免破坏用户手写 YAML。
-  // 编辑器首块已是 yaml-frontmatter 时，直接把设置 merge 进该块（否则同文件会写出两个 --- 头）；
-  // 只有没有首块 YAML、或 merge 失败时，才回退旧「prepend 独立 blob」路径。
+  // 写盘前 merge 当前设置；YAML 异常抛错，由现有队列保留待写内容。
+  // 首块已有 YAML 时就地合并，只有没有首块 YAML 才 prepend 独立 blob。
   const frontmatterHeaderMerge = mergeSettingsIntoFrontmatterHeader(
     markdownContent,
     {
       fontFamily: page.fontFamily ?? "default",
+      pageLayout: page.pageLayout,
       isLocked: Boolean(page.isLocked),
       isPinned: Boolean(page.isPinned),
       isFavorite: Boolean(page.isFavorite),
@@ -415,14 +418,16 @@ const saveLocalPageContentUnlocked = async (
       page.localFrontmatter,
       {
         fontFamily: page.fontFamily ?? "default",
+        pageLayout: page.pageLayout,
         isLocked: Boolean(page.isLocked),
         isPinned: Boolean(page.isPinned),
         isFavorite: Boolean(page.isFavorite),
       },
     );
-    frontmatterBlob = frontmatterMerge.parseFailed
-      ? page.localFrontmatter
-      : frontmatterMerge.blob;
+    if (frontmatterMerge.parseFailed) {
+      throw new Error("YAML 前置区格式异常，已阻止保存");
+    }
+    frontmatterBlob = frontmatterMerge.blob;
     finalContent = frontmatterBlob
       ? `${frontmatterBlob}\n\n${markdownContent}`
       : markdownContent;

@@ -1,3 +1,4 @@
+import { toast } from "@/components/ui/sonner";
 import { v4 as uuidv4 } from "uuid";
 import type { Page, JSONContent } from "@/types";
 import { useNotebooks, DEFAULT_NOTEBOOK } from "../../useNotebooks";
@@ -63,13 +64,12 @@ const initialContent: JSONContent =
 
 /**
  * 新建页聚焦策略：
- * - 单标签 / 仅一个文档标签：页头或标签 pill 上的 SingleTabTitle 响应 requestPageTitleFocus
- * - 多个文档标签 + 本地文件：正文上方 LocalFileTitle 响应 requestPageTitleFocus
+ * - 单标签 / 本地文件：页头或标签 pill 上的 SingleTabTitle 响应 requestPageTitleFocus
  * - 多个文档标签 + 内部页：focus-editor-start 把光标放到首块 H1 标题末尾
  */
-function focusNewPage(pageId: string) {
+function focusNewPage(pageId: string, focusEditorStart = false) {
   requestPageTitleFocus(pageId);
-  if (effectiveSingleTabMode()) {
+  if (!focusEditorStart || effectiveSingleTabMode()) {
     return;
   }
   if (typeof window !== "undefined") {
@@ -92,7 +92,7 @@ export function clonePageContent(content?: JSONContent | null) {
   return cloneBlockNotePageContent(normalizePageContent(content));
 }
 
-// local-folder 页面标题由文件名（LocalFileTitle）承担，内容不存在
+// local-folder 页面标题由标签栏中的文件名承担，内容不存在
 // 「首块必须是 H1」的约束，克隆时禁止 ensureFirstTitleHeading 注入空标题块。
 export function cloneLocalPageContent(content?: JSONContent | null) {
   if (!content) {
@@ -253,7 +253,7 @@ export const createPageAction = (
   });
   set({ activePageId: finalId });
   useNotebooks.getState().setLastActivePage(workspaceId, finalId);
-  focusNewPage(finalId);
+  focusNewPage(finalId, true);
 
   return finalId;
 };
@@ -853,6 +853,7 @@ export const duplicatePageAction = async (
 
     const copySettings = {
       fontFamily: sourcePage.fontFamily ?? "default",
+      pageLayout: sourcePage.pageLayout,
       isLocked: Boolean(sourcePage.isLocked),
       isPinned: false,
       isFavorite: false,
@@ -861,22 +862,28 @@ export const duplicatePageAction = async (
       sourcePage.localFrontmatter,
       copySettings,
     );
-    let copyFrontmatterBlob = copyFmMerge.parseFailed
-      ? sourcePage.localFrontmatter
-      : copyFmMerge.blob;
+    if (copyFmMerge.parseFailed) {
+      toast.error("YAML 前置区格式异常，未创建副本");
+      return id;
+    }
+    let copyFrontmatterBlob = copyFmMerge.blob;
 
     // 异步读取源文件真实内容；读不到（如 Electron 无同步 IPC）则从内存页序列化正文，
     // 避免只写 frontmatter 丢正文。
     // 若是副份，编辑器首块已是 yaml-frontmatter，把副份设置 merge 进该头，
     // 不要「抽 body + prepend」，否则同文件会写出两个 --- 头。
     let fileContent = "";
+    let rawMd: string | null = null;
     try {
-      let rawMd: string | null = null;
       if (fs.readFileAsync) {
         rawMd = await fs.readFileAsync(sourcePath);
       } else if (fs.readFile) {
         rawMd = fs.readFile(sourcePath);
       }
+    } catch {
+      // 仅读取失败可回退内存，YAML 合并失败不能绕过保护。
+    }
+    try {
       if (rawMd != null) {
         const headerMerge = mergeSettingsIntoFrontmatterHeader(rawMd, copySettings);
         if (headerMerge) {
@@ -890,7 +897,8 @@ export const duplicatePageAction = async (
         }
       }
     } catch {
-      // fallback 到内存序列化
+      toast.error("YAML 前置区格式异常，未创建副本");
+      return id;
     }
 
     if (!fileContent) {
@@ -900,7 +908,13 @@ export const duplicatePageAction = async (
           cloneLocalPageContent(sourcePage.content) as any,
         ),
       );
-      const headerMerge = mergeSettingsIntoFrontmatterHeader(markdownContent, copySettings);
+      let headerMerge;
+      try {
+        headerMerge = mergeSettingsIntoFrontmatterHeader(markdownContent, copySettings);
+      } catch {
+        toast.error("YAML 前置区格式异常，未创建副本");
+        return id;
+      }
       if (headerMerge) {
         fileContent = headerMerge.markdown;
         copyFrontmatterBlob = headerMerge.frontmatter;

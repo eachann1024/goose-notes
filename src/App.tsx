@@ -1,3 +1,4 @@
+import { SetupGuide } from "@/pages/workspace/components/SetupGuide";
 import { useEffect } from "react";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
@@ -19,8 +20,11 @@ function App() {
   const {
     uiFontSize,
     editorFontSize,
+    editorLineHeight,
     sidebarFontSize,
     customFonts,
+    uiFontFamily,
+    sidebarFontFamily,
     privacy,
     singleTabMode: singleTabModeSetting,
   } = useSettings();
@@ -110,16 +114,17 @@ function App() {
   }, [hydrated, singleTabModeSetting]);
 
   useEffect(() => {
-    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, sidebarFontSize });
-  }, [uiFontSize, editorFontSize, sidebarFontSize]);
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize });
+  }, [uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize]);
 
   useEffect(() => {
-    applyFontVariables(customFonts);
-  }, [customFonts]);
+    applyFontVariables(customFonts, { uiFontFamily, sidebarFontFamily });
+  }, [customFonts, uiFontFamily, sidebarFontFamily]);
 
   return (
     <>
       <WorkspacePage />
+    <SetupGuide />
       <Toaster />
     </>
   );

@@ -529,12 +529,13 @@ export const bootstrap = async (
     }
 
     const settings = useSettings.getState();
-    applyFontVariables(settings.customFonts);
+    applyFontVariables(settings.customFonts, settings);
     // 首帧前同步落定界面字号与编辑器缩放：窗口一出现就处于上次状态，
     // 不再先按 100% 布局、等 App effect 再跳回（用户看到的“突兀缩小”）。
     applyAppearanceScaleVariables({
       uiFontSize: settings.uiFontSize,
       editorFontSize: settings.editorFontSize,
+      editorLineHeight: settings.editorLineHeight,
       sidebarFontSize: settings.sidebarFontSize,
     });
 

@@ -844,7 +844,12 @@
   box-shadow: inset 0 0 0 2px var(--goose-accent-option-light-fg) !important;
 }
 
+.dark .goose-accent-option[data-state="unchecked"] {
+  color: hsl(var(--foreground)) !important;
+}
+
 .dark .goose-accent-option:hover,
+.dark .goose-accent-option[data-state="unchecked"]:focus-visible,
 .dark .goose-accent-option[data-state="checked"] {
   background: var(--goose-accent-option-dark-surface) !important;
   color: var(--goose-accent-option-dark-fg) !important;
