@@ -158,6 +158,7 @@ declare global {
     }) => Promise<{ windowId: string }>
     closeWindow: (windowId?: string) => Promise<void>
     minimizeWindow: () => Promise<void>
+    maximizeWindow: () => Promise<void>
     toggleMaximizeWindow: () => Promise<boolean>
     isWindowMaximized: () => Promise<boolean>
     finishTabDrag: (opts: {

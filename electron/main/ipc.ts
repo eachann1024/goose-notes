@@ -712,6 +712,11 @@ export function registerIpcHandlers(): void {
     if (win && !win.isDestroyed()) win.minimize();
   });
 
+  ipcMain.handle("desktop:maximizeWindow", async (event) => {
+    const win = senderWindow(event);
+    if (win && !win.isDestroyed() && !win.isMaximized()) win.maximize();
+  });
+
   ipcMain.handle("desktop:toggleMaximizeWindow", async (event) => {
     const win = senderWindow(event);
     if (!win || win.isDestroyed()) return false;

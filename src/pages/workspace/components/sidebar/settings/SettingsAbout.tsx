@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 import { getGooseDesktop } from "@/lib/electron/runtime";
@@ -49,7 +49,7 @@ export function SettingsAbout() {
     }
   }
 
-  async function handleCheckUpdate() {
+  const handleCheckUpdate = useCallback(async () => {
     setUpdateBusy("check");
     setUpdateError("");
     setDownloadedPath("");
@@ -68,7 +68,11 @@ export function SettingsAbout() {
     } finally {
       setUpdateBusy(null);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (getGooseDesktop()) void handleCheckUpdate();
+  }, [handleCheckUpdate]);
 
   async function handleDownloadUpdate() {
     if (!update || update.status !== "available") return;
@@ -89,7 +93,7 @@ export function SettingsAbout() {
   }
 
   const updateStatusText = downloadedPath
-    ? "安装包已保存到下载文件夹。当前构建未签名，需要在系统设置里允许打开后再替换正在使用的应用。"
+    ? "安装包已保存到下载文件夹，并已在文件管理器中显示。请打开安装包，退出旧版后安装新版。"
     : update?.status === "up-to-date"
       ? "已是最新版本"
       : update?.status === "available"
@@ -101,15 +105,17 @@ export function SettingsAbout() {
       <h3 className="text-xl font-semibold tracking-tight text-foreground">
         关于与许可
       </h3>
+      <div className="settings-card-columns">
+        <div className="space-y-5">
       <SettingsSectionCard
         title="版本与更新"
-        description="安装包来自公开发布页。当前构建未签名，下载后需在系统里允许打开，再替换正在使用的应用。"
+        description="安装包来自公开发布页。已签名 macOS 版本可后台更新；未签名版本需手动安装。"
       >
         <p className="text-sm text-foreground">
           当前版本 {version || "读取中…"}
         </p>
         {updateStatusText ? (
-          <p className="text-sm text-muted-foreground">{updateStatusText}</p>
+          <p role="status" className="text-sm text-muted-foreground">{updateStatusText}</p>
         ) : null}
         {updateError ? (
           <p role="alert" className="text-sm text-destructive">
@@ -139,6 +145,9 @@ export function SettingsAbout() {
             打开发布页
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          macOS 如通过 Homebrew 安装，也可在终端运行 <code className="break-all select-text text-foreground">brew upgrade --cask goose-note</code>。Homebrew 下载完整安装包，不是增量更新。
+        </p>
       </SettingsSectionCard>
       <SettingsSectionCard title="Goose Note · 鹅的笔记">
         <p className="text-sm text-foreground">
@@ -176,6 +185,8 @@ export function SettingsAbout() {
           </pre>
         </details>
       </SettingsSectionCard>
+        </div>
+        <div className="space-y-5">
       <SettingsSectionCard title="对应版本源码">
         <p className="text-sm leading-relaxed text-foreground">
           分发本应用时，分发者应按 GPL
@@ -224,6 +235,8 @@ export function SettingsAbout() {
           </p>
         )}
       </SettingsSectionCard>
+        </div>
+      </div>
     </div>
   );
 }

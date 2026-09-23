@@ -230,6 +230,7 @@ const gooseDesktop = {
   closeWindow: (windowId?: string) =>
     invoke("desktop:closeWindow", windowId) as Promise<void>,
   minimizeWindow: () => invoke("desktop:minimizeWindow") as Promise<void>,
+  maximizeWindow: () => invoke("desktop:maximizeWindow") as Promise<void>,
   toggleMaximizeWindow: () =>
     invoke("desktop:toggleMaximizeWindow") as Promise<boolean>,
   isWindowMaximized: () =>
