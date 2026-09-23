@@ -450,6 +450,7 @@ export function getAiReferenceSuggestionItems(
   options?: {
     includeFolders?: boolean;
     notebookId?: string | null;
+    priorityPageId?: string | null;
   },
 ) {
   const normalizedQuery = normalizeSearchValue(query);
@@ -466,8 +467,12 @@ export function getAiReferenceSuggestionItems(
     .filter((page) =>
       matchesAiReferenceQuery(page, notebooks, normalizedQuery, query),
     )
-    .sort((a, b) =>
-      compareSuggestionItems(
+    .sort((a, b) => {
+      if (!normalizedQuery && options?.priorityPageId) {
+        if (a.id === options.priorityPageId) return -1;
+        if (b.id === options.priorityPageId) return 1;
+      }
+      return compareSuggestionItems(
         a,
         b,
         activeNotebookId,
@@ -477,8 +482,8 @@ export function getAiReferenceSuggestionItems(
               scoreAiReferenceQuery(page, notebooks, normalizedQuery, query) ??
               Number.POSITIVE_INFINITY
           : undefined,
-      ),
-    )
+      );
+    })
     .slice(0, 30)
     .map((page) => {
       const attrs = buildAiFileReferenceAttrs(page, notebooks);

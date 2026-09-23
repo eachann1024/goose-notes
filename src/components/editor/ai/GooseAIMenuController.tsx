@@ -15,6 +15,7 @@ import {
   computeAiMenuFloatingWidth,
 } from "@/components/editor/ai/aiMenuFloatingWidth";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
+import { isEmptyParagraphBlock } from "./emptyParagraphAiShortcut";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import {
   getEditorUiScale,
@@ -69,6 +70,16 @@ export function GooseAIMenuController({
 
   const blockId = aiMenuState === "closed" ? undefined : aiMenuState.blockId;
   const open = aiMenuState !== "closed";
+
+  // 空行没有可保留的文字选区；输入框获得焦点后仍标明 AI 作用的行。
+  useEffect(() => {
+    if (!open || selection || !blockId || !isEmptyParagraphBlock(editor.getBlock(blockId))) return;
+    const block = Array.from(editor.domElement?.querySelectorAll(".bn-block[data-id]") ?? [])
+      .find((element) => element.getAttribute("data-id") === blockId);
+    const outer = block?.closest(".bn-block-outer");
+    outer?.classList.add("goose-ai-empty-target");
+    return () => outer?.classList.remove("goose-ai-empty-target");
+  }, [blockId, editor, open, selection]);
 
   // 打开时读取 + 监听 html class / 编辑器 bn-root 的 color-scheme，主题切换能跟上
   useEffect(() => {

@@ -17,38 +17,25 @@ function base(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("空段落按回车应唤起行内 AI", () => {
-  expect(shouldOpenInlineAiOnEmptyParagraph(base())).toBe(true);
+test("空段落按回车应由编辑器换行，不唤起行内 AI", () => {
+  expect(shouldOpenInlineAiOnEmptyParagraph(base())).toBe(false);
 });
 
 test("空段落按空格仍可唤起行内 AI", () => {
   expect(shouldOpenInlineAiOnEmptyParagraph(base({ key: " " }))).toBe(true);
 });
 
-test("速记小窗空段落按回车不唤起 AI", () => {
+test("未启用 AI 时不抢空格", () => {
   expect(
-    shouldOpenInlineAiOnEmptyParagraph(base({ allowEnter: false })),
+    shouldOpenInlineAiOnEmptyParagraph(base({ key: " ", aiEnabled: false })),
   ).toBe(false);
 });
 
-test("速记小窗空段落按空格仍唤起 AI", () => {
-  expect(
-    shouldOpenInlineAiOnEmptyParagraph(
-      base({ key: " ", allowEnter: false }),
-    ),
-  ).toBe(true);
-});
-
-test("未启用 AI 时不抢回车", () => {
-  expect(
-    shouldOpenInlineAiOnEmptyParagraph(base({ aiEnabled: false })),
-  ).toBe(false);
-});
-
-test("非空段落回车不唤起", () => {
+test("非空段落空格不唤起", () => {
   expect(
     shouldOpenInlineAiOnEmptyParagraph(
       base({
+        key: " ",
         block: {
           type: "paragraph",
           content: [{ type: "text", text: "有字" }],
@@ -68,6 +55,7 @@ test("仅空白文本节点的段落视为空", () => {
   expect(
     shouldOpenInlineAiOnEmptyParagraph(
       base({
+        key: " ",
         block: {
           type: "paragraph",
           content: [{ type: "text", text: "" }],
@@ -77,24 +65,25 @@ test("仅空白文本节点的段落视为空", () => {
   ).toBe(true);
 });
 
-test("标题、列表、表格、非空选区、Shift+Enter 都不抢", () => {
+test("标题、列表、表格、非空选区、Shift+空格都不抢", () => {
+  const space = { key: " " };
   expect(
     shouldOpenInlineAiOnEmptyParagraph(
-      base({ block: { type: "heading", content: [] } }),
+      base({ ...space, block: { type: "heading", content: [] } }),
     ),
   ).toBe(false);
   expect(
     shouldOpenInlineAiOnEmptyParagraph(
-      base({ block: { type: "bulletListItem", content: [] } }),
+      base({ ...space, block: { type: "bulletListItem", content: [] } }),
     ),
   ).toBe(false);
-  expect(shouldOpenInlineAiOnEmptyParagraph(base({ inTable: true }))).toBe(
+  expect(shouldOpenInlineAiOnEmptyParagraph(base({ ...space, inTable: true }))).toBe(
     false,
   );
   expect(
-    shouldOpenInlineAiOnEmptyParagraph(base({ selectionEmpty: false })),
+    shouldOpenInlineAiOnEmptyParagraph(base({ ...space, selectionEmpty: false })),
   ).toBe(false);
-  expect(shouldOpenInlineAiOnEmptyParagraph(base({ shiftKey: true }))).toBe(
+  expect(shouldOpenInlineAiOnEmptyParagraph(base({ ...space, shiftKey: true }))).toBe(
     false,
   );
 });

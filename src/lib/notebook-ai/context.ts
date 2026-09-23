@@ -68,6 +68,7 @@ export function getNotebookAiReferenceSuggestions(
   return getAiReferenceSuggestionItems(query, pages, notebooks, notebookId, {
     notebookId,
     includeFolders,
+    priorityPageId: getCurrentNotebookAiPageId(notebookId),
   });
 }
 

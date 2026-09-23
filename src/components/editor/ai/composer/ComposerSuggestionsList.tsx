@@ -97,7 +97,6 @@ export function ComposerSuggestionsList({
   const popover = (
     <div
       style={style}
-      className="overflow-hidden"
       onMouseDownCapture={(e) => {
         e.preventDefault();
         onMouseDownCapture?.();

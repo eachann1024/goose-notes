@@ -100,7 +100,6 @@ export function SkillSuggestionsList(props: {
   return createPortal(
     <div
       style={style}
-      className="overflow-hidden"
       onMouseDown={(event) => event.preventDefault()}
     >
       <div

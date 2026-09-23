@@ -28,6 +28,9 @@ import {
 } from "./useReferenceMentions";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import { useSettings } from "@/stores/useSettings";
+import { usePages } from "@/stores/usePages";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { buildAiFileReferenceAttrs } from "./referenceLookup";
 import { composerDraftHasContent } from "@/stores/useNotebookAiChats";
 import {
   ensureComposerCaretAnchors,
@@ -359,6 +362,34 @@ export const AiComposerInput = forwardRef<
       onImageRejected,
     });
 
+    // 引用以稳定 pageId 为准；更名后同步更新 chip、草稿和发送内容，不重建编辑器选区。
+    const syncReferenceTitles = useCallback(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const pages = usePages.getState().pages;
+      const notebooks = useNotebooks.getState().notebooks;
+      let changed = false;
+      for (const chip of el.querySelectorAll<HTMLElement>("[data-ai-mention-attrs]")) {
+        try {
+          const attrs = JSON.parse(chip.dataset.aiMentionAttrs!) as AiFileReferenceAttrs;
+          const page = pages[attrs.pageId];
+          if (!page) continue;
+          const current = buildAiFileReferenceAttrs(page, notebooks);
+          if (attrs.titleSnapshot === current.titleSnapshot &&
+              attrs.localFilePath === current.localFilePath) continue;
+          const next = { ...attrs, ...current };
+          chip.dataset.aiMentionAttrs = JSON.stringify(next);
+          chip.textContent = `@${next.titleSnapshot}`;
+          changed = true;
+        } catch {
+          // 破损的旧 chip 交由原有解析逻辑处理。
+        }
+      }
+      if (changed) emitCurrentContent();
+    }, [emitCurrentContent]);
+
+    useEffect(() => usePages.subscribe(syncReferenceTitles), [syncReferenceTitles]);
+
     const insertReference = useCallback(
       (reference: AiFileReferenceAttrs) => {
         const el = editorRef.current;
@@ -469,6 +500,7 @@ export const AiComposerInput = forwardRef<
           onContentChange?.(null);
         },
         getPayload: (): AiComposerPayload => {
+          syncReferenceTitles();
           const el = editorRef.current;
           if (!el)
             return {
@@ -510,6 +542,7 @@ export const AiComposerInput = forwardRef<
         insertReference,
         appendSelectionQuote,
         replaceDefaultPageReference,
+        syncReferenceTitles,
         setPlaceholderVisible,
       ],
     );
@@ -524,13 +557,14 @@ export const AiComposerInput = forwardRef<
       const el = editorRef.current;
       if (!el) return;
       setDomFromJsonContent(el, initialContent, imageRegistryRef.current);
+      syncReferenceTitles();
       const tokens = readTokensFromDom(el);
       const empty = isComposerPayloadEmpty(buildPayloadFromTokens(tokens));
       isEmptyRef.current = empty;
       setIsEmpty(empty);
       onIsEmptyChange?.(empty);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialContent]);
+    }, [initialContent, syncReferenceTitles]);
 
     // ── auto-focus ───────────────────────────────────────────────────────────
 

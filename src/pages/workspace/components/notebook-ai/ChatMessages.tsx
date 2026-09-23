@@ -76,6 +76,8 @@ import { CodeBlock } from "./beautiful-ui/CodeBlock";
 import { StreamingText } from "./beautiful-ui/StreamingText";
 import { navigateNotebookAiReference } from "@/lib/notebook-ai/navigateReference";
 import { useSettings } from "@/stores/useSettings";
+import { usePages } from "@/stores/usePages";
+import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 import { getMermaidInitConfig } from "@/lib/imageExport/mermaidTheme";
 
@@ -762,6 +764,14 @@ export function ChatMessages({
   const [previewContent, setPreviewContent] = useState<PreviewContent | null>(
     null,
   );
+  // 只在被引用页面的标题变化时重绘历史消息，正文仍按发送时的快照拆分。
+  usePages((state) =>
+    messages.flatMap((message) => message.metadata?.references ?? [])
+      .map((reference) => {
+        const page = state.pages[reference.pageId];
+        return page ? getPageTitle(page) : reference.titleSnapshot;
+      }).join("\u0000"),
+  );
   const messageById = useMemo(
     () => new Map(messages.map((message) => [message.id, message])),
     [messages],
@@ -936,14 +946,16 @@ export function ChatMessages({
                       </span>
                     );
                   }
+                  const page = usePages.getState().pages[segment.reference.pageId];
+                  const title = page ? getPageTitle(page) : segment.reference.titleSnapshot;
                   return (
                     <button
                       key={segment.key}
                       type="button"
                       data-ai-mention-chip=""
                       className="ai-composer-chip inline-flex max-w-full min-w-0 items-center align-middle mx-1 truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
-                      title={`打开：${segment.reference.titleSnapshot}`}
-                      aria-label={`打开：${segment.reference.titleSnapshot}`}
+                      title={`打开：${title}`}
+                      aria-label={`打开：${title}`}
                       onClick={() =>
                         navigateNotebookAiReference(
                           segment.reference.pageId,
@@ -951,7 +963,7 @@ export function ChatMessages({
                         )
                       }
                     >
-                      @{segment.reference.titleSnapshot}
+                      @{title}
                     </button>
                   );
                 })}
