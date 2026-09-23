@@ -13,7 +13,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion } from "motion/react";
 import "./notebook-switcher.css";
 import { useSidebarView } from "@/stores/useSidebarView";
 import {
@@ -26,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { isElectronHost } from "@/lib/local-vault";
-import { renderNotebookIcon } from "./notebookUtils";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { dialogs } from "@/lib/electron-platform/dialogs";
 import {
@@ -35,8 +33,6 @@ import {
   useNotebooks,
 } from "@/stores/useNotebooks";
 
-const NOTEBOOK_SHELL_INSET = 8;
-const NOTEBOOK_SHELL_INSET_TOP = 12;
 
 interface SortableNotebookItemProps {
   notebook: Notebook;
@@ -79,10 +75,10 @@ function SortableNotebookItem({
       className={cn(
         "goose-notebook-row relative flex select-none items-center rounded-lg outline-none",
         "justify-between gap-2 group",
-        "min-h-9 mb-0.5 last:mb-0 py-1.5 px-2 text-xs",
+        "min-h-9 mb-0.5 last:mb-0 px-2 py-1 text-xs font-normal",
         notebook.localPathMissing && "opacity-50",
         "hover:bg-[var(--goose-interactive-hover)] focus-visible:bg-[var(--goose-interactive-hover)]",
-        isActive && "font-medium",
+        isActive && "bg-[var(--goose-interactive-selected)]",
         isDragging && "opacity-60 cursor-grabbing z-10",
         !isDragging && "cursor-pointer",
       )}
@@ -114,10 +110,10 @@ function SortableNotebookItem({
       }}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground">
-          {renderNotebookIcon(notebook.icon || "BookOpen", "h-3.5 w-3.5")}
+        <span className="goose-notebook-monogram" aria-hidden="true">
+          {Array.from(notebook.name.trim())[0] || "N"}
         </span>
-        <span className="truncate text-xs leading-snug" title={notebook.name}>{notebook.name}</span>
+        <span className="truncate leading-snug" title={notebook.name}>{notebook.name}</span>
         {notebook.localPathMissing && (
           <span className="text-xs text-destructive">路径失效</span>
         )}
@@ -191,80 +187,8 @@ export function NotebookSwitcher({
     (state) => state.notebookDropdownHoverExpand,
   );
   const [isOpen, setIsOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const [shellGeometry, setShellGeometry] = useState<{
-    collapsed: number;
-    origin: string;
-  } | null>(null);
-  const [menuElement, setMenuElement] = useState<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    const trigger = triggerRef.current;
-    if (!isOpen || !trigger || !menuElement) return;
-    const syncShell = () => {
-      const menu = menuElement.getBoundingClientRect();
-      const button = trigger.getBoundingClientRect();
-      const top = Math.min(menu.top, button.top - NOTEBOOK_SHELL_INSET_TOP);
-      const left = Math.min(menu.left, button.left - NOTEBOOK_SHELL_INSET);
-      trigger.style.setProperty(
-        "--notebook-shell-top",
-        `${top - button.top}px`,
-      );
-      trigger.style.setProperty(
-        "--notebook-shell-left",
-        `${left - button.left}px`,
-      );
-      trigger.style.setProperty(
-        "--notebook-shell-width",
-        `${Math.max(menu.right, button.right + NOTEBOOK_SHELL_INSET) - left}px`,
-      );
-      const height =
-        Math.max(menu.bottom, button.bottom + NOTEBOOK_SHELL_INSET) - top;
-      trigger.style.setProperty("--notebook-shell-height", `${height}px`);
-      const collapsed = Math.min(
-        1,
-        (button.height + NOTEBOOK_SHELL_INSET + NOTEBOOK_SHELL_INSET_TOP) /
-          Math.max(1, height),
-      );
-      // 顶部入口向下展开，原点在上；空间不够翻转时改从底部向上。
-      const origin = menuElement.dataset.side === "bottom" ? "top" : "bottom";
-      setShellGeometry((previous) =>
-        previous?.collapsed === collapsed && previous.origin === origin
-          ? previous
-          : { collapsed, origin },
-      );
-    };
-    syncShell();
-    const resize = new ResizeObserver(syncShell);
-    resize.observe(trigger);
-    resize.observe(menuElement);
-    let lastPosition = "";
-    const position = new MutationObserver(() => {
-      const current = [
-        menuElement.style.transform,
-        menuElement.style.left,
-        menuElement.style.top,
-        menuElement.dataset.side,
-      ].join(";");
-      if (current === lastPosition) return;
-      lastPosition = current;
-      syncShell();
-    });
-    position.observe(menuElement, {
-      attributes: true,
-      attributeFilter: ["style", "data-side"],
-    });
-    return () => {
-      resize.disconnect();
-      position.disconnect();
-    };
-  }, [isOpen, menuElement]);
-  const hovering = useRef({ trigger: false, content: false });
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
-  useEffect(() => {
-    if (!isOpen) hovering.current = { trigger: false, content: false };
-  }, [isOpen]);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -273,26 +197,12 @@ export function NotebookSwitcher({
     }),
   );
 
-  useEffect(
-    () => () => {
-      if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-    },
-    [],
-  );
-
-  const scheduleClose = () => {
-    if (isDraggingRef.current) return;
-    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => {
-      if (
-        !isDraggingRef.current &&
-        !hovering.current.trigger &&
-        !hovering.current.content
-      ) {
-        setIsOpen(false);
-      }
-    }, 80);
-  };
+  useEffect(() => {
+    if (!isOpen) return;
+    const close = () => { if (!isDraggingRef.current) setIsOpen(false); };
+    window.addEventListener("blur", close);
+    return () => window.removeEventListener("blur", close);
+  }, [isOpen]);
 
   const [editDialog, setEditDialog] = useState({
     open: false,
@@ -422,93 +332,59 @@ export function NotebookSwitcher({
 
   return (
     <>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover
+        open={isOpen}
+        onOpenChange={(open) => { if (!isDraggingRef.current) setIsOpen(open); }}
+        variant="notebook"
+        openOnHover={notebookDropdownHoverExpand}
+      >
         <PopoverTrigger asChild>
           <button
-            ref={triggerRef}
             type="button"
             aria-label={`当前笔记本 ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
-            className={cn(
-              "sidebar-notebook-trigger group flex min-h-10 w-full items-center gap-2 rounded-lg bg-[var(--workspace-main-surface)] p-2 text-left font-medium",
-              "text-foreground outline-none transition-colors duration-150 motion-reduce:transition-none",
-              "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-              "data-[state=open]:bg-[var(--goose-interactive-hover)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
-              "focus-visible:bg-muted",
-              isOpen &&
-                "bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-selected-fg)]",
-            )}
-            onMouseEnter={() => {
-              if (!notebookDropdownHoverExpand) return;
-              hovering.current.trigger = true;
-              if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+            className="sidebar-notebook-trigger group text-foreground outline-none"
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
               setIsOpen(true);
-            }}
-            onMouseLeave={() => {
-              if (!notebookDropdownHoverExpand) return;
-              hovering.current.trigger = false;
-              scheduleClose();
+              menuRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus();
             }}
           >
-            {shellGeometry && (
-              <motion.span
-                aria-hidden="true"
-                className="goose-notebook-shell"
-                initial={{
-                  opacity: 0,
-                  transform: `scaleY(${shellGeometry.collapsed})`,
-                }}
-                animate={{
-                  opacity: isOpen ? 1 : 0,
-                  transform: `scaleY(${isOpen ? 1 : shellGeometry.collapsed})`,
-                }}
-                transition={{
-                  duration: isOpen ? 0.2 : 0.15,
-                  ease: isOpen ? [0.23, 1, 0.32, 1] : "easeIn",
-                }}
-                style={{ transformOrigin: shellGeometry.origin }}
-              />
-            )}
             <span
               aria-hidden="true"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--workspace-main-surface)] text-muted-foreground"
+              className="goose-notebook-monogram"
             >
-              {renderNotebookIcon(
-                activeNotebook?.icon || "BookOpen",
-                "h-4 w-4 leading-none",
-              )}
+              {Array.from(activeNotebook?.name.trim() || "")[0] || "N"}
             </span>
             <span
-              className="min-w-0 flex-1 truncate leading-snug"
+              className="min-w-0 truncate leading-5"
               title={activeNotebook?.name}
             >
               {activeNotebook?.name ||
                 (isElectronHost ? "打开文件夹" : "选择记事本")}
             </span>
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]">
-              <LucideIcons.ChevronsUpDown className="h-3.5 w-3.5" />
-            </span>
+            <LucideIcons.ChevronDown className="goose-notebook-chevron" aria-hidden="true" />
           </button>
         </PopoverTrigger>
         <PopoverContent
           aria-label="切换笔记本"
-          ref={setMenuElement}
-          className="goose-notebook-menu-surface goose-floating-surface w-[calc(var(--goose-popover-trigger-width)+16px)] max-w-[calc(100vw-1rem)] p-2 backdrop-blur-0"
-          animation="reveal"
+          className="goose-notebook-menu-surface goose-floating-surface w-56 max-w-[calc(100vw-1rem)] p-1 backdrop-blur-0"
           side="bottom"
           align="start"
-          alignOffset={-8}
-          sideOffset={0}
-          collisionPadding={0}
-          forceMount
-          onMouseEnter={() => {
-            if (!notebookDropdownHoverExpand) return;
-            hovering.current.content = true;
-            if (closeTimer.current !== null) clearTimeout(closeTimer.current);
-          }}
-          onMouseLeave={() => {
-            if (!notebookDropdownHoverExpand) return;
-            hovering.current.content = false;
-            scheduleClose();
+          alignOffset={0}
+          sideOffset={8}
+          collisionPadding={8}
+          ref={menuRef}
+          onKeyDown={(event) => {
+            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+            const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(".goose-notebook-row"));
+            if (!rows.length) return;
+            event.preventDefault();
+            const current = rows.findIndex(row => row.contains(document.activeElement));
+            const next = event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1
+              : event.key === "ArrowDown" ? (current + 1) % rows.length
+              : current < 0 ? rows.length - 1 : (current - 1 + rows.length) % rows.length;
+            rows[next].focus();
           }}
           onCloseAutoFocus={(e) => {
             if (isDraggingRef.current) e.preventDefault();
@@ -520,6 +396,7 @@ export function NotebookSwitcher({
             if (isDraggingRef.current) e.preventDefault();
           }}
         >
+          <div className="px-2 pt-2 pb-1 text-[11px] text-muted-foreground">切换笔记本</div>
           <div className="max-h-[max(4rem,calc(var(--goose-popover-available-height,80vh)-15rem))] overflow-y-auto">
             <DndContext
               sensors={sensors}

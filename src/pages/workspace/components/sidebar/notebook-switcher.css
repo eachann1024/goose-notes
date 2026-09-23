@@ -1,76 +1,74 @@
-/* 原入口仍在原位；单一外壳覆盖入口与浮层，不参与布局。 */
-.sidebar-notebook-trigger {
+.workspace-shell .workspace-sidebar-pane .sidebar-notebook-trigger {
+  --notebook-motion: 480ms cubic-bezier(.4, 0, .2, 1);
   position: relative;
   isolation: isolate;
-}
-
-.sidebar-notebook-trigger[data-present="true"] {
-  /* 高于树行及拖放提示（z-20/21），让单一外壳挡住底下的文字和图标。 */
-  z-index: 30;
-}
-
-.goose-notebook-shell {
-  position: absolute;
-  z-index: -2;
-  pointer-events: none;
-  box-sizing: border-box;
-  top: var(--notebook-shell-top);
-  left: var(--notebook-shell-left);
-  width: var(--notebook-shell-width);
-  height: var(--notebook-shell-height);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
   border: 1px solid hsl(var(--goose-menu-border));
-  border-radius: var(--goose-menu-radius);
-  background-color: hsl(var(--goose-menu-surface));
-  box-shadow: var(--goose-menu-shadow);
+  border-radius: 8px;
+  background: var(--workspace-main-surface);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
 }
-
-.sidebar-notebook-trigger[data-present="false"] .goose-notebook-shell {
-  visibility: hidden;
-}
-
-/* Keyboard opens are immediate; reduced motion preserves only the fade. */
-.sidebar-notebook-trigger[data-motion="instant"] .goose-notebook-shell,
-.sidebar-notebook-trigger[data-motion="reduced"] .goose-notebook-shell {
-  transform: scaleY(1) !important;
-}
-
-.sidebar-notebook-trigger[data-motion="instant"] .goose-notebook-shell {
-  opacity: 1 !important;
-}
-
-.sidebar-notebook-trigger[data-present="true"]::after {
+.sidebar-notebook-trigger::before {
   content: "";
   position: absolute;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  inset: 0;
   border-radius: inherit;
-  background-color: var(--goose-interactive-hover);
+  background: var(--goose-interactive-hover);
+  opacity: 0;
+  transition: opacity var(--notebook-motion);
 }
-
+.goose-notebook-monogram {
+  display: inline-flex;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 14px;
+}
+.sidebar-notebook-trigger > .goose-notebook-monogram,
+.sidebar-notebook-trigger > .goose-notebook-chevron {
+  transition: transform var(--notebook-motion);
+}
+.goose-notebook-chevron { width: 12px; height: 12px; flex-shrink: 0; color: hsl(var(--muted-foreground)); stroke-width: 1.6; }
+.sidebar-notebook-trigger[data-state="open"]::before { opacity: 1; }
+.sidebar-notebook-trigger[data-state="open"] > .goose-notebook-monogram { transform: translateX(2px); }
+.sidebar-notebook-trigger[data-state="open"] > .goose-notebook-chevron { transform: translateX(-2px) rotate(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-notebook-trigger:hover::before { opacity: 1; }
+  .sidebar-notebook-trigger:hover > .goose-notebook-monogram { transform: translateX(2px); }
+  .sidebar-notebook-trigger:not([data-state="open"]):hover > .goose-notebook-chevron { transform: translateX(-2px); }
+}
+.sidebar-notebook-trigger:focus-visible,
+.goose-notebook-row:focus-visible {
+  outline: 1px solid var(--goose-interactive-selected-fg);
+  outline-offset: 2px;
+}
 .goose-notebook-menu-surface.goose-floating-surface {
-  /* 透明边框保留定位尺寸，实际边框只由单一外壳绘制。
-   * 内边距与外壳相对入口的 8px 外扩一致，列表不贴白底。 */
-  border-color: transparent;
-  background-color: transparent;
-  padding: 8px;
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: 12px;
+  background: hsl(var(--goose-menu-surface));
+  box-shadow: var(--goose-menu-shadow);
 }
-
-@layer properties {
-  .sidebar-notebook-trigger:focus,
-  .sidebar-notebook-trigger:focus-visible,
-  .goose-notebook-row:focus,
-  .goose-notebook-row:focus-visible,
-  .goose-notebook-row button:focus,
-  .goose-notebook-row button:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  .sidebar-notebook-trigger[data-state="open"],
-  .goose-notebook-menu-surface.goose-floating-surface,
-  .goose-notebook-menu-surface.goose-floating-surface:focus,
-  .goose-notebook-menu-surface.goose-floating-surface:focus-visible {
-    box-shadow: none !important;
-  }
+.goose-notebook-menu-surface .goose-notebook-row { font-size: 12px; font-weight: 400; }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-notebook-trigger > .goose-notebook-monogram,
+  .sidebar-notebook-trigger > .goose-notebook-chevron { transform: none !important; transition: none; }
+  .sidebar-notebook-trigger::before { transition: opacity 120ms ease; }
 }

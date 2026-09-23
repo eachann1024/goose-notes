@@ -27,6 +27,7 @@ import { useTabs } from "@/stores/useTabs";
 import type { FlatTreeItem } from "../tree-dnd";
 import { InlineOverflowRevealText } from "../InlineOverflowRevealText";
 import { SidebarContextMenu } from "../SidebarContextMenu";
+import { SidebarInlineRename } from "../SidebarInlineRename";
 import {
   isSidebarFolderRow,
   LocalFileIcon,
@@ -325,6 +326,7 @@ export function SortablePageRow({
             openPageFromSidebar(
               page.id,
               e.metaKey || e.ctrlKey ? "permanent" : "preview",
+              { newTab: e.metaKey || e.ctrlKey },
             );
           }}
           onDoubleClick={(e) => {
@@ -352,13 +354,13 @@ export function SortablePageRow({
                 onToggleOpen(page.id);
                 return;
               }
-              openPageFromSidebar(page.id, "permanent");
+              openPageFromSidebar(page.id, "permanent", { newTab: true });
             }
           }}
         >
           <div
             className="flex items-center h-full flex-1 min-w-0"
-            style={{ paddingLeft: depth * TREE_INDENT + ROW_PADDING_LEFT }}
+            style={{ paddingLeft: depth * TREE_INDENT + ROW_PADDING_LEFT + 4 }}
           >
             {iconCarriesExpand ? (
               <button
@@ -401,6 +403,7 @@ export function SortablePageRow({
               </div>
             )}
 
+            <SidebarInlineRename>
             <InlineOverflowRevealText
               className="text-[13px] leading-snug"
               text={titleText}
@@ -410,6 +413,7 @@ export function SortablePageRow({
               resetSignal={revealResetSignal}
               onExpandedChange={setTitleExpanded}
             />
+            </SidebarInlineRename>
           </div>
 
           {showAddChildButton && (

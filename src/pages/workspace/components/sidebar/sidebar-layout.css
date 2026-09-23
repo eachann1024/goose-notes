@@ -1,0 +1,117 @@
+/* Scheme A uses CSS pixels so the app's rem scale does not enlarge its spacing.
+ * Keep the footer outside this scope; sidebar font preferences still apply. */
+.workspace-shell .workspace-sidebar-pane .sidebar-design {
+  --radius-lg: 8px;
+  --sidebar-body-size: calc(var(--sidebar-font-size, 13px) + 1px);
+  --sidebar-label-size: 12px;
+  --sidebar-pin-size: 10px;
+  --sidebar-foreground: hsl(var(--foreground));
+  --sidebar-muted: hsl(var(--muted-foreground));
+  padding: 4px 8px 0;
+  font-family: var(--font-sidebar, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif);
+  font-size: var(--sidebar-body-size);
+  line-height: 1.5;
+}
+
+:root:not(.dark) .sidebar-design {
+  --sidebar-foreground: #242629;
+  --sidebar-muted: #696d74;
+  --sidebar-background: #f0f0f0;
+  --goose-interactive-hover: #e8e9eb;
+  --goose-interactive-hover-fg: var(--sidebar-foreground);
+  --goose-interactive-hover-border: transparent;
+  background: var(--sidebar-background);
+}
+:root:not(.dark)[data-goose-accent="ocean"] .sidebar-design {
+  --goose-interactive-selected: #e6edff;
+  --goose-interactive-selected-fg: #2554bf;
+  --goose-interactive-selected-border: #577ee8;
+}
+
+.sidebar-design .sidebar-notebook-heading { margin-bottom: 18px; }
+.sidebar-design .sidebar-pinned-section:has(nav) { margin-bottom: 22px; }
+.sidebar-design .sidebar-pinned-label {
+  height: 18px;
+  margin: 0 6px 9px;
+  gap: 6px;
+  font-size: var(--sidebar-label-size);
+  line-height: 18px;
+  color: var(--sidebar-muted);
+}
+.sidebar-design .sidebar-pinned-label svg { width: 13px; height: 13px; }
+.sidebar-design .sidebar-pinned-label > span:last-child { font-size: 11px; }
+.sidebar-design nav[aria-label="置顶页面"] { padding: 0; gap: 6px; }
+.sidebar-design nav[aria-label="置顶页面"] > span { border-color: var(--goose-interactive-selected-border); }
+.sidebar-design nav[aria-label="置顶页面"] button {
+  flex: 1 0 calc((100% - 12px) / 3);
+  height: 64px;
+  padding: 12px 3px;
+  gap: 7px;
+  border-radius: 8px;
+  color: var(--sidebar-foreground);
+  font-size: var(--sidebar-pin-size);
+  line-height: 15px;
+}
+.sidebar-design nav[aria-label="置顶页面"] button[aria-current="page"] { color: var(--goose-interactive-selected-fg); }
+.sidebar-design nav[aria-label="置顶页面"] button svg { width: 18px; height: 18px; stroke-width: 1.6; }
+.sidebar-design nav[aria-label="置顶页面"] button > span { font-size: var(--sidebar-pin-size); line-height: 15px; }
+.sidebar-design .sidebar-favorites-section { margin-bottom: 20px; }
+.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-favorites-label {
+  width: calc(100% - 12px);
+  height: 18px;
+  padding: 0;
+  margin: 0 6px 9px;
+  font-size: var(--sidebar-label-size);
+  font-weight: 400;
+  line-height: 18px;
+  letter-spacing: 0;
+  color: var(--sidebar-muted);
+  border-radius: 8px;
+}
+.sidebar-design .sidebar-favorites-label > span:first-child { padding: 0; min-width: 0; height: auto; }
+.sidebar-design .sidebar-favorites-count { font-size: 11px; }
+.sidebar-design .sidebar-tree-heading { margin: 0 4px 10px; }
+.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-tree-heading .sidebar-section-label {
+  height: 24px;
+  padding: 0;
+  font-size: var(--sidebar-body-size);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:first-child { padding: 0; gap: 10px; }
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:first-child > button { padding: 0; height: 24px; min-width: 0; }
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:first-child > button[aria-pressed="true"] {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--sidebar-label-size);
+  line-height: 18px;
+}
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:first-child > span { padding: 0; }
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:first-child > :is(button[aria-pressed="false"], span) { color: var(--sidebar-muted); }
+.sidebar-design .sidebar-tree-heading button[aria-label="搜索"],
+.sidebar-design .sidebar-tree-heading button[aria-label^="新建"] { width: 24px; height: 24px; min-width: 24px; }
+.sidebar-design .sidebar-tree-heading button[aria-label="搜索"] svg { width: 16px; height: 16px; }
+.workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row, .sidebar-tree-row) {
+  border-radius: 8px;
+  font-size: var(--sidebar-body-size);
+  font-weight: 400;
+  line-height: 21px;
+  padding-right: 10px;
+  color: var(--sidebar-foreground);
+}
+.sidebar-design .main-tree-row.main-tree-row {
+  height: calc(var(--main-tree-row-height) - 2px);
+  min-height: calc(var(--main-tree-row-height) - 2px);
+  margin: 0 0 2px;
+  border-block: 0 !important;
+  gap: 10px;
+}
+.sidebar-design .sidebar-tree-row.sidebar-tree-row { border-block: 0; }
+.sidebar-design .sidebar-tree-row > div:first-child { gap: 10px; }
+.sidebar-design .sidebar-tree-row > div:first-child > div:last-child { font-size: inherit; line-height: inherit; }
+.sidebar-design :is(.main-tree-row, .sidebar-tree-row) svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.6; }
+.sidebar-design .main-tree-row:not(.main-tree-row--selected):not(.main-tree-row--hovered) svg:not([class*="text-destructive"]),
+.sidebar-design .sidebar-tree-row:not(.sidebar-tree-row--selected):not(.sidebar-tree-row--hovered) svg:not([class*="text-destructive"]) { color: var(--sidebar-muted); }
+.sidebar-design .main-tree-row > :is(.main-tree-folder-icon, .pointer-events-none) > :is(span, div) { width: 18px; height: 18px; }
+.sidebar-design .main-tree-row > :is(.main-tree-folder-icon, .pointer-events-none),
+.sidebar-design .sidebar-tree-row > div:first-child > :is(.pointer-events-none, .goose-hidden-expand-icon) { width: 18px; height: 18px; margin-right: 0; }

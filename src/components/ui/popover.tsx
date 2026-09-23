@@ -6,20 +6,24 @@ import {
   FloatingPortal,
   offset,
   shift,
+  safePolygon,
   size,
   useClick,
   useDismiss,
   useFloating,
   useInteractions,
+  useHover,
   useMergeRefs,
   useRole,
   useTransitionStatus,
   type Placement,
 } from "@floating-ui/react";
-import { useAnimate, useReducedMotion } from "motion/react";
+import { useAnimate } from "motion/react";
 import { cn } from "@/lib/utils";
 import { TriggerChild } from "./trigger-child";
 import {
+  NOTEBOOK_MENU_CLOSE_MS,
+  NOTEBOOK_MENU_OPEN_MS,
   FLOATING_MENU_CLOSE_MS,
   FLOATING_MENU_OPEN_MS,
   floatingMenuMotionStyle,
@@ -31,12 +35,16 @@ type PopoverProps = React.PropsWithChildren<{
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   modal?: boolean;
+  variant?: "notebook";
+  openOnHover?: boolean;
 }>;
 function usePopoverState({
   open: controlled,
   defaultOpen = false,
   onOpenChange,
   modal = false,
+  variant,
+  openOnHover = false,
 }: PopoverProps) {
   const [local, setLocal] = React.useState(defaultOpen);
   const [placement, setPlacement] = React.useState<Placement>("bottom");
@@ -48,7 +56,16 @@ function usePopoverState({
   const open = controlled ?? local;
   // Programmatic/keyboard opens are immediate; a pointer explicitly opts into motion.
   const keyboard = React.useRef(true);
-  const reducedMotion = useReducedMotion();
+  const [reducedMotion, setReducedMotion] = React.useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  React.useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
   const outside = React.useRef<{
     onInteractOutside?: (event: Event) => void;
     onPointerDownOutside?: (event: Event) => void;
@@ -84,13 +101,20 @@ function usePopoverState({
   });
   const presence = useTransitionStatus(floating.context, {
     duration: {
-      open: FLOATING_MENU_OPEN_MS,
-      close: keyboard.current ? 0 : FLOATING_MENU_CLOSE_MS,
+      open: variant === "notebook" ? NOTEBOOK_MENU_OPEN_MS : FLOATING_MENU_OPEN_MS,
+      close: keyboard.current ? 0 : variant === "notebook" ? NOTEBOOK_MENU_CLOSE_MS : FLOATING_MENU_CLOSE_MS,
     },
   });
   React.useEffect(() => {
     if (!presence.isMounted) keyboard.current = true;
   }, [presence.isMounted]);
+  const hover = useHover(floating.context, {
+    enabled: openOnHover,
+    mouseOnly: true,
+    move: false,
+    delay: { close: 160 },
+    handleClose: safePolygon({ buffer: 4, requireIntent: false }),
+  });
   const click = useClick(floating.context);
   const dismiss = useDismiss(floating.context, {
     outsidePress: (native) => {
@@ -110,9 +134,10 @@ function usePopoverState({
       : reducedMotion
         ? "reduced"
         : "full") as FloatingMotionMode,
-    ...useInteractions([click, dismiss, role]),
+    ...useInteractions([hover, click, dismiss, role]),
     open,
     modal,
+    variant,
     setPlacement,
     setSpacing,
     outside,
@@ -253,6 +278,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             state.status,
             state.placement,
             state.motionMode,
+            { notebook: state.variant === "notebook" },
           );
     React.useLayoutEffect(() => {
       if (animation !== "reveal" || !mountedNode || !state.isMounted) return;
@@ -282,6 +308,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       );
       return () => controls.stop();
     }, [animate, mountedNode, state.open, state.isMounted, state.motionMode, animation, collapsedClip]);
+    const notebookMenu = state.variant === "notebook";
     const callbacks = React.useRef({ onOpenAutoFocus, onCloseAutoFocus });
     callbacks.current = { onOpenAutoFocus, onCloseAutoFocus };
     state.outside.current = { onInteractOutside, onPointerDownOutside };
@@ -294,7 +321,9 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             return event.defaultPrevented
               ? (document.activeElement as HTMLElement)
               : (state.refs.floating.current?.querySelector<HTMLElement>(
-                  'input:not(:disabled),button:not(:disabled),[tabindex="0"]',
+                  notebookMenu
+                    ? '[aria-current="true"]'
+                    : 'input:not(:disabled),button:not(:disabled),[tabindex="0"]',
                 ) ?? state.refs.floating.current);
           },
         },
@@ -308,7 +337,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
           },
         },
       }),
-      [state.refs],
+      [state.refs, notebookMenu],
     );
     React.useLayoutEffect(() => {
       state.setPlacement(align === "center" ? side : `${side}-${align}`);
@@ -333,7 +362,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
           context={state.context}
           disabled={!state.open}
           modal={state.modal}
-          initialFocus={focus.initial}
+          initialFocus={notebookMenu && !state.keyboard.current ? -1 : focus.initial}
           returnFocus={focus.restore}
         >
           <div
@@ -354,6 +383,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             inert={!state.open}
             aria-hidden={!state.open || undefined}
             data-state={state.open ? "open" : "closed"}
+            data-motion={state.motionMode}
             data-side={actualSide}
             data-goose-floating-content=""
             className={cn(

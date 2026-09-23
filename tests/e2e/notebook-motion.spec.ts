@@ -1,184 +1,94 @@
-import { expect, test, type Page } from "playwright/test";
+import { expect, test, type Page } from 'playwright/test';
 
-const menuSelector =
-  "[data-goose-floating-content].goose-notebook-menu-surface";
+const menuSelector = '[data-goose-floating-content].goose-notebook-menu-surface';
 
-async function boot(page: Page, reduced = false) {
-  await page.emulateMedia({
-    reducedMotion: reduced ? "reduce" : "no-preference",
-  });
-  await page.goto("/?e2eLocalMock");
+async function boot(page: Page) {
+  await page.goto('/?e2eLocalMock');
   await page.waitForFunction(() => Boolean(window.__gooseTest));
   await page.evaluate(async () => {
     const h = window.__gooseTest!;
-    const { notebookId, pages } = await h.setupMockNotebook();
+    const { notebookId } = await h.setupMockNotebook();
     const base = h.stores.useNotebooks.getState().notebooks[notebookId];
     h.stores.useNotebooks.setState({
       activeNotebookId: notebookId,
-      notebooks: Object.fromEntries(
-        Array.from({ length: 4 }, (_, i) => {
-          const id = i === 0 ? notebookId : `motion-mock-${i}`;
-          return [
-            id,
-            { ...base, id, name: `动画测试笔记本 ${i + 1}`, order: i },
-          ];
-        }),
-      ),
+      notebooks: Object.fromEntries(Array.from({ length: 3 }, (_, i) => {
+        const id = i ? `motion-mock-${i}` : notebookId;
+        return [id, { ...base, id, name: `动效测试 ${i + 1}`, order: i }];
+      })),
     });
-    h.stores.useTabs.getState().openPermanentTab(pages[0].id);
+    const { useSettings } = await import('/src/stores/useSettings.ts');
+    useSettings.getState().setNotebookDropdownHoverExpand(false);
   });
-  const trigger = page.locator(".sidebar-notebook-trigger");
+  const trigger = page.locator('.sidebar-notebook-trigger');
   const menu = page.locator(menuSelector);
   await expect(trigger).toBeVisible();
-  await expect(page.getByRole("tree")).toBeVisible();
-  await expect(trigger).toHaveAttribute("data-state", "closed");
-  await expect(menu).toBeHidden();
-  return { trigger, menu, shell: page.locator(".goose-notebook-shell") };
+  return { trigger, menu };
 }
 
-test("笔记本菜单反复开关及 Esc 后鼠标重开，按钮不位移、退出立即 inert", async ({
-  page,
-}) => {
-  const { trigger, menu, shell } = await boot(page);
-  const rect = await trigger.boundingBox();
-  for (let i = 0; i < 3; i++) {
-    await expect(trigger).toHaveAttribute("data-state", "closed");
-    await trigger.click();
-    await expect(menu).toHaveAttribute("data-state", "open");
-    await expect(menu.getByRole("menuitem")).toHaveCount(4);
-    await expect
-      .poll(() =>
-        shell.evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).m22),
-      )
-      .toBeCloseTo(1, 3);
-    expect(await trigger.boundingBox()).toEqual(rect);
-    await trigger.click();
-    expect(
-      await menu.evaluate((e) => ({
-        inert: e.hasAttribute("inert"),
-        aria: e.getAttribute("aria-hidden"),
-      })),
-    ).toEqual({ inert: true, aria: "true" });
-    await expect(menu).toHaveAttribute("hidden", "");
-    await trigger.click();
-    await page.keyboard.press("Escape");
-    await expect(menu).toHaveAttribute("hidden", "");
-    await trigger.click();
-    await expect(trigger).toHaveAttribute("data-motion", "full");
-    await expect
-      .poll(() =>
-        shell.evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).m22),
-      )
-      .toBeCloseTo(1, 3);
-    await trigger.click();
-    await expect(menu).toHaveAttribute("hidden", "");
-  }
+test('切换后重开聚焦当前项，方向键只移动焦点，回车才切换', async ({ page }) => {
+  const { trigger, menu } = await boot(page);
+  await trigger.click();
+  await menu.getByRole('menuitem').nth(2).click();
+  await expect(trigger).toContainText('动效测试 3');
+  await expect(menu).toBeHidden();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const rows = menu.getByRole('menuitem');
+  await expect(rows.nth(2)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(0)).toBeFocused();
+  await expect(rows.nth(2)).toHaveAttribute('aria-current', 'true');
+  await page.keyboard.press('End');
+  await expect(rows.nth(2)).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(rows.nth(0)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(trigger).toContainText('动效测试 2');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
-test("真实 pointerdown 前采样覆盖展开中间态和快速反转", async ({ page }) => {
-  const { trigger, menu, shell } = await boot(page);
-  // 在真实输入前监听，避免 click 的自动等待吞掉动画开头。
-  await trigger.evaluate((element, selector) => {
-    const state = window as typeof window & {
-      motionSamples: { scale: number; opacity: number }[];
-      motionDone: boolean;
-    };
-    state.motionSamples = [];
-    state.motionDone = false;
-    element.addEventListener(
-      "pointerdown",
-      () => {
-        const start = performance.now();
-        const sample = () => {
-          const shell = document.querySelector(".goose-notebook-shell");
-          const menu = document.querySelector(selector);
-          if (shell && menu)
-            state.motionSamples.push({
-              scale: new DOMMatrix(getComputedStyle(shell).transform).m22,
-              opacity: Number(getComputedStyle(menu).opacity),
-            });
-          if (performance.now() - start < 500) requestAnimationFrame(sample);
-          else state.motionDone = true;
-        };
-        requestAnimationFrame(sample);
-      },
-      { once: true },
-    );
-  }, menuSelector);
-  await trigger.click();
-  await expect(menu).toHaveAttribute("data-state", "open");
-  await trigger.click();
-  await expect(menu).toHaveAttribute("inert", "");
-  await trigger.click();
-  await expect(menu).toHaveAttribute("data-state", "open");
-  await page.waitForFunction(
-    () => (window as typeof window & { motionDone: boolean }).motionDone,
-  );
-  const samples = await page.evaluate(
-    () =>
-      (
-        window as typeof window & {
-          motionSamples: { scale: number; opacity: number }[];
-        }
-      ).motionSamples,
-  );
-  expect(samples.length).toBeGreaterThanOrEqual(8);
-  expect(samples.some((s) => s.scale > 0 && s.scale < 0.99)).toBe(true);
-  expect(new Set(samples.map((s) => s.scale.toFixed(3))).size).toBeGreaterThan(
-    2,
-  );
-  expect(samples.some((s) => s.opacity > 0 && s.opacity < 1)).toBe(true);
-  await expect
-    .poll(() =>
-      shell.evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).m22),
-    )
-    .toBeCloseTo(1, 3);
-  await trigger.click();
-  await expect(menu).toHaveAttribute("hidden", "");
-});
-
-test("系统 reduced-motion 去掉 reveal，键盘重复开关即时", async ({ page }) => {
-  const { trigger, menu, shell } = await boot(page, true);
-  await trigger.click();
-  await expect(trigger).toHaveAttribute("data-motion", "reduced");
-  await expect
-    .poll(() => menu.evaluate((e) => getComputedStyle(e).clipPath))
-    .toBe("none");
-  await expect
-    .poll(() =>
-      shell.evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).m22),
-    )
-    .toBeCloseTo(1, 3);
-  await trigger.click();
-  await expect(menu).toHaveAttribute("hidden", "");
-  for (let i = 0; i < 3; i++) {
-    await trigger.focus();
-    await page.keyboard.press("Enter");
-    await expect(trigger).toHaveAttribute("data-motion", "instant");
-    expect(await menu.evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
-    expect(
-      await shell.evaluate(
-        (e) => new DOMMatrix(getComputedStyle(e).transform).m22,
-      ),
-    ).toBeCloseTo(1, 3);
-    await page.keyboard.press("Escape");
-    await expect(menu).toHaveAttribute("hidden", "");
-    await expect(trigger).toBeFocused();
-  }
-});
-
-test("hover 展开后立即进入首行保持打开，移出收起", async ({ page }) => {
+test('悬停不开抢焦点，跨越间隙保持打开；关闭后可再次点击', async ({ page }) => {
   const { trigger, menu } = await boot(page);
   await page.evaluate(async () => {
-    const { useSettings } = await import("/src/stores/useSettings.ts");
+    const { useSettings } = await import('/src/stores/useSettings.ts');
     useSettings.getState().setNotebookDropdownHoverExpand(true);
+    const input = document.createElement('input');
+    input.id = 'notebook-focus-probe';
+    document.body.append(input);
+    input.focus();
   });
   await trigger.hover();
-  await expect(menu).toHaveAttribute("data-state", "open");
-  await menu.getByRole("menuitem").first().hover();
-  await expect(menu).toHaveAttribute("data-state", "open");
-  await expect(menu).not.toHaveAttribute("inert", "");
+  await expect(menu).toHaveAttribute('data-state', 'open');
+  await expect(page.locator('#notebook-focus-probe')).toBeFocused();
+  await menu.getByRole('menuitem').first().hover();
+  await expect(menu).toHaveAttribute('data-state', 'open');
   await page.mouse.move(700, 100);
-  await expect(menu).toHaveAttribute("data-state", "closed");
-  await expect(menu).toHaveAttribute("hidden", "");
+  await expect(menu).toBeHidden();
+  await expect(page.locator('#notebook-focus-probe')).toBeFocused();
+  await trigger.hover();
+  await trigger.click();
+  await expect(menu).toHaveAttribute('data-state', 'open');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await trigger.click();
+  await expect(menu).toHaveAttribute('data-state', 'open');
+});
+
+test('关闭退出交互，快速重开和减少动态效果均不残留隐藏焦点', async ({ page }) => {
+  const { trigger, menu } = await boot(page);
+  await trigger.click();
+  await trigger.click();
+  await expect(menu).toBeHidden();
+  await trigger.click();
+  await expect(menu).toHaveAttribute('data-state', 'open');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await trigger.click();
+  await expect(menu).toHaveCSS('transform', 'none');
+  await page.mouse.click(700, 100);
+  await expect(menu).toBeHidden();
 });

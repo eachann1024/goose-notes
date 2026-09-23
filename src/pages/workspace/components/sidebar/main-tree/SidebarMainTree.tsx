@@ -825,7 +825,7 @@ export function SidebarMainTree({
                 toggleLocalDirectory(pageId);
                 if (isElectronLocalFolderDirectory(pageId)) return;
               }
-              openPageFromSidebar(pageId, "permanent");
+              openPageFromSidebar(pageId, "permanent", { newTab: true });
             }}
           >
             <MainTreeEdgeDropWatcher
@@ -914,7 +914,7 @@ export function SidebarMainTree({
                 }
                 const { meta, ctrl } = lastClickModRef.current;
                 if (meta || ctrl) {
-                  openPageFromSidebar(last, "permanent");
+                  openPageFromSidebar(last, "permanent", { newTab: true });
                 } else {
                   openPageFromSidebar(last, "preview");
                 }

@@ -1,5 +1,4 @@
-import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
-import { getPageTitle } from "@/components/editor/utils/page-title";
+import { SidebarRenameContext } from "./SidebarInlineRename";
 import type { ReactNode } from "react";
 import type { Page } from "@/types";
 import { IconSelector } from "../shared/IconSelector";
@@ -174,15 +173,31 @@ export function SidebarContextMenu({
   const singleTabMode = effectiveSingleTabMode(
     useSettings((s) => s.singleTabMode),
   );
-  const rename = useRenameDialog();
+  const [renaming, setRenaming] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const canRename = !isTrashed && !page.localPendingCreate && !page.localUnsaved;
   const hasParent = !!page.parentId;
   const createParentId = page.isFolder ? page.id : page.parentId;
 
   return (
-    <>
+    <SidebarRenameContext.Provider value={{ page, renaming, setRenaming, rowRef }}>
       <ContextMenu onOpenChange={setMenuOpen}>
         <ContextMenuTrigger asChild className="w-full">
           <div
+            ref={rowRef}
+            tabIndex={-1}
+            onDragStartCapture={(event) => {
+              if (renaming) { event.preventDefault(); event.stopPropagation(); }
+            }}
+            onKeyDownCapture={(event) => {
+              if (!canRename || renaming || event.target instanceof HTMLInputElement ||
+                  (event.target as HTMLElement).closest("button, [contenteditable=true]")) return;
+              if (event.key === "F2" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                setRenaming(true);
+              }
+            }}
             data-goose-context-trigger="true"
             data-context-open={menuOpen ? "true" : undefined}
             className="h-full w-full"
@@ -233,13 +248,10 @@ export function SidebarContextMenu({
             if (!isTrashed && !page.localPendingCreate && !page.localUnsaved) {
               sections.push(
                 <ContextMenuGroup key="rename">
-                  <ContextMenuItem onSelect={() => scheduleAfterMenuClose(() =>
-                    rename.openRenameDialog(page.id, page.isFolder && page.localFilePath
-                      ? page.localFilePath.split(/[\\/]/).pop() || ""
-                      : getPageTitle(page)),
-                  )}>
+                  <ContextMenuItem onSelect={() => scheduleAfterMenuClose(() => setRenaming(true))}>
                     <LucideIcons.Pencil className="h-4 w-4" />
                     <span>重命名</span>
+                    <MenuShortcut shortcut="F2" />
                   </ContextMenuItem>
                 </ContextMenuGroup>,
               );
@@ -308,7 +320,7 @@ export function SidebarContextMenu({
                       onSelect={() => {
                         if (isTrashed) return;
                         closeNotebookAiIfFullscreen();
-                        useTabs.getState().openTab(page.id);
+                        useTabs.getState().openPermanentTab(page.id);
                       }}
                       disabled={isTrashed}
                     >
@@ -549,17 +561,6 @@ export function SidebarContextMenu({
           })()}
         </ContextMenuContent>
       </ContextMenu>
-      <SidebarRenameDialog
-        open={rename.renameDialogOpen}
-        onOpenChange={rename.setRenameDialogOpen}
-        renamePageId={rename.renamePageId}
-        renameValue={rename.renameValue}
-        onRenameValueChange={rename.setRenameValue}
-        isLocalFolder={isLocalFolder}
-        isDirectory={!!page.isFolder}
-        busy={rename.busy}
-        onConfirm={() => void rename.confirmRename()}
-      />
       <IconSelector
         value={iconName}
         onChange={(nextIcon) => updatePage(page.id, { icon: nextIcon })}
@@ -567,6 +568,6 @@ export function SidebarContextMenu({
         onOpenChange={setIconPickerOpen}
         anchorPoint={menuPoint ?? undefined}
       />
-    </>
+    </SidebarRenameContext.Provider>
   );
 }

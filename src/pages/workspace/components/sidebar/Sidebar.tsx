@@ -12,12 +12,12 @@ import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
 import { useSidebarEffects } from "./hooks/useSidebarEffects";
 import { SidebarResizeEdge } from "./SidebarResizeEdge";
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
-import { SidebarRenameDialog, useRenameDialog } from "./SidebarRenameDialog";
 import { SidebarOutline } from "./SidebarOutline";
 import { HistoryVersionList } from "../history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 import { isElectronHost } from "@/lib/local-vault";
+import "./sidebar-layout.css";
 
 type SidebarView = "pages" | "outline";
 type SidebarDragGuideMode = "sort" | "nest-ready";
@@ -56,11 +56,12 @@ export function Sidebar({
   // Electron 仅本地模式：没有仓库时不露出「新建页面」入口与内置本语义
   const electronNoVault = isElectronHost && !activeNotebookId;
 
-  const itemHeight = useSidebarItemHeight();
-  const rowHeight = itemHeight + 1;
+  const itemHeight = useSidebarItemHeight() + 4;
+  const rowHeight = itemHeight + 2;
 
   const { width, isResizing, handleResizeMouseDown, handleResizePointerDown } =
     useSidebarResize({ disableResize });
+  const contentWidth = width - 16;
 
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
@@ -79,16 +80,6 @@ export function Sidebar({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
 
-  const {
-    renameDialogOpen,
-    setRenameDialogOpen,
-    renameValue,
-    setRenameValue,
-    renamePageId,
-    closeRenameDialog,
-    confirmRename,
-  } = useRenameDialog();
-
   useSidebarEffects({
     activePageId,
     activeNotebookId,
@@ -101,10 +92,9 @@ export function Sidebar({
     (options: { exitHistory: boolean }) => {
       setCurrentView("pages");
       setShowSettings(false);
-      closeRenameDialog();
       if (options.exitHistory) exitHistoryView();
     },
-    [closeRenameDialog, exitHistoryView],
+    [exitHistoryView],
   );
 
   useEffect(() => {
@@ -170,7 +160,9 @@ export function Sidebar({
         ? basePage.parentId
         : undefined;
     if (isLocalFolder) {
-      void createLocalPage(siblingParentId, activeNotebookId);
+      void Promise.resolve(createLocalPage(siblingParentId, activeNotebookId)).then((newPageId) => {
+        if (newPageId) openInCurrentTab(newPageId);
+      });
       return;
     }
     const newPageId = createPage(siblingParentId, activeNotebookId);
@@ -218,7 +210,7 @@ export function Sidebar({
             <HistoryVersionList />
           </div>
         ) : (
-          <>
+          <div className="sidebar-design flex min-h-0 flex-1 flex-col">
             <SidebarHeader
               dragGuide={dragGuide}
               selectedPageId={selectedPageId}
@@ -230,14 +222,14 @@ export function Sidebar({
 
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[inherit]">
               <FavoritesSection
-                width={width}
+                width={contentWidth}
                 rowHeight={rowHeight}
                 itemHeight={itemHeight}
                 onCreatePage={handleCreatePage}
               />
 
               <div className="flex-1 min-h-0 flex flex-col">
-                <div className="mt-1 shrink-0">
+                <div className="sidebar-tree-heading shrink-0">
                   <SidebarSectionHeader
                     title={
                       isLocalFolder ? "本地" : electronNoVault ? "仓库" : "页面"
@@ -268,9 +260,9 @@ export function Sidebar({
                     <SidebarMainTree
                       activeNotebookId={activeNotebookId}
                       selectedPageId={selectedPageId}
-                      width={width}
+                      width={contentWidth}
                       rowHeight={rowHeight}
-                      itemHeight={itemHeight}
+                      itemHeight={rowHeight}
                       viewportHeight={scrollAreaHeight}
                       onCreatePage={handleCreatePage}
                     />
@@ -286,7 +278,7 @@ export function Sidebar({
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         <SidebarFooter
@@ -297,19 +289,6 @@ export function Sidebar({
           }}
         />
 
-        <SidebarRenameDialog
-          open={renameDialogOpen}
-          onOpenChange={(open) => {
-            setRenameDialogOpen(open);
-          }}
-          renamePageId={renamePageId}
-          renameValue={renameValue}
-          onRenameValueChange={setRenameValue}
-          isLocalFolder={isLocalFolder}
-          onConfirm={() => {
-            void confirmRename();
-          }}
-        />
 
         <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
       </div>

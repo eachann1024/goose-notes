@@ -18,6 +18,7 @@ import type {
 } from "react-complex-tree";
 import type { Page } from "@/types";
 import { SidebarContextMenu } from "../SidebarContextMenu";
+import { SidebarInlineRename } from "../SidebarInlineRename";
 import {
   isSidebarFolderRow,
   LocalFileIcon,
@@ -203,7 +204,7 @@ function MainTreeRow({
       )}
       active={!isPendingCreate && isActive}
       hovered={false}
-      style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT }}
+      style={{ paddingLeft: depth * INDENT + ROW_PADDING_LEFT + 4 }}
     >
       {children}
     </MainTreeRowShell>
@@ -487,7 +488,7 @@ export function renderItem({
     const pageId = String(item.index);
     if (pageId && pageId !== "root") {
       const permanent = e.metaKey || e.ctrlKey;
-      openPageFromSidebar(pageId, permanent ? "permanent" : "preview");
+      openPageFromSidebar(pageId, permanent ? "permanent" : "preview", { newTab: permanent });
     }
   };
 
@@ -538,9 +539,11 @@ export function renderItem({
           onCancel={onCancelPendingCreate}
         />
       ) : (
-        <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
-          {title}
-        </span>
+        <SidebarInlineRename>
+          <span className="relative z-10 truncate flex-1 min-w-0 pointer-events-none leading-snug">
+            {title}
+          </span>
+        </SidebarInlineRename>
       )}
     </MainTreeRow>
   );

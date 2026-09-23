@@ -39,7 +39,7 @@ export function SidebarHeader({
   const setPendingNavigatePageId = usePages(
     (state) => state.setPendingNavigatePageId,
   );
-  const openPermanentTab = useTabs((state) => state.openPermanentTab);
+  const openInCurrentTab = useTabs((state) => state.openInCurrentTab);
   const setActiveNotebook = useNotebooks((state) => state.setActiveNotebook);
   const pinnedScrollerRef = useRef<HTMLDivElement>(null);
   const activePinnedRef = useRef<HTMLButtonElement | null>(null);
@@ -378,12 +378,12 @@ export function SidebarHeader({
         setExpandPageId(targetPage.id);
         return;
       }
-      openPermanentTab(targetPage.id);
+      openInCurrentTab(targetPage.id);
       setExpandPageId(targetPage.id);
     },
     [
       onOpenPinnedPage,
-      openPermanentTab,
+      openInCurrentTab,
       setActiveNotebook,
       setExpandPageId,
       setPendingNavigatePageId,
@@ -393,22 +393,24 @@ export function SidebarHeader({
 
   return (
     <>
-      <div className="flex h-14 shrink-0 items-start px-2 pt-3">
+      <div className="sidebar-notebook-heading flex shrink-0 items-start">
         <div className="flex w-full items-center">
           <NotebookSwitcher />
         </div>
       </div>
 
-      <div className="pb-2 pr-2 pt-0">
+      <div className="sidebar-pinned-section">
+        {pinnedPages.length > 0 && (
+          <div className="sidebar-pinned-label flex items-center text-muted-foreground">
+            <LucideIcons.Pin className="h-3 w-3" aria-hidden />
+            <span>置顶</span>
+            <span className="ml-auto">{pinnedPages.length}</span>
+          </div>
+        )}
         {(pinnedPages.length > 0 || dragGuide) && (
           <div className="group/pinned relative min-h-10">
-            {/* 药丸底与滚动层分离：滚动层不再被 rounded-full 裁掉选中态的阴影与描边 */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full bg-[hsl(var(--goose-shell-bg))]"
-            />
             {dragGuide && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-full border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border border-primary/35 bg-[hsl(var(--background)/0.98)] px-3 text-[11px] font-medium text-primary shadow-sm backdrop-blur-sm">
                 {dragGuide.mode === "sort" && "拖到页面中部，可放入为子页面"}
                 {dragGuide.mode === "nest-ready" && "松手即可放入目标页面"}
               </div>
@@ -417,15 +419,15 @@ export function SidebarHeader({
               <nav
                 aria-label="置顶页面"
                 ref={pinnedScrollerRef}
-                className="relative max-w-full flex items-center gap-1 overflow-x-auto px-1 py-1 scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="relative max-w-full flex items-center gap-1.5 overflow-x-auto p-1 scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 onWheel={handlePinnedWheel}
               >
                 {pillBox && (
                   <span
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute left-0 top-0 rounded-full",
-                      "bg-[var(--goose-interactive-selected)] shadow-sm",
+                      "pointer-events-none absolute left-0 top-0 rounded-lg",
+                      "border border-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected)]",
                       pillReady
                         ? "transition-transform duration-[180ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
                         : "transition-none",
@@ -450,16 +452,19 @@ export function SidebarHeader({
                             aria-label={title}
                             aria-current={isActive ? "page" : undefined}
                             className={cn(
-                              "relative z-[1] h-8 w-8 shrink-0 scroll-mx-1 rounded-full inline-flex items-center justify-center",
+                              "relative z-[1] h-16 min-w-0 flex-[0_0_calc((100%-0.75rem)/3)] scroll-mx-1 rounded-lg inline-flex flex-col items-center justify-center gap-2 px-1.5",
                               "transition-colors duration-150 active:[&_svg]:scale-[0.97]",
                               "focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--goose-interactive-selected-fg)]",
                               isActive
                                 ? "text-[var(--goose-interactive-selected-fg)]"
-                                : "text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
+                                : "bg-[var(--workspace-main-surface)] text-muted-foreground hover:bg-[var(--goose-interactive-selected)] hover:text-[var(--goose-interactive-selected-fg)]",
                             )}
                             onClick={() => handleOpenPinnedPage(page.id)}
                           >
                             {renderPinnedIcon(page, isActive)}
+                            <span className="w-full truncate text-center text-xs leading-tight">
+                              {title}
+                            </span>
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">{title}</TooltipContent>

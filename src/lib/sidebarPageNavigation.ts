@@ -26,7 +26,7 @@ export function isElectronLocalFolderDirectory(pageId: string): boolean {
 export function openPageFromSidebar(
   pageId: string,
   mode: "preview" | "permanent",
-  options?: { pin?: boolean },
+  options?: { pin?: boolean; newTab?: boolean },
 ) {
   // Electron：文件夹不进主区。Electron 本地文件夹仍打开 FolderHomePage。
   if (isElectronLocalFolderDirectory(pageId)) return;
@@ -36,19 +36,18 @@ export function openPageFromSidebar(
   closeNotebookAiIfFullscreen();
 
   const tabs = useTabs.getState();
-  if (tryShowPageInFocusedSplit(pageId)) {
+  if (!options?.newTab && tryShowPageInFocusedSplit(pageId)) {
     usePages.getState().setExpandPageId(pageId);
     return;
   }
-  const effectiveMode = effectiveSingleTabMode() ? "preview" : mode;
-  if (effectiveMode === "permanent") {
+  if (!effectiveSingleTabMode() && mode === "permanent" && options?.newTab) {
     suppressNextSidebarSelect = true;
     if (suppressTimer !== null) window.clearTimeout(suppressTimer);
     suppressTimer = window.setTimeout(() => {
       suppressNextSidebarSelect = false;
       suppressTimer = null;
     }, 400);
-    tabs.openPermanentTab(pageId, options);
+    tabs.openPermanentTab(pageId, { pin: options.pin });
     return;
   }
   tabs.openPreviewTab(pageId);

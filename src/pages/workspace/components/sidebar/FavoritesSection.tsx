@@ -49,7 +49,7 @@ function FavoritePagesMotion({
       aria-hidden={!isPresent}
       inert={!isPresent || undefined}
     >
-      <div className="pt-0.5">{children}</div>
+      <div>{children}</div>
     </motion.div>
   );
 }
@@ -117,7 +117,7 @@ export function FavoritesSection({
   }
 
   return (
-    <div className="py-1">
+    <div className="sidebar-favorites-section">
       <button
         type="button"
         className="sidebar-section-label sidebar-favorites-label group flex h-8 w-full cursor-pointer items-center justify-between rounded-lg pl-0.5 pr-2 text-xs font-medium text-[hsl(var(--goose-nav-title))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-current"
@@ -131,7 +131,8 @@ export function FavoritesSection({
         <span className="inline-flex h-6 min-w-[42px] items-center justify-center px-2">
           收藏
         </span>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+        <span className="sidebar-favorites-count ml-auto group-hover:hidden group-focus-visible:hidden">{favorites.length}</span>
+        <div className="hidden shrink-0 items-center justify-center group-hover:flex group-focus-visible:flex">
           {favoritesCollapsed ? (
             <LucideIcons.ChevronRight className="h-3 w-3" />
           ) : (

@@ -12,7 +12,7 @@ export function SidebarResizeEdge({
   return (
     <div
       className="absolute top-0 h-full z-[60] cursor-col-resize group/resize"
-      style={{ right: "-18px", width: "16px" }}
+      style={{ right: "calc(-8px - var(--workspace-sidebar-gap, 8px) / 2)", width: "16px" }}
       onMouseDown={onMouseDown}
       onPointerDown={onPointerDown}
       role="separator"
@@ -25,7 +25,6 @@ export function SidebarResizeEdge({
         style={{
           width: "2px",
           height: "100%",
-          marginLeft: "-1px",
           borderRadius: 0,
           background: isResizing
             ? "var(--workspace-resize-line-active)"

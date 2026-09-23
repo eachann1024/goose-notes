@@ -1,4 +1,4 @@
-const SIDEBAR_MIN_WIDTH = 170;
+const SIDEBAR_MIN_WIDTH = 220;
 
 interface UseSidebarResizeOptions {
   disableResize?: boolean;
@@ -7,11 +7,11 @@ interface UseSidebarResizeOptions {
 
 export function useSidebarResize({
   disableResize = false,
-  defaultWidth = 180,
+  defaultWidth = 240,
 }: UseSidebarResizeOptions = {}) {
   const [width, setWidth] = useState(() => {
     const saved = localStorage.getItem("sidebar-width");
-    return saved
+    return saved && Number.isFinite(Number(saved))
       ? Math.max(SIDEBAR_MIN_WIDTH, Math.min(480, Number(saved)))
       : defaultWidth;
   });

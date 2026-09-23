@@ -44,7 +44,10 @@ export async function activateNotebook(
 
   notebooksStore.setActiveNotebook(notebookId);
   const landingPageId = resolveNotebookLandingPageId(notebookId);
-  await usePages.getState().setActivePage(landingPageId);
-  useTabs.getState().syncActiveTabForPage(landingPageId);
+  if (landingPageId) {
+    useTabs.getState().syncActiveTabForPage(landingPageId);
+  } else {
+    await usePages.getState().setActivePage(null);
+  }
   return landingPageId;
 }

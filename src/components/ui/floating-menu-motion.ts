@@ -1,5 +1,8 @@
 import type { CSSProperties } from "react";
 
+export const NOTEBOOK_MENU_OPEN_MS = 360;
+export const NOTEBOOK_MENU_CLOSE_MS = 220;
+
 export const FLOATING_MENU_OPEN_MS = 200;
 export const FLOATING_MENU_CLOSE_MS = 150;
 export const FLOATING_MENU_EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
@@ -46,7 +49,7 @@ export function floatingMenuMotionStyle(
   status: FloatingMotionStatus,
   placement: string,
   motionMode: FloatingMotionMode,
-  options?: { shift?: boolean },
+  options?: { shift?: boolean; notebook?: boolean },
 ): CSSProperties {
   const side = placement.split("-")[0] || "bottom";
   const shift = options?.shift !== false;
@@ -57,10 +60,12 @@ export function floatingMenuMotionStyle(
   const duration = instant
     ? 0
     : visuallyOpen
-      ? FLOATING_MENU_OPEN_MS
-      : FLOATING_MENU_CLOSE_MS;
+      ? options?.notebook ? NOTEBOOK_MENU_OPEN_MS : FLOATING_MENU_OPEN_MS
+      : options?.notebook ? NOTEBOOK_MENU_CLOSE_MS : FLOATING_MENU_CLOSE_MS;
   const reduced = motionMode !== "full";
-  const closedTransform = shift
+  const closedTransform = options?.notebook
+    ? `translateY(${(side === "top" ? 1 : -1) * (status === "close" ? 4 : 6)}px) scale(.985)`
+    : shift
     ? floatingMenuFromTransform(side)
     : `scale(${FLOATING_MENU_SCALE})`;
   return {
@@ -76,7 +81,7 @@ export function floatingMenuMotionStyle(
     transitionProperty: reduced ? "opacity" : "opacity, transform",
     transitionDuration: `${duration}ms`,
     transitionTimingFunction: visuallyOpen
-      ? FLOATING_MENU_EASE_OUT
-      : FLOATING_MENU_EASE_IN,
+      ? options?.notebook ? "cubic-bezier(.22,1,.36,1)" : FLOATING_MENU_EASE_OUT
+      : options?.notebook ? "cubic-bezier(.4,0,1,1)" : FLOATING_MENU_EASE_IN,
   };
 }
