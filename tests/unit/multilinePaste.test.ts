@@ -11,6 +11,7 @@ import {
   planMultilinePaste,
   resolveInheritedPasteBlockType,
   resolvePasteLines,
+  shouldPreferPlainMultilinePaste,
   shouldSplitMultilinePaste,
   splitPlainTextPasteLines,
   stripInheritedListPrefix,
@@ -330,6 +331,14 @@ test("纯文本无换行时从 HTML 的 br/p 找回每一行", () => {
     "",
     "上次我分享了Pi常用的插件组合",
   ]);
+});
+
+test("富文本没写入原文换行时回退纯文本，已有段落或结构时保留 HTML", () => {
+  const plain = "第一段\n\n第二段\n第三行";
+  expect(shouldPreferPlainMultilinePaste(plain, '<div style="white-space:pre-wrap"><strong>第一段\n\n第二段\n第三行</strong></div>')).toBe(true);
+  expect(shouldPreferPlainMultilinePaste(plain, '<p><strong>第一段</strong></p><p>第二段</p><p>第三行</p>')).toBe(false);
+  expect(shouldPreferPlainMultilinePaste(plain, '<p>第一段<br><br>第二段<br>第三行</p>')).toBe(false);
+  expect(shouldPreferPlainMultilinePaste(plain, '<table><tr><td>第一段</td></tr></table>')).toBe(false);
 });
 
 test("Unicode 行分隔符也按行拆", () => {

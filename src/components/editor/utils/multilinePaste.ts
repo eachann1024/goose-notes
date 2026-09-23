@@ -132,6 +132,19 @@ export function resolvePasteLines(
   return trimmed.length >= 2 ? trimmed : fromPlain;
 }
 
+/** 富文本未编码纯文本中的换行时，优先保住段落，避免默认 HTML 粘贴挤成一行。 */
+export function shouldPreferPlainMultilinePaste(plain: string, html: string): boolean {
+  // ponytail: 仅对缺失换行的 HTML 回退纯文本；需要同时保留行内样式时再补 HTML 分段转换。
+  const lines = splitPlainTextPasteLines(plain);
+  if (!html || !lines || htmlHasNonTextPasteBlocks(html) ||
+      htmlLooksLikeBlockNoteClipboard(html) || htmlHasNonDefaultGooseBlockAttrs(html)) return false;
+  const htmlLines = splitPlainTextPasteLines(
+    htmlToPlainTextForPaste(html.replace(/[\r\n]+/g, " ")),
+  );
+  return (htmlLines?.filter((line) => line.trim()).length ?? 1) <
+    lines.filter((line) => line.trim()).length;
+}
+
 export function resolveInheritedPasteBlockType(
   currentType: string | null | undefined,
 ): string {

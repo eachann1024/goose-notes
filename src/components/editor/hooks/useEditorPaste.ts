@@ -20,6 +20,7 @@ import {
   htmlLooksLikeBlockNoteClipboard,
   planMultilinePaste,
   resolvePasteLines,
+  shouldPreferPlainMultilinePaste,
   shouldSplitMultilinePaste,
 } from "../utils/multilinePaste";
 import {
@@ -423,6 +424,14 @@ export function useEditorPaste({
           return;
         }
         insertSoftWrappedLines(editor, softWrapText);
+        return;
+      }
+
+      if (!isMultiBlockTextSelection(editor) && !container.inTable &&
+          shouldPreferPlainMultilinePaste(plainText, htmlText)) {
+        event.preventDefault();
+        event.stopPropagation();
+        pasteLinesAsBlocks(editor, pasteLines!, container.listType ?? getCursorBlockType(editor));
         return;
       }
 
