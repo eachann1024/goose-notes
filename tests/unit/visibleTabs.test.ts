@@ -41,6 +41,15 @@ test("两个文档标签不在 pill 上改名", () => {
   expect(shouldEditTitleInTabPill(visible)).toBe(false);
 });
 
+test("已失踪页面的标签仍可见，其他笔记本的标签不混入", () => {
+  const tabs: TabItem[] = [
+    { id: "a", pageId: "a", workspaceId: "nb" },
+    { id: "missing", pageId: "missing", workspaceId: "nb" },
+    { id: "other", pageId: "missing", workspaceId: "other" },
+  ];
+  expect(listVisibleWorkspaceTabs(tabs, getPageFrom({ a: page("a") }), "nb").map(({ id }) => id)).toEqual(["a", "missing"]);
+});
+
 test("隐藏 notebook-ai、回收站和其他笔记本的标签", () => {
   const pages = {
     a: page("a"),

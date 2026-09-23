@@ -570,6 +570,8 @@ function NotebookEditorSplitColumn({
 
   useLayoutEffect(() => {
     if (!activeTabId || !focusedPageId) return;
+    const focusedPage = usePages.getState().getPage(focusedPageId);
+    if (!focusedPage || focusedPage.isFolder || focusedPage.trashedAt) return;
     if (focusedPageId !== usePages.getState().activePageId) {
       void usePages.getState().setActivePage(focusedPageId);
     }
@@ -612,6 +614,7 @@ function NotebookEditorSplitColumn({
             tabId={activeTabId}
             renderPane={(leaf, { focused }) => (
               <SplitEditorPane
+                tabId={activeTabId}
                 leaf={leaf}
                 focused={focused}
                 showChrome={isSplit}

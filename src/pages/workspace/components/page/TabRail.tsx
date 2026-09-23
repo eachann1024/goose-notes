@@ -172,7 +172,7 @@ function SortableTabItem({
       ? "新标签页"
       : tabPage
         ? getPageTitle(tabPage)
-        : "";
+        : "页面已不存在";
   const electronNoDrag = variant === "electron-titlebar";
   const windowDragEnabled = !dragEnabled && variant === "electron-titlebar";
   const onWindowDragPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -258,7 +258,10 @@ function SortableTabItem({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "hidden h-5 w-5 shrink-0 rounded-md p-0 transition-colors @[64px]:group-hover:flex",
+                    "h-5 w-5 shrink-0 rounded-md p-0 transition-colors",
+                    tabPage
+                      ? "hidden @[64px]:group-hover:flex"
+                      : "flex",
                     isActive
                       ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                       : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
@@ -579,7 +582,6 @@ export function TabRail({
         const displayPageId = tabRailPageId(tab, focusedPageByTabId);
         const tabPage =
           tab.type === "welcome" ? undefined : getPage(displayPageId);
-        if (tab.type !== "welcome" && !tabPage) return null;
         const visibleIndex = visibleTabs.findIndex((t) => t.id === tab.id);
         return (
           <SortableTabItem
@@ -766,7 +768,7 @@ export function TabRail({
                       ? "新标签页"
                       : tabPage
                         ? getPageTitle(tabPage)
-                        : "";
+                        : "页面已不存在";
                   const isActive =
                     activeTabId === tab.id &&
                     !(aiPanelOpen && isFullscreenAiLayout(aiLayoutMode));

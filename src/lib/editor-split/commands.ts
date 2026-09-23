@@ -9,8 +9,9 @@
 import { toast } from "@/components/ui/sonner";
 import { isNotebookAiFullscreenOpen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { isUnsavedLocalPage, localPageHasPersistableContent } from "@/lib/unsavedLocalPage";
-import { walkLeaves } from "@/lib/editor-split/tree";
+import { findLeaf, walkLeaves } from "@/lib/editor-split/tree";
 import type { SplitDirection, SplitNeighborDirection } from "@/lib/editor-split/types";
+import type { Page } from "@/types";
 import { useEditorSplit } from "@/stores/useEditorSplit";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -80,6 +81,10 @@ function syncNotebookForSplitPage(pageId: string) {
   if (isCurrentNotebook) return;
 
   notebooks.setActiveNotebook(page.workspaceId);
+}
+
+function isLiveEditorPage(page: Page | undefined): page is Page {
+  return Boolean(page && !page.isFolder && !page.trashedAt);
 }
 
 function isHistoryPreviewSurface(): boolean {
@@ -171,16 +176,19 @@ export function splitDown(): Promise<boolean> {
   return splitInDirection("down");
 }
 
-export function closePaneOrTab(): ClosePaneOrTabResult {
-  if (isHistoryPreviewSurface()) return "close-tab";
-  const tab = activeWorkspaceTab();
+export function closeSplitPaneById(
+  tabId: string,
+  leafId: string,
+): ClosePaneOrTabResult {
+  const tabs = useTabs.getState();
+  const tab = tabs.openTabs.find((item) => item.id === tabId);
   if (!tab || isSpecialTab(tab)) return "close-tab";
 
   const split = useEditorSplit.getState();
-  const state = split.getStateForTab(tab.id);
+  const state = split.getStateForTab(tabId);
   if (!state) return "close-tab";
 
-  const closedPageId = split.focusedPageId(tab.id);
+  const closedPageId = findLeaf(state.root, leafId)?.pageId ?? null;
   flushEditorContent(true);
   if (closedPageId) {
     const page = usePages.getState().getPage(closedPageId);
@@ -192,11 +200,11 @@ export function closePaneOrTab(): ClosePaneOrTabResult {
     }
   }
 
-  const result = split.closeFocused(tab.id);
+  const result = split.closePane(tabId, leafId);
   if (result.kind === "last-pane") return "close-tab";
 
   if (closedPageId) {
-    const remaining = split.getStateForTab(tab.id);
+    const remaining = split.getStateForTab(tabId);
     const stillShown =
       remaining &&
       walkLeaves(remaining.root).some((leaf) => leaf.pageId === closedPageId);
@@ -204,10 +212,24 @@ export function closePaneOrTab(): ClosePaneOrTabResult {
   }
 
   if (result.focusedPageId) {
-    useTabs.getState().syncTabPageId(tab.id, result.focusedPageId);
-    void usePages.getState().setActivePage(result.focusedPageId);
+    const nextPage = usePages.getState().getPage(result.focusedPageId);
+    if (isLiveEditorPage(nextPage)) {
+      tabs.syncTabPageId(tabId, result.focusedPageId);
+      void usePages.getState().setActivePage(result.focusedPageId);
+    }
   }
   return "closed-pane";
+}
+
+export function closePaneOrTab(): ClosePaneOrTabResult {
+  if (isHistoryPreviewSurface()) return "close-tab";
+  const tab = activeWorkspaceTab();
+  if (!tab || isSpecialTab(tab)) return "close-tab";
+
+  const split = useEditorSplit.getState();
+  const state = split.getStateForTab(tab.id);
+  if (!state) return "close-tab";
+  return closeSplitPaneById(tab.id, state.focusedLeafId);
 }
 
 export function focusNeighbor(dir: SplitNeighborDirection): string | null {
@@ -260,6 +282,13 @@ export function closeFocusedSplitPane(): boolean {
   return closePaneOrTab() === "closed-pane";
 }
 
+/** 分屏格标题栏 / 空态关闭：最后一格则关标签。 */
+export function closeSplitPaneFromUi(tabId: string, leafId: string): void {
+  if (closeSplitPaneById(tabId, leafId) === "close-tab") {
+    useTabs.getState().closeTab(tabId);
+  }
+}
+
 export function splitFocusedRight(): Promise<boolean> {
   return splitRight();
 }
@@ -297,14 +326,16 @@ export function focusSplitPane(
     : undefined;
   if (!leaf) return null;
 
-  const page = usePages.getState().getPage(leaf.pageId);
-  if (!page || page.isFolder || page.trashedAt) return null;
-
   split.focusPane(tabId, paneId);
 
   const tabs = useTabs.getState();
   const tab = tabs.openTabs.find((item) => item.id === tabId);
-  if (!tab || isSpecialTab(tab)) return null;
+  if (!tab || isSpecialTab(tab)) return leaf.pageId || null;
+
+  const page = usePages.getState().getPage(leaf.pageId);
+  // 笔记已不在 store 时仍允许聚焦该格，才能关掉它；不能把活动页切到失踪 id，
+  // 否则 WorkspaceLayout 会卸掉整列分屏。
+  if (!isLiveEditorPage(page)) return leaf.pageId;
 
   // 先更新 tab 的 pageId，再激活 tab；setActiveTab 会据此同步笔记本与历史。
   tabs.syncTabPageId(tabId, page.id);
@@ -330,7 +361,7 @@ export function tryShowPageInFocusedSplit(pageId: string): boolean {
   if (isHistoryPreviewSurface()) return false;
 
   const page = usePages.getState().getPage(pageId);
-  if (!page || page.isFolder || page.trashedAt) return false;
+  if (!isLiveEditorPage(page)) return false;
 
   const split = useEditorSplit.getState();
   const tab = activeWorkspaceTab();
