@@ -51,6 +51,8 @@ declare global {
     mkdir: (dir: string) => boolean | Promise<boolean>;
     deleteFile: (path: string) => boolean | Promise<boolean>;
     deleteDir: (path: string) => boolean | Promise<boolean>;
+    trashWithUndo?: (path: string) => Promise<string | null>;
+    undoTrash?: (token: string) => Promise<boolean>;
     rename: (oldPath: string, newPath: string) => boolean | Promise<boolean>;
     writeTempFile?: (relativePath: string, contentBase64: string) => Promise<string | null>;
     cleanupTempFiles?: (prefix: string, maxAgeMs: number) => Promise<void>;
@@ -81,6 +83,8 @@ declare global {
     fsStat: (p: string) => Promise<{ size: number; isDirectory: boolean; mtimeMs: number }>
     fsRename: (from: string, to: string) => Promise<void>
     fsRemove: (p: string) => Promise<void>
+    fsTrashWithUndo: (p: string) => Promise<string>
+    fsUndoTrash: (token: string) => Promise<string>
     restoreFromTrash: (p: string) => Promise<boolean>
     fsWatch: (p: string) => Promise<string>
     fsUnwatch: (id: string) => Promise<void>

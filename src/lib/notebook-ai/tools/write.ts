@@ -2,6 +2,10 @@ import { tool } from "ai";
 import { z } from "zod";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
+import { useNotebooks } from "@/stores/useNotebooks";
+import { showDeleteReceipt } from "@/components/ui/delete-receipt";
+import { undoLocalTrash } from "@/lib/page-delete-actions";
+import { toast } from "@/components/ui/sonner";
 import { getPageTitle, withInternalPageTitle } from "@/components/editor/utils/page-title";
 import {
   createAndFinalizePage,
@@ -399,20 +403,62 @@ export const deletePages = tool({
     };
     rootPageIds.forEach(collectTree);
 
-    const deletedRoots: Array<{ pageId: string; title: string }> = [];
+    const deletedRoots: Array<{ pageId: string; title: string; localTrashToken?: string }> = [];
+    const isLocalFolder = useNotebooks.getState().notebooks[notebookId]?.source === "local-folder";
+    const showReceipt = (failedTitle?: string) => {
+      showDeleteReceipt(
+        [
+          ...deletedRoots.map(({ title }) => ({ title, deleted: true })),
+          ...(failedTitle ? [{ title: failedTitle, deleted: false }] : []),
+        ],
+        isLocalFolder,
+        deletedRoots.length === 0 || (isLocalFolder && deletedRoots.some((item) => !item.localTrashToken))
+          ? undefined
+          : isLocalFolder
+          ? async () => {
+              let restored = 0;
+              for (const entry of [...deletedRoots].reverse()) {
+                if (!entry.localTrashToken) continue;
+                await undoLocalTrash(entry.localTrashToken, notebookId);
+                entry.localTrashToken = undefined;
+                restored++;
+              }
+              toast.success(`已恢复 ${restored} 项`, {
+                description: "系统回收站仍保留原文件副本。",
+              });
+            }
+          : () => {
+              let restored = 0;
+              for (const { pageId } of deletedRoots) {
+                if (usePages.getState().restorePage(pageId).ok) restored++;
+              }
+              if (restored) toast.success(`已恢复 ${restored} 项`);
+              else toast.error("未能恢复页面");
+            },
+      );
+    };
     for (const pageId of rootPageIds) {
       const page = usePages.getState().pages[pageId];
       if (!page) continue;
       const title = getPageTitle(page);
-      const deleted = await usePages.getState().deletePage(pageId);
+      let deleted = false;
+      let localTrashToken: string | undefined;
+      try {
+        deleted = await usePages.getState().deletePage(pageId, {
+          onLocalTrash: (token) => { localTrashToken = token; },
+        });
+      } catch (error) {
+        console.error("[page-delete] AI bulk delete failed", error);
+      }
       if (!deleted) {
+        showReceipt(title);
         return {
           ok: false,
           deletedRoots,
           error: `删除《${title}》失败，已停止后续删除`,
         };
       }
-      deletedRoots.push({ pageId, title });
+      deletedRoots.push({ pageId, title, localTrashToken });
       affectedIds.forEach((affectedPageId) => {
         let currentId: string | undefined = affectedPageId;
         while (currentId && currentId !== pageId) {
@@ -423,6 +469,8 @@ export const deletePages = tool({
         }
       });
     }
+
+    showReceipt();
 
     return {
       ok: true,

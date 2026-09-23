@@ -347,6 +347,27 @@ export const electronGooseFs = {
     }
   },
 
+  trashWithUndo: async (path: string) => {
+    const api = getGooseDesktop();
+    if (!api?.fsTrashWithUndo) return null;
+    try {
+      const token = await api.fsTrashWithUndo(path);
+      rememberExists(path, false);
+      return token;
+    } catch (error) {
+      console.warn("[electron-gooseFs] trashWithUndo failed", path, error);
+      return null;
+    }
+  },
+
+  undoTrash: async (token: string) => {
+    const api = getGooseDesktop();
+    if (!api?.fsUndoTrash) return false;
+    const restoredPath = await api.fsUndoTrash(token);
+    rememberExists(restoredPath, true);
+    return true;
+  },
+
   restoreFromTrash: async (path: string) => {
     const api = getGooseDesktop();
     if (!api?.restoreFromTrash) return false;

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Toaster as Sonner, toast as sonnerToast } from "sonner";
 import type { ExternalToast } from "sonner";
-import { X } from "lucide-react";
+import { CircleCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
@@ -40,6 +40,10 @@ function ErrorToastIcon() {
       !
     </span>
   );
+}
+
+function SuccessToastIcon() {
+  return <CircleCheck className="size-5 shrink-0 text-[var(--goose-color-success)]" aria-hidden="true" />;
 }
 
 function CloseToastIcon() {
@@ -94,6 +98,7 @@ const Toaster = ({
       richColors={false}
       icons={{
         ...icons,
+        success: icons?.success ?? <SuccessToastIcon />,
         close: <CloseToastIcon />,
         error: <ErrorToastIcon />,
       }}
@@ -191,4 +196,4 @@ const toast = Object.assign(
   },
 );
 
-export { Toaster, toast };
+export { Toaster, toast, SuccessToastIcon };

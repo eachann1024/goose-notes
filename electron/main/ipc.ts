@@ -47,6 +47,7 @@ import {
 } from "./accessibility";
 import { printHtmlToPdf } from "./printPdf";
 import { restoreFileFromTrash } from "./trashRestore";
+import { cleanupOldTrashUndoCopies, trashWithUndo, undoTrash } from "./trashUndo";
 import { saveToDownloads } from "./saveToDownloads";
 import {
   cancelTabDrag,
@@ -283,6 +284,8 @@ function isOpenUrlAllowed(url: string): boolean {
 export function registerIpcHandlers(): void {
   hookWindowVisibilityForWatch();
   registerOpenMarkdownIpc();
+  const undoRoot = path.join(app.getPath("userData"), "trash-undo");
+  void cleanupOldTrashUndoCopies(undoRoot).catch((error) => console.warn("[trash-undo] cleanup failed", error));
   ipcMain.handle("desktop:selectDirectory", async (event) => {
     const win = senderWindow(event);
     const result = await dialog.showOpenDialog(win ?? getMainWindow()!, {
@@ -432,13 +435,24 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsRemove", async (_event, p: string) => {
     const target = assertAllowed(p);
+    await withSelfWriteMark([target], () => shell.trashItem(target));
+  });
+
+  ipcMain.handle("desktop:fsTrashWithUndo", async (_event, p: string) => {
+    const target = assertAllowed(p);
+    let token = "";
     await withSelfWriteMark([target], async () => {
-      try {
-        await shell.trashItem(target);
-      } catch {
-        await rm(target, { recursive: true, force: true });
-      }
+      token = await trashWithUndo(target, undoRoot, (source) => shell.trashItem(source));
     });
+    return token;
+  });
+
+  ipcMain.handle("desktop:fsUndoTrash", async (_event, token: string) => {
+    if (typeof token !== "string") throw new Error("无效的撤回标识");
+    const original = await undoTrash(token);
+    // The destination is the original, pre-validated path; no arbitrary restore path is accepted.
+    markRecentWrite(original);
+    return original;
   });
 
   ipcMain.handle("desktop:restoreFromTrash", async (_event, p: string) => {

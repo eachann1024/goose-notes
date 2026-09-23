@@ -1,4 +1,5 @@
 import { toast } from "@/components/ui/sonner";
+import { showDeleteReceipt } from "@/components/ui/delete-receipt";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useTabs } from "@/stores/useTabs";
@@ -103,23 +104,52 @@ export async function deletePageWithUndo(pageId: string) {
   const isLocalFolder = notebook?.source === "local-folder";
   const pageTitle = getPageTitle(page) || "无标题";
 
-  const deleted = await usePages.getState().deletePage(pageId);
-  if (!deleted) return;
-
-  useTabs.getState().removeDeletedPage(pageId);
-
-  if (isLocalFolder) {
-    toast.success(`「${pageTitle}」已移入回收站`, {
-      duration: 3000,
+  let deleted = false;
+  let localTrashToken: string | undefined;
+  try {
+    deleted = await usePages.getState().deletePage(pageId, {
+      onLocalTrash: (token) => { localTrashToken = token; },
     });
+  } catch (error) {
+    console.error("[page-delete] delete failed", error);
+  }
+  if (!deleted) {
+    showDeleteReceipt([{ title: pageTitle, deleted: false }], isLocalFolder);
     return;
   }
 
-  toast.success(`已删除「${pageTitle}」`, {
-    duration: 5000,
-    action: {
-      label: "撤回",
-      onClick: () => restorePageWithToast(pageId, { reopenTab: true }),
-    },
-  });
+  useTabs.getState().removeDeletedPage(pageId);
+
+  showDeleteReceipt(
+    [{ title: pageTitle, deleted: true }],
+    isLocalFolder,
+    isLocalFolder
+      ? localTrashToken
+        ? async () => {
+            await undoLocalTrash(localTrashToken!, page.workspaceId);
+            if (!page.isFolder && usePages.getState().getPage(pageId)) {
+              closeNotebookAiIfFullscreen();
+              useTabs.getState().openTab(pageId);
+            }
+            toast.success(`已恢复「${pageTitle}」`, {
+              description: "系统回收站仍保留原文件副本。",
+            });
+          }
+        : undefined
+      : () => restorePageWithToast(pageId, { reopenTab: true }),
+  );
+}
+
+/** Restore only the exact item backed up for this deletion; never guess by filename. */
+export async function undoLocalTrash(token: string, notebookId: string) {
+  if (!(await window.gooseFs?.undoTrash?.(token))) throw new Error("无法从回收站恢复文件");
+  const notebook = useNotebooks.getState().notebooks[notebookId];
+  if (notebook?.localPath) {
+    try {
+      await usePages.getState().loadLocalFolderPages(notebookId, notebook.localPath);
+    } catch (error) {
+      console.warn("[page-delete] restored file but could not refresh sidebar", error);
+      toast.warning("文件已恢复，侧栏暂未刷新");
+    }
+  }
 }

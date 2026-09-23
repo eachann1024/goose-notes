@@ -40,7 +40,7 @@ export const deletePageAction = async (
   set: StoreSet,
   get: StoreGet,
   id: string,
-  options?: { trashBatchId?: string },
+  options?: { trashBatchId?: string; onLocalTrash?: (token: string) => void },
 ): Promise<boolean> => {
   flushEditorContent();
   const page = get().pages[id];
@@ -93,9 +93,14 @@ export const deletePageAction = async (
         })
       : undefined;
 
-    const removeOk = page.isFolder
-      ? await window.gooseFs.deleteDir(targetPath)
-      : await window.gooseFs.deleteFile(targetPath);
+    const token = window.gooseFs.trashWithUndo
+      ? await window.gooseFs.trashWithUndo(targetPath)
+      : null;
+    const removeOk = window.gooseFs.trashWithUndo
+      ? Boolean(token)
+      : page.isFolder
+        ? await window.gooseFs.deleteDir(targetPath)
+        : await window.gooseFs.deleteFile(targetPath);
     if (!removeOk) return false;
 
     set((state) => {
@@ -130,6 +135,8 @@ export const deletePageAction = async (
     );
 
     removePersistedPageSnapshots(snapshotPages, removedIds);
+
+    if (token) options?.onLocalTrash?.(token);
 
     return true;
   }

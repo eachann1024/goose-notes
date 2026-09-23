@@ -96,6 +96,24 @@
 }
 
 /* 通用关闭按钮 hover：安全半透明底，覆盖所有 toast 类型 */
+.goose-toaster [data-sonner-toast].goose-delete-receipt-toast {
+ width: min(356px, calc(100vw - 32px)) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-delete-receipt-toast [data-content] {
+ padding: 0;
+ width: 100%;
+}
+
+.goose-toaster [data-sonner-toast].goose-delete-receipt-toast [data-title] {
+ width: 100%;
+}
+
+/* 旧回执等到前一条关闭才显示；不让多张卡片在 hover 时叠成白色边框。 */
+.goose-toaster [data-sonner-toast].goose-delete-receipt-toast[data-front="false"] {
+ visibility: hidden;
+}
+
 .goose-toaster [data-sonner-toast] [data-close-button],
 [data-sonner-toaster] [data-sonner-toast] [data-close-button],
 .goose-toaster [data-sonner-toast] .goose-toast-close,

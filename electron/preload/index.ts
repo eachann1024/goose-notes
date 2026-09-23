@@ -69,6 +69,8 @@ const gooseDesktop = {
   fsRename: (from: string, to: string) =>
     invoke("desktop:fsRename", from, to) as Promise<void>,
   fsRemove: (p: string) => invoke("desktop:fsRemove", p) as Promise<void>,
+  fsTrashWithUndo: (p: string) => invoke("desktop:fsTrashWithUndo", p) as Promise<string>,
+  fsUndoTrash: (token: string) => invoke("desktop:fsUndoTrash", token) as Promise<string>,
   restoreFromTrash: (p: string) =>
     invoke("desktop:restoreFromTrash", p) as Promise<boolean>,
   fsWatch: (p: string) => invoke("desktop:fsWatch", p) as Promise<string>,
