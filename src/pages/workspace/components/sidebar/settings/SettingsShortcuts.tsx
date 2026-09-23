@@ -72,6 +72,8 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
   LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager,
   LOCAL_FOLDER_FILE_SHORTCUTS.openInTerminal,
   LOCAL_FOLDER_FILE_SHORTCUTS.copyFilePath,
+  ...(isElectronHost ? ["Mod+Shift+N", "Mod+W"] : []),
+  ...(isElectronHost && isMacPlatform() ? ["Mod+Shift+W"] : []),
 ]
 
 /** 仅多标签模式生效的固定快捷键。 */
@@ -210,12 +212,21 @@ function makeCloseSetter(
   }
 }
 
-const FIXED_SHORTCUTS = [
+const FIXED_SHORTCUTS: Array<{
+  label: string
+  shortcut: string
+  tabOnly?: boolean
+  desktopOnly?: boolean
+  platforms?: PlatformKind[]
+}> = [
   { label: "新建笔记", shortcut: FIXED_APP_SHORTCUTS.newNote },
+  { label: "新建窗口", shortcut: "Mod+Shift+N", desktopOnly: true },
   { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
   { label: "页内替换", shortcut: "Mod+Alt+F" },
   { label: "收起侧栏其它文件夹（当前选中笔记保持可见）", shortcut: "Escape" },
   { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
+  { label: "按关闭顺序关闭当前内容（桌面）", shortcut: "Mod+W", desktopOnly: true },
+  { label: "关闭窗口（macOS）", shortcut: "Mod+Shift+W", desktopOnly: true, platforms: ["mac"] },
   { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
   { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9", tabOnly: true },
   { label: "循环切换标签页", shortcut: "Ctrl+Tab", tabOnly: true },
@@ -227,12 +238,18 @@ const FIXED_SHORTCUTS = [
   { label: "重置字号", shortcut: "Mod+0" },
   { label: "继续查找（F3）", shortcut: "F3" },
   { label: "反向继续查找", shortcut: "Shift+F3" },
-  { label: "手动保存", shortcut: "Mod+S" },
+  { label: "手动保存（本地文件立即写盘）", shortcut: "Mod+S" },
   { label: "加粗", shortcut: "Mod+B" },
   { label: "斜体", shortcut: "Mod+I" },
   { label: "下划线", shortcut: "Mod+U" },
-          { label: "行内代码", shortcut: "Mod+E" },
-          { label: "删除线", shortcut: "Mod+Shift+S" },
+  { label: "行内代码", shortcut: "Mod+E" },
+  { label: "删除线", shortcut: "Mod+Shift+S" },
+  { label: "标题 1～3 级", shortcut: "Mod+Alt+1~3" },
+  { label: "上移编辑块", shortcut: "Alt+ArrowUp" },
+  { label: "下移编辑块", shortcut: "Alt+ArrowDown" },
+  { label: "选区加入 AI 对话（AI 开启时）", shortcut: "Mod+Shift+U" },
+  { label: "重命名侧栏页面", shortcut: "F2" },
+  { label: "删除侧栏选中页面", shortcut: "Mod+Backspace" },
   { label: "移动本地文件/文件夹", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.moveItem },
   { label: "用外部应用打开当前本地文件", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.openInExternalApp },
   { label: "在文件管理器中显示当前本地文件", shortcut: LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager },
@@ -241,7 +258,7 @@ const FIXED_SHORTCUTS = [
   { label: "全选", shortcut: "Mod+A" },
   { label: "撤销", shortcut: "Mod+Z" },
   { label: "重做", shortcut: "Mod+Shift+Z" },
-  { label: "重做（Windows）", shortcut: "Mod+Y" },
+  { label: "重做（Windows）", shortcut: "Mod+Y", platforms: ["windows"] },
 ]
 
 const FIXED_SHORTCUT_PLATFORMS: { id: PlatformKind; label: string }[] = [
@@ -283,20 +300,20 @@ function KbdShortcut({
 function FixedShortcutRow({
   label,
   shortcut,
+  platform,
 }: {
   label: string
   shortcut: string
+  platform: PlatformKind
 }) {
   return (
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-2.5 ${SETTINGS_OPTION_ROW_CLASS}`}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 ${SETTINGS_OPTION_ROW_CLASS}`}
     >
-      <span className="text-sm text-muted-foreground">{label}</span>
-      {FIXED_SHORTCUT_PLATFORMS.map((item) => (
-        <span key={item.id} className="justify-self-end">
-          <KbdShortcut shortcut={shortcut} platform={item.id} />
-        </span>
-      ))}
+      <span className="min-w-0 text-sm text-muted-foreground">{label}</span>
+      <span className="justify-self-end whitespace-nowrap">
+        <KbdShortcut shortcut={shortcut} platform={platform} />
+      </span>
     </div>
   )
 }
@@ -511,6 +528,10 @@ export function SettingsShortcuts({
   singleTabMode,
 }: SettingsShortcutsProps) {
   const [confirmReset, setConfirmReset] = useState(false)
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformKind>(() => {
+    const platform = getPlatformKind()
+    return platform === "other" ? "windows" : platform
+  })
   // zustand v5 忽略第二个 equalityFn 参数，对象选择器会导致重复渲染，故拆成原始值。
   const wakeHotkey = useSettings((s) => s.desktop.wakeHotkey)
   const quicknoteHotkey = useSettings((s) => s.desktop.quicknoteHotkey)
@@ -572,7 +593,7 @@ export function SettingsShortcuts({
   )
 
   return (
-    <div className="space-y-6">
+    <div className="settings-shortcuts">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-xl font-semibold tracking-tight text-foreground">
           快捷键
@@ -588,6 +609,8 @@ export function SettingsShortcuts({
         </Button>
       </div>
 
+      <div className="settings-shortcuts-columns">
+        <div className="space-y-5">
       {isElectronHost && (
         <DesktopGlobalHotkeysCard
           appShortcuts={appShortcuts}
@@ -771,6 +794,8 @@ export function SettingsShortcuts({
         </div>
       </SettingsSectionCard>
 
+        </div>
+        <div className="space-y-5">
       <SettingsSectionCard title={singleTabMode ? "面板关闭" : "关闭行为"}>
         {!singleTabMode && <ShortcutField
           id="close-tab-shortcut"
@@ -794,26 +819,40 @@ export function SettingsShortcuts({
 
       <SettingsSectionCard title="固定快捷键">
         <p className="mb-3 text-xs text-muted-foreground">
-          应用主键：macOS 为 ⌘，Windows / Linux 为 Ctrl。Super（Linux）和 Win（Windows）是独立按键，不会和 Ctrl 混用。加粗、链接等编辑器格式键只在选中文字时生效，不占用可自定义快捷键。
+          按系统查看固定键；编辑器与侧栏快捷键只在对应位置生效。
         </p>
-        <div className="space-y-0.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-1 text-[11px] text-muted-foreground">
-            <span />
-            {FIXED_SHORTCUT_PLATFORMS.map((item) => (
-              <span key={item.id} className="justify-self-end">
-                {item.label}
-              </span>
-            ))}
-          </div>
-          {FIXED_SHORTCUTS.filter((item) => !singleTabMode || !item.tabOnly).map((item) => (
+        <div role="group" aria-label="查看平台快捷键" className="mb-3 flex flex-wrap gap-1">
+          {FIXED_SHORTCUT_PLATFORMS.map((item) => (
+            <Button
+              key={item.id}
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-pressed={selectedPlatform === item.id}
+              onClick={() => setSelectedPlatform(item.id)}
+              className={`h-8 rounded-lg px-3 text-xs focus-visible:ring-2 focus-visible:ring-ring ${selectedPlatform === item.id ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]" : "text-muted-foreground"}`}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </div>
+        <div className="settings-fixed-shortcuts space-y-1" role="region" aria-label={`${FIXED_SHORTCUT_PLATFORMS.find((item) => item.id === selectedPlatform)?.label} 固定快捷键`}>
+          {FIXED_SHORTCUTS.filter((item) =>
+            (!singleTabMode || !item.tabOnly) &&
+            (!item.desktopOnly || isElectronHost) &&
+            (!item.platforms || item.platforms.includes(selectedPlatform))
+          ).map((item) => (
             <FixedShortcutRow
               key={item.label}
               label={item.label}
               shortcut={item.shortcut}
+              platform={selectedPlatform}
             />
           ))}
         </div>
       </SettingsSectionCard>
+        </div>
+      </div>
     </div>
   )
 }
