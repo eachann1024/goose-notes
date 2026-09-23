@@ -25,12 +25,12 @@
   assert(menu && !menu.hidden && !menu.inert, '浮层必须可见且可交互');
   const t = trigger.getBoundingClientRect();
   const m = menu.getBoundingClientRect();
-  const left = Math.min(m.left, t.left - 7);
-  const top = Math.min(m.top, t.top - 7);
+  const left = Math.min(m.left, t.left - 8);
+  const top = Math.min(m.top, t.top - 12);
   assert(close(t.left + parseFloat(shell.left), left), '外壳左边错位');
   assert(close(t.top + parseFloat(shell.top), top), '外壳顶部错位');
-  assert(close(parseFloat(shell.width), Math.max(m.right, t.right + 7) - left), '外壳宽度未覆盖两部分');
-  assert(close(parseFloat(shell.height), Math.max(m.bottom, t.bottom + 7) - top), '外壳高度未覆盖两部分');
+  assert(close(parseFloat(shell.width), Math.max(m.right, t.right + 8) - left), '外壳宽度未覆盖两部分');
+  assert(close(parseFloat(shell.height), Math.max(m.bottom, t.bottom + 8) - top), '外壳高度未覆盖两部分');
   const popup = getComputedStyle(menu);
   assert(popup.backgroundColor === 'rgba(0, 0, 0, 0)', '浮层不应再单独画背景');
   assert(popup.borderTopColor === 'rgba(0, 0, 0, 0)', '浮层不应再单独画边框');

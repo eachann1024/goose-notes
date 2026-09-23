@@ -393,7 +393,7 @@ export function SidebarHeader({
 
   return (
     <>
-      <div className="flex h-12 shrink-0 items-start pt-0 pr-2">
+      <div className="flex h-14 shrink-0 items-start px-2 pt-3">
         <div className="flex w-full items-center">
           <NotebookSwitcher />
         </div>

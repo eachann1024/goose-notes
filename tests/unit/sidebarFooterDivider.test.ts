@@ -17,15 +17,23 @@ test("笔记本切换在侧栏顶部：名称在左，chevron 在右", () => {
     "src/pages/workspace/components/sidebar/NotebookSwitcher.tsx",
     "utf8",
   );
-  expect(switcher).toContain("ChevronDown");
-  expect(switcher).toContain("ChevronUp");
+  expect(switcher).toContain("ChevronsUpDown");
   expect(switcher).not.toMatch(/>\s*当前笔记本\s*</);
-  expect(switcher).toContain("truncate tracking-[0.01em] leading-snug");
+  expect(switcher).toContain("min-w-0 flex-1 truncate leading-snug");
   expect(switcher).toContain("sidebar-notebook-trigger");
-  expect(switcher).toContain("h-9 w-full");
+  expect(switcher).toContain("min-h-10 w-full");
   const css = readFileSync("src/pages/workspace/components/sidebar/notebook-switcher.css", "utf8");
-  expect(switcher).toContain("w-[calc(var(--goose-popover-trigger-width)+14px)]");
-  expect(switcher).toContain("alignOffset={-7}");
+  expect(switcher).toContain("w-[calc(var(--goose-popover-trigger-width)+16px)]");
+  expect(switcher).toContain("alignOffset={-8}");
+  expect(switcher).toContain("NOTEBOOK_SHELL_INSET = 8");
+  expect(switcher).toContain("NOTEBOOK_SHELL_INSET_TOP = 12");
+  expect(
+    readFileSync(
+      "src/pages/workspace/components/sidebar/SidebarHeader.tsx",
+      "utf8",
+    ),
+  ).toContain("h-14 shrink-0 items-start px-2 pt-3");
+  expect(css).toContain("padding: 8px");
   expect(switcher).toContain("sideOffset={0}");
   expect(switcher).toContain('className="goose-notebook-shell"');
   expect(css).toContain("box-shadow: var(--goose-menu-shadow)");

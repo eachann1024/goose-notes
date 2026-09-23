@@ -37,8 +37,20 @@
   --workspace-sidebar-gap: 8px;
   --workspace-sidebar-width: 180px;
   --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
-  --workspace-resize-line: var(--goose-interactive-hover-border);
-  --workspace-resize-line-active: var(--goose-interactive-selected-fg);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
@@ -50,8 +62,20 @@
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
   --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
   --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line: var(--goose-interactive-hover-border);
-  --workspace-resize-line-active: var(--goose-interactive-selected-fg);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
   --workspace-resize-line-glow: none;
   --workspace-drag-line-color: var(--goose-accent-drag-line);
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
@@ -216,7 +240,10 @@ html[data-sidebar-collapsed] .bn-side-menu {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  overflow: hidden;
+  /* 把手伸出到 8px 缝上，必须盖住后置主栏，否则中间被白卡片挡住、只剩圆角线头。 */
+  overflow: visible;
+  position: relative;
+  z-index: 2;
   flex-shrink: 0;
   font-size: var(--sidebar-font-size, 13px);
   transition:
@@ -253,6 +280,8 @@ html[data-sidebar-collapsed] .bn-side-menu {
   box-shadow: none;
   margin-left: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 /* 历史页与侧栏控件共用方案 1；内部描边不改变行高/点击区域。 */

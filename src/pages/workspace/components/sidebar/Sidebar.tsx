@@ -197,6 +197,7 @@ export function Sidebar({
         minWidth: 0,
         opacity: sidebarCollapsed ? 0 : 1,
         transform: sidebarCollapsed ? "translateX(-8px)" : "translateX(0)",
+        overflow: sidebarCollapsed ? "hidden" : "visible",
       }}
       aria-hidden={sidebarCollapsed}
     >
