@@ -20,10 +20,7 @@ import {
   type GooseWindowInitPayload,
   type GooseWindowTabSnapshot,
 } from "@/lib/electron/windowContext";
-import {
-  findLoneVisibleWorkspaceTab,
-  isReusableEmptyWorkspaceTab,
-} from "@/pages/workspace/components/page/visibleTabs";
+import { isReusableEmptyWorkspaceTab } from "@/pages/workspace/components/page/visibleTabs";
 import { walkLeaves } from "@/lib/editor-split/tree";
 import { normalizeAutoCloseInactiveTabsHours } from "./settings/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
@@ -81,7 +78,7 @@ interface TabsState {
   closeNotebookAiTab: (notebookId: string) => void;
   findNotebookAiTab: (notebookId: string) => TabItem | undefined;
   openPreviewTab: (pageId: string) => void;
-  openPermanentTab: (pageId: string, options?: { pin?: boolean }) => void;
+  openPermanentTab: (pageId: string, options?: { pin?: boolean; reuseEmpty?: boolean }) => void;
   promotePreviewTab: (tabId?: string) => void;
   openInCurrentTab: (pageId: string) => void;
   /** 分屏聚焦叶变化时只改 pageId，不拆 split、不开新 Tab。 */
@@ -346,8 +343,8 @@ const persistTabs = (state: TabsState) => {
     pendingPersistState = null;
     if (!latestState) return;
     try {
-      const persistableTabs = latestState.openTabs.filter(
-        (tab) => !tab.preview,
+      const persistableTabs = latestState.openTabs.map((tab) =>
+        tab.preview ? { ...tab, preview: false } : tab,
       );
       const activeStillValid = persistableTabs.some(
         (tab) => tab.id === latestState.activeTabId,
@@ -531,14 +528,14 @@ export const useTabs = create<TabsState>()((set, get) => {
     return openTabs.some((tab) => tab.id === tabId) ? tabId : null;
   };
 
-  const replaceWithSinglePage = async (pageId: string) => {
+  const replaceWithSinglePage = async (pageId: string, preserveOtherTabs = false) => {
     const targetPage = usePages.getState().getPage(pageId);
     if (!targetPage || targetPage.trashedAt) return;
 
     const { openTabs, activeTabId } = get();
     const activeTab = openTabs.find((tab) => tab.id === activeTabId);
     if (activeTab?.pageId === pageId) {
-      if (openTabs.length > 1) {
+      if (!preserveOtherTabs && openTabs.length > 1) {
         set({
           openTabs: [activeTab],
           activeTabId: activeTab.id,
@@ -557,7 +554,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     commitActiveEditor();
 
     const currentPageId =
-      activeTab && !isSpecialTab(activeTab) ? activeTab.pageId : null;
+      activeTab && !isSpecialTab(activeTab) ? workspaceTabPageId(activeTab) : null;
     if (currentPageId) {
       try {
         await usePages.getState().flushPendingLocalSaveByPageId(currentPageId);
@@ -584,24 +581,41 @@ export const useTabs = create<TabsState>()((set, get) => {
       }
     }
 
-    if (token !== singleTabSwitchToken) return;
+    if (token !== singleTabSwitchToken || (preserveOtherTabs && get().activeTabId !== activeTabId)) return;
     const now = Date.now();
     const newTab: TabItem = {
-      id: createTabId(pageId),
+      id: preserveOtherTabs && activeTab ? activeTab.id : createTabId(pageId),
       pageId,
       workspaceId: getWorkspaceIdForPage(pageId),
+      pinned: preserveOtherTabs ? activeTab?.pinned : undefined,
       preview: false,
       lastAccessedAt: now,
     };
-    set({
-      openTabs: [newTab],
-      activeTabId: newTab.id,
-      tabHistory: [newTab.id],
-      tabHistoryIndex: 0,
-      isHistoryNavigating: false,
-    });
-    ensureSplitForWorkspaceTab(newTab);
-    useFileNavHistory.getState().push(pageFileNavKey(pageId));
+    if (preserveOtherTabs) {
+      const split = activeTab && useEditorSplit.getState().getStateForTab(activeTab.id);
+      if (split && activeTab && useEditorSplit.getState().isSplit(activeTab.id)) {
+        useEditorSplit.getState().setPanePage(activeTab.id, split.focusedLeafId, pageId);
+      }
+      set({
+        openTabs: activeTab
+          ? get().openTabs.map((tab) => tab.id === activeTab.id ? newTab : tab)
+          : [...get().openTabs, newTab],
+        activeTabId: newTab.id,
+      });
+      ensureSplitForWorkspaceTab(newTab);
+      pushTabHistory(newTab.id);
+      if (currentPageId) discardReplacedEmptyPage(currentPageId, pageId);
+    } else {
+      set({
+        openTabs: [newTab],
+        activeTabId: newTab.id,
+        tabHistory: [newTab.id],
+        tabHistoryIndex: 0,
+        isHistoryNavigating: false,
+      });
+      useFileNavHistory.getState().push(pageFileNavKey(pageId));
+      ensureSplitForWorkspaceTab(newTab);
+    }
     get().syncNotebookForPage(pageId);
     await scheduleSetActivePage(pageId);
   };
@@ -690,14 +704,14 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
-      get().openPermanentTab(pageId);
+      get().openInCurrentTab(pageId);
     },
 
     openTab: (pageId: string) => {
-      get().openPermanentTab(pageId);
+      get().openInCurrentTab(pageId);
     },
 
-    openPermanentTab: (pageId: string, options?: { pin?: boolean }) => {
+    openPermanentTab: (pageId: string, options?: { pin?: boolean; reuseEmpty?: boolean }) => {
       if (effectiveSingleTabMode()) {
         void replaceWithSinglePage(pageId);
         return;
@@ -717,7 +731,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         return;
       }
 
-      if (adoptActiveEmptyWorkspaceTab(pageId, false)) {
+      if (options?.reuseEmpty !== false && adoptActiveEmptyWorkspaceTab(pageId, false)) {
         if (options?.pin) {
           const adoptedId = get().activeTabId;
           if (adoptedId) get().togglePinTab(adoptedId);
@@ -752,83 +766,7 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openPreviewTab: (pageId: string) => {
-      if (effectiveSingleTabMode()) {
-        void replaceWithSinglePage(pageId);
-        return;
-      }
-      const { openTabs, activeTabId } = get();
-
-      const existingTab = findTabByPageId(openTabs, pageId);
-      if (existingTab) {
-        if (existingTab.id !== activeTabId) commitActiveEditor();
-        focusTabLeafForPage(existingTab.id, pageId);
-        get().setActiveTab(existingTab.id);
-        return;
-      }
-
-      if (adoptActiveEmptyWorkspaceTab(pageId, true)) return;
-
-      const targetPage = usePages.getState().getPage(pageId);
-      const loneTab = findLoneVisibleWorkspaceTab(
-        openTabs,
-        (id) => usePages.getState().getPage(id),
-        targetPage?.workspaceId ?? useNotebooks.getState().activeNotebookId,
-      );
-      if (loneTab) {
-        commitActiveEditor();
-        const now = Date.now();
-        const nextTab: TabItem = {
-          id: loneTab.id,
-          pageId,
-          workspaceId: getWorkspaceIdForPage(pageId),
-          pinned: loneTab.pinned,
-          preview: false,
-          lastAccessedAt: now,
-        };
-        set({
-          openTabs: openTabs.map((tab) =>
-            tab.id === loneTab.id ? nextTab : tab,
-          ),
-          activeTabId: nextTab.id,
-        });
-        ensureSplitForWorkspaceTab(nextTab);
-        useFileNavHistory.getState().push(pageFileNavKey(pageId));
-        get().syncNotebookForPage(pageId);
-        void scheduleSetActivePage(pageId);
-        return;
-      }
-
-      commitActiveEditor();
-      const workspaceId = getWorkspaceIdForPage(pageId);
-
-      // VSCode 式预览标签：同时只保留一个预览标签，但它始终在最右新建，
-      // 不复用某个固定位置的旧槽。打开新预览时，丢弃上一个未晋升的预览标签 + 占位的欢迎标签。
-      const now = Date.now();
-      const newTab: TabItem = {
-        id: createTabId(pageId),
-        pageId,
-        workspaceId,
-        preview: true,
-        lastAccessedAt: now,
-      };
-      const survivingTabs = openTabs.filter(
-        (tab) => !tab.preview && tab.type !== "welcome",
-      );
-      const nextOpenTabs = orderTabs([
-        ...survivingTabs.map((tab) =>
-          tab.id === activeTabId ? stampTabAccess(tab, now) : tab,
-        ),
-        newTab,
-      ]);
-      set({
-        openTabs: nextOpenTabs,
-        ...syncHistoryWithOpenTabs(nextOpenTabs),
-        activeTabId: newTab.id,
-      });
-      ensureSplitForWorkspaceTab(newTab);
-      pushTabHistory(newTab.id);
-      get().syncNotebookForPage(pageId);
-      void scheduleSetActivePage(pageId);
+      get().openInCurrentTab(pageId);
     },
 
     promotePreviewTab: (tabId?: string) => {
@@ -902,7 +840,7 @@ export const useTabs = create<TabsState>()((set, get) => {
           !localPageHasPersistableContent(page.content),
       );
       if (existingEmpty) {
-        get().openTab(existingEmpty.id);
+        get().openPermanentTab(existingEmpty.id, { reuseEmpty: false });
         return;
       }
       const pageId = usePages.getState().createUnsavedLocalPage(workspaceId);
@@ -910,7 +848,7 @@ export const useTabs = create<TabsState>()((set, get) => {
         get().openWelcomeTab();
         return;
       }
-      get().openTab(pageId);
+      get().openPermanentTab(pageId, { reuseEmpty: false });
     },
 
     findNotebookAiTab: (notebookId: string) =>
@@ -970,7 +908,26 @@ export const useTabs = create<TabsState>()((set, get) => {
     },
 
     openInCurrentTab: (pageId: string) => {
-      get().openPreviewTab(pageId);
+      ++singleTabSwitchToken;
+      if (effectiveSingleTabMode()) {
+        void replaceWithSinglePage(pageId);
+        return;
+      }
+      const { openTabs, activeTabId } = get();
+      const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+      if (activeTab && tabShowsPageId(activeTab, pageId)) {
+        focusTabLeafForPage(activeTab.id, pageId);
+        get().setActiveTab(activeTab.id);
+        return;
+      }
+      const existing = findTabByPageId(openTabs, pageId);
+      if (existing) {
+        // ponytail: 已打开的目标只切回既有标签，不复制页面；若必须留在当前槽位，再实现标签内容交换。
+        focusTabLeafForPage(existing.id, pageId);
+        get().setActiveTab(existing.id);
+        return;
+      }
+      void replaceWithSinglePage(pageId, true);
     },
 
     syncTabPageId: (tabId: string, pageId: string) => {
@@ -1554,7 +1511,7 @@ export const useTabs = create<TabsState>()((set, get) => {
           (id) => id !== candidate,
         ),
       });
-      get().openTab(candidate);
+      get().openPermanentTab(candidate);
     },
 
     removeDeletedPage: (pageId: string) => {

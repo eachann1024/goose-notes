@@ -30,6 +30,13 @@ test("Electron 菜单 Cmd+W 关标签，不关窗口", () => {
   expect(windows).toContain("isPrimaryModW");
   expect(windows).toContain("CLOSE_ACTIVE_TAB_CHANNEL");
   expect(windows).toContain('kind === "quicknote"');
+  const quicknoteClose = windows.slice(
+    windows.indexOf('if (context?.kind === "quicknote")'),
+    windows.indexOf("if (win.webContents.isDestroyed())"),
+  );
+  expect(
+    quicknoteClose.indexOf("markQuicknoteActivateSuppressed();"),
+  ).toBeLessThan(quicknoteClose.indexOf("win.close();"));
 
   expect(hotkeys).toContain('matchShortcut(normalized, "Mod+W")');
   expect(hotkeys).toContain("onCloseActiveTab");

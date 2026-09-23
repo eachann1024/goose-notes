@@ -53,6 +53,7 @@ import {
 import { useTabDocking } from "./useTabDocking";
 import {
   listVisibleWorkspaceTabs,
+  shouldEditTitleInTab,
   shouldEditTitleInTabPill,
 } from "./visibleTabs";
 import { useEditorSplitSelector } from "@/stores/useEditorSplit";
@@ -188,6 +189,7 @@ function SortableTabItem({
           style={style}
           {...attributes}
           {...(dragEnabled ? listeners : {})}
+          aria-disabled={undefined}
           role="tab"
           tabIndex={isActive ? 0 : -1}
           aria-selected={isActive}
@@ -233,7 +235,7 @@ function SortableTabItem({
               className="h-3 w-3 shrink-0 text-primary"
             />
           )}
-          {editTitleInPill && tabPage ? (
+          {shouldEditTitleInTab(tabPage, editTitleInPill) && tabPage ? (
             <SingleTabTitle
               key={`${tabPage.id}:${tabPage.localFilePath ?? ""}:${getPageTitle(tabPage)}`}
               page={tabPage}

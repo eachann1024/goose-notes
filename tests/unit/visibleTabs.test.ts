@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 import type { Page } from "../../src/types";
 import type { TabItem } from "../../src/stores/useTabs";
 import {
   listVisibleWorkspaceTabs,
+  shouldEditTitleInTab,
   shouldEditTitleInTabPill,
   findLoneVisibleWorkspaceTab,
   isReusableEmptyWorkspaceTab,
@@ -41,20 +41,28 @@ test("两个文档标签不在 pill 上改名", () => {
   expect(shouldEditTitleInTabPill(visible)).toBe(false);
 });
 
-test("已失踪页面的标签仍可见，其他笔记本的标签不混入", () => {
-  const tabs: TabItem[] = [
-    { id: "a", pageId: "a", workspaceId: "nb" },
-    { id: "missing", pageId: "missing", workspaceId: "nb" },
-    { id: "other", pageId: "missing", workspaceId: "other" },
-  ];
-  expect(listVisibleWorkspaceTabs(tabs, getPageFrom({ a: page("a") }), "nb").map(({ id }) => id)).toEqual(["a", "missing"]);
+test("多标签时新建的未落盘文件仍可在 pill 输入名称", () => {
+  expect(shouldEditTitleInTab(page("new", { localUnsaved: true }), false)).toBe(true);
+  expect(shouldEditTitleInTab(page("existing"), false)).toBe(false);
 });
 
-test("隐藏 notebook-ai、回收站和其他笔记本的标签", () => {
+test("页面已从 store 消失的标签仍可见，方便关闭", () => {
+  const pages = { a: page("a") };
+  const tabs: TabItem[] = [
+    { id: "1", pageId: "a", workspaceId: "nb" },
+    { id: "gone", pageId: "missing", workspaceId: "nb" },
+    { id: "other-gone", pageId: "other-missing", workspaceId: "other" },
+  ];
+  expect(
+    listVisibleWorkspaceTabs(tabs, getPageFrom(pages), "nb").map((tab) => tab.id),
+  ).toEqual(["1", "gone", "other-gone"]);
+});
+
+test("隐藏 notebook-ai 和回收站，保留其他笔记本的标签", () => {
   const pages = {
     a: page("a"),
-    trash: page("b", { trashedAt: 1 }),
-    other: page("c", { workspaceId: "other" }),
+    b: page("b", { trashedAt: 1 }),
+    c: page("c", { workspaceId: "other" }),
   };
   const tabs: TabItem[] = [
     { id: "1", pageId: "a" },
@@ -68,18 +76,18 @@ test("隐藏 notebook-ai、回收站和其他笔记本的标签", () => {
     getPageFrom(pages),
     "nb",
   );
-  expect(visible.map((tab) => tab.id)).toEqual(["1"]);
-  expect(shouldEditTitleInTabPill(visible)).toBe(true);
+  expect(visible.map((tab) => tab.id)).toEqual(["1", "3", "4"]);
+  expect(shouldEditTitleInTabPill(visible)).toBe(false);
 });
 
-test("当前笔记本只有一个可见标签时返回该标签", () => {
-  const pages = { a: page("a"), other: page("c", { workspaceId: "other" }) };
+test("其他笔记本的标签也计入可见数量", () => {
+  const pages = { a: page("a"), c: page("c", { workspaceId: "other" }) };
   const tabs: TabItem[] = [
     { id: "1", pageId: "a" },
     { id: "2", pageId: "c" },
   ];
   const lone = findLoneVisibleWorkspaceTab(tabs, getPageFrom(pages), "nb");
-  expect(lone?.id).toBe("1");
+  expect(lone).toBeNull();
 });
 
 test("已有欢迎页或第二个文档标签时不视为单独标签", () => {
@@ -137,20 +145,10 @@ test("欢迎页和空白未落盘页可以填入，有内容或固定标签不�
   ).toBe(false);
 });
 
-test("正文大标题只在多个文档标签时显示", () => {
-  const composer = readFileSync(
-    new URL("../../src/components/editor/core/EditorComposer.tsx", import.meta.url),
-    "utf8",
-  );
-  const host = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/editor-host/EditorHostBridge.tsx",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  expect(composer).toContain("showLocalFileTitle");
-  expect(composer).toContain("page?.localFilePath && showLocalFileTitle");
-  expect(host).toContain("showLocalFileTitle");
-  expect(host).toContain("shouldEditTitleInTabPill");
+test("本地文件标题始终在标签页编辑，不在正文重复显示", () => {
+  expect(
+    shouldEditTitleInTab(page("local", { localFilePath: "/notes/a.md" }), false),
+  ).toBe(true);
+  expect(shouldEditTitleInTab(page("internal"), false)).toBe(false);
+  expect(shouldEditTitleInTab(page("internal"), true)).toBe(true);
 });

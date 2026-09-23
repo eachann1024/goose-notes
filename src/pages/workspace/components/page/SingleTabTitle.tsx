@@ -41,17 +41,14 @@ const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 const TITLE_IDLE_CLASS =
   "inline-flex h-8 items-center rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold leading-8 text-foreground no-underline outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]";
 
-const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-interactive-selected-fg)]`;
+const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-accent-focus)]`;
 
 const TITLE_TAB_IDLE_CLASS =
   "inline-flex h-8 min-w-0 w-full flex-1 items-center truncate bg-transparent px-0 text-sm leading-8 text-inherit no-underline outline-none";
 
-const TITLE_TAB_INPUT_CLASS = `${TITLE_TAB_IDLE_CLASS} caret-[var(--goose-interactive-selected-fg)] focus:text-[var(--goose-interactive-selected-fg)]`;
+const TITLE_TAB_INPUT_CLASS = `${TITLE_TAB_IDLE_CLASS} caret-[var(--goose-accent-focus)] focus:text-[var(--goose-interactive-selected-fg)]`;
 
-/**
- * 铺满主栏剩余宽度（到右侧 AI / 菜单为止）。
- * Electron 拖窗口会丢掉 input 的 size 固有宽，必须写死 w-full，不能随文字收缩。
- */
+/** 标题铺满标签页，闲置时仍可拖动窗口。 */
 const TITLE_SIZE_FILL = "min-w-0 w-full flex-1";
 
 export function SingleTabTitle({
@@ -61,9 +58,8 @@ export function SingleTabTitle({
 }: SingleTabTitleProps) {
   const currentTitle = getPageTitle(page);
   const locked = Boolean(page.isLocked || page.trashedAt);
-  const [initiallyFocused] = useState(() =>
-    isPageTitleFocusRequested(page.id),
-  );
+  const [initiallyFocused] = useState(() => isPageTitleFocusRequested(page.id));
+  const newTitleRequestedRef = useRef(initiallyFocused);
   const [editing, setEditing] = useState(
     () => idleWindowDrag && isPageTitleFocusRequested(page.id),
   );
@@ -76,8 +72,44 @@ export function SingleTabTitle({
     inputProps: imeInputProps,
   } = useImeInput(initiallyFocused ? "" : currentTitle);
   const inputRef = useRef<HTMLInputElement>(null);
+  const caretRef = useRef<HTMLSpanElement>(null);
+  const measureRef = useRef<CanvasRenderingContext2D | null>(null);
   const committingRef = useRef(false);
   const skipNextBlurCommitRef = useRef(false);
+
+  const syncCaret = useCallback(() => {
+    const input = inputRef.current;
+    const caret = caretRef.current;
+    if (!input || !caret) return;
+    const position = input.selectionStart;
+    if (
+      document.activeElement !== input ||
+      position === null ||
+      position !== input.selectionEnd
+    ) {
+      caret.hidden = true;
+      return;
+    }
+    const measure =
+      measureRef.current ?? document.createElement("canvas").getContext("2d");
+    if (!measure) return; // Canvas 不可用时保留原生光标。
+    measureRef.current = measure;
+    // ponytail: 当前只测单行 LTR 文件名；支持双向文本时改用 DOM 镜像定位。
+    const style = getComputedStyle(input);
+    measure.font = style.font;
+    const tracking = parseFloat(style.letterSpacing) || 0;
+    const offset =
+      input.offsetLeft +
+      parseFloat(style.paddingLeft) +
+      measure.measureText(input.value.slice(0, position)).width +
+      tracking * position -
+      input.scrollLeft;
+    caret.style.left = `${Math.max(input.offsetLeft, Math.min(offset, input.offsetLeft + input.clientWidth - 5))}px`;
+    input.style.caretColor = "transparent";
+    caret.hidden = false;
+  }, []);
+
+  useLayoutEffect(syncCaret, [syncCaret, value, editing]);
 
   const focusAsNewPage = useCallback(() => {
     setValue("");
@@ -136,6 +168,7 @@ export function SingleTabTitle({
     const unsubscribe = subscribePageTitleFocus((pageId) => {
       if (locked) return;
       if (pageId === page.id && isPageTitleFocusRequested(page.id)) {
+        newTitleRequestedRef.current = true;
         if (idleWindowDrag) setEditing(true);
         scheduleFocus();
       }
@@ -146,6 +179,7 @@ export function SingleTabTitle({
     if (locked) {
       completePageTitleFocus(page.id);
     } else if (isPageTitleFocusRequested(page.id)) {
+      newTitleRequestedRef.current = true;
       if (idleWindowDrag) setEditing(true);
       scheduleFocus();
     }
@@ -161,13 +195,23 @@ export function SingleTabTitle({
     };
   }, [focusAsNewPage, idleWindowDrag, locked, page.id]);
 
-  const commit = useCallback(async (moveToBody = false) => {
-    if (locked || committingRef.current) return;
+  const commit = useCallback(async (moveToBody = false): Promise<boolean> => {
+    if (locked || committingRef.current) return false;
+    if (
+      moveToBody &&
+      newTitleRequestedRef.current &&
+      (page.localFilePath || page.localUnsaved) &&
+      !valueRef.current.trim()
+    ) {
+      toast.error("请输入文件名称");
+      inputRef.current?.focus();
+      return false;
+    }
     const nextTitle = valueRef.current.trim() || UNTITLED_PAGE_TITLE;
     if (INVALID_FILENAME_CHARS.test(nextTitle)) {
       toast.error('标题不能包含 \\ / : * ? " < > |');
       inputRef.current?.focus();
-      return;
+      return false;
     }
     const storedTitle = page.localFilePath
       ? currentTitle
@@ -175,9 +219,11 @@ export function SingleTabTitle({
     if (nextTitle === currentTitle && storedTitle === currentTitle) {
       setValue(nextTitle);
       if (moveToBody) {
+        skipNextBlurCommitRef.current = true;
         window.dispatchEvent(new CustomEvent("goose-note:focus-editor-body"));
       }
-      return;
+      newTitleRequestedRef.current = false;
+      return true;
     }
 
     committingRef.current = true;
@@ -203,7 +249,7 @@ export function SingleTabTitle({
           if (!ok) {
             toast.error("创建文件失败");
             inputRef.current?.focus();
-            return;
+            return false;
           }
           const latestPath =
             usePages.getState().pages[page.id]?.localFilePath ?? null;
@@ -220,12 +266,16 @@ export function SingleTabTitle({
         setValue(nextTitle);
       }
       if (moveToBody) {
+        skipNextBlurCommitRef.current = true;
         window.dispatchEvent(new CustomEvent("goose-note:focus-editor-body"));
       }
+      newTitleRequestedRef.current = false;
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error("重命名失败", { description: message });
       inputRef.current?.focus();
+      return false;
     } finally {
       committingRef.current = false;
     }
@@ -265,7 +315,8 @@ export function SingleTabTitle({
     const startY = event.clientY;
     const onMove = (ev: PointerEvent) => {
       if (windowDragStartedRef.current) return;
-      if (!shouldStartWindowDrag(startX, startY, ev.clientX, ev.clientY)) return;
+      if (!shouldStartWindowDrag(startX, startY, ev.clientX, ev.clientY))
+        return;
       windowDragStartedRef.current = true;
       window.removeEventListener("pointermove", onMove);
       void startWindowDragging();
@@ -289,7 +340,7 @@ export function SingleTabTitle({
         data-electron-option-drag
         aria-label="笔记标题"
         title="点击编辑笔记标题"
-        className={`${idleClass} ${sizeClass} truncate text-left ${inTab ? "cursor-text" : "cursor-default"}`}
+        className={`${idleClass} ${sizeClass} truncate text-left cursor-pointer`}
         onPointerDown={onIdlePointerDown}
         onClick={beginEditing}
       >
@@ -299,49 +350,66 @@ export function SingleTabTitle({
   }
 
   return (
-    <input
-      ref={inputRef}
-      value={value}
-      {...imeInputProps}
-      size={1}
-      data-page-title-field
-      autoFocus={idleWindowDrag}
-      onBlur={() => {
-        if (isComposing()) return;
-        // 新建页切换期间编辑器会短暂抢焦；聚焦请求尚未完成时忽略这次
-        // 程序性 blur，避免把空输入提前恢复为“未命名”。
-        if (isPageTitleFocusRequested(page.id)) return;
-        if (skipNextBlurCommitRef.current) {
-          skipNextBlurCommitRef.current = false;
-          exitEditing();
-          return;
+    <span className="page-title-edit-shell">
+      <input
+        ref={inputRef}
+        value={value}
+        {...imeInputProps}
+        size={1}
+        data-page-title-field
+        autoFocus={idleWindowDrag}
+        onFocus={syncCaret}
+        onSelect={syncCaret}
+        onKeyUp={syncCaret}
+        onScroll={syncCaret}
+        onBlur={() => {
+          if (caretRef.current) caretRef.current.hidden = true;
+          if (isComposing()) return;
+          // 新建页切换期间编辑器会短暂抢焦；聚焦请求尚未完成时忽略这次
+          // 程序性 blur，避免把空输入提前恢复为“未命名”。
+          if (isPageTitleFocusRequested(page.id)) return;
+          if (skipNextBlurCommitRef.current) {
+            skipNextBlurCommitRef.current = false;
+            exitEditing();
+            return;
+          }
+          void commit().then(() => {
+            if (document.activeElement === inputRef.current) return;
+            exitEditing();
+          });
+        }}
+        onKeyDown={(event) => {
+          if (isComposing(event)) return;
+          if (event.key === "Enter") {
+            event.preventDefault();
+            void commit(true).then((saved) => {
+              if (saved) exitEditing();
+            });
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setValue(currentTitle);
+            skipNextBlurCommitRef.current = true;
+            event.currentTarget.blur();
+            exitEditing();
+          }
+        }}
+        aria-label="笔记标题"
+        placeholder={
+          newTitleRequestedRef.current
+            ? "输入文件名称，按回车开始编辑正文"
+            : "修改文件名称，按回车到正文末尾继续编辑"
         }
-        void commit().then(() => {
-          if (document.activeElement === inputRef.current) return;
-          exitEditing();
-        });
-      }}
-      onKeyDown={(event) => {
-        if (isComposing(event)) return;
-        if (event.key === "Enter") {
-          event.preventDefault();
-          skipNextBlurCommitRef.current = true;
-          event.currentTarget.blur();
-          void commit(true);
-          exitEditing();
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          setValue(currentTitle);
-          skipNextBlurCommitRef.current = true;
-          event.currentTarget.blur();
-          exitEditing();
-        }
-      }}
-      aria-label="笔记标题"
-      title="点击编辑笔记标题"
-      spellCheck={false}
-      autoComplete="off"
-      className={`${inputClass} ${sizeClass} box-border`}
-    />
+        title="点击编辑笔记标题"
+        spellCheck={false}
+        autoComplete="off"
+        className={`${inputClass} ${sizeClass} box-border`}
+      />
+      <span
+        ref={caretRef}
+        className="page-title-caret"
+        aria-hidden="true"
+        hidden
+      />
+    </span>
   );
 }

@@ -79,6 +79,23 @@ test.afterEach(() => {
   discardPendingLocalSave("a");
 });
 
+test("普通导航复用当前标签，明确新开后只替换当前标签", async () => {
+  useTabs.getState().openTab("a");
+  await expect.poll(() => useTabs.getState().openTabs[0]?.pageId).toBe("a");
+  const firstId = useTabs.getState().activeTabId;
+
+  useTabs.getState().openPreviewTab("b");
+  await expect.poll(() => useTabs.getState().openTabs[0]?.pageId).toBe("b");
+  expect(useTabs.getState().openTabs).toHaveLength(1);
+  expect(useTabs.getState().activeTabId).toBe(firstId);
+
+  useTabs.getState().openPermanentTab("c");
+  expect(useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["b", "c"]);
+  useTabs.getState().openTab("a");
+  await expect.poll(() => useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["b", "a"]);
+  expect(useTabs.getState().openTabs[0].id).toBe(firstId);
+});
+
 test("置顶页面用正式标签打开，保留其他标签并复用已打开页面", () => {
   useTabs.getState().openPermanentTab("a");
   useTabs.getState().openPermanentTab("b");
@@ -94,7 +111,7 @@ test("置顶页面用正式标签打开，保留其他标签并复用已打开�
   expect(openTabs.every((tab) => !tab.preview)).toBe(true);
 });
 
-test("只有一个标签时列表打开是切换而不是新增", () => {
+test("只有一个有内容的标签时列表打开仍新增独立标签", () => {
   useTabs.getState().openPermanentTab("a");
   const firstId = useTabs.getState().openTabs[0]?.id;
   expect(firstId).toBeTruthy();
@@ -102,11 +119,10 @@ test("只有一个标签时列表打开是切换而不是新增", () => {
   useTabs.getState().openPreviewTab("b");
 
   const tabs = useTabs.getState().openTabs;
-  expect(tabs).toHaveLength(1);
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "b"]);
   expect(tabs[0].id).toBe(firstId);
-  expect(tabs[0].pageId).toBe("b");
-  expect(tabs[0].preview).toBeFalsy();
-  expect(useEditorSplit.getState().focusedPageId(firstId!)).toBe("b");
+  expect(tabs[1].id).not.toBe(firstId);
+  expect(useEditorSplit.getState().focusedPageId(firstId!)).toBe("a");
 });
 
 test("待确认恢复稿不会被误判为保存失败而阻止单标签切换", async () => {
@@ -133,22 +149,18 @@ test("待确认恢复稿不会被误判为保存失败而阻止单标签切换",
   await expect.poll(() => useTabs.getState().openTabs[0]?.pageId).toBe("b");
 });
 
-test("单标签切页后 focusedPageId 跟着换，不会被布局回写旧页", () => {
+test("打开另一个标签后 focusedPageId 不会覆盖旧标签", () => {
   useTabs.getState().openPermanentTab("a");
   const tabId = useTabs.getState().activeTabId!;
   expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
 
   useTabs.getState().openPreviewTab("c");
 
-  const focused = useEditorSplit.getState().focusedPageId(tabId);
-  expect(useTabs.getState().openTabs[0]?.pageId).toBe("c");
-  expect(focused).toBe("c");
-  if (focused && focused !== usePages.getState().activePageId) {
-    void usePages.getState().setActivePage(focused);
-  }
-  useTabs.getState().syncTabPageId(tabId, focused!);
-  expect(useTabs.getState().openTabs[0]?.pageId).toBe("c");
-  expect(usePages.getState().activePageId).toBe("c");
+  const nextTabId = useTabs.getState().activeTabId!;
+  expect(nextTabId).not.toBe(tabId);
+  expect(useEditorSplit.getState().focusedPageId(tabId)).toBe("a");
+  expect(useEditorSplit.getState().focusedPageId(nextTabId)).toBe("c");
+  expect(useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["a", "c"]);
 });
 
 test("欢迎页作为唯一标签时列表打开会填入该标签", () => {
@@ -165,7 +177,7 @@ test("欢迎页作为唯一标签时列表打开会填入该标签", () => {
   expect(tabs[0].type).toBeUndefined();
 });
 
-test("手动唤出新标签后列表打开才走预览新标签", () => {
+test("手动唤出新标签后列表打开不会替换已有标签", () => {
   useTabs.getState().openPermanentTab("a");
   useTabs.getState().openWelcomeTab();
   expect(useTabs.getState().openTabs).toHaveLength(2);
@@ -176,10 +188,10 @@ test("手动唤出新标签后列表打开才走预览新标签", () => {
   expect(tabs).toHaveLength(2);
   expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "b"]);
   const preview = tabs.find((tab) => tab.pageId === "b");
-  expect(preview?.preview).toBe(true);
+  expect(preview?.preview).toBeFalsy();
 });
 
-test("其他笔记本的隐藏标签不阻止当前笔记本单标签切换", () => {
+test("跨笔记本切换和关闭多个标签后，已有标签不被替换", () => {
   usePages.setState((state) => ({
     pages: {
       ...state.pages,
@@ -204,9 +216,11 @@ test("其他笔记本的隐藏标签不阻止当前笔记本单标签切换", ()
   useTabs.getState().openPreviewTab("b");
 
   const tabs = useTabs.getState().openTabs;
-  expect(tabs.find((tab) => tab.pageId === "a")).toBeUndefined();
-  expect(tabs.find((tab) => tab.id === lone?.id)?.pageId).toBe("b");
-  expect(tabs.find((tab) => tab.pageId === "other")).toBeTruthy();
+  expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "other", "b"]);
+  expect(tabs.find((tab) => tab.id === lone?.id)?.pageId).toBe("a");
+  useTabs.getState().closeTab(lone!.id);
+  useTabs.getState().openPreviewTab("a");
+  expect(useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["other", "b", "a"]);
 });
 
 test("点加号得到空白未落盘标签后再打开页面会填入该标签", () => {
@@ -232,7 +246,7 @@ test("点加号得到空白未落盘标签后再打开页面会填入该标签",
   expect(tabs.map((tab) => tab.pageId)).toEqual(["a", "b"]);
   const filled = tabs.find((tab) => tab.id === emptyTabId);
   expect(filled?.pageId).toBe("b");
-  expect(filled?.preview).toBe(true);
+  expect(filled?.preview).toBeFalsy();
   expect(usePages.getState().getPage("empty")).toBeUndefined();
 });
 

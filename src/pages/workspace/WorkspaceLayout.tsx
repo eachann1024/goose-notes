@@ -565,11 +565,15 @@ function NotebookEditorSplitColumn({
 
   useLayoutEffect(() => {
     if (!activeTabId || !activePageId) return;
+    const activeTab = useTabs.getState().openTabs.find((tab) => tab.id === activeTabId);
+    if (!activeTab || activeTab.type || activeTab.pageId !== activePageId) return;
     useEditorSplit.getState().ensureTab(activeTabId, activePageId);
   }, [activeTabId, activePageId]);
 
   useLayoutEffect(() => {
     if (!activeTabId || !focusedPageId) return;
+    const activeTab = useTabs.getState().openTabs.find((tab) => tab.id === activeTabId);
+    if (!activeTab || activeTab.type) return;
     const focusedPage = usePages.getState().getPage(focusedPageId);
     if (!focusedPage || focusedPage.isFolder || focusedPage.trashedAt) return;
     if (focusedPageId !== usePages.getState().activePageId) {

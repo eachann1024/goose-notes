@@ -85,7 +85,7 @@ test.beforeEach(() => {
   }
 });
 
-test("预览标签互相替换后，后退仍回到上下选中的文件", async () => {
+test("独立标签依次打开后，后退仍回到上下选中的文件", async () => {
   useTabs.getState().openPreviewTab("a");
   useTabs.getState().openPreviewTab("b");
   useTabs.getState().openPreviewTab("c");
@@ -95,7 +95,7 @@ test("预览标签互相替换后，后退仍回到上下选中的文件", async
     pageFileNavKey("b"),
     pageFileNavKey("c"),
   ]);
-  expect(useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["c"]);
+  expect(useTabs.getState().openTabs.map((tab) => tab.pageId)).toEqual(["a", "b", "c"]);
 
   useTabs.getState().goBackTabHistory();
   await waitForActivePage("b");

@@ -8,22 +8,12 @@ import type { TabItem } from "@/stores/useTabs";
 export function isWorkspaceTabVisible(
   tab: TabItem,
   getPage: (id: string) => Page | undefined,
-  activeNotebookId: string | null | undefined,
+  _activeNotebookId: string | null | undefined,
 ): boolean {
   if (tab.type === "notebook-ai") return false;
   if (tab.type === "welcome") return true;
   const tabPage = getPage(tab.pageId);
-  if (!tabPage) {
-    return (
-      !activeNotebookId ||
-      !tab.workspaceId ||
-      tab.workspaceId === activeNotebookId
-    );
-  }
-  return Boolean(
-    !tabPage.trashedAt &&
-      (!activeNotebookId || tabPage.workspaceId === activeNotebookId),
-  );
+  return !tabPage || !tabPage.trashedAt;
 }
 
 export function listVisibleWorkspaceTabs(
@@ -37,8 +27,8 @@ export function listVisibleWorkspaceTabs(
 }
 
 /**
- * 当前笔记本只剩一个可见标签时，列表单击应切换该标签，而不是再开一个。
- * 手动唤出第二个有内容的标签之后，才走预览/新标签逻辑。
+ * 仅用于判断窗口内是否只剩一个真实可见标签（例如关闭快捷键）。
+ * 不得用它复用或替换已有笔记标签。
  */
 export function findLoneVisibleWorkspaceTab(
   openTabs: TabItem[],
@@ -65,7 +55,14 @@ export function isReusableEmptyWorkspaceTab(
   );
 }
 
-/** 只有一个文档标签时，在标签 pill 上改名，正文不再重复文件名大标题。 */
+/** 只有一个文档标签时，普通页面标题可直接在标签 pill 上修改。 */
 export function shouldEditTitleInTabPill(visibleTabs: TabItem[]): boolean {
   return visibleTabs.length === 1 && visibleTabs[0]?.type !== "welcome";
+}
+
+export function shouldEditTitleInTab(
+  page: Pick<Page, "localFilePath" | "localUnsaved"> | null | undefined,
+  editTitleInTabPill: boolean,
+): boolean {
+  return Boolean(page?.localFilePath || page?.localUnsaved) || editTitleInTabPill;
 }

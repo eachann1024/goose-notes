@@ -35,7 +35,7 @@ async function seedTwoPages(page: import("playwright/test").Page) {
   });
 }
 
-test.describe("VSCode-style tab navigation", () => {
+test.describe("stable tab navigation", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__ = true;
@@ -88,12 +88,12 @@ test.describe("VSCode-style tab navigation", () => {
     const pinned = tabs.openTabs.find((tab) => tab.pageId === a);
     const preview = tabs.openTabs.find((tab) => tab.pageId === b);
     expect(pinned?.pinned).toBe(true);
-    expect(preview?.preview).toBe(true);
+    expect(preview?.preview).toBeFalsy();
     expect(preview?.id).toBe(tabs.activeTabId);
     expect(pinned?.pageId).toBe(a);
   });
 
-  test("preview slot is reused for subsequent preview opens", async ({
+  test("subsequent sidebar opens preserve all existing tabs", async ({
     page,
   }) => {
     const { a, b } = await seedTwoPages(page);
@@ -140,13 +140,11 @@ test.describe("VSCode-style tab navigation", () => {
       return bridge.getTabsState();
     });
 
-    expect(state.openTabs).toHaveLength(2);
-    expect(state.openTabs.filter((tab) => tab.preview)).toHaveLength(1);
-    const preview = state.openTabs.find((tab) => tab.preview);
-    expect(preview?.pageId).toBe(c);
+    expect(state.openTabs.map((tab) => tab.pageId)).toEqual([a, b, c]);
+    expect(state.openTabs.every((tab) => !tab.preview)).toBe(true);
   });
 
-  test("sidebar single click switches the only tab instead of adding", async ({
+  test("sidebar single click preserves the only existing tab", async ({
     page,
   }) => {
     const { a, b } = await seedTwoPages(page);
@@ -180,9 +178,8 @@ test.describe("VSCode-style tab navigation", () => {
       return bridge.getTabsState();
     });
 
-    expect(state.openTabs).toHaveLength(1);
-    expect(state.openTabs[0].pageId).toBe(b);
-    expect(state.openTabs[0].preview).toBeFalsy();
+    expect(state.openTabs.map((tab) => tab.pageId)).toEqual([a, b]);
+    expect(state.openTabs.every((tab) => !tab.preview)).toBe(true);
   });
 
   test("sidebar click after plus reuses the empty untitled tab", async ({
@@ -239,7 +236,7 @@ test.describe("VSCode-style tab navigation", () => {
     expect(state.tabs.openTabs.map((tab) => tab.pageId)).toEqual([a, b]);
     const filled = state.tabs.openTabs.find((tab) => tab.id === emptyTabId);
     expect(filled?.pageId).toBe(b);
-    expect(filled?.preview).toBe(true);
+    expect(filled?.preview).toBeFalsy();
     expect(state.tabs.activeTabId).toBe(emptyTabId);
     expect(state.pages[emptyId]).toBeUndefined();
   });
@@ -290,11 +287,11 @@ test.describe("VSCode-style tab navigation", () => {
     const preview = state.openTabs.find((tab) => tab.pageId === b);
     expect(pinned?.pinned).toBe(true);
     expect(pinned?.pageId).toBe(a);
-    expect(preview?.preview).toBe(true);
+    expect(preview?.preview).toBeFalsy();
     expect(state.activeTabId).toBe(preview?.id);
   });
 
-  test("preview tab shows italic marker in tab bar", async ({ page }) => {
+  test("sidebar-opened tab is permanent in tab bar", async ({ page }) => {
     const { a } = await seedTwoPages(page);
 
     await page.evaluate(
@@ -311,13 +308,12 @@ test.describe("VSCode-style tab navigation", () => {
     );
 
     const previewTab = page.locator(
-      `[data-tab-page-id="${a}"][data-tab-preview="true"]`,
+      `[data-tab-page-id="${a}"][data-tab-preview="false"]`,
     );
     await expect(previewTab).toBeVisible();
-    await expect(previewTab.getByRole("button", { name: "笔记标题" })).toHaveCSS("font-style", "italic");
   });
 
-  test("notebook switch activates and scopes the tab bar to the selected notebook", async ({
+  test("notebook switch activates its tab while preserving all open notebook tabs", async ({
     page,
   }) => {
     const ids = await page.evaluate(async () => {
@@ -390,7 +386,7 @@ test.describe("VSCode-style tab navigation", () => {
     const devTab = page.locator(`[data-tab-page-id="${ids.devPage}"]`);
     await expect(devTab).toBeVisible();
     await expect(devTab).toHaveAttribute("data-tab-active", "true");
-    await expect(page.locator(`[data-tab-page-id="${ids.notePage}"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-tab-page-id="${ids.notePage}"]`)).toBeVisible();
   });
 
   test("configured close-tab shortcut works while editor content is focused", async ({

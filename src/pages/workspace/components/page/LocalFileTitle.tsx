@@ -196,7 +196,7 @@ export function LocalFileTitle({
       >
         <input
           ref={inputRef}
-          className="focus:text-[var(--goose-interactive-selected-fg)] caret-[var(--goose-interactive-selected-fg)]"
+          className="focus:text-[var(--goose-interactive-selected-fg)] caret-[var(--goose-accent-focus)]"
           value={editValue}
           {...imeInputProps}
           onKeyDown={handleKeyDown}
