@@ -730,9 +730,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         onOpenChange={onOpenChange}
         layout="fullscreen"
         hideClose
-        overlayClassName="bg-transparent backdrop-blur-0"
-        contentClassName="border-0 bg-[hsl(var(--goose-shell-bg))]"
-        bodyClassName="min-w-0 h-full animate-in fade-in duration-200"
+        contentClassName="!gap-0 bg-[hsl(var(--goose-shell-bg))]"
+        bodyClassName="h-full min-h-0 overflow-hidden"
       >
         <SettingsScaffold
           activeTab={activeTab}
@@ -779,7 +778,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           }
         >
           {activeTab === "general" && (
-            <div className="space-y-4">
+            <div className="settings-groups">
               <SettingsGeneral
                 searchProviders={searchProviders}
                 toggleSearchProvider={toggleSearchProvider}
@@ -802,7 +801,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           )}
 
           {activeTab === "shortcuts" && (
-            <div>
+            <div className="settings-groups">
               <SettingsShortcuts
                 closeTabShortcut={closeTabShortcut}
                 setCloseTabShortcut={setCloseTabShortcut}
@@ -817,7 +816,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           )}
 
           {activeTab === "local-folder" && (
-            <div>
+            <div className="settings-groups">
               <SettingsLocalFolder
                 localFolderFileManager={localFolderFileManager}
                 setLocalFolderFileManager={setLocalFolderFileManager}
@@ -832,33 +831,31 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           )}
 
           {activeTab === "appearance" && (
-            <div>
-              <SettingsAppearance
-                theme={theme}
-                setTheme={setTheme}
-                accentColor={accentColor}
-                setAccentColor={setAccentColor}
-                codeStyle={codeStyle}
-                setCodeStyle={setCodeStyle}
-                customFonts={customFonts}
-                setCustomLabel={setCustomLabel}
-                setCustomFont={setCustomFont}
-                uiFontSize={uiFontSize}
-                setUIFontSize={setUIFontSize}
-                sidebarFontSize={sidebarFontSize}
-                increaseSidebarFontSize={increaseSidebarFontSize}
-                decreaseSidebarFontSize={decreaseSidebarFontSize}
-                editorFontSize={editorFontSize}
-                increaseEditorFontSize={increaseEditorFontSize}
-                decreaseEditorFontSize={decreaseEditorFontSize}
-                randomIconOnCreate={randomIconOnCreate}
-                setRandomIconOnCreate={setRandomIconOnCreate}
-              />
-            </div>
+            <SettingsAppearance
+              theme={theme}
+              setTheme={setTheme}
+              accentColor={accentColor}
+              setAccentColor={setAccentColor}
+              codeStyle={codeStyle}
+              setCodeStyle={setCodeStyle}
+              customFonts={customFonts}
+              setCustomLabel={setCustomLabel}
+              setCustomFont={setCustomFont}
+              uiFontSize={uiFontSize}
+              setUIFontSize={setUIFontSize}
+              sidebarFontSize={sidebarFontSize}
+              increaseSidebarFontSize={increaseSidebarFontSize}
+              decreaseSidebarFontSize={decreaseSidebarFontSize}
+              editorFontSize={editorFontSize}
+              increaseEditorFontSize={increaseEditorFontSize}
+              decreaseEditorFontSize={decreaseEditorFontSize}
+              randomIconOnCreate={randomIconOnCreate}
+              setRandomIconOnCreate={setRandomIconOnCreate}
+            />
           )}
 
           {activeTab === "ai" && (
-            <div>
+            <div className="settings-groups">
               <SettingsAI
                 ai={ai}
                 enabled={ai.enabled}

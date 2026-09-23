@@ -67,6 +67,8 @@ export function SettingsGeneral({
         通用
       </h3>
 
+      <div className="settings-card-columns">
+        <div className="space-y-5">
       <SettingsSectionCard title="行为设置">
         <div
           className={`flex items-center justify-between gap-4 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}
@@ -143,28 +145,6 @@ export function SettingsGeneral({
             className={SETTINGS_SWITCH_CLASS}
           />
         </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title={
-          <span className="flex items-center gap-2">
-            <LucideIcons.Search
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            搜索引擎
-          </span>
-        }
-        description="配置右键菜单中显示的搜索引擎，支持拖拽排序。"
-      >
-        <SearchProviderSortableGrid
-          providers={searchProviders}
-          toggleSearchProvider={toggleSearchProvider}
-          reorderSearchProviders={reorderSearchProviders}
-          addCustomSearchProvider={addCustomSearchProvider}
-          updateCustomSearchProvider={updateCustomSearchProvider}
-          removeCustomSearchProvider={removeCustomSearchProvider}
-        />
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -270,6 +250,33 @@ export function SettingsGeneral({
             </p>
           )}
         </SettingsSectionCard>
+
+        </div>
+        <div className="space-y-5">
+      <SettingsSectionCard
+        title={
+          <span className="flex items-center gap-2">
+            <LucideIcons.Search
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            搜索引擎
+          </span>
+        }
+        description="配置右键菜单中显示的搜索引擎，支持拖拽排序。"
+      >
+        <SearchProviderSortableGrid
+          providers={searchProviders}
+          toggleSearchProvider={toggleSearchProvider}
+          reorderSearchProviders={reorderSearchProviders}
+          addCustomSearchProvider={addCustomSearchProvider}
+          updateCustomSearchProvider={updateCustomSearchProvider}
+          removeCustomSearchProvider={removeCustomSearchProvider}
+        />
+      </SettingsSectionCard>
+
+        </div>
+      </div>
     </div>
   );
 }

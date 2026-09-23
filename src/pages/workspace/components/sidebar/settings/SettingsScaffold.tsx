@@ -3,7 +3,7 @@ import { Settings as SettingsIcon, X } from "lucide-react";
 import type { SettingsTab, SettingsTabConfig } from "./types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isElectronRuntime } from "@/lib/electron/runtime";
+import "./settings-layout.css";
 
 interface SettingsScaffoldProps {
   activeTab: SettingsTab;
@@ -31,108 +31,81 @@ export function SettingsScaffold({
   useLayoutEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     const previousActiveTab = previousActiveTabRef.current;
-
     if (!scrollContainer || previousActiveTab === activeTab) return;
-
     scrollPositionsRef.current[previousActiveTab] = scrollContainer.scrollTop;
     scrollContainer.scrollTop = scrollPositionsRef.current[activeTab] ?? 0;
     previousActiveTabRef.current = activeTab;
   }, [activeTab]);
 
   const handleTabChange = (tab: SettingsTab) => {
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollPositionsRef.current[activeTab] = scrollContainer.scrollTop;
+    if (scrollContainerRef.current) {
+      scrollPositionsRef.current[activeTab] = scrollContainerRef.current.scrollTop;
     }
-
     onTabChange(tab);
-  };
-
-  const handleScroll = () => {
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollPositionsRef.current[activeTab] = scrollContainer.scrollTop;
-    }
   };
 
   return (
     <div
-      className="workspace-shell flex h-full flex-col bg-[hsl(var(--goose-shell-bg))] text-foreground"
+      className="workspace-shell settings-shell flex h-full min-h-0 flex-col text-foreground"
       data-settings=""
+      data-settings-tab={activeTab}
     >
-      <div
-        className={
-          isElectronRuntime()
-            ? "electron-titlebar flex w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] pl-[var(--electron-traffic-inset,78px)] pr-3"
-            : "flex h-14 w-full items-center justify-between gap-8 bg-[hsl(var(--goose-shell-bg))] px-6"
-        }
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px]">
-            <SettingsIcon className="h-4 w-4 text-foreground" />
-          </div>
-          <h1 className="truncate text-lg font-semibold leading-none text-foreground">
-            设置
-          </h1>
-        </div>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/70 bg-[hsl(var(--goose-editor-bg))] px-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70">
+          <SettingsIcon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <h1 className="text-base font-semibold">设置</h1>
+        <span className="text-xs text-muted-foreground">/ {tabs.find((tab) => tab.id === activeTab)?.label}</span>
         <button
           type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-          aria-label="关闭"
+          className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          aria-label="关闭设置"
           onClick={onClose}
         >
           <X className="h-4 w-4" />
         </button>
-      </div>
+      </header>
 
-      <div className="workspace-stage min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-        <div className="workspace-main-sheet flex w-full shrink-0 flex-col md:w-60 overflow-hidden rounded-[16px] bg-[hsl(var(--goose-shell-bg))]">
-          <nav
-            aria-label="设置分类"
-            className="flex gap-1 overflow-x-auto p-3 md:block md:flex-1 md:space-y-1"
-          >
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <Button
-                  key={tab.id}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-pressed={activeTab === tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={cn(
-                    "goose-interactive h-auto w-auto shrink-0 justify-start gap-3 md:w-full rounded-[10px] px-3 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    activeTab === tab.id
-                      ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="font-medium">{tab.label}</span>
-                </Button>
-              );
-            })}
-          </nav>
-
-          {feedbackBanner || appsBanner ? (
-            <div className="space-y-3 p-3">
-              {feedbackBanner}
-              {appsBanner}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="workspace-main-sheet min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px]">
-          <div className="workspace-editor-surface h-full overflow-hidden rounded-[16px]">
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              className="h-full overflow-y-auto p-4 md:p-6"
+      <nav aria-label="设置分类" className="settings-tabs flex shrink-0 gap-1 overflow-x-auto border-b border-border/70 bg-[hsl(var(--goose-editor-bg))] px-5 py-2">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <Button
+              key={tab.id}
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-current={activeTab === tab.id ? "page" : undefined}
+              onClick={() => handleTabChange(tab.id)}
+              className={cn(
+                "goose-interactive h-9 shrink-0 gap-2 rounded-lg px-3 text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                activeTab === tab.id
+                  ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                  : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
+              )}
             >
-              <div className="mx-auto w-full max-w-5xl">{children}</div>
-            </div>
-          </div>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              <span>{tab.label}</span>
+            </Button>
+          );
+        })}
+      </nav>
+
+      {feedbackBanner || appsBanner ? (
+        <div className="shrink-0 border-b border-border/70 px-5 py-2">
+          {feedbackBanner}{appsBanner}
+        </div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 bg-[hsl(var(--goose-shell-bg))]">
+        <div
+          ref={scrollContainerRef}
+          onScroll={(event) => {
+            scrollPositionsRef.current[activeTab] = event.currentTarget.scrollTop;
+          }}
+          className="settings-scroll h-full overflow-y-auto"
+        >
+          <div className="settings-panel min-h-0">{children}</div>
         </div>
       </div>
     </div>
