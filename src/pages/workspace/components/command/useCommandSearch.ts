@@ -15,7 +15,7 @@ import {
 // 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
 const textCache = new Map<string, { updatedAt: number; text: string }>();
 
-function getCachedText(page: Page): string {
+export function getCachedText(page: Page): string {
   const hit = textCache.get(page.id);
   if (hit && hit.updatedAt === page.updatedAt) return hit.text;
   const text = extractTextFromContent(page.content);
@@ -227,6 +227,8 @@ export function useCommandSearch({
       if (snippetResult) {
         resultPage.contentSnippet = snippetResult.snippet;
         resultPage.snippetMatchIndex = snippetResult.matchIndex;
+      } else {
+        resultPage.contentSnippet = contentText.slice(0, 100);
       }
       matched.push(resultPage);
     }
@@ -235,7 +237,7 @@ export function useCommandSearch({
     for (const id of pinyinHitIds) {
       const page = filteredSet.get(id);
       if (!page) continue;
-      matched.push({ ...page });
+      matched.push({ ...page, contentSnippet: getCachedText(page).slice(0, 100) });
     }
 
     const recent = matched

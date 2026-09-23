@@ -67,6 +67,7 @@ function getInstance(): MiniSearch<IndexDoc> {
         prefix: true,
         boost: { title: 2 },
         fuzzy: 0.1,
+        combineWith: "AND",
       },
     });
   }

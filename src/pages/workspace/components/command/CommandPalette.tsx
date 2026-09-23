@@ -7,7 +7,14 @@ import {
   useCallback,
 } from "react";
 import { Command } from "cmdk";
-import { Search, Columns2, Rows2, Maximize2, X } from "lucide-react";
+import { Search, Columns2, Rows2, Maximize2, X, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Page } from "@/types";
 import {
   Dialog,
@@ -18,17 +25,22 @@ import {
 import { useCommandSearch, type SearchResultPage } from "./useCommandSearch";
 import { useCommandSearchIndexWarmup } from "./useCommandSearchIndexWarmup";
 import { PaletteResultGroup } from "./PaletteResultGroup";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { HistoryReadOnlyEditor } from "../history/HistoryReadOnlyEditor";
+import { EditorHostBridge } from "../editor-host/EditorHostBridge";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import "./command-palette.css";
 import {
   matchingSplitPaletteActions,
   splitPaletteItemValue,
 } from "./splitPaletteActions";
 import { getPageTitle } from "@/components/editor/utils/page-title";
+import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useTabs } from "@/stores/useTabs";
-import { Kbd } from "@/components/ui/kbd";
 import {
   getModifierOnlyShortcut,
   matchMouseShortcut,
@@ -44,6 +56,7 @@ import { formatShortcut } from "@/lib/utils";
 const IDLE_PAGES: Record<string, Page> = {};
 
 export function CommandPalette() {
+  const searchLayout = useDefaultLayout({ id: "goose-search", panelIds: ["search-results-panel", "search-preview-panel"], onlySaveAfterUserInteractions: true });
   useCommandSearchIndexWarmup();
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +73,10 @@ export function CommandPalette() {
   const setSearchHighlightPageId = usePages((s) => s.setSearchHighlightPageId);
   const setSearchHighlightNonce = usePages((s) => s.setSearchHighlightNonce);
   const loadAllLocalFolderPages = usePages((s) => s.loadAllLocalFolderPages);
-  const { activeNotebookId } = useNotebooks();
+  const { activeNotebookId, notebooks } = useNotebooks();
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
+  const scopedNotebookId = selectedNotebookId && notebooks[selectedNotebookId]
+    ? selectedNotebookId : null;
   const {
     searchAllNotebooks,
     setSearchAllNotebooks,
@@ -81,8 +97,8 @@ export function CommandPalette() {
     loadMoreResults,
   } = useCommandSearch({
     pages,
-    activeNotebookId,
-    searchAllNotebooks,
+    activeNotebookId: scopedNotebookId || activeNotebookId,
+    searchAllNotebooks: !scopedNotebookId && searchAllNotebooks,
   });
   const trackSearchOpened = useCallback(
     (_openSource: "shortcut" | "programmatic") => {},
@@ -154,6 +170,13 @@ export function CommandPalette() {
   //   有 query → allDisplay[0] 用 `all-...`
   //   仅分屏动作命中（无页面）→ `split-action-...`；空查询不渲染动作，避免盖住搜索空态。
   const splitActions = matchingSplitPaletteActions(searchQuery);
+  const previewPage = [...searchResults.recent, ...searchResults.allDisplay].find(
+    (page) => commandValue === `recent-${page.id}-${getPageTitle(page)}` ||
+      commandValue === `all-${page.id}-${getPageTitle(page)}`,
+  );
+  const previewHasMatchingHeading = previewPage && Array.isArray(previewPage.content) &&
+    previewPage.content[0]?.type === "heading" &&
+    extractTitleFromContent(previewPage.content) === getPageTitle(previewPage);
   const firstItemValue = (() => {
     const hasQuery = searchQuery.trim().length > 0;
     if (!hasQuery && showRecentInSearch && searchResults.recent.length > 0) {
@@ -173,10 +196,19 @@ export function CommandPalette() {
   // 切到「所有记事本」时兜底预加载未加载的 local-folder 记事本页面（启动预热的补充）。
   // action 内部对已加载 / 加载中的记事本去重，重复调用安全。
   useEffect(() => {
-    if (open && searchAllNotebooks) {
+    if (open && searchAllNotebooks && !scopedNotebookId) {
       void loadAllLocalFolderPages();
     }
-  }, [open, searchAllNotebooks, loadAllLocalFolderPages]);
+  }, [open, searchAllNotebooks, scopedNotebookId, loadAllLocalFolderPages]);
+
+  useEffect(() => {
+    if (!open || !scopedNotebookId) return;
+    const notebook = notebooks[scopedNotebookId];
+    if (notebook.source === "local-folder" && notebook.localPath && !notebook.localPathMissing) {
+      void usePages.getState().loadLocalFolderPages(notebook.id, notebook.localPath)
+        .catch(() => toast.error("无法读取该笔记本，请检查文件夹是否可用"));
+    }
+  }, [open, scopedNotebookId, notebooks]);
 
   const handleHideRecent = useCallback(() => {
     setShowRecentInSearch(false);
@@ -221,7 +253,8 @@ export function CommandPalette() {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        setSearchAllNotebooks(!searchAllNotebooks);
+        setSelectedNotebookId(null);
+        setSearchAllNotebooks(scopedNotebookId ? false : !searchAllNotebooks);
         inputRef.current?.focus();
       }
     };
@@ -270,6 +303,7 @@ export function CommandPalette() {
   }, [
     open,
     searchAllNotebooks,
+    scopedNotebookId,
     searchPanelCloseShortcut,
     setSearchAllNotebooks,
     singleTabMode,
@@ -335,7 +369,8 @@ export function CommandPalette() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         hideClose
-        className="workspace-shell fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[640px] rounded-[18px] border-0 p-0 overflow-hidden z-[101] text-popover-foreground outline-none ring-0 bg-[hsl(var(--goose-shell-bg))] shadow-none"
+        className="workspace-shell goose-search-panel fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[1080px] rounded-lg border-0 p-0 overflow-hidden z-[101] outline-none ring-0 shadow-lg"
+        overlayClassName="goose-search-backdrop"
         aria-describedby={descriptionId}
       >
         <Command
@@ -349,7 +384,7 @@ export function CommandPalette() {
             搜索和快速访问页面
           </DialogDescription>
           <div
-            className="flex items-center h-14 px-4"
+            className="flex items-center h-16 px-4"
             cmdk-input-wrapper=""
           >
             <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />
@@ -358,37 +393,47 @@ export function CommandPalette() {
               value={searchQuery}
               onValueChange={setSearchQuery}
               placeholder={
-                searchAllNotebooks
+                !scopedNotebookId && searchAllNotebooks
                   ? "搜索所有记事本..."
-                  : `搜索 "${currentNotebookName}"...`
+                  : `搜索 "${scopedNotebookId ? notebooks[scopedNotebookId].name : currentNotebookName}"...`
               }
-              className="flex h-14 w-full rounded-md bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <div
-              className="flex items-center gap-2 ml-3 shrink-0"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setSearchAllNotebooks(!searchAllNotebooks)}
-                className={`px-2.5 py-1 rounded-[8px] text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                  // 用实色交互变量而非 bg-foreground/8：Electron 旧内核解析不了 Tailwind 的
-                  // color-mix(... var(--color-foreground) 8% ...) 透明度，会回退成纯黑实色（黑块吞字）。
-                  searchAllNotebooks
-                    ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                    : "text-muted-foreground/60 hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
-                }`}
-              >
-                {searchAllNotebooks ? "所有记事本" : currentNotebookName}
-              </button>
-            </div>
-            <Kbd
-              shortcut="Tab"
-              className="ml-1 rounded-[8px] border-transparent shadow-[inset_0_0_0_1px_hsl(var(--input)/0.6)] text-muted-foreground/50"
-            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" aria-label="搜索范围" className="goose-search-scope flex items-center gap-2 rounded-lg text-sm">
+                  <span className="min-w-0 truncate">{scopedNotebookId ? notebooks[scopedNotebookId].name : searchAllNotebooks ? "所有笔记本" : `当前笔记本 · ${currentNotebookName}`}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuRadioGroup
+                  value={scopedNotebookId ? `notebook:${scopedNotebookId}` : searchAllNotebooks ? "all" : "current"}
+                  onValueChange={(value) => {
+                    if (value === "all" || value === "current") {
+                      setSelectedNotebookId(null);
+                      setSearchAllNotebooks(value === "all");
+                    } else {
+                      const id = value.slice("notebook:".length);
+                      if (notebooks[id]) setSelectedNotebookId(id);
+                    }
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <DropdownMenuRadioItem value="current">当前笔记本 · {currentNotebookName}</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">所有笔记本</DropdownMenuRadioItem>
+                  {Object.values(notebooks).map((notebook) => (
+                    <DropdownMenuRadioItem key={notebook.id} value={`notebook:${notebook.id}`}>
+                      <span className="truncate">{notebook.name}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
+          <Group className="goose-search-body" orientation="horizontal" {...searchLayout}>
+          <Panel id="search-results-panel" className="goose-search-results-panel" defaultSize="26%" minSize="20%" maxSize="65%">
           <Command.List
             ref={listRef}
             onScroll={handleListScroll}
@@ -449,6 +494,31 @@ export function CommandPalette() {
               </Command.Group>
             )}
           </Command.List>
+          </Panel>
+          <Separator className="goose-search-separator" aria-label="调整搜索结果与预览宽度" onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)} onKeyDown={(event) => event.stopPropagation()} />
+          <Panel id="search-preview-panel" className="goose-search-preview-panel" minSize="35%">
+          <section className="goose-search-preview" aria-label="笔记内容预览" onKeyDown={(event) => event.stopPropagation()}>
+            {previewPage ? (
+              <>
+                <header className="goose-search-preview-heading">
+                  <span>页面预览</span>
+                  {!previewHasMatchingHeading && <h1>{getPageTitle(previewPage)}</h1>}
+                  <p className="goose-search-path" title={getPageBreadcrumb(previewPage).slice(0, -1).join(" / ")}>{getPageBreadcrumb(previewPage).slice(0, -1).join(" / ")}</p>
+                </header>
+                <ErrorBoundary resetKey={previewPage.id} fallback={() => <p role="status">此笔记暂时无法预览，可从左侧打开。</p>}>
+                <EditorHostBridge page={previewPage} isEditorFullWidth onContentChangeOverride={() => {}}>
+                <HistoryReadOnlyEditor
+                  content={previewPage.content}
+                  versionKey={`${previewPage.id}:${previewPage.updatedAt}`}
+                  sourcePage={previewPage}
+                />
+                </EditorHostBridge>
+                </ErrorBoundary>
+              </>
+            ) : <p className="goose-search-path">{splitActions.length ? "选择命令并按回车执行" : "选择笔记查看内容"}</p>}
+          </section>
+          </Panel>
+          </Group>
         </Command>
       </DialogContent>
     </Dialog>
