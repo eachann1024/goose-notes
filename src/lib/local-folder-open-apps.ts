@@ -4,6 +4,7 @@ export interface LocalFolderOpenAppCandidate {
   id: string;
   label: string;
   appName: string;
+  icon?: string;
   aliases?: string[];
   commands?: string[];
   kind: LocalFolderOpenAppKind;

@@ -92,8 +92,8 @@ const gooseDesktop = {
   openPath: (p: string) => invoke("desktop:openPath", p) as Promise<void>,
   showItemInFolder: (p: string) =>
     invoke("desktop:showItemInFolder", p) as Promise<void>,
-  listOpenApps: () =>
-    invoke("desktop:listOpenApps") as Promise<{ name: string; path: string }[]>,
+  listOpenApps: (names: string[]) =>
+    invoke("desktop:listOpenApps", names) as Promise<{ name: string; path: string; icon?: string }[]>,
   openWithApp: (app: string, p: string) =>
     invoke("desktop:openWithApp", app, p) as Promise<void>,
   openTerminalAtPath: (p: string, terminal?: string) =>

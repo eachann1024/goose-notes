@@ -76,6 +76,7 @@ interface OpenAppFieldProps {
   defaultLabel: string;
   customPlaceholder: string;
   options: LocalFolderOpenAppCandidate[];
+  systemIds?: ReadonlySet<string>;
 }
 
 const SYSTEM_VALUE = "__system__";
@@ -118,6 +119,7 @@ function OpenAppField({
   defaultLabel,
   customPlaceholder,
   options,
+  systemIds,
 }: OpenAppFieldProps) {
   const trimmedValue = value.trim();
   const matchedOption = useMemo(
@@ -150,6 +152,14 @@ function OpenAppField({
         ? defaultLabel
         : (matchedOption?.label ?? trimmedValue);
   const showCustomInput = customActive || isCustomValue;
+  const defaultIcon = options.find((option) => systemIds?.has(option.id))?.icon;
+  const selectedIcon = matchedOption?.icon ?? (!trimmedValue ? defaultIcon : undefined);
+  const appIcon = (icon?: string) =>
+    icon ? (
+      <img src={icon} alt="" className="h-4 w-4 shrink-0 object-contain" />
+    ) : (
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+    );
 
   const handleSelect = (nextValue: string) => {
     if (nextValue === SYSTEM_VALUE) {
@@ -188,7 +198,10 @@ function OpenAppField({
               type="button"
               className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus:bg-[var(--goose-interactive-selected)] data-[state=open]:bg-[var(--goose-interactive-hover)]"
             >
-              <span className="truncate">{selectedLabel}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                {appIcon(selectedIcon)}
+                <span className="truncate">{selectedLabel}</span>
+              </span>
               <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
@@ -197,15 +210,18 @@ function OpenAppField({
               value={selectedValue}
               onValueChange={handleSelect}
             >
-              <DropdownMenuRadioItem value={SYSTEM_VALUE}>
+              <DropdownMenuRadioItem value={SYSTEM_VALUE} hideIndicator>
+                {appIcon(defaultIcon)}
                 <span className="truncate">{defaultLabel}</span>
               </DropdownMenuRadioItem>
-              {options.map((option) => (
-                <DropdownMenuRadioItem key={option.id} value={option.appName}>
+              {options.filter((option) => !systemIds?.has(option.id)).map((option) => (
+                <DropdownMenuRadioItem key={option.id} value={option.appName} hideIndicator>
+                  {appIcon(option.icon)}
                   <span className="truncate">{option.label}</span>
                 </DropdownMenuRadioItem>
               ))}
-              <DropdownMenuRadioItem value={CUSTOM_VALUE}>
+              <DropdownMenuRadioItem value={CUSTOM_VALUE} hideIndicator>
+                {appIcon()}
                 <span>自定义</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
@@ -781,21 +797,13 @@ export function SettingsLocalFolder({
 }: SettingsLocalFolderProps) {
   const [fileManagerOptions, setFileManagerOptions] = useState<
     LocalFolderOpenAppCandidate[]
-  >(() => {
-    const cached = getCachedAvailableOpenApps(
-      LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
-    );
-    return cached ? cached.filter((item) => !SYSTEM_FILE_MANAGER_IDS.has(item.id)) : [];
-  });
+  >(() => getCachedAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES) ?? []);
   const [editorOptions, setEditorOptions] = useState<
     LocalFolderOpenAppCandidate[]
   >(() => getCachedAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES) ?? []);
   const [terminalOptions, setTerminalOptions] = useState<
     LocalFolderOpenAppCandidate[]
-  >(() => {
-    const cached = getCachedAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES);
-    return cached ? cached.filter((item) => !SYSTEM_TERMINAL_IDS.has(item.id)) : [];
-  });
+  >(() => getCachedAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES) ?? []);
   const systemDefaultLabels = useMemo(() => getSystemDefaultLabels(), []);
   const hiddenFoldersRefreshNonceRef = useRef(0);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
@@ -940,13 +948,9 @@ export function SettingsLocalFolder({
       editors: LocalFolderOpenAppCandidate[],
       terminals: LocalFolderOpenAppCandidate[],
     ) => {
-      setFileManagerOptions(
-        fileManagers.filter((item) => !SYSTEM_FILE_MANAGER_IDS.has(item.id)),
-      );
+      setFileManagerOptions(fileManagers);
       setEditorOptions(editors);
-      setTerminalOptions(
-        terminals.filter((item) => !SYSTEM_TERMINAL_IDS.has(item.id)),
-      );
+      setTerminalOptions(terminals);
     };
 
     const cachedFileManagers = getCachedAvailableOpenApps(
@@ -1004,6 +1008,7 @@ export function SettingsLocalFolder({
             defaultLabel={systemDefaultLabels.fileManager}
             customPlaceholder="如：Path Finder"
             options={fileManagerOptions}
+            systemIds={SYSTEM_FILE_MANAGER_IDS}
           />
           <OpenAppField
             id="local-folder-editor"

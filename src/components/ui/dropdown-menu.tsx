@@ -206,11 +206,12 @@ function DropdownMenuRadioItem({
   value,
   children,
   className,
+  hideIndicator = false,
   ...props
-}: Omit<ItemProps, "value"> & { value: string }) {
+}: Omit<ItemProps, "value"> & { value: string; hideIndicator?: boolean }) {
   return (
-    <DropdownMenuItem {...props} id={value} className={cn("ps-8", className)}>
-      <Dropdown.ItemIndicator />
+    <DropdownMenuItem {...props} id={value} className={cn(hideIndicator ? "ps-2" : "ps-8", className)}>
+      {!hideIndicator && <Dropdown.ItemIndicator />}
       {children}
     </DropdownMenuItem>
   );

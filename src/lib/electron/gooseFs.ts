@@ -429,18 +429,21 @@ export const electronGooseFs = {
     const api = getGooseDesktop();
     if (!api) return [];
     try {
-      const installed = await api.listOpenApps();
-      const names = new Set<string>();
+      const installed = await api.listOpenApps(candidates.flatMap((candidate) => [
+        candidate.appName, ...(candidate.aliases ?? []), ...(candidate.commands ?? []),
+      ]));
+      const names = new Map<string, string | undefined>();
       for (const app of installed) {
-        names.add(normalizeAppName(app.name));
+        names.set(normalizeAppName(app.name), app.icon);
         const base = app.path.split(/[\\/]/).pop() ?? "";
-        names.add(normalizeAppName(base.replace(/\.(exe|app)$/i, "")));
+        names.set(normalizeAppName(base.replace(/\.(exe|app)$/i, "")), app.icon);
       }
-      return candidates.filter((candidate) => {
+      return candidates.flatMap((candidate) => {
         const aliases = candidate.aliases ?? [];
         const commands = candidate.commands ?? [];
         const options = [candidate.appName, ...aliases, ...commands].map(normalizeAppName);
-        return options.some((name) => names.has(name));
+        const matched = options.find((name) => names.has(name));
+        return matched ? [{ ...candidate, icon: names.get(matched) }] : [];
       });
     } catch (err) {
       console.warn("[electron-gooseFs] listAvailableOpenApps 失败", err);

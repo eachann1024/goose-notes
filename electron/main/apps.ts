@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-export type OpenApp = { name: string; path: string };
+export type OpenApp = { name: string; path: string; icon?: string };
 
 type AppKind = "editor" | "file-manager" | "terminal";
 
@@ -78,6 +78,15 @@ function windowsProbes(): AppProbe[] {
       name: "Windows Terminal",
       aliases: ["wt"],
       commands: ["wt"],
+      kind: "terminal",
+    },
+    {
+      name: "WezTerm",
+      commands: ["wezterm"],
+      winPaths: [
+        path.join(programs, "WezTerm", "wezterm.exe"),
+        path.join(local, "Programs", "WezTerm", "wezterm.exe"),
+      ],
       kind: "terminal",
     },
     {
@@ -163,6 +172,14 @@ function normalizeMatch(value: string): string {
 
 async function listMacApps(): Promise<OpenApp[]> {
   const found = new Map<string, OpenApp>();
+  for (const [name, appPath] of [
+    ["Finder", "/System/Library/CoreServices/Finder.app"],
+    ["Terminal", "/System/Applications/Utilities/Terminal.app"],
+  ]) {
+    if (existsSync(path.join(appPath, "Contents", "Info.plist"))) {
+      found.set(name.toLowerCase(), { name, path: appPath });
+    }
+  }
   for (const root of macApplicationRoots()) {
     if (!existsSync(root)) continue;
     let entries: string[];
@@ -174,6 +191,7 @@ async function listMacApps(): Promise<OpenApp[]> {
     for (const entry of entries) {
       if (!entry.endsWith(".app")) continue;
       const appPath = path.join(root, entry);
+      if (!existsSync(path.join(appPath, "Contents", "Info.plist"))) continue;
       const name = entry.replace(/\.app$/i, "");
       if (!found.has(name.toLowerCase())) {
         found.set(name.toLowerCase(), { name, path: appPath });
@@ -311,6 +329,12 @@ function openNamedTerminal(terminal: string, dir: string): boolean {
     return spawnDetached("/usr/bin/open", ["-a", parseAppInvocation(terminal).command, dir]);
   }
   if (process.platform === "win32") {
+    if (token === "wezterm") {
+      const probe = matchProbe(terminal);
+      const wezterm = firstExisting(probe?.winPaths) ?? resolveCommand("wezterm");
+      if (wezterm) return spawnDetached(wezterm, ["start", "--cwd", dir]);
+      return false;
+    }
     if (token.includes("windows terminal") || token === "wt") {
       const wt = resolveCommand("wt");
       if (wt) return spawnDetached(wt, ["-d", dir]);

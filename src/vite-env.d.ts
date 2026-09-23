@@ -96,7 +96,7 @@ declare global {
     openUrl: (url: string) => Promise<void>
     openPath: (p: string) => Promise<void>
     showItemInFolder: (p: string) => Promise<void>
-    listOpenApps: () => Promise<{ name: string; path: string }[]>
+    listOpenApps: (names: string[]) => Promise<{ name: string; path: string; icon?: string }[]>
     openWithApp: (app: string, p: string) => Promise<void>
     openTerminalAtPath: (p: string, terminal?: string) => Promise<void>
     getAppVersion: () => Promise<string>
