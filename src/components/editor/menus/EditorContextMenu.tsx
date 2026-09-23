@@ -19,6 +19,7 @@ import {
 } from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 import {
   cachePasteTarget,
   pasteClipboardHtmlAsBlocks,
@@ -311,6 +312,12 @@ export function EditorContextMenu({
         <ContextMenuTrigger asChild>
           <div
             ref={editorContainerRef}
+            onDragStartCapture={(event) => {
+              if (!(event.target as Element).closest(".bn-side-menu") &&
+                  !((event.target as Element).closest(".bn-inline-content") &&
+                    !window.getSelection()?.isCollapsed))
+                event.preventDefault();
+            }}
             onMouseDown={handleEditorBlankMouseDown}
             onPasteCapture={handleEditorPasteCapture}
             onKeyDownCapture={handleEditorKeyDownCapture}
@@ -323,7 +330,9 @@ export function EditorContextMenu({
             data-font-family={page.fontFamily ?? "default"}
             className={cn(
               "workspace-editor-surface relative flex min-h-0 flex-1 flex-col w-full pt-2",
-              !__GOOSE_EDITOR_COMPACT__ && "pb-[100px]",
+              !__GOOSE_EDITOR_COMPACT__ &&
+                !isQuickNoteEditorPage(page) &&
+                "pb-[100px]",
               isEditorFullWidth ? "max-w-none" : "max-w-[720px] mx-auto",
             )}
           >

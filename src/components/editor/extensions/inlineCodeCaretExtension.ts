@@ -153,7 +153,7 @@ function stepTarget(
   return direction === "right" ? from + length : from - length;
 }
 
-function handleArrow(view: EditorView, direction: "left" | "right"): boolean {
+export function handleArrow(view: EditorView, direction: "left" | "right"): boolean {
   const { state } = view;
   const codeType = state.schema.marks.code;
   if (!codeType) return false;
@@ -165,10 +165,12 @@ function handleArrow(view: EditorView, direction: "left" | "right"): boolean {
   const edge = inlineCodeEdgeAt($pos, codeType);
 
   if (!edge) {
-    // 不在边界：浏览器只会把光标停在盒外，落点是左边界时要改成盒内。
+    // 不在边界：代码内部逐字移动，以及从正文进入代码左边界。
     const target = stepTarget($pos, selection.from, direction);
     if (target === null) return false;
-    if (inlineCodeEdgeAt(state.doc.resolve(target), codeType) !== "start") {
+    // 边界 span 会让 Chromium 的原生方向键从代码内跳回盒外；盒内逐字移动也由 PM 接管。
+    if (!isInsideCode(state, $pos, codeType) &&
+        inlineCodeEdgeAt(state.doc.resolve(target), codeType) !== "start") {
       return false;
     }
     return moveCaret(view, target, codeType, true);
@@ -428,7 +430,12 @@ function syncCaretSide(view: EditorView): void {
   const wantInside = isInsideCode(state, $pos, codeType);
   const innerPoint = collapsedRangeAt(doc, (range) => {
     if (edge === "start") range.setStartBefore(content);
-    else range.setStartAfter(content);
+    else {
+      // ponytail: 普通行内代码钉在末尾文本节点；复杂嵌套内容仍回退到内容盒边界。
+      const last = content.lastChild;
+      if (last?.nodeType === Node.TEXT_NODE) range.setStart(last, last.textContent?.length ?? 0);
+      else range.setStartAfter(content);
+    }
   });
   const outerPoint = collapsedRangeAt(doc, (range) => {
     const sibling = edge === "start" ? code.previousSibling : code.nextSibling;

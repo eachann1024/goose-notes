@@ -103,9 +103,15 @@ test("桌面小窗草稿页按运行时页面隐藏加入对话，不依赖 comp
   expect(toolbar).toContain("isQuickNoteEditorPage(page)");
   expect(toolbar).toContain("isCompact: isQuickNoteSurface");
   expect(toolbar).toContain("!isQuickNoteSurface");
+  expect(toolbar).toContain("!isQuickNoteSurface && isScrolling");
+  expect(toolbar).toContain("!isQuickNoteSurface ? \"true\" : undefined");
+  expect(toolbar).toContain("!isQuickNoteSurface && \"goose-formatting-toolbar-scaled\"");
   const composer = readFileSync(
     "src/components/editor/core/EditorComposer.tsx",
     "utf8",
+  );
+  expect(composer).toContain(
+    "__GOOSE_EDITOR_COMPACT__ || isQuickNoteEditorPage(page)",
   );
   expect(composer).toContain("if (isQuickNoteEditorPage(page)) return;");
   expect(composer).not.toContain('showDesktopMainWindow("ai-panel")');
@@ -116,6 +122,11 @@ test("桌面小窗草稿页按运行时页面隐藏加入对话，不依赖 comp
   const editor = readFileSync("src/components/editor/core/Editor.tsx", "utf8");
   expect(editor).toContain("{ compact: isQuickNoteEditorPage(page) }");
   expect(editor).not.toContain("rewriteQuickNoteSlashItemForMainWindow");
+  const contextMenu = readFileSync(
+    "src/components/editor/menus/EditorContextMenu.tsx",
+    "utf8",
+  );
+  expect(contextMenu).toContain("!isQuickNoteEditorPage(page)");
 });
 
 test("侧栏关闭时排队选区并打开并排侧栏，随后聚焦输入框", () => {

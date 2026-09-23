@@ -74,6 +74,11 @@ export function EditorFormattingToolbar() {
   const { ai: aiSettings } = useEditorSettings();
   const { contentMode, page } = useEditorPageContext();
   const protectsFirstTitle = contentMode === "normalized";
+  // Electron 桌面端与主窗共用构建，COMPACT / LITE 恒为 false，必须看运行时草稿页。
+  const isQuickNoteSurface =
+    __GOOSE_EDITOR_COMPACT__ ||
+    __GOOSE_LITE__ ||
+    isQuickNoteEditorPage(page);
   const markStates = useSelectionMarkStates(editor);
 
   const selectionState = useEditorState({
@@ -240,7 +245,7 @@ export function EditorFormattingToolbar() {
   // 小窗的格式栏是固定底栏，滚动不会遮挡选区，也不应闪烁隐藏；
   // 常规笔记本的浮动栏仍在滚动时收起，避免与正文一起漂移。
   const shouldHideForScroll =
-    (!__GOOSE_EDITOR_COMPACT__ && isScrolling) || isContextMenuOpen;
+    (!isQuickNoteSurface && isScrolling) || isContextMenuOpen;
   // While AI is active we keep the toolbar visible regardless of scroll/menu.
   const shouldHide = !aiActive && !colorPickerOpen && shouldHideForScroll;
 
@@ -259,10 +264,6 @@ export function EditorFormattingToolbar() {
     return null;
   }
 
-  const isQuickNoteSurface =
-    __GOOSE_EDITOR_COMPACT__ ||
-    __GOOSE_LITE__ ||
-    isQuickNoteEditorPage(page);
   const showAiButton =
     __GOOSE_EDITOR_AI__ &&
     aiSettings.enabled &&
@@ -387,7 +388,7 @@ export function EditorFormattingToolbar() {
         data-formatting-toolbar
         data-selection-mode={caps.mode}
         data-goose-floating-toolbar={
-          !__GOOSE_EDITOR_COMPACT__ ? "true" : undefined
+          !isQuickNoteSurface ? "true" : undefined
         }
         onMouseDown={(e) => {
           // Allow native focus on the AI textarea; everything else uses onClick.
@@ -408,7 +409,7 @@ export function EditorFormattingToolbar() {
           // 小窗底栏已用固定 px 尺寸，禁止再套 CSS zoom：
           // Electron 旧内核会放大 zoom 祖先的 getBoundingClientRect，
           // 导致 Portal 色板 / tooltip 错位（只露出「文本颜色」标题）。
-          !__GOOSE_EDITOR_COMPACT__ && "goose-formatting-toolbar-scaled",
+          !isQuickNoteSurface && "goose-formatting-toolbar-scaled",
           selectionModeClass,
           "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",

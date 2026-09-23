@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   useBlockNoteEditor,
   useExtension,
-  useExtensionState,
 } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical, ChevronRight } from "lucide-react";
@@ -25,10 +30,8 @@ import { getSectionInsertAnchorId } from "@/components/editor/core/headingSectio
 import {
   HEADING_SIDE_MENU_EXTRA_GAP,
   SIDE_MENU_CONTENT_GAP,
-  TABLE_SIDE_MENU_INSET,
-  isEditorSideMenuHoverTarget,
   isPointerInSideMenuCorridor,
-  isTableSideMenuUiTarget,
+  isPointerOverBlockContent,
 } from "@/components/editor/core/sideMenuHover";
 
 const isMac = /Mac/i.test(navigator.platform);
@@ -41,28 +44,60 @@ const SIDEBAR_HOVER_SELECTOR =
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
   const sideMenu = useExtension(SideMenuExtension);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pressedHandle = useRef(false);
+  const [hoveredBlockId, setHoveredBlockId] = useState<string>();
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarInteracting, setSidebarInteracting] = useState(false);
-  const [hoveringEditor, setHoveringEditor] = useState(false);
-  const [keepWhileHidden, setKeepWhileHidden] = useState(false);
   const [foldHot, setFoldHot] = useState(false);
   const [foldTick, setFoldTick] = useState(0);
-  const state = useExtensionState(SideMenuExtension, {
-    selector: (s) =>
-      s !== undefined
-        ? {
-            show: s.show,
-            block: s.block,
-            referencePos: s.referencePos,
-          }
-        : undefined,
-  });
+  const dragBlockId = useRef(hoveredBlockId);
+  if (!isDragging) dragBlockId.current = hoveredBlockId;
+  const blockId = isDragging ? dragBlockId.current : hoveredBlockId;
+  const block = blockId ? editor.getBlock(blockId) : undefined;
+  const [referencePos, setReferencePos] = useState<DOMRect | null>(null);
+  const corridor = useRef<{ rect: DOMRect | null; gap: number }>({ rect: null, gap: 0 });
 
-  const block = state?.block;
+  // Anchor to the content under the pointer, not the editor's blank canvas.
+  useLayoutEffect(() => {
+    const element =
+      blockId &&
+      editor.prosemirrorView.dom.querySelector<HTMLElement>(
+        `[data-node-type="blockContainer"][data-id="${CSS.escape(blockId)}"]`,
+      );
+    if (!element) {
+      setReferencePos(null);
+      return;
+    }
+    const content =
+      element.querySelector<HTMLElement>(":scope > .bn-block-content") ??
+      element;
+    const update = () => {
+      const rect = content.getBoundingClientRect();
+      const column = element.closest('[data-node-type="column"]');
+      const left =
+        (
+          column?.firstElementChild ??
+          editor.prosemirrorView.dom.firstElementChild
+        )?.getBoundingClientRect().left ?? rect.left;
+      setReferencePos(new DOMRect(left, rect.top, rect.width, rect.height));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(content);
+    window.addEventListener("resize", update);
+    document.addEventListener("scroll", update, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+      document.removeEventListener("scroll", update, true);
+    };
+  }, [editor, blockId, foldTick]);
+
   const firstBlockId = editor.document[0]?.id as string | undefined;
   const showHeadingToggle = isFoldableHeadingBlock(block, firstBlockId);
-  const liveHeading = block ? editor.getBlock(block.id) ?? block : undefined;
+  const liveHeading = block ? (editor.getBlock(block.id) ?? block) : undefined;
   const headingExpanded = liveHeading
     ? !readHeadingCollapsed(liveHeading)
     : false;
@@ -71,18 +106,7 @@ export function EditorSideMenu() {
   const sideMenuGap =
     SIDE_MENU_CONTENT_GAP +
     (block?.type === "table" ? 0 : HEADING_SIDE_MENU_EXTRA_GAP);
-  const corridorInset = block?.type === "table" ? TABLE_SIDE_MENU_INSET : 0;
-  const corridorRef = useRef({
-    pos: state?.referencePos,
-    gap: sideMenuGap,
-    inset: corridorInset,
-  });
-  corridorRef.current = {
-    pos: state?.referencePos,
-    gap: sideMenuGap,
-    inset: corridorInset,
-  };
-
+  corridor.current = { rect: referencePos, gap: sideMenuGap };
   useEffect(() => {
     const updateSidebarInteracting = (
       target: EventTarget | null = document.activeElement,
@@ -98,39 +122,47 @@ export function EditorSideMenu() {
 
     const handlePointerMove = (event: PointerEvent) => {
       updateSidebarInteracting(event.target);
-      const { pos, gap, inset } = corridorRef.current;
-      const overUi = isEditorSideMenuHoverTarget(event.target);
-      const inCorridor = isPointerInSideMenuCorridor(
-        event.clientX,
-        event.clientY,
-        pos,
-        gap,
-        inset,
-      );
-      setHoveringEditor(overUi || inCorridor);
-      setKeepWhileHidden(
-        inCorridor || isTableSideMenuUiTarget(event.target),
-      );
+      if (pressedHandle.current) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (menuRef.current?.contains(target)) return;
+      if (isPointerInSideMenuCorridor(event.clientX, event.clientY,
+          corridor.current.rect ?? undefined, corridor.current.gap, 32)) return;
+      const content = target?.closest<HTMLElement>(".bn-block-content");
+      if (content && editor.prosemirrorView.dom.contains(content) &&
+          isPointerOverBlockContent(content, event.clientX, event.clientY)) {
+        setHoveredBlockId(content.closest<HTMLElement>('[data-node-type="blockContainer"]')?.dataset.id);
+      } else {
+        setHoveredBlockId(undefined);
+      }
     };
-    const handleFocusChange = (event: FocusEvent) =>
+    const handleFocusChange = (event: FocusEvent) => {
       updateSidebarInteracting(event.target);
+    };
+    const handleWindowBlur = () => {
+      pressedHandle.current = false;
+      setHoveredBlockId(undefined);
+    };
+    const handlePointerUp = () => { pressedHandle.current = false; };
+    window.addEventListener("blur", handleWindowBlur);
 
     document.addEventListener("pointermove", handlePointerMove, true);
+    document.addEventListener("pointerup", handlePointerUp, true);
     document.addEventListener("focusin", handleFocusChange, true);
     document.addEventListener("focusout", handleFocusChange, true);
     return () => {
+      window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("pointermove", handlePointerMove, true);
+      document.removeEventListener("pointerup", handlePointerUp, true);
       document.removeEventListener("focusin", handleFocusChange, true);
       document.removeEventListener("focusout", handleFocusChange, true);
     };
-  }, []);
+  }, [editor]);
 
   const shouldShow =
-    Boolean(state?.referencePos && block) &&
+    Boolean(referencePos && block) &&
     editor.isEditable &&
-    !sidebarInteracting &&
-    (hoveringEditor || isDragging) &&
-    (Boolean(state?.show) || keepWhileHidden || isDragging);
+    (!sidebarInteracting || isDragging) &&
+    (Boolean(hoveredBlockId) || isDragging);
 
   const handleToggleHeading = useCallback(
     (e: React.MouseEvent) => {
@@ -141,6 +173,34 @@ export function EditorSideMenu() {
     },
     [block, editor],
   );
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      if (!block || !sideMenu) return;
+      setAddTipOpen(false);
+      setIsDragging(true);
+      sideMenu.blockDragStart(
+        { dataTransfer: e.dataTransfer, clientY: e.clientY },
+        block,
+      );
+      ensureBlockMoveDragging(editor.prosemirrorView, e.dataTransfer);
+    },
+    [block, editor, sideMenu],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    pressedHandle.current = false;
+    setIsDragging(false);
+    sideMenu?.blockDragEnd?.();
+  }, [sideMenu]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    // Moving a block can unmount its handle before native dragend fires.
+    const onDrop = () => window.setTimeout(handleDragEnd, 0);
+    document.addEventListener("drop", onDrop, true);
+    return () => document.removeEventListener("drop", onDrop, true);
+  }, [isDragging, handleDragEnd]);
 
   const handleAdd = useCallback(
     (e: React.MouseEvent) => {
@@ -177,26 +237,6 @@ export function EditorSideMenu() {
     [block, editor],
   );
 
-  const handleDragStart = useCallback(
-    (e: React.DragEvent) => {
-      if (!block || !sideMenu) return;
-      setAddTipOpen(false);
-      setIsDragging(true);
-      sideMenu.blockDragStart(
-        { dataTransfer: e.dataTransfer, clientY: e.clientY },
-        block,
-      );
-      ensureBlockMoveDragging(editor.prosemirrorView, e.dataTransfer);
-    },
-    [block, editor, sideMenu],
-  );
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-    sideMenu?.blockDragEnd?.();
-  }, [sideMenu]);
-
-  const referencePos = state?.referencePos;
   if (!shouldShow || !referencePos || !block) {
     return null;
   }
@@ -208,9 +248,13 @@ export function EditorSideMenu() {
     : referencePos.top + referencePos.height / 2;
   const onHeading = block.type === "heading";
   const anchorLeft = referencePos.left - sideMenuGap;
-  const portalTarget = editor.portalElement ?? document.body;
+  // Workspace sidebar and main sheet have separate stacking contexts; escape the main sheet.
+  const portalTarget = editor.prosemirrorView.dom.closest(".workspace-main-sheet")
+    ? document.body
+    : (editor.portalElement ?? document.body);
   return createPortal(
     <div
+      ref={menuRef}
       className={cn(
         "bn-side-menu fixed z-[70]",
         "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
@@ -226,7 +270,11 @@ export function EditorSideMenu() {
         transformOrigin: "right center",
         pointerEvents: "auto",
       }}
-      onMouseDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => {
+        // Native drag needs mousedown; only non-draggable actions preserve focus.
+        if (!(e.target as Element).closest("[draggable='true']")) e.preventDefault();
+        e.stopPropagation();
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -241,6 +289,7 @@ export function EditorSideMenu() {
             <TooltipTrigger asChild>
               <button
                 type="button"
+                aria-label="添加块"
                 onClick={handleAdd}
                 className={cn(
                   "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
@@ -281,7 +330,7 @@ export function EditorSideMenu() {
             }}
             onClick={handleToggleHeading}
             className={cn(
-              "goose-heading-fold-btn flex h-6 w-[22px] items-center justify-center rounded-[7px]",
+              "goose-heading-fold-btn flex h-6 w-[22px] cursor-pointer items-center justify-center rounded-[7px]",
               "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
             )}
           >
@@ -299,6 +348,8 @@ export function EditorSideMenu() {
         <button
           type="button"
           draggable
+          aria-label="拖动移动块"
+          onPointerDown={() => { pressedHandle.current = true; }}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           className={cn(

@@ -61,6 +61,70 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("提醒事项保留扫光动画，选中文字不隐形", async ({ page }) => {
+  const id = await createNote(page, "提醒事项动画");
+  await openNote(page, id);
+  const skipGuide = page.getByRole("button", { name: "暂时跳过" });
+  if (await skipGuide.isVisible()) await skipGuide.click();
+  await page.evaluate(() => {
+    const editor = (window as any).__gooseNoteEditor;
+    const [block] = editor.insertBlocks(
+      [{ type: "checkListItem", content: "动画文字" }],
+      editor.document.at(-1), "after",
+    );
+    const text = document.querySelector(`[data-id="${block.id}"] .bn-inline-content`)!;
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  });
+  const item = page.locator('[data-content-type="checkListItem"]').filter({ hasText: "动画文字" });
+  await expect.poll(() => item.locator(".bn-inline-content").evaluate((el) =>
+    getComputedStyle(el).webkitTextFillColor,
+  )).not.toBe("rgba(0, 0, 0, 0)");
+  const background = await page.evaluate(() => {
+    const editor = (window as any).__gooseNoteEditor;
+    const [empty] = editor.insertBlocks([{ type: "paragraph", content: "" }], editor.document.at(-1), "after");
+    editor.setTextCursorPosition(empty, "start");
+    editor.focus();
+    const dom = document.querySelector<HTMLElement>(`.bn-block-outer[data-id="${empty.id}"] .bn-block-content`)!;
+    (window as any).__activeLine = dom;
+    (window as any).__editorFocusOut = 0;
+    dom.closest(".bn-editor")!.addEventListener("focusout", () => (window as any).__editorFocusOut++);
+    return getComputedStyle(dom).backgroundColor;
+  });
+  expect(background).not.toBe("rgba(0, 0, 0, 0)");
+  await item.locator("input").evaluate((input) => {
+    input.addEventListener("change", () => requestAnimationFrame(() => {
+      const text = [...document.querySelectorAll<HTMLElement>('.bn-block-content[data-content-type="checkListItem"] .bn-inline-content')]
+        .find((el) => el.textContent === "动画文字");
+      const animation = text?.getAnimations().find((animation) => animation.playState === "running");
+      const rebound = text?.parentElement?.querySelector("input")?.getAnimations().some((animation) =>
+        animation.effect?.getKeyframes().some((frame) => frame.transform === "scale(1.12)"),
+      );
+      const range = document.createRange();
+      if (text) range.selectNodeContents(text);
+      const width = text ? Math.max(...[...range.getClientRects()].map((rect) => rect.right - text.getBoundingClientRect().left)) : 0;
+      (window as any).__checklistSweeping = Boolean(animation && rebound && width &&
+        Math.abs(parseFloat(animation.effect!.getKeyframes()[0].backgroundSize as string) / 3 - width) < 2);
+    }), { once: true });
+  });
+  await item.locator("input").click();
+  await expect(item.locator("input")).toBeChecked();
+  expect(await page.evaluate(() => ({
+    focusOut: (window as any).__editorFocusOut,
+    background: getComputedStyle((window as any).__activeLine).backgroundColor,
+  }))).toEqual({ focusOut: 0, background });
+  await expect.poll(() => page.evaluate(() => (window as any).__checklistSweeping)).toBe(true);
+  await expect.poll(() => item.locator(".bn-inline-content").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      gradient: style.backgroundImage !== "none",
+      selected: el.closest(".bn-editor")!.classList.contains("goose-checklist-selection"),
+    };
+  })).toEqual({ gradient: true, selected: false });
+});
+
 test("Markdown 粘贴保留粗体、待办、链接和 data 图片，不显示源码", async ({ page }) => {
   const id = await createNote(page, "粘贴验收");
   await openNote(page, id);

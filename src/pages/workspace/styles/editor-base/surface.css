@@ -80,7 +80,7 @@
   .bn-block-content[data-content-type="heading"][data-goose-heading-caret="true"]
   .bn-inline-content {
   color: var(--goose-interactive-selected-fg);
-  caret-color: var(--goose-interactive-selected-fg);
+  caret-color: var(--goose-accent-focus);
 }
 
 /* 引用继承正文/显式文字色，避免 BlockNote 固定灰色在深色主题下失去对比。 */
@@ -119,15 +119,13 @@
 /* 光标所在文本行：Zed 式浅底，只盖当前块内容、不含子块。
  * 左右外扩与标题色条对齐，再用等量 padding 把文字/光标放回原基线。
  * 标题本身已外扩 8px，不再叠一次。 */
-.bn-editor:focus-within
-  .bn-block-outer.goose-active-line
+:is(.bn-editor:focus-within .bn-block-outer.goose-active-line, .bn-editor .bn-block-outer.goose-ai-empty-target)
   > .bn-block
   > .bn-block-content {
   background-color: var(--goose-active-line-bg);
 }
 
-.bn-editor:focus-within
-  .bn-block-outer.goose-active-line
+:is(.bn-editor:focus-within .bn-block-outer.goose-active-line, .bn-editor .bn-block-outer.goose-ai-empty-target)
   > .bn-block
   > .bn-block-content:not([data-content-type="heading"]) {
   box-sizing: border-box;
@@ -152,9 +150,9 @@
   border-radius: 4px;
 }
 
-/* 行距对齐 Notion：正文 16px / 1.5，块间距靠 BlockNote 默认 3px padding，
+/* 正文行高跟随阅读设置，块间距保留 BlockNote 默认 3px padding，
  * 不再额外加 0.5em 底边距（那会把回车后的「行」撑得比 Notion 松一截）。 */
 .workspace-editor-surface .bn-block-outer {
-  line-height: 1.5;
+  line-height: var(--editor-line-height, 1.5);
   margin-bottom: 0;
 }

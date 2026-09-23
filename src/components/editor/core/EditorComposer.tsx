@@ -88,7 +88,6 @@ import {
   EDITOR_CONTEXT_UI_GAP,
   getScaledEditorUiPx,
 } from "@/components/editor/utils/editorContextUi";
-import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
 import {
   useEditorPageContext,
   useEditorSettings,
@@ -188,8 +187,7 @@ export function EditorComposer({
   const [findOpenNonce, setFindOpenNonce] = useState(0);
   const [findOpenReplace, setFindOpenReplace] = useState(false);
   const { ai: aiSettings } = useEditorSettings();
-  const { onPromotePreview, searchPages, showLocalFileTitle } =
-    useEditorPageContext();
+  const { onPromotePreview, searchPages } = useEditorPageContext();
   const getMentionItems = useCallback(
     async (query: string) =>
       getPageMentionMenuItems(
@@ -234,10 +232,8 @@ export function EditorComposer({
 
     if (isQuickNoteEditorPage(page)) return;
     if (
-      (!__GOOSE_EDITOR_AI__ && true) ||
-      !isInlineAiEmptyParagraphTriggerKey(event.key) ||
-      page?.localFilePath ||
-      Boolean(page?.localUnsaved)
+      !__GOOSE_EDITOR_AI__ ||
+      !isInlineAiEmptyParagraphTriggerKey(event.key)
     ) {
       return;
     }
@@ -599,21 +595,6 @@ export function EditorComposer({
     }),
     [],
   );
-  const handleLocalFileTitleEnter = useCallback(() => {
-    const firstBlock = editor.document[0];
-    if (!firstBlock) return;
-
-    const [inserted] = editor.insertBlocks(
-      [{ type: "paragraph", content: "" }],
-      firstBlock,
-      "before",
-    );
-    if (inserted) {
-      editor.setTextCursorPosition(inserted, "start");
-      editor.focus();
-    }
-  }, [editor]);
-
   return (
     <EditorContextMenu
       editor={editor}
@@ -628,14 +609,6 @@ export function EditorComposer({
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
     >
-      {page?.localFilePath && showLocalFileTitle && (
-        <LocalFileTitle
-          pageId={page.id}
-          localFilePath={page.localFilePath}
-          editable={editable}
-          onEnterBelow={handleLocalFileTitleEnter}
-        />
-      )}
       <BlockNoteView
         editor={editor}
         editable={editable}
@@ -679,7 +652,7 @@ export function EditorComposer({
           <GooseTableHandlesController />
         ) : null}
         <FormattingToolbarHoldContext.Provider value={holdFormattingToolbar}>
-          {__GOOSE_EDITOR_COMPACT__ ? (
+          {__GOOSE_EDITOR_COMPACT__ || isQuickNoteEditorPage(page) ? (
             <FixedFormattingToolbarController
               formattingToolbar={EditorFormattingToolbar}
               open={formattingToolbarOpen}

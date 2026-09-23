@@ -118,3 +118,10 @@
   margin-top: 15px;
   padding-top: 3px;
 }
+
+/* 色带标题与紧邻的代码、表格等无上留白块之间保留间距。 */
+.workspace-editor-surface
+  .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"][data-background-color])
+  + .bn-block-outer {
+  margin-top: 0.6em;
+}

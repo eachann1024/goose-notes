@@ -36,7 +36,7 @@
   vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  caret-color: var(--goose-inline-code-fg);
+  caret-color: var(--goose-accent-focus);
 }
 
 /* 当前行底色可能接近代码底色，保留代码边界以免融入整行高亮。 */
@@ -272,17 +272,70 @@
   .bn-inline-content {
   text-decoration: none;
   color: hsl(var(--muted-foreground));
+  background-position: 0 0;
+}
+
+/* BlockNote 覆写了 --foreground 为完整的 oklch()，不能再包 hsl()。 */
+.workspace-editor-surface {
+  --goose-check-glint: color-mix(in srgb, hsl(var(--card-foreground)) 35%, hsl(var(--card)));
+}
+
+.dark .workspace-editor-surface {
+  --goose-check-glint: color-mix(in srgb, hsl(var(--card-foreground)) 75%, hsl(var(--primary)));
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  .bn-inline-content {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)) 0 40%,
+    var(--goose-check-glint) 47%,
+    hsl(var(--card-foreground)) 54% 100%
+  );
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  background-repeat: no-repeat;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--goose-accent-focus);
+}
+
+/* 选中背景会盖掉裁剪到文字的渐变；选中文字必须有实体前景色。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  .bn-inline-content::selection,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  .bn-inline-content *::selection {
+  -webkit-text-fill-color: currentColor;
+}
+
+/* 原生选择高亮不绘制 text-clip 背景，选中文字时暂用实体字色。 */
+.workspace-editor-surface
+  .bn-editor.goose-checklist-selection
+  .bn-block-content[data-content-type="checkListItem"]
+  .bn-inline-content {
+  -webkit-text-fill-color: currentColor;
+}
+
+/* 链接、代码和显式文字色不继承渐变。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="checkListItem"]
+  .bn-inline-content :is(a, code, [data-inline-content-type], [style*="color"]) {
+  -webkit-text-fill-color: currentColor;
 }
 
 /* ===== CheckListItem 对齐：单行时复选框与文字垂直居中，多行时对齐第一行 =====
-   原理：复选框包裹盒高度 = 一行行高（line-height 1.5em），盒内 input 垂直居中。
+   原理：复选框包裹盒高度 = 一行行高（--editor-line-height），盒内 input 垂直居中。
    单行 → 盒高等于唯一一行 → 视觉居中；
    多行 → 盒高仍只占第一行高度 → 复选框对齐第一行（顶部对齐效果）。
    覆盖 BlockNote 内置的固定 height:24px，避免换字体后行高变化导致错位。 */
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"]
   > div:has(> input) {
-  height: 1.5em;
+  height: calc(var(--editor-line-height, 1.5) * 1em);
   display: flex;
   align-items: center;
 }
@@ -312,6 +365,7 @@
   border: 0.09em solid hsl(var(--muted-foreground));
   border-radius: 0.2em;
   background: transparent;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
 
 .workspace-editor-surface
@@ -328,6 +382,16 @@
   background-origin: padding-box;
   background-position: center;
   background-size: 100% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface
+    .bn-block-content[data-content-type="checkListItem"]
+    .bn-inline-content {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    transition: color 150ms ease-out;
+  }
 }
 
 /* ===== BlockNote children 缩进优化 ===== */

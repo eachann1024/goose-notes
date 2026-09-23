@@ -1,8 +1,11 @@
 import { BlockNoteEditor } from "@blocknote/core";
 import { expect, test } from "@playwright/test";
+import { TextSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { editorSchema } from "../../src/components/editor/core/schema";
 import {
   edgeGraphemeLength,
+  handleArrow,
   inlineCodeEdgeArrowAction,
   inlineCodeEdgeAt,
   shouldKeepInlineCodeDomCaret,
@@ -47,6 +50,29 @@ test("方向键在边界上的四种组合：朝内先进盒、朝外先出盒",
   expect(inlineCodeEdgeArrowAction("end", true, "left")).toBe("step-inward");
   expect(inlineCodeEdgeArrowAction("end", true, "right")).toBe("leave");
   expect(inlineCodeEdgeArrowAction("end", false, "right")).toBe(null);
+});
+
+test("从行内代码右侧连续按左键可以逐字进入，不会弹回盒外", () => {
+  const editor = createEditor();
+  let state = editor.prosemirrorState;
+  const codeType = state.schema.marks.code;
+  let codeTo = -1;
+  state.doc.descendants((node, pos) => {
+    if (node.isText && codeType.isInSet(node.marks)) codeTo = pos + node.nodeSize;
+  });
+  state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, codeTo)));
+  const view = {
+    get state() { return state; },
+    dispatch(tr: typeof state.tr) { state = state.apply(tr); },
+  } as EditorView;
+
+  expect(handleArrow(view, "left")).toBe(true); // 先到 Y 后、盒内右边界
+  expect(state.selection.from).toBe(codeTo);
+  expect(codeType.isInSet(state.storedMarks ?? [])).toBeTruthy();
+  expect(handleArrow(view, "left")).toBe(true); // 再经过 Y
+  expect(state.selection.from).toBe(codeTo - 1);
+  expect(handleArrow(view, "left")).toBe(true); // 继续经过 X，不能交给浏览器弹回
+  expect(state.selection.from).toBe(codeTo - 2);
 });
 
 test("只有代码段两端算边界，段内与纯文本都不算", () => {

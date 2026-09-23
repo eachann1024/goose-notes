@@ -149,11 +149,6 @@ export interface EditorPageContext {
   getLatestPage?: (pageId: string) => Page | null;
   /** 编辑后把预览标签提升为正式标签；无标签宿主可不提供。 */
   onPromotePreview?: () => void;
-  /**
-   * 是否在正文上方渲染本地文件名大标题。
-   * 单标签 / 仅一个文档标签时为 false：标题改在标签 pill 或页头上编辑。
-   */
-  showLocalFileTitle?: boolean;
 }
 
 /** 编辑器对外 props（宿主接线在 Step 6 完成）。 */

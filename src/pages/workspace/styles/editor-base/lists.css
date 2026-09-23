@@ -57,7 +57,7 @@
 
 /* 飞书式列表圆点：不用字体字形 / radial-gradient（硬切边在旧 Chromium
    锯齿明显），改用 border-radius 几何圆。圆心仍固定在 center-x、首行
-   垂直中心 0.75em；默认 16px 正文下一级圆点直径 6.75px，随字号缩放。
+   垂直中心随正文行高变化；默认 16px 正文下一级圆点直径 6.75px，随字号缩放。
    marker 槽总占位仍为 1.5em（左右 margin 补齐），避免正文起点偏移。 */
 .workspace-shell
   .workspace-editor-surface
@@ -69,7 +69,7 @@
   width: calc(2 * var(--goose-bullet-marker-radius));
   min-width: 0;
   height: calc(2 * var(--goose-bullet-marker-radius));
-  margin-top: calc(0.75em - var(--goose-bullet-marker-radius));
+  margin-top: calc(var(--editor-line-height, 1.5) * 0.5em - var(--goose-bullet-marker-radius));
   margin-left: calc(
     var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-radius)
   );

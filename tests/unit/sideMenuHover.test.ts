@@ -6,6 +6,7 @@ import {
   TABLE_SIDE_MENU_INSET,
   isEditorSideMenuHoverTarget,
   isPointerInSideMenuCorridor,
+  isPointerInRects,
   isTableSideMenuUiTarget,
 } from "../../src/components/editor/core/sideMenuHover";
 
@@ -86,7 +87,11 @@ test("几何走廊覆盖块全高和表格左内边距，从任意行横移仍�
   );
 });
 
-test("SideMenu 用 hover 判定挡住 BlockNote 的左右 250px 吸附", () => {
+test("只有指针命中内容的几何范围才显示把手", () => {
+  const text = [{ left: 240, right: 380, top: 100, bottom: 125 }];
+  expect(isPointerInRects(text, 300, 110)).toBe(true);
+  expect(isPointerInRects(text, 500, 110)).toBe(false);
+  expect(isPointerInRects(text, 300, 200)).toBe(false);
   const source = readFileSync(
     new URL("../../src/components/editor/core/EditorSideMenu.tsx", import.meta.url),
     "utf8",
@@ -98,11 +103,9 @@ test("SideMenu 用 hover 判定挡住 BlockNote 的左右 250px 吸附", () => {
     ),
     "utf8",
   );
-  expect(source).toContain("isEditorSideMenuHoverTarget");
+  expect(source).toContain("isPointerOverBlockContent");
   expect(source).toContain("isPointerInSideMenuCorridor");
-  expect(source).toContain("isTableSideMenuUiTarget");
-  expect(source).toContain("keepWhileHidden");
-  expect(source).toContain("hoveringEditor || isDragging");
+  expect(source).toContain("hoveredBlockId) || isDragging");
   expect(source).toContain("onContextMenu={(e) => {");
   expect(source).toContain("e.preventDefault()");
   expect(source).toContain("e.stopPropagation()");

@@ -11,6 +11,30 @@ export const HEADING_SIDE_MENU_EXTRA_GAP = 8;
  */
 export const TABLE_SIDE_MENU_INSET = 9;
 
+export function isPointerInRects(
+  rects: Iterable<Pick<DOMRect, "left" | "right" | "top" | "bottom">>,
+  x: number,
+  y: number,
+): boolean {
+  return Array.from(rects).some((rect) =>
+    x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+  );
+}
+
+/** Full-width block rows are not content: only text, controls or media can reveal the handle. */
+export function isPointerOverBlockContent(content: HTMLElement, x: number, y: number): boolean {
+  const inline = content.querySelector(".bn-inline-content");
+  if (!inline) return isPointerInRects([content.getBoundingClientRect()], x, y);
+  const range = document.createRange();
+  range.selectNodeContents(inline);
+  if (range.toString().trim() && isPointerInRects(range.getClientRects(), x, y)) return true;
+  return isPointerInRects(
+    Array.from(content.querySelectorAll("input, img, video, canvas"), (element) => element.getBoundingClientRect()),
+    x,
+    y,
+  );
+}
+
 const EDITOR_SIDE_MENU_HOVER_SELECTOR = [
   ".bn-editor",
   ".bn-side-menu",

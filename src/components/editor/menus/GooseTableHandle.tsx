@@ -324,7 +324,6 @@ export function GooseTableHandle({
   const isRow = orientation === "row";
   const mergeNoteId = useId();
   const ownsInteraction = useRef(false);
-  const ownsDrag = useRef(false);
 
   const closeMenu = useCallback(() => {
     setOpen(false);
@@ -338,34 +337,10 @@ export function GooseTableHandle({
     () => () => {
       if (!ownsInteraction.current) return;
       tableHandles?.unfreezeHandles();
-      if (ownsDrag.current) tableHandles?.dragEnd();
       hideOtherElements(false);
     },
     [tableHandles, hideOtherElements],
   );
-
-  const handleDragStart = useCallback(
-    (e: React.DragEvent) => {
-      if (!tableHandles || !state?.block) return;
-      ownsInteraction.current = true;
-      ownsDrag.current = true;
-      hideOtherElements(true);
-      if (orientation === "column") {
-        tableHandles.colDragStart(e);
-      } else {
-        tableHandles.rowDragStart(e);
-      }
-    },
-    [tableHandles, state, orientation, hideOtherElements],
-  );
-
-  const handleDragEnd = useCallback(() => {
-    if (!tableHandles) return;
-    ownsInteraction.current = false;
-    ownsDrag.current = false;
-    tableHandles.dragEnd();
-    hideOtherElements(false);
-  }, [tableHandles, hideOtherElements]);
 
   const insertDimension = (before: boolean) => {
     if (!state?.block || index === undefined) return;
@@ -523,9 +498,6 @@ export function GooseTableHandle({
           type="button"
           className="bn-table-handle goose-editor-position-safe-trigger goose-table-handle-btn"
           aria-label={isRow ? "行操作" : "列操作"}
-          draggable
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
         >
           {isRow ? (
             <LucideIcons.GripVertical className="h-4 w-4" />

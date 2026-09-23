@@ -17,13 +17,6 @@ const NEST_DELTA_X = 24;
 type NestEditor = {
   canNestBlock: () => boolean;
   nestBlock: () => void;
-  prosemirrorView:
-    | {
-        dom: HTMLElement;
-        dragging: unknown;
-      }
-    | null
-    | undefined;
 };
 
 type DragNestState = {
@@ -32,14 +25,14 @@ type DragNestState = {
   lastClientX: number;
 };
 
-function isBlockNoteDrag(event: DragEvent, editor: NestEditor): boolean {
+function isBlockNoteDrag(event: DragEvent): boolean {
   const types = event.dataTransfer?.types;
   if (types) {
     for (let i = 0; i < types.length; i++) {
       if (types[i] === "blocknote/html") return true;
     }
   }
-  if (editor.prosemirrorView?.dragging) return true;
+  // Native text selections also set view.dragging; nesting applies only to blocks.
   const target = event.target;
   if (target instanceof Element && target.closest(".bn-side-menu")) return true;
   return false;
@@ -83,9 +76,19 @@ export const gooseBlockDragNestExtension = createExtension(
       }) {
         const onDragStart = (event: Event) => {
           const e = event as DragEvent;
+          // 清单内容只供选择和编辑；整块移动必须从侧边把手起拖。
+          if (
+            e.target instanceof Element &&
+            e.target.closest('.bn-block-content[data-content-type="checkListItem"]')
+          ) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            resetState();
+            return;
+          }
           const fromSideMenu =
             e.target instanceof Element && e.target.closest(".bn-side-menu");
-          if (!fromSideMenu && !isBlockNoteDrag(e, ed)) {
+          if (!fromSideMenu && !isBlockNoteDrag(e)) {
             state.active = false;
             return;
           }
@@ -100,7 +103,7 @@ export const gooseBlockDragNestExtension = createExtension(
 
         const onDragOver = (event: Event) => {
           const e = event as DragEvent;
-          if (!state.active && !isBlockNoteDrag(e, ed)) return;
+          if (!state.active && !isBlockNoteDrag(e)) return;
           if (!state.active) {
             // dragstart 未标记时（PM 内部拖拽），用当前点作起点
             state.active = true;

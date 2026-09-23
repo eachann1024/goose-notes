@@ -255,7 +255,7 @@
 .quicknote-editor-surface
   [data-callout="true"]
   .callout-content.bn-inline-content {
-  line-height: 1.5;
+  line-height: var(--editor-line-height, 1.5);
 }
 
 .workspace-editor-surface [data-callout="true"] .callout-icon-slot svg,
@@ -300,7 +300,7 @@
   [data-callout="true"]
   .callout-content
   .bn-block-content[data-content-type="paragraph"] {
-  line-height: 1.5;
+  line-height: var(--editor-line-height, 1.5);
 }
 
 /* ===== 表格控件：尺寸来自实际 table border box，不裁成 viewport 尺寸 ===== */

@@ -87,8 +87,8 @@ import {
 } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseTableEnterExtension } from "@/components/editor/extensions/tableEnterExtension";
-import { gooseBlockDragNestExtension } from "@/components/editor/extensions/blockDragNestExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
+import { gooseCodeTextDropExtension } from "@/components/editor/extensions/codeTextDropExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
 import { gooseMediaBlockEnterExtension } from "@/components/editor/extensions/mediaBlockEnterExtension";
@@ -115,6 +115,7 @@ import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseActiveHeadingCaretExtension } from "@/components/editor/extensions/activeHeadingCaretExtension";
+import { gooseStrongCaretExtension } from "@/components/editor/extensions/strongCaretExtension";
 import { gooseActiveLineExtension } from "@/components/editor/extensions/activeLineExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
@@ -371,16 +372,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
         gooseActiveHeadingCaretExtension,
+        gooseStrongCaretExtension,
         gooseActiveLineExtension,
         gooseTabBehaviorExtension,
         gooseTableEnterExtension,
-        gooseBlockDragNestExtension(),
         gooseSelectAllExtension,
         gooseTableCellSelectionExtension,
         gooseCopyCurrentBlockExtension,
         gooseMoveBlockExtension,
         createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
+        gooseCodeTextDropExtension(),
         gooseCodeBlockLinkStripExtension,
         gooseFirstTitleEnterExtension,
         gooseMediaBlockEnterExtension,
@@ -674,9 +676,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     async (query: string) => {
       let items = getBlockNoteSlashMenuItems(
         editor,
-        aiSettingsRef.current.enabled &&
-          (contentModeRef.current === "normalized" ||
-            false),
+        aiSettingsRef.current.enabled,
         settingsRef.current.features,
         { compact: isQuickNoteEditorPage(page) },
       );
@@ -993,7 +993,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     const handleFocusStart = () => {
       if (!isActiveEditor) return;
       const pageId = pageRef.current?.id;
-      // 本地文件标题由 LocalFileTitle 承担；新建页标题聚焦请求未完成时不抢焦到正文。
+      // 本地文件标题由标签栏承担；新建页标题聚焦请求未完成时不抢焦到正文。
       if (
         pageId &&
         isPageTitleFocusRequested(pageId) &&
@@ -1029,9 +1029,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       const focusBody = () => {
         const blocks = editor.document;
         if (blocks.length === 0) return false;
-        const target = usesRawEditorContentRef.current
-          ? blocks[0]
-          : (blocks[1] ?? blocks[0]);
+        const target = blocks[blocks.length - 1];
         try {
           if (!usesRawEditorContentRef.current && blocks.length === 1) {
             const [inserted] = editor.insertBlocks(
@@ -1041,7 +1039,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
             );
             if (inserted) editor.setTextCursorPosition(inserted, "start");
           } else {
-            editor.setTextCursorPosition(target, "start");
+            try {
+              editor.setTextCursorPosition(target, "end");
+            } catch {
+              const [inserted] = editor.insertBlocks(
+                [{ type: "paragraph", content: "" }], target, "after",
+              );
+              if (!inserted) return false;
+              editor.setTextCursorPosition(inserted, "start");
+            }
           }
           editor.focus();
           return true;
