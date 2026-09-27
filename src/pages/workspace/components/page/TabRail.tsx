@@ -222,7 +222,8 @@ function SortableTabItem({
             }
           }}
           className={cn(
-            "goose-interactive group relative @container flex items-center gap-1 px-2 text-sm",
+            "group relative @container flex items-center gap-1 px-2 text-sm",
+            tabCount > 1 && "goose-interactive",
             tabRailItemClassName(tabCount),
             tab.preview && "italic",
             isDragging && "opacity-60",
