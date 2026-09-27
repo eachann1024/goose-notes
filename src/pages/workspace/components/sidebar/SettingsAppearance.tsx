@@ -12,7 +12,7 @@ import {
 } from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
-import { DEFAULT_FONT_NAMES, isLocalFontAvailable } from "@/lib/fontLoader";
+import { DEFAULT_FONT_NAMES, isLocalFontAvailable, normalizeLocalFontName } from "@/lib/fontLoader";
 import { ReadingPreferences } from "../ReadingPreferences";
 import { AppearanceEditorPreview } from "./AppearanceEditorPreview";
 
@@ -157,15 +157,24 @@ function LocalFontInput({
   placeholder: string;
   label?: string;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const fontValue = draft ?? value;
   const [available, setAvailable] = useState(true);
-  useEffect(() => {
-    if (!value.trim()) {
-      setAvailable(true);
+  const unavailable = Boolean(fontValue.trim()) && !available;
+  const commit = () => {
+    const font = fontValue.trim();
+    if (font && !normalizeLocalFontName(font)) {
+      setAvailable(false);
       return;
     }
+    if (font !== value) onChange(font);
+    setDraft(null);
+  };
+  useEffect(() => {
+    if (!fontValue.trim()) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      void isLocalFontAvailable(value).then((found) => {
+      void isLocalFontAvailable(fontValue.trim()).then((found) => {
         if (!cancelled) setAvailable(found);
       });
     }, 250);
@@ -173,21 +182,33 @@ function LocalFontInput({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [value]);
+  }, [fontValue]);
   return (
     <>
       <Input
         id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        value={fontValue}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            setDraft(null);
+          }
+        }}
         placeholder={placeholder}
         aria-label={label}
         maxLength={80}
-        aria-invalid={!available}
-        aria-describedby={!available ? `${id}-warning` : undefined}
+        aria-invalid={unavailable}
+        aria-describedby={unavailable ? `${id}-warning` : undefined}
         className="min-w-0 bg-background"
       />
-      {!available && (
+      {unavailable && (
         <p
           id={`${id}-warning`}
           role="status"
@@ -497,7 +518,7 @@ export function SettingsAppearance({
         </SettingsSectionCard>
         <SettingsSectionCard
           title="字体与阅读"
-          description="按使用位置设置本机字体；留空时使用对应的默认字体。"
+          description="输入字体后按 Enter 或移开焦点应用；留空使用默认字体。"
           className="border border-border/60"
         >
           <div className="grid gap-3 sm:grid-cols-2">

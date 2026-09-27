@@ -3,12 +3,6 @@ import { SettingsAbout } from "./settings/SettingsAbout";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsShortcuts } from "./settings/SettingsShortcuts";
 import { SettingsLocalFolder } from "./SettingsLocalFolder";
-import {
-  LOCAL_FOLDER_EDITOR_CANDIDATES,
-  LOCAL_FOLDER_FILE_MANAGER_CANDIDATES,
-  LOCAL_FOLDER_TERMINAL_CANDIDATES,
-} from "@/lib/local-folder-open-apps";
-import { shell } from "@/lib/electron-platform/shell";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
@@ -137,47 +131,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
     return () => {
       document.body.removeAttribute("data-goose-settings-open");
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    let cancelled = false;
-    let idleId: number | null = null;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const prewarmLocalFolderOpenApps = () => {
-      if (cancelled) return;
-      void Promise.all([
-        shell.listAvailableOpenApps(LOCAL_FOLDER_FILE_MANAGER_CANDIDATES),
-        shell.listAvailableOpenApps(LOCAL_FOLDER_EDITOR_CANDIDATES),
-        shell.listAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES),
-      ]);
-    };
-
-    const schedule =
-      typeof window !== "undefined" &&
-      typeof window.requestIdleCallback === "function"
-        ? () => {
-            idleId = window.requestIdleCallback(() => {
-              prewarmLocalFolderOpenApps();
-            });
-          }
-        : () => {
-            timeoutId = setTimeout(prewarmLocalFolderOpenApps, 0);
-          };
-
-    schedule();
-
-    return () => {
-      cancelled = true;
-      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-      }
     };
   }, [open]);
 

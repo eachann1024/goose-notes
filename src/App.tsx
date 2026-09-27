@@ -1,5 +1,6 @@
 import { SetupGuide } from "@/pages/workspace/components/SetupGuide";
 import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { usePages } from "./stores/usePages";
@@ -16,18 +17,34 @@ import {
 } from "@/lib/appearance";
 import { shouldPreserveStartupSelection } from "@/lib/workspaceStartup";
 
-function App() {
+// Appearance changes update CSS without re-rendering the whole workspace.
+function AppearanceSync() {
   const {
-    uiFontSize,
-    editorFontSize,
-    editorLineHeight,
-    sidebarFontSize,
-    customFonts,
-    uiFontFamily,
-    sidebarFontFamily,
-    privacy,
-    singleTabMode: singleTabModeSetting,
-  } = useSettings();
+    uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize,
+    customFonts, uiFontFamily, sidebarFontFamily,
+  } = useSettings(useShallow((state) => ({
+      uiFontSize: state.uiFontSize,
+      editorFontSize: state.editorFontSize,
+      editorLineHeight: state.editorLineHeight,
+      sidebarFontSize: state.sidebarFontSize,
+      customFonts: state.customFonts,
+      uiFontFamily: state.uiFontFamily,
+      sidebarFontFamily: state.sidebarFontFamily,
+    })));
+  useEffect(() => {
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize });
+  }, [uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize]);
+
+  useEffect(() => {
+    applyFontVariables(customFonts, { uiFontFamily, sidebarFontFamily });
+  }, [customFonts, uiFontFamily, sidebarFontFamily]);
+
+  return null;
+}
+
+function App() {
+  const privacy = useSettings((state) => state.privacy);
+  const singleTabModeSetting = useSettings((state) => state.singleTabMode);
   const hydrated = usePages((s) => s.hydrated);
   const activePageId = usePages((s) => s.activePageId);
 
@@ -113,18 +130,11 @@ function App() {
     useTabs.getState().collapseToActiveTab();
   }, [hydrated, singleTabModeSetting]);
 
-  useEffect(() => {
-    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize });
-  }, [uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize]);
-
-  useEffect(() => {
-    applyFontVariables(customFonts, { uiFontFamily, sidebarFontFamily });
-  }, [customFonts, uiFontFamily, sidebarFontFamily]);
-
   return (
     <>
+      <AppearanceSync />
       <WorkspacePage />
-    <SetupGuide />
+      <SetupGuide />
       <Toaster />
     </>
   );
