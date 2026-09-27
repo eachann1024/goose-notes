@@ -30,15 +30,7 @@ export const ACCENT_COLORS = [
 export type AccentColor = (typeof ACCENT_COLORS)[number];
 export const DEFAULT_ACCENT_COLOR: AccentColor = "ocean";
 
-export type CodeStyle =
-  | "default"
-  | "github"
-  | "catppuccin"
-  | "modern"
-  | "night"
-  | "dracula"
-  | "nord"
-  | "nord-light";
+export type CodeTheme = "github-light" | "github-dark";
 
 /** Agent 运行时：pi = Pi harness；legacy = 自研 ToolLoopAgent。 */
 export type AIAgentRuntime = "legacy" | "pi";
@@ -240,11 +232,6 @@ export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
   },
 ];
 
-export const CODE_STYLE_MIGRATION_MAP: Record<string, CodeStyle> = {
-  default: "github",
-  vivid: "nord",
-};
-
 export const DEFAULT_HOTKEY_STATUS: DesktopHotkeyStatus = {
   state: "idle",
 };
@@ -290,25 +277,6 @@ export function mergeDesktopSettings(
   };
 }
 
-export function normalizeCodeStyle(codeStyle: string | undefined): CodeStyle {
-  if (!codeStyle) return "github";
-  if (codeStyle in CODE_STYLE_MIGRATION_MAP) {
-    return CODE_STYLE_MIGRATION_MAP[codeStyle];
-  }
-  if (
-    codeStyle === "github" ||
-    codeStyle === "catppuccin" ||
-    codeStyle === "modern" ||
-    codeStyle === "night" ||
-    codeStyle === "dracula" ||
-    codeStyle === "nord" ||
-    codeStyle === "nord-light"
-  ) {
-    return codeStyle;
-  }
-  return "github";
-}
-
 export function normalizeAccentColor(accentColor: unknown): AccentColor {
   if (accentColor === "teal") return "mono";
   return typeof accentColor === "string" &&
@@ -317,28 +285,8 @@ export function normalizeAccentColor(accentColor: unknown): AccentColor {
     : DEFAULT_ACCENT_COLOR;
 }
 
-export function resolveCodeTheme(
-  codeStyle: CodeStyle,
-  isDark: boolean,
-): string {
-  switch (codeStyle) {
-    case "modern":
-      return isDark ? "one-dark" : "one-light";
-    case "catppuccin":
-      return isDark ? "catppuccin-mocha" : "catppuccin-latte";
-    case "night":
-      return isDark ? "tokyo-night" : "github-light-mod";
-    case "dracula":
-      // Dracula 没有官方浅色版；浅色模式搭配项目已有的柔和亮色主题。
-      return isDark ? "dracula" : "github-light-mod";
-    case "nord":
-    case "nord-light":
-      return isDark ? "nord" : "nord-light";
-    case "default":
-    case "github":
-    default:
-      return isDark ? "github-dark" : "github-light";
-  }
+export function resolveCodeTheme(isDark: boolean): CodeTheme {
+  return isDark ? "github-dark" : "github-light";
 }
 
 export function normalizeUIFontSize(

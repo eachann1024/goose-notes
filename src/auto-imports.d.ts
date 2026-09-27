@@ -500,7 +500,6 @@ declare global {
   const mentionTriggerDeleteRange: typeof import('./components/editor/utils/slashMenuPolicy').mentionTriggerDeleteRange
   const mergeLocalPageSettingsIntoFrontmatter: typeof import('./lib/local-frontmatter').mergeLocalPageSettingsIntoFrontmatter
   const mergeSettingsIntoFrontmatterHeader: typeof import('./lib/local-frontmatter').mergeSettingsIntoFrontmatterHeader
-  const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const migrateLocalPageIdMapEntry: typeof import('./lib/local-page-idmap').migrateLocalPageIdMapEntry
   const migrateNotebookAiChatsState: typeof import('./stores/useNotebookAiChats').migrateNotebookAiChatsState
   const needsBodyParagraphAfterTitle: typeof import('./components/editor/utils/blocknote-content/index').needsBodyParagraphAfterTitle
@@ -620,7 +619,6 @@ declare global {
   const rewriteAiStructureLine: typeof import('./lib/ai-write/index').rewriteAiStructureLine
   const runAIText: typeof import('./lib/ai-provider/index').runAIText
   const runAITextStream: typeof import('./lib/ai-provider/index').runAITextStream
-  const runCodeStyleMigration2026: typeof import('./lib/code-style-migration').runCodeStyleMigration2026
   const sameSidebarExpandedIds: typeof import('./lib/sidebarListCollapse').sameSidebarExpandedIds
   const sanitizeFileName: typeof import('./lib/fileStorage').sanitizeFileName
   const sanitizeFilenameSegment: typeof import('./lib/local-title-binding').sanitizeFilenameSegment
@@ -793,7 +791,7 @@ declare global {
   export type { QuickNoteSlot, QuickNoteDrafts, QuickNoteSlotNames } from './stores/useQuickNote'
   import('./stores/useQuickNote')
   // @ts-ignore
-  export type { SettingsState, SearchProvider, Theme, AccentColor, CodeStyle, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
+  export type { SettingsState, SearchProvider, Theme, AccentColor, AISettings, DesktopHotkeyStatusState, DesktopHotkeyStatus, DesktopSettings, PrivacySettings, FontConfig, CustomFonts, CustomAction, UIFontSize } from './stores/settings/index'
   import('./stores/settings/index')
   // @ts-ignore
   export type { TabType, TabItem } from './stores/useTabs'

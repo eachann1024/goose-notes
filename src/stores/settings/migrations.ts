@@ -16,6 +16,8 @@ export function migrateSettingsPersistedState(
       ? { ...(persistedState as Record<string, unknown>) }
       : {};
 
+  delete state.codeStyle;
+
   // 旧版只有「界面字号」两档，且侧栏树写死 13px。缺省时从界面档位推断侧栏字号。
   if (
     typeof state.sidebarFontSize !== "number" ||

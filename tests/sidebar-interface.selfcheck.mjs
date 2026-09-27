@@ -23,7 +23,7 @@ assert.match(pageMenu, /\["full", "全宽"\]/);
 assert.doesNotMatch(pageMenu, /isFavorite|isPinned|\["compact"/);
 assert.match(pageMenu, /normalizePageLayout\(page.pageLayout \?\? defaultLayout\)/);
 assert.doesNotMatch(appearance, /randomIconOnCreate|setCustomLabel|\["compact"/);
-assert.match(appearance, /<details/);
+assert.doesNotMatch(appearance, /代码主题|setCodeStyle/);
 assert.doesNotMatch(preview, /randomIconOnCreate|compact|收藏|我的笔记/);
 assert.doesNotMatch(general, /SearchProviderSortableGrid|customActions|快捷动作|搜索引擎/);
 assert.doesNotMatch(contextMenu, /用\s*\{?\s*provider\.name|快捷动作|redirectAction/);

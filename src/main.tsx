@@ -232,10 +232,6 @@ import {
   clearStartupSettling,
   markStartupSettling,
 } from "./lib/appearance";
-import {
-  migrateCodeStyleTo2026,
-  runCodeStyleMigration2026,
-} from "./lib/code-style-migration";
 import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
 import { HostAdapter } from "./lib/host/adapter";
 import { useNotebooks } from "./stores/useNotebooks";
@@ -518,16 +514,6 @@ export const bootstrap = async (
       }
     }
     setupSaveGuards();
-    if (!lean) {
-      await runCodeStyleMigration2026();
-    }
-
-    const settingsStore = useSettings.getState();
-    const migratedCodeStyle = migrateCodeStyleTo2026(settingsStore.codeStyle);
-    if (migratedCodeStyle !== settingsStore.codeStyle) {
-      settingsStore.setCodeStyle(migratedCodeStyle);
-    }
-
     const settings = useSettings.getState();
     applyFontVariables(settings.customFonts, settings);
     // 首帧前同步落定界面字号与编辑器缩放：窗口一出现就处于上次状态，

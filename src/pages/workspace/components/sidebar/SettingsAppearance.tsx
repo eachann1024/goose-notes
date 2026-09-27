@@ -5,7 +5,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { AccentColor, CodeStyle } from "@/stores/useSettings";
+import type { AccentColor } from "@/stores/useSettings";
 import {
   SIDEBAR_FONT_SIZE_MAX,
   SIDEBAR_FONT_SIZE_MIN,
@@ -21,8 +21,6 @@ interface SettingsAppearanceProps {
   setTheme: (theme: "light" | "dark" | "system") => void;
   accentColor: AccentColor;
   setAccentColor: (accentColor: AccentColor) => void;
-  codeStyle: CodeStyle;
-  setCodeStyle: (style: CodeStyle) => void;
   customFonts: Record<
     "default" | "serif" | "mono",
     { label: string | null; font: string | null }
@@ -140,40 +138,6 @@ type AccentOptionStyle = CSSProperties & {
   "--goose-accent-option-light-fg": string;
   "--goose-accent-option-dark-surface": string;
   "--goose-accent-option-dark-fg": string;
-};
-
-const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
-  {
-    value: "github",
-    label: "GitHub",
-    description: "GitHub 官方深浅配色",
-  },
-  {
-    value: "catppuccin",
-    label: "Catppuccin",
-    description: "浅色 Latte，深色 Mocha",
-  },
-  {
-    value: "modern",
-    label: "One Dark Pro",
-    description: "流行的暗色开发者风格，浅色自动配对",
-  },
-  {
-    value: "dracula",
-    label: "Dracula",
-    description: "暗色使用 Dracula，浅色搭配柔和亮色",
-  },
-  {
-    value: "night",
-    label: "Tokyo Night",
-    description: "东京夜系风格，自动适配日夜",
-  },
-  { value: "nord", label: "Nord", description: "兼容旧版 Nord，深浅自动配对" },
-];
-
-const LEGACY_CODE_STYLE_DISPLAY_MAP: Partial<Record<CodeStyle, CodeStyle>> = {
-  default: "github",
-  "nord-light": "nord",
 };
 
 const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
@@ -303,8 +267,6 @@ export function SettingsAppearance({
   setTheme,
   accentColor,
   setAccentColor,
-  codeStyle,
-  setCodeStyle,
   customFonts,
   setCustomFont,
   uiFontSize,
@@ -321,8 +283,6 @@ export function SettingsAppearance({
   const sidebarFontFamily = useSettings((s) => s.sidebarFontFamily);
   const setUIFontFamily = useSettings((s) => s.setUIFontFamily);
   const setSidebarFontFamily = useSettings((s) => s.setSidebarFontFamily);
-  const displayedCodeStyle =
-    LEGACY_CODE_STYLE_DISPLAY_MAP[codeStyle] ?? codeStyle;
   const accentRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [focusedAccentIndex, setFocusedAccentIndex] = useState(() =>
     Math.max(
@@ -658,35 +618,6 @@ export function SettingsAppearance({
             </div>
           </div>
         </SettingsSectionCard>
-        <details className="rounded-lg border border-border/60 p-4">
-          <summary className="cursor-pointer text-sm font-medium">代码主题</summary>
-          <p className="mt-2 text-xs text-muted-foreground">深浅模式自动适配。</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {codeStyles.map((t) => (
-              <SelectableCard
-                key={t.value}
-                selected={displayedCodeStyle === t.value}
-                aria-pressed={displayedCodeStyle === t.value}
-                onClick={() => setCodeStyle(t.value)}
-                className={cn(
-                  "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
-                  displayedCodeStyle === t.value
-                    ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                    : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:bg-[hsl(var(--foreground)/0.08)]",
-                )}
-              >
-                <LucideIcons.Code2 className="h-5 w-5 shrink-0" />
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{t.label}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t.description}
-                  </div>
-                </div>
-              </SelectableCard>
-            ))}
-          </div>
-        </details>
-
         <EditorLayoutSettings />
       </div>
     </div>

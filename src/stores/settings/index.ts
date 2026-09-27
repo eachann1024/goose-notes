@@ -8,12 +8,10 @@ import { normalizeLocalFontName } from "@/lib/fontLoader";
 
 import type {
   Theme,
-  CodeStyle,
   AISettings,
   DesktopSettings,
 } from "./types";
 import {
-  normalizeCodeStyle,
   normalizeAccentColor,
   resolveCodeTheme,
   normalizeUIFontSize,
@@ -88,7 +86,7 @@ function applyTheme(theme: Theme) {
   // Re-apply code style when theme changes (because light/dark mode changed)
   const state = useSettings.getState();
   if (state) {
-    applyCodeStyle(state.codeStyle);
+    applyCodeTheme();
     // 明暗切换后重刷 accent 运行时 token（含行内代码色）。
     // apply 可重复调用；sync 则按当前 data-goose-accent 重写，两者等价于兜底。
     applyAccentColor(state.accentColor);
@@ -102,19 +100,13 @@ async function applyNativeWindowTheme(theme: Theme, isDark: boolean) {
 }
 
 // 应用代码主题到 DOM
-function applyCodeStyle(codeStyle: CodeStyle) {
+function applyCodeTheme() {
   const root = document.documentElement;
   const isDark = root.classList.contains("dark");
-  const finalClass = resolveCodeTheme(codeStyle, isDark);
-
-  if (finalClass) {
-    root.setAttribute("data-code-theme", finalClass);
-  } else {
-    root.removeAttribute("data-code-theme");
-  }
+  root.setAttribute("data-code-theme", resolveCodeTheme(isDark));
 }
 
-const applyFns = { applyTheme, applyAccentColor, applyCodeStyle };
+const applyFns = { applyTheme, applyAccentColor };
 const getApply = () => applyFns;
 
 export const useSettings = create<SettingsState>()(
@@ -143,7 +135,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
-      version: 6,
+      version: 7,
       migrate: (persistedState, version) =>
         migrateSettingsPersistedState(persistedState, version),
       storage: createJSONStorage(() => localStorageAdapter),
@@ -160,17 +152,11 @@ export const useSettings = create<SettingsState>()(
         }
         const theme = state?.theme || "system";
         const accentColor = normalizeAccentColor(state?.accentColor);
-        const codeStyle = normalizeCodeStyle(
-          state?.codeStyle as string | undefined,
-        );
         applyTheme(theme);
         applyAccentColor(accentColor);
-        applyCodeStyle(codeStyle);
+        applyCodeTheme();
         if (state && state.accentColor !== accentColor) {
           useSettings.setState({ accentColor });
-        }
-        if (state && state.codeStyle !== codeStyle) {
-          useSettings.setState({ codeStyle });
         }
         const imageExportThemeId = normalizeCardThemeId(
           state?.imageExportThemeId,
@@ -397,11 +383,11 @@ export const useSettings = create<SettingsState>()(
 if (typeof window !== "undefined") {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const handleSystemThemeChange = () => {
-    const { theme, codeStyle } = useSettings.getState();
+    const { theme } = useSettings.getState();
     if (theme === "system") {
       applyTheme("system");
     }
-    applyCodeStyle(codeStyle);
+    applyCodeTheme();
   };
   if (typeof mediaQuery.addEventListener === "function") {
     mediaQuery.addEventListener("change", handleSystemThemeChange);
@@ -414,7 +400,7 @@ if (typeof window !== "undefined") {
     const state = useSettings.getState();
     applyTheme(state.theme);
     applyAccentColor(state.accentColor);
-    applyCodeStyle(state.codeStyle);
+    applyCodeTheme();
   };
 
   if (document.readyState === "loading") {
@@ -429,7 +415,6 @@ export type {
   SearchProvider,
   Theme,
   AccentColor,
-  CodeStyle,
   AISettings,
   DesktopHotkeyStatusState,
   DesktopHotkeyStatus,

@@ -186,8 +186,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setTheme,
     accentColor,
     setAccentColor,
-    codeStyle,
-    setCodeStyle,
     ai,
     setAIEnabled,
     setAIReadGlobalPrompt,
@@ -232,8 +230,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setTheme: s.setTheme,
       accentColor: s.accentColor,
       setAccentColor: s.setAccentColor,
-      codeStyle: s.codeStyle,
-      setCodeStyle: s.setCodeStyle,
       ai: s.ai,
       setAIEnabled: s.setAIEnabled,
       setAIReadGlobalPrompt: s.setAIReadGlobalPrompt,
@@ -621,7 +617,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     });
     useSettings.getState().setTheme("system");
     useSettings.getState().setAccentColor(APPEARANCE_INITIAL_STATE.accentColor);
-    useSettings.getState().setCodeStyle("default");
     resetAppsBanner();
   };
 
@@ -798,8 +793,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               setTheme={setTheme}
               accentColor={accentColor}
               setAccentColor={setAccentColor}
-              codeStyle={codeStyle}
-              setCodeStyle={setCodeStyle}
               customFonts={customFonts}
               setCustomFont={setCustomFont}
               uiFontSize={uiFontSize}

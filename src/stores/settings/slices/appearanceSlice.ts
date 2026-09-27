@@ -1,7 +1,6 @@
 import type {
   AccentColor,
   Theme,
-  CodeStyle,
   CustomFonts,
   UIFontSize,
 } from "../types";
@@ -26,7 +25,6 @@ import {
 export interface AppearanceSliceState {
   theme: Theme;
   accentColor: AccentColor;
-  codeStyle: CodeStyle;
   defaultCodeBlockWrap: boolean;
   customFonts: CustomFonts;
   uiFontFamily: string | null;
@@ -53,7 +51,6 @@ export interface AppearanceSliceActions {
   setTheme: (theme: Theme) => void;
   setAccentColor: (accentColor: AccentColor) => void;
   toggleDarkMode: () => void;
-  setCodeStyle: (style: CodeStyle) => void;
   setDefaultCodeBlockWrap: (enabled: boolean) => void;
   setCustomLabel: (
     type: "default" | "serif" | "mono",
@@ -90,7 +87,6 @@ export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions;
 export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
   theme: "system",
   accentColor: DEFAULT_ACCENT_COLOR,
-  codeStyle: "github",
   defaultCodeBlockWrap: false,
   customFonts: {
     default: { label: null, font: null },
@@ -119,7 +115,6 @@ type SetFn = (
 type GetApplyFns = () => {
   applyTheme: (theme: Theme) => void;
   applyAccentColor: (accentColor: AccentColor) => void;
-  applyCodeStyle: (codeStyle: CodeStyle) => void;
 };
 
 export function createAppearanceSlice(
@@ -148,10 +143,6 @@ export function createAppearanceSlice(
         getApply().applyTheme(nextTheme);
         return { theme: nextTheme };
       });
-    },
-    setCodeStyle: (codeStyle) => {
-      set({ codeStyle });
-      getApply().applyCodeStyle(codeStyle);
     },
     setDefaultCodeBlockWrap: (defaultCodeBlockWrap) =>
       set({ defaultCodeBlockWrap }),

@@ -1,7 +1,6 @@
 import { expect, test } from "playwright/test";
 import {
   normalizeAccentColor,
-  normalizeCodeStyle,
   resolveCodeTheme,
 } from "../../src/stores/settings/types";
 import {
@@ -9,7 +8,6 @@ import {
   createAppearanceSlice,
 } from "../../src/stores/settings/slices/appearanceSlice";
 import { resolveTheme } from "../../src/hooks/useResolvedTheme";
-import { migrateCodeStyleTo2026 } from "../../src/lib/code-style-migration";
 import {
   applyAccentColor,
   syncAccentColorCssVars,
@@ -178,35 +176,10 @@ test("主题 class 变化后 re-sync 会按 dark/light 重写 inline-code token"
   }
 });
 
-test("GitHub 是默认且第一优先的代码风格", () => {
-  expect(APPEARANCE_INITIAL_STATE.codeStyle).toBe("github");
-  expect(normalizeCodeStyle("default")).toBe("github");
-  expect(normalizeCodeStyle(undefined)).toBe("github");
-  expect(normalizeCodeStyle("unknown")).toBe("github");
-  expect(resolveCodeTheme("github", false)).toBe("github-light");
-  expect(resolveCodeTheme("github", true)).toBe("github-dark");
-});
-
-test("Catppuccin 按界面明暗自动使用 Latte 和 Mocha", () => {
-  expect(normalizeCodeStyle("catppuccin")).toBe("catppuccin");
-  expect(resolveCodeTheme("catppuccin", false)).toBe("catppuccin-latte");
-  expect(resolveCodeTheme("catppuccin", true)).toBe("catppuccin-mocha");
-  expect(migrateCodeStyleTo2026("catppuccin")).toBe("catppuccin");
-});
-
-test("Dracula 使用独立设置值并按深浅模式映射", () => {
-  expect(normalizeCodeStyle("dracula")).toBe("dracula");
-  expect(resolveCodeTheme("dracula", true)).toBe("dracula");
-  expect(resolveCodeTheme("dracula", false)).toBe("github-light-mod");
-});
-
-test("旧版 Nord 设置值仍保持兼容", () => {
-  expect(normalizeCodeStyle("nord")).toBe("nord");
-  expect(normalizeCodeStyle("nord-light")).toBe("nord-light");
-  expect(migrateCodeStyleTo2026("nord")).toBe("nord");
-  expect(migrateCodeStyleTo2026("nord-light")).toBe("nord-light");
-  expect(resolveCodeTheme("nord", true)).toBe("nord");
-  expect(resolveCodeTheme("nord-light", false)).toBe("nord-light");
+test("代码主题固定为 GitHub 并随应用明暗切换", () => {
+  expect(resolveCodeTheme(false)).toBe("github-light");
+  expect(resolveCodeTheme(true)).toBe("github-dark");
+  expect("codeStyle" in APPEARANCE_INITIAL_STATE).toBe(false);
 });
 
 test("跟随系统主题能解析系统明暗状态", () => {
@@ -237,7 +210,6 @@ test("侧栏字号与编辑器字号互相独立且各自夹紧边界", () => {
     () => ({
       applyTheme: () => undefined,
       applyAccentColor: () => undefined,
-      applyCodeStyle: () => undefined,
     }),
   );
 
@@ -272,7 +244,6 @@ test("主题轮转顺序为 system → light → dark → system", () => {
         applied.push(nextTheme);
       },
       applyAccentColor: () => undefined,
-      applyCodeStyle: () => undefined,
     }),
   );
 
