@@ -288,7 +288,10 @@ export function DesktopTitleBar({
 
   return (
     <div
-      className="electron-titlebar flex w-full shrink-0 items-center gap-2 pr-0"
+      className={cn(
+        "electron-titlebar flex w-full shrink-0 items-center gap-2",
+        isWinElectron ? "pr-0" : "pr-4",
+      )}
       data-ai-conversation-header={aiFullscreenOpen || undefined}
       data-sidebar-collapsed={sidebarCollapsed}
     >
