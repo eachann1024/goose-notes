@@ -110,8 +110,8 @@ export interface CustomAction {
   isEnabled: boolean;
 }
 
-// 界面字体大小选项：small 对应"标准"，normal 对应"放大"
-export type UIFontSize = "small" | "normal";
+// 界面缩放：低、中、高，保持侧栏与编辑器字号独立。
+export type UIFontSize = "small" | "normal" | "large";
 
 function clampFontSize(
   value: unknown,
@@ -293,7 +293,7 @@ export function normalizeUIFontSize(
   uiFontSize: string | undefined,
 ): UIFontSize {
   if (uiFontSize === "small") return "small";
-  if (uiFontSize === "normal" || uiFontSize === "large") return "normal";
+  if (uiFontSize === "normal" || uiFontSize === "large") return uiFontSize;
   return DEFAULT_UI_FONT_SIZE;
 }
 

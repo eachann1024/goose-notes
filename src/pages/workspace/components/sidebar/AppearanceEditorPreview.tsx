@@ -1,10 +1,12 @@
+import { UI_FONT_SIZE_MAP } from "@/lib/appearance";
+import type { UIFontSize } from "@/stores/settings/types";
 import { useSettings } from "@/stores/useSettings";
 
 interface Props {
   sidebarFontSize: number;
   editorFontSize: number;
   editorLineHeight: number;
-  uiFontSize: "small" | "normal";
+  uiFontSize: UIFontSize;
 }
 
 function EditorSample({
@@ -25,7 +27,7 @@ function EditorSample({
         style={{
           background: "var(--goose-shell-surface)",
           fontFamily: "var(--font-ui)",
-          fontSize: uiFontSize === "normal" ? 16 : 14,
+          fontSize: UI_FONT_SIZE_MAP[uiFontSize],
         }}
       >
         <span className="font-semibold">📁 当前文件夹</span>

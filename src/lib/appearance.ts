@@ -10,6 +10,7 @@ import { titleBarHeightPx } from "@/lib/electron/titlebarLayout";
 export const UI_FONT_SIZE_MAP: Record<UIFontSize, number> = {
   small: 14,
   normal: 16,
+  large: 18,
 };
 
 export const EDITOR_UI_SCALE_CHANGE_EVENT = "goose-editor-ui-scale-change";

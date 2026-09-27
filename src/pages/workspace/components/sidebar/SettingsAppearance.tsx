@@ -5,6 +5,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import type { UIFontSize } from "@/stores/settings/types";
 import type { AccentColor } from "@/stores/useSettings";
 import {
   SIDEBAR_FONT_SIZE_MAX,
@@ -29,8 +30,8 @@ interface SettingsAppearanceProps {
     type: "default" | "serif" | "mono",
     font: string | null,
   ) => void;
-  uiFontSize: "small" | "normal";
-  setUIFontSize: (size: "small" | "normal") => void;
+  uiFontSize: UIFontSize;
+  setUIFontSize: (size: UIFontSize) => void;
   sidebarFontSize: number;
   increaseSidebarFontSize: () => void;
   decreaseSidebarFontSize: () => void;
@@ -608,33 +609,23 @@ export function SettingsAppearance({
                   调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
                 </p>
               </div>
-              <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-pressed={uiFontSize === "small"}
-                  className={cn(
-                    "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                    uiFontSize === "small" &&
-                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
-                  )}
-                  onClick={() => setUIFontSize("small")}
-                >
-                  标准
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-pressed={uiFontSize === "normal"}
-                  className={cn(
-                    "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                    uiFontSize === "normal" &&
-                      "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
-                  )}
-                  onClick={() => setUIFontSize("normal")}
-                >
-                  放大
-                </Button>
+              <div role="group" aria-label="界面缩放" className="flex shrink-0 items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+                {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    size="sm"
+                    variant="ghost"
+                    aria-pressed={uiFontSize === value}
+                    className={cn(
+                      "h-7 rounded-full px-3 text-xs transition-all duration-200",
+                      uiFontSize === value &&
+                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                    )}
+                    onClick={() => setUIFontSize(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
