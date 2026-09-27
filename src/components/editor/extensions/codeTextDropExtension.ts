@@ -22,7 +22,6 @@ export const gooseCodeTextDropExtension = createExtension(({ editor }) => ({
       const text = window.getSelection()?.toString().replace(/\r\n?/g, "\n");
       if (!text) return;
       pressed = { from: selection.from, to: selection.to, text, doc: view.state.doc, x: event.clientX, y: event.clientY };
-      event.preventDefault();
     }, { capture: true, signal });
 
     dom.addEventListener("dragstart", () => { pressed = null; }, { signal });
