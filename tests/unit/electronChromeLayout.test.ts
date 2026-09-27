@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "playwright/test";
 
-test("C 布局：窗口控制在顶栏，仓库入口在侧栏顶部", () => {
+test("C 布局：窗口控制在顶栏，仓库入口在侧栏底栏", () => {
   const footer = readFileSync(
     new URL(
       "../../src/pages/workspace/components/sidebar/SidebarFooter.tsx",
@@ -20,9 +20,9 @@ test("C 布局：窗口控制在顶栏，仓库入口在侧栏顶部", () => {
     new URL("../../electron/main/ipc.ts", import.meta.url),
     "utf8",
   );
-  expect(footer).not.toContain("<NotebookSwitcher");
+  expect(footer).toContain("<NotebookSwitcher");
   expect(footer).toContain("sidebar-footer-control");
-  expect(footer).toContain("useWindowAlwaysOnTop");
+  expect(footer).not.toContain("useWindowAlwaysOnTop");
   expect(footer).not.toContain("LucideIcons.Trash2");
   expect(footer).not.toContain("垃圾箱");
   expect(titleBar).not.toContain("LucideIcons.Pin");
@@ -31,12 +31,7 @@ test("C 布局：窗口控制在顶栏，仓库入口在侧栏顶部", () => {
   expect(titleBar).not.toContain('"goose-note:open-settings"');
   expect(titleBar).toContain('sidebarCollapsed ? "展开侧栏" : "收起侧栏"');
   expect(titleBar.match(/\{windowControls\}/g)).toHaveLength(2);
-  expect(
-    readFileSync(
-      "src/pages/workspace/components/sidebar/SidebarHeader.tsx",
-      "utf8",
-    ),
-  ).toContain("<NotebookSwitcher />");
+  expect(readFileSync("src/pages/workspace/components/sidebar/Sidebar.tsx", "utf8")).not.toContain("SidebarHeader");
   expect(ipc).toContain("desktop:getAlwaysOnTop");
   expect(ipc).toContain("desktop:setAlwaysOnTop");
 });
@@ -57,7 +52,7 @@ test("仓库切换菜单宽度跟随触发条", () => {
   expect(switcher).toContain('animation="reveal"');
   expect(switcher).toContain("alignOffset={-8}");
   expect(switcher).toContain("sideOffset={0}");
-  expect(switcher).toContain('side="bottom"');
+  expect(switcher).toContain('side="top"');
   expect(switcher).toContain("onOpenSettings?.()");
   expect(switcher).toContain("onClick={toggleDarkMode}");
   expect(switcher).not.toContain("新建仓库");
@@ -68,11 +63,8 @@ test("仓库切换菜单宽度跟随触发条", () => {
     "utf8",
   );
   expect(footer.indexOf("onOpenSettings")).toBeGreaterThan(-1);
-  expect(footer.indexOf("toggleDarkMode")).toBeGreaterThan(-1);
-  expect(footer.indexOf("LucideIcons.Settings")).toBeGreaterThan(
-    footer.indexOf("ThemeIcon"),
-  );
-  expect(footer).toContain("justify-between");
+  expect(footer).toContain("LucideIcons.Settings");
+  expect(footer).toContain("min-w-0 flex-1");
   expect(footer).not.toContain("LucideIcons.Trash2");
   const titleBar = readFileSync(
     "src/pages/workspace/components/page/DesktopTitleBar.tsx",

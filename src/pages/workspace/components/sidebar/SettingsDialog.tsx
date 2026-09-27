@@ -188,12 +188,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setAccentColor,
     codeStyle,
     setCodeStyle,
-    searchProviders,
-    toggleSearchProvider,
-    reorderSearchProviders,
-    addCustomSearchProvider,
-    updateCustomSearchProvider,
-    removeCustomSearchProvider,
     ai,
     setAIEnabled,
     setAIReadGlobalPrompt,
@@ -213,7 +207,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setAppShortcut,
     resetAppShortcuts,
     customFonts,
-    setCustomLabel,
     setCustomFont,
     uiFontSize,
     setUIFontSize,
@@ -223,13 +216,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     editorFontSize,
     increaseEditorFontSize,
     decreaseEditorFontSize,
-    randomIconOnCreate,
-    setRandomIconOnCreate,
-
-    customActions,
-    addCustomAction,
-    updateCustomAction,
-    removeCustomAction,
     notebookDropdownHoverExpand,
     setNotebookDropdownHoverExpand,
     localFolderFileManager,
@@ -248,12 +234,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setAccentColor: s.setAccentColor,
       codeStyle: s.codeStyle,
       setCodeStyle: s.setCodeStyle,
-      searchProviders: s.searchProviders,
-      toggleSearchProvider: s.toggleSearchProvider,
-      reorderSearchProviders: s.reorderSearchProviders,
-      addCustomSearchProvider: s.addCustomSearchProvider,
-      updateCustomSearchProvider: s.updateCustomSearchProvider,
-      removeCustomSearchProvider: s.removeCustomSearchProvider,
       ai: s.ai,
       setAIEnabled: s.setAIEnabled,
       setAIReadGlobalPrompt: s.setAIReadGlobalPrompt,
@@ -273,7 +253,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setAppShortcut: s.setAppShortcut,
       resetAppShortcuts: s.resetAppShortcuts,
       customFonts: s.customFonts,
-      setCustomLabel: s.setCustomLabel,
       setCustomFont: s.setCustomFont,
       uiFontSize: s.uiFontSize,
       setUIFontSize: s.setUIFontSize,
@@ -283,13 +262,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       editorFontSize: s.editorFontSize,
       increaseEditorFontSize: s.increaseEditorFontSize,
       decreaseEditorFontSize: s.decreaseEditorFontSize,
-      randomIconOnCreate: s.randomIconOnCreate,
-      setRandomIconOnCreate: s.setRandomIconOnCreate,
-
-      customActions: s.customActions,
-      addCustomAction: s.addCustomAction,
-      updateCustomAction: s.updateCustomAction,
-      removeCustomAction: s.removeCustomAction,
       notebookDropdownHoverExpand: s.notebookDropdownHoverExpand,
       setNotebookDropdownHoverExpand: s.setNotebookDropdownHoverExpand,
       localFolderFileManager: s.localFolderFileManager,
@@ -780,22 +752,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "general" && (
             <div className="settings-groups">
               <SettingsGeneral
-                searchProviders={searchProviders}
-                toggleSearchProvider={toggleSearchProvider}
-                reorderSearchProviders={reorderSearchProviders}
-                addCustomSearchProvider={addCustomSearchProvider}
-                updateCustomSearchProvider={updateCustomSearchProvider}
-                removeCustomSearchProvider={removeCustomSearchProvider}
                 autoOpenLastNote={privacy.autoOpenLastNote}
                 setAutoOpenLastNote={setAutoOpenLastNote}
                 showRecentInSearch={showRecentInSearch}
                 setShowRecentInSearch={setShowRecentInSearch}
                 notebookDropdownHoverExpand={notebookDropdownHoverExpand}
                 setNotebookDropdownHoverExpand={setNotebookDropdownHoverExpand}
-                customActions={customActions}
-                addCustomAction={addCustomAction}
-                updateCustomAction={updateCustomAction}
-                removeCustomAction={removeCustomAction}
               />
             </div>
           )}
@@ -839,7 +801,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               codeStyle={codeStyle}
               setCodeStyle={setCodeStyle}
               customFonts={customFonts}
-              setCustomLabel={setCustomLabel}
               setCustomFont={setCustomFont}
               uiFontSize={uiFontSize}
               setUIFontSize={setUIFontSize}
@@ -849,8 +810,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               editorFontSize={editorFontSize}
               increaseEditorFontSize={increaseEditorFontSize}
               decreaseEditorFontSize={decreaseEditorFontSize}
-              randomIconOnCreate={randomIconOnCreate}
-              setRandomIconOnCreate={setRandomIconOnCreate}
             />
           )}
 

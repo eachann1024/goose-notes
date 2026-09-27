@@ -1,13 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { ImageExportThemeSelector } from "@/components/ui/image-export-theme-selector";
@@ -18,7 +14,6 @@ import {
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
 import { useEditorPlatform } from "@/components/editor/platform/context";
-import { useEditorSettings } from "@/components/editor/platform/hostContext";
 import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 import {
   cachePasteTarget,
@@ -85,6 +80,7 @@ interface EditorContextMenuProps {
   handleEditorKeyDownCapture?: (
     event: React.KeyboardEvent<HTMLDivElement>,
   ) => void;
+  // EditorComposer 的属性暂由其他实施范围维护；本菜单不再消费这两项。
   searchProviders: any[];
   customActions: any[];
   effectiveTheme: "light" | "dark";
@@ -100,36 +96,21 @@ export function EditorContextMenu({
   handleEditorBlankMouseDown,
   handleEditorPasteCapture,
   handleEditorKeyDownCapture,
-  searchProviders,
-  customActions,
   isEditorFullWidth,
   children,
 }: EditorContextMenuProps) {
   const [selectedBlocks, setSelectedBlocks] = useState<BlockNoteContent>([]);
-  const [selectedText, setSelectedText] = useState("");
   const [canCopy, setCanCopy] = useState(false);
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
   const platform = useEditorPlatform();
-  const { redirectAction, openLinksInHost } = useEditorSettings();
   // 速记小窗不展示「生成选中图片」：生产包靠 __GOOSE_LITE__ 裁掉；
   // 开发态 / Electron 小窗靠草稿页 id 运行时隐藏。
   const showSelectionImageExport =
     !__GOOSE_LITE__ && page?.id !== "__quicknote_draft__";
 
-  const activeSearchProviders = useMemo(
-    () => searchProviders.filter((provider) => provider.isEnabled),
-    [searchProviders],
-  );
-  const enabledCustomActions = useMemo(
-    () =>
-      customActions.filter(
-        (action) =>
-          action.isEnabled && action.name.trim() && action.command.trim(),
-      ),
-    [customActions],
-  );
+
 
   const handleContextMenuOpen = () => {
     let text = "";
@@ -139,7 +120,6 @@ export function EditorContextMenu({
       /* ignore */
     }
     const trimmedText = text.trim();
-    setSelectedText(trimmedText);
     selectedTextRef.current = trimmedText;
     let copyable = Boolean(trimmedText);
     try {
@@ -340,68 +320,6 @@ export function EditorContextMenu({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent editorContext className="w-[180px]">
-          {selectedText && activeSearchProviders.length > 0 && (
-            <>
-              <ContextMenuItem
-                disabled
-                className="max-w-[168px] truncate text-xs text-muted-foreground"
-              >
-                {selectedText.length > 20
-                  ? `${selectedText.slice(0, 20)}...`
-                  : selectedText}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              {activeSearchProviders.map((provider) => (
-                <ContextMenuItem
-                  key={provider.id}
-                  onSelect={() => {
-                    const url = provider.urlTemplate.replace(
-                      "%s",
-                      encodeURIComponent(selectedText),
-                    );
-                    void platform.shell.openUrl(url, openLinksInHost);
-                  }}
-                >
-                  <LucideIcons.Search className="mr-2 h-4 w-4" />用{" "}
-                  {provider.name} 搜索
-                </ContextMenuItem>
-              ))}
-              <ContextMenuSeparator />
-            </>
-          )}
-          {/* 快捷动作依赖 Electron redirect 生态：Electron 桌面端或宿主未注入 redirectAction 时整块不渲染 */}
-          {__HOST_TARGET__ !== "electron" &&
-            redirectAction &&
-            selectedText &&
-            enabledCustomActions.length > 0 && (
-            <>
-              <ContextMenuSub>
-                <ContextMenuSubTrigger>
-                  <LucideIcons.Zap className="mr-2 h-4 w-4" />
-                  快捷动作
-                </ContextMenuSubTrigger>
-                <ContextMenuSubContent editorContext>
-                  {enabledCustomActions.map((action) => (
-                    <ContextMenuItem
-                      key={action.id}
-                      onSelect={() => {
-                        const label = action.pluginName
-                          ? ([action.pluginName, action.command] as [
-                              string,
-                              string,
-                            ])
-                          : action.command;
-                        redirectAction?.(label, selectedText);
-                      }}
-                    >
-                      {action.name}
-                    </ContextMenuItem>
-                  ))}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-              <ContextMenuSeparator />
-            </>
-          )}
           {editable && (
             <ContextMenuItem
               disabled={!canCopy}

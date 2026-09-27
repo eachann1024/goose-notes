@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const sidebar = read("src/pages/workspace/components/sidebar/Sidebar.tsx");
+const footer = read("src/pages/workspace/components/sidebar/SidebarFooter.tsx");
+const switcher = read("src/pages/workspace/components/sidebar/NotebookSwitcher.tsx");
+const pageMenu = read("src/pages/workspace/components/page/PageMenu.tsx");
+const appearance = read("src/pages/workspace/components/sidebar/SettingsAppearance.tsx");
+const preview = read("src/pages/workspace/components/sidebar/AppearanceEditorPreview.tsx");
+const general = read("src/pages/workspace/components/sidebar/SettingsGeneral.tsx");
+const contextMenu = read("src/components/editor/menus/EditorContextMenu.tsx");
+
+assert.doesNotMatch(sidebar, /FavoritesSection|SidebarHeader/);
+assert.match(sidebar, /var\(--goose-shell-surface\)/);
+assert.match(footer, /<NotebookSwitcher/);
+assert.match(footer, /发现新版本|已下载/);
+const switcherPopover = switcher.match(/<PopoverContent\b[\s\S]*?className="goose-notebook-menu-surface[\s\S]*?side="(\w+)"[\s\S]*?>/);
+assert.ok(switcherPopover, "notebook switcher popover exists");
+assert.equal(switcherPopover[1], "top");
+assert.match(pageMenu, /\["standard", "标准"\]/);
+assert.match(pageMenu, /\["full", "全宽"\]/);
+assert.doesNotMatch(pageMenu, /isFavorite|isPinned|\["compact"/);
+assert.match(pageMenu, /normalizePageLayout\(page.pageLayout \?\? defaultLayout\)/);
+assert.doesNotMatch(appearance, /randomIconOnCreate|setCustomLabel|\["compact"/);
+assert.match(appearance, /<details/);
+assert.doesNotMatch(preview, /randomIconOnCreate|compact|收藏|我的笔记/);
+assert.doesNotMatch(general, /SearchProviderSortableGrid|customActions|快捷动作|搜索引擎/);
+assert.doesNotMatch(contextMenu, /用\s*\{?\s*provider\.name|快捷动作|redirectAction/);
+console.log("sidebar interface self-check passed");

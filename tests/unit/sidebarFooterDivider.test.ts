@@ -6,13 +6,13 @@ test("侧栏底栏不再画顶部分隔线和描边卡片", () => {
     "src/pages/workspace/components/sidebar/SidebarFooter.tsx",
     "utf8",
   );
-  expect(footer).not.toContain("<NotebookSwitcher");
+  expect(footer).toContain("<NotebookSwitcher");
   expect(footer).not.toContain("border-t");
   expect(footer).not.toContain("rounded-xl");
-  expect(footer).toContain("px-2 pb-0 pt-1");
+  expect(footer).toContain("min-w-0 flex-1");
 });
 
-test("笔记本切换在侧栏顶部：名称在左，chevron 在右", () => {
+test("笔记本切换在侧栏底栏：名称在左，chevron 在右", () => {
   const switcher = readFileSync(
     "src/pages/workspace/components/sidebar/NotebookSwitcher.tsx",
     "utf8",
@@ -27,18 +27,12 @@ test("笔记本切换在侧栏顶部：名称在左，chevron 在右", () => {
   expect(switcher).toContain("alignOffset={-8}");
   expect(switcher).toContain("NOTEBOOK_SHELL_INSET = 8");
   expect(switcher).toContain("NOTEBOOK_SHELL_INSET_TOP = 12");
-  expect(
-    readFileSync(
-      "src/pages/workspace/components/sidebar/SidebarHeader.tsx",
-      "utf8",
-    ),
-  ).toContain("h-14 shrink-0 items-start px-2 pt-3");
   expect(css).toContain("padding: 8px");
   expect(switcher).toContain("sideOffset={0}");
   expect(switcher).toContain('className="goose-notebook-shell"');
   expect(css).toContain("box-shadow: var(--goose-menu-shadow)");
   expect(css).not.toContain("outline: 1px solid currentColor");
-  expect(switcher).toContain('side="bottom"');
+  expect(switcher).toContain('side="top"');
   expect(switcher).toContain('animation="reveal"');
 });
 

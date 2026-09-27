@@ -111,14 +111,6 @@ export function SidebarContextMenu({
     (item) => item.id !== page.workspaceId && item.source !== "local-folder",
   );
 
-  const toggleFavorite = () => {
-    updatePage(page.id, { isFavorite: !page.isFavorite });
-  };
-
-  const togglePinned = () => {
-    updatePage(page.id, { isPinned: !page.isPinned });
-  };
-
   const handleMoveToTopLevel = () => {
     updatePage(page.id, { parentId: undefined });
   };
@@ -404,26 +396,6 @@ export function SidebarContextMenu({
                       <span>设置图标</span>
                     </ContextMenuItem>
                   ) : null}
-                  <ContextMenuItem onSelect={toggleFavorite}>
-                    <LucideIcons.Star
-                      className={cn(
-                        "h-4 w-4",
-                        page.isFavorite &&
-                          "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)]",
-                      )}
-                    />
-                    <span>{page.isFavorite ? "从最爱移除" : "添加到最爱"}</span>
-                  </ContextMenuItem>
-                  <ContextMenuItem onSelect={togglePinned}>
-                    <LucideIcons.Pin
-                      className={cn(
-                        "h-4 w-4",
-                        page.isPinned &&
-                          "fill-[var(--goose-color-danger)] text-[var(--goose-color-danger)]",
-                      )}
-                    />
-                    <span>{page.isPinned ? "取消置顶" : "置顶页面"}</span>
-                  </ContextMenuItem>
                   <ContextMenuItem onSelect={handleDuplicatePage}>
                     <LucideIcons.Copy className="h-4 w-4" />
                     <span>创建副本</span>

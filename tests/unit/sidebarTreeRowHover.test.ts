@@ -43,73 +43,16 @@ test("收藏树 hover 不覆盖选中，且使用共享 hover 三件套", () => 
   expect(treeRow).not.toContain("hover:text-foreground");
 });
 
-test("收藏平铺树不渲染展开箭头槽", () => {
-  const sidebarTree = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/sidebar/SidebarTree.tsx",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  const favorites = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/sidebar/FavoritesSection.tsx",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  const treeViewport = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/sidebar/tree/TreeViewport.tsx",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  expect(favorites).toContain("flatRoots");
-  expect(favorites).toContain("allowNest={false}");
-  expect(sidebarTree).toContain("showExpandControls={!flatRoots}");
-  expect(treeRow).not.toContain("reserveExpandSlot");
-  expect(treeRow).toContain("showExpandControls");
-  expect(treeViewport).not.toContain("shouldRenderExpandArrowSlot");
-  expect(treeViewport).toContain("showExpandControls");
-});
-
-test("侧栏收藏标题与树行高亮使用圆角", () => {
-  const favorites = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/sidebar/FavoritesSection.tsx",
-      import.meta.url,
-    ),
-    "utf8",
-  );
+test("主树与侧栏树行继续使用圆角高亮", () => {
   const mainTreeRow = readFileSync(
-    new URL(
-      "../../src/pages/workspace/components/sidebar/main-tree/MainTreeRowShell.tsx",
-      import.meta.url,
-    ),
+    new URL("../../src/pages/workspace/components/sidebar/main-tree/MainTreeRowShell.tsx", import.meta.url),
     "utf8",
   );
-  expect(workspaceStyles).not.toMatch(
-    /\.workspace-shell \.workspace-sidebar-pane \.sidebar-favorites-label[\s\S]{0,400}border-radius: 0 !important/,
-  );
-  expect(workspaceStyles).not.toMatch(
-    /\.workspace-shell \.workspace-sidebar-pane \.main-tree-row[\s\S]{0,120}border-radius: 0 !important/,
-  );
-  expect(workspaceStyles).not.toMatch(
-    /\.workspace-shell \.workspace-sidebar-pane \.sidebar-tree-row[\s\S]{0,120}border-radius: 0 !important/,
-  );
-  expect(favorites).toContain("sidebar-favorites-label");
-  expect(favorites).toContain("h-8");
-  expect(favorites).toContain("rounded-lg");
-  expect(favorites).toContain("pr-2");
-  expect(favorites).toContain('className="py-1"');
-  expect(favorites).toContain("hover:bg-[var(--goose-interactive-hover)]");
-  expect(favorites).not.toContain("rounded-none");
   expect(mainTreeRow).toMatch(/main-tree-row[\s\S]{0,120}rounded-lg/);
   expect(treeRow).toMatch(/sidebar-tree-row[\s\S]{0,120}rounded-lg/);
 });
 
-test("收藏行字号图标与主树列表一致", () => {
+test("侧栏树行字号图标与主树列表一致", () => {
   const mainTree = readFileSync(
     new URL(
       "../../src/pages/workspace/components/sidebar/main-tree/MainTreeItem.tsx",

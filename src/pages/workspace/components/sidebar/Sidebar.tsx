@@ -1,6 +1,4 @@
-import { FavoritesSection } from "./FavoritesSection";
 import { SidebarFooter } from "./SidebarFooter";
-import { SidebarHeader } from "./SidebarHeader";
 import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { useTabs } from "@/stores/useTabs";
@@ -20,13 +18,6 @@ import { isElectronHost } from "@/lib/local-vault";
 import "./sidebar-layout.css";
 
 type SidebarView = "pages" | "outline";
-type SidebarDragGuideMode = "sort" | "nest-ready";
-
-interface SidebarDragGuideState {
-  direction: "left" | "right";
-  mode: SidebarDragGuideMode;
-}
-
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   disableResize?: boolean;
@@ -65,9 +56,6 @@ export function Sidebar({
 
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
-  const [dragGuide, setDragGuide] = useState<SidebarDragGuideState | null>(
-    null,
-  );
 
   // 历史模式：整块侧栏主体替换为页面历史模块（隐藏笔记本 Header），
   // Footer 与 currentView/scrollAreaRef 等 state 保持，退出后页面树回到上次状态。
@@ -179,12 +167,13 @@ export function Sidebar({
     <div
       ref={sidebarRef}
       className={cn(
-        "pb-0 bg-[hsl(var(--goose-shell-bg))] h-full flex flex-col relative group/sidebar",
+        "pb-0 h-full flex flex-col relative group/sidebar",
         sidebarCollapsed && "pointer-events-none",
         className,
       )}
       data-sidebar-resizing={isResizing || undefined}
       style={{
+        background: "var(--goose-shell-surface)",
         width: sidebarCollapsed ? 0 : width,
         minWidth: 0,
         opacity: sidebarCollapsed ? 0 : 1,
@@ -211,23 +200,7 @@ export function Sidebar({
           </div>
         ) : (
           <div className="sidebar-design flex min-h-0 flex-1 flex-col">
-            <SidebarHeader
-              dragGuide={dragGuide}
-              selectedPageId={selectedPageId}
-              onOpenPinnedPage={() => {
-                setCurrentView("pages");
-                setShowSettings(false);
-              }}
-            />
-
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[inherit]">
-              <FavoritesSection
-                width={contentWidth}
-                rowHeight={rowHeight}
-                itemHeight={itemHeight}
-                onCreatePage={handleCreatePage}
-              />
-
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="sidebar-tree-heading shrink-0">
                   <SidebarSectionHeader

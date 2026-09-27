@@ -4,7 +4,6 @@
   --radius-lg: 8px;
   --sidebar-body-size: calc(var(--sidebar-font-size, 13px) + 1px);
   --sidebar-label-size: 12px;
-  --sidebar-pin-size: 10px;
   --sidebar-foreground: hsl(var(--foreground));
   --sidebar-muted: hsl(var(--muted-foreground));
   padding: 4px 8px 0;
@@ -22,54 +21,22 @@
   --goose-interactive-hover-border: transparent;
   background: var(--sidebar-background);
 }
+:root:not(.dark)[data-goose-accent="amber"] .sidebar-design,
+:root:not(.dark)[data-goose-accent="mono"] .sidebar-design {
+  --sidebar-foreground: hsl(var(--foreground));
+  --sidebar-muted: hsl(var(--muted-foreground));
+  --sidebar-background: var(--goose-shell-surface);
+  --goose-interactive-hover: var(--goose-sidebar-hover);
+  --goose-interactive-hover-fg: hsl(var(--foreground));
+  --goose-interactive-hover-border: var(--goose-interactive-selected-border);
+  background: var(--goose-shell-surface);
+}
 :root:not(.dark)[data-goose-accent="ocean"] .sidebar-design {
   --goose-interactive-selected: #e6edff;
   --goose-interactive-selected-fg: #2554bf;
   --goose-interactive-selected-border: #577ee8;
 }
 
-.sidebar-design .sidebar-notebook-heading { margin-bottom: 18px; }
-.sidebar-design .sidebar-pinned-section:has(nav) { margin-bottom: 22px; }
-.sidebar-design .sidebar-pinned-label {
-  height: 18px;
-  margin: 0 6px 9px;
-  gap: 6px;
-  font-size: var(--sidebar-label-size);
-  line-height: 18px;
-  color: var(--sidebar-muted);
-}
-.sidebar-design .sidebar-pinned-label svg { width: 13px; height: 13px; }
-.sidebar-design .sidebar-pinned-label > span:last-child { font-size: 11px; }
-.sidebar-design nav[aria-label="置顶页面"] { padding: 0; gap: 6px; }
-.sidebar-design nav[aria-label="置顶页面"] > span { border-color: var(--goose-interactive-selected-border); }
-.sidebar-design nav[aria-label="置顶页面"] button {
-  flex: 1 0 calc((100% - 12px) / 3);
-  height: 64px;
-  padding: 12px 3px;
-  gap: 7px;
-  border-radius: 8px;
-  color: var(--sidebar-foreground);
-  font-size: var(--sidebar-pin-size);
-  line-height: 15px;
-}
-.sidebar-design nav[aria-label="置顶页面"] button[aria-current="page"] { color: var(--goose-interactive-selected-fg); }
-.sidebar-design nav[aria-label="置顶页面"] button svg { width: 18px; height: 18px; stroke-width: 1.6; }
-.sidebar-design nav[aria-label="置顶页面"] button > span { font-size: var(--sidebar-pin-size); line-height: 15px; }
-.sidebar-design .sidebar-favorites-section { margin-bottom: 20px; }
-.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-favorites-label {
-  width: calc(100% - 12px);
-  height: 18px;
-  padding: 0;
-  margin: 0 6px 9px;
-  font-size: var(--sidebar-label-size);
-  font-weight: 400;
-  line-height: 18px;
-  letter-spacing: 0;
-  color: var(--sidebar-muted);
-  border-radius: 8px;
-}
-.sidebar-design .sidebar-favorites-label > span:first-child { padding: 0; min-width: 0; height: auto; }
-.sidebar-design .sidebar-favorites-count { font-size: 11px; }
 .sidebar-design .sidebar-tree-heading { margin: 0 4px 10px; }
 .workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-tree-heading .sidebar-section-label {
   height: 24px;

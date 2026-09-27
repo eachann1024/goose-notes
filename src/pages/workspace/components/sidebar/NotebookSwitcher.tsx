@@ -222,6 +222,7 @@ export function NotebookSwitcher({
   });
 
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
+  const notebookKind = isElectronHost ? "文件夹" : "笔记本";
   const notebookList = sortNotebooksByOrder(notebooks);
   // Electron 仅本地文件夹模式：最后一个文件夹也允许移除（回到空态）
   const canDeleteNotebook = isElectronHost
@@ -341,7 +342,7 @@ export function NotebookSwitcher({
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={`当前笔记本 ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
+            aria-label={`当前${notebookKind} ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
             className="sidebar-notebook-trigger group text-foreground outline-none"
             onKeyDown={(event) => {
               if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -367,9 +368,9 @@ export function NotebookSwitcher({
           </button>
         </PopoverTrigger>
         <PopoverContent
-          aria-label="切换笔记本"
+          aria-label={`切换${notebookKind}`}
           className="goose-notebook-menu-surface goose-floating-surface w-56 max-w-[calc(100vw-1rem)] p-1 backdrop-blur-0"
-          side="bottom"
+          side="top"
           align="start"
           alignOffset={0}
           sideOffset={8}
@@ -396,7 +397,7 @@ export function NotebookSwitcher({
             if (isDraggingRef.current) e.preventDefault();
           }}
         >
-          <div className="px-2 pt-2 pb-1 text-[11px] text-muted-foreground">切换笔记本</div>
+          <div className="px-2 pt-2 pb-1 text-[11px] text-muted-foreground">切换{notebookKind}</div>
           <div className="max-h-[max(4rem,calc(var(--goose-popover-available-height,80vh)-15rem))] overflow-y-auto">
             <DndContext
               sensors={sensors}
