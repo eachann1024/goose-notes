@@ -23,8 +23,6 @@ import {
   ChevronRight,
   Copy,
   Image as ImageIcon,
-  MessageSquareText,
-  Sparkles,
 } from "lucide-react";
 import {
   ActionBarPrimitive,
@@ -534,6 +532,7 @@ interface ChatMessagesProps {
   editorRef?: RefObject<EditorRef | null>;
   /** 全屏会话更宽、居中；侧栏保持紧凑 */
   layout?: "side-panel" | "fullscreen";
+  onEmptySuggestion?: (text: string) => void;
   onBatchApproval: (response: BatchApprovalResponse) => Promise<void> | void;
   onBatchUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
 }
@@ -756,6 +755,7 @@ export function ChatMessages({
   streamingMessageId,
   editorRef,
   layout = "side-panel",
+  onEmptySuggestion,
   onBatchApproval,
   onBatchUndo,
 }: ChatMessagesProps) {
@@ -1051,46 +1051,38 @@ export function ChatMessages({
           // min-w-0：flex 子项可收缩；横向溢出由消息内表格滚动，这里只负责纵向
           "notebook-ai-messages min-w-0 flex-1 overflow-x-hidden overflow-y-scroll [scrollbar-width:thin]",
           messages.length === 0
-            ? "flex items-center justify-center pb-[var(--ai-composer-float-pad,7.5rem)]"
+            ? cn(
+                "flex items-start justify-center pb-[var(--ai-composer-float-pad,7.5rem)]",
+                isFullscreen ? "px-6 pt-5" : "p-0",
+              )
             : undefined,
-          isFullscreen ? "px-6 pt-5" : "px-3 pt-3",
+          messages.length > 0 ? (isFullscreen ? "px-6 pt-5" : "px-3 pt-3") : undefined,
         )}
       >
         {messages.length === 0 ? (
           <div
             className={cn(
-              "flex flex-col items-center gap-3 text-center",
-              isFullscreen ? "max-w-[360px]" : "max-w-[260px]",
+              "notebook-ai-empty-state w-full min-w-0",
+              isFullscreen && "notebook-ai-empty-state-fullscreen",
             )}
           >
-            <div
-              className={cn(
-                "relative flex items-center justify-center rounded-[12px] bg-[var(--goose-interactive-hover)] text-muted-foreground",
-                isFullscreen ? "h-12 w-12" : "h-11 w-11",
-              )}
-            >
-              <MessageSquareText
-                className={isFullscreen ? "h-6 w-6" : "h-5 w-5"}
-                strokeWidth={1.75}
-              />
-              <Sparkles
-                className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground"
-                strokeWidth={1.75}
-              />
+            <h2 className="notebook-ai-empty-title text-foreground">从这一页开始。</h2>
+            <p className="notebook-ai-empty-description text-muted-foreground">
+              选一段文字，或直接说说想怎么改。
+            </p>
+            <div className="notebook-ai-empty-suggestions flex flex-col">
+              {["润色开头", "梳理结构"].map((text) => (
+                <button
+                  key={text}
+                  type="button"
+                  className="notebook-ai-empty-suggestion"
+                  onClick={() => onEmptySuggestion?.(text)}
+                  aria-label={`发送建议：${text}`}
+                >
+                  <span>{text}</span><span aria-hidden="true">→</span>
+                </button>
+              ))}
             </div>
-            <p
-              className={cn(
-                "font-medium text-foreground",
-                isFullscreen ? "text-[15px]" : "text-sm",
-              )}
-            >
-              开始和 AI 对话
-            </p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {isFullscreen
-                ? "全屏会话模式：整理、搜索、创作笔记，随时可切回侧栏并排。"
-                : "让它帮你整理、搜索、创作笔记。"}
-            </p>
           </div>
         ) : (
           <div

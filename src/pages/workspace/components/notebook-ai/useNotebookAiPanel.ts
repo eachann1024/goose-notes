@@ -1,7 +1,7 @@
 /**
  * AI 面板开关 + 打开方式（侧栏并排 / 全屏）
  *
- * - 默认全屏打开
+ * - 默认侧栏并排打开
  * - 侧栏模式：右侧并排，可拖宽
  * - 全屏模式：主内容区铺满 AI，不创建标签页，仅标签栏最左图标入口
  */
@@ -37,7 +37,7 @@ function readStoredOpen(): boolean {
   return false;
 }
 
-/** 默认全屏。兼容旧值 tab → fullscreen */
+/** 默认侧栏并排。兼容旧值 tab → fullscreen */
 function readStoredLayoutMode(): NotebookAiLayoutMode {
   try {
     const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
@@ -46,7 +46,7 @@ function readStoredLayoutMode(): NotebookAiLayoutMode {
   } catch {
     // ignore
   }
-  return "fullscreen";
+  return "side-panel";
 }
 
 function persistOpen(next: boolean) {

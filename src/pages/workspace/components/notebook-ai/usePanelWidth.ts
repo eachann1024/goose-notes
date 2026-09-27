@@ -7,7 +7,7 @@ const STORAGE_KEY = "goose-note-ai-panel-width";
 /** 用户拖拽与持久化的合法区间（展示宽度可能因父级极窄而低于 MIN） */
 export const PANEL_WIDTH_MIN = 320;
 const MIN_WIDTH = PANEL_WIDTH_MIN;
-const DEFAULT_WIDTH = 360;
+const DEFAULT_WIDTH = 338;
 
 function clamp(v: number) {
   return Number.isFinite(v) ? Math.max(MIN_WIDTH, v) : DEFAULT_WIDTH;

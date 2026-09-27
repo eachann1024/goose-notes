@@ -23,10 +23,10 @@ import {
   X,
   Plus,
   CircleAlert,
-  MoreHorizontal,
   PanelRight,
   AppWindow,
   History as HistoryIcon,
+  MoreHorizontal,
   Check,
 } from "lucide-react";
 import type { RefObject } from "react";
@@ -51,11 +51,7 @@ import {
   setAiHeaderActions,
   setAiHeaderTitle,
 } from "./aiHeaderSlot";
-import { ConversationTitle } from "./ConversationTitle";
-import {
-  getConversationSummary,
-  isEmptyConversationSummary,
-} from "@/lib/notebook-ai/conversationSummary";
+import { getConversationSummary } from "@/lib/notebook-ai/conversationSummary";
 import type { AiComposerPayload } from "@/components/editor/ai/composer/referenceLookup";
 import { buildAiFileReferenceAttrs } from "@/components/editor/ai/composer/referenceLookup";
 import {
@@ -68,6 +64,12 @@ import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { readEditorScale } from "./artifactPanZoomScale";
 import { FOCUS_AI_COMPOSER_EVENT } from "@/components/editor/ai/composer/selectionQuote";
 import {
@@ -397,77 +399,70 @@ export function NotebookAiPanel({
     [messages],
   );
 
-  // 会话标题只在历史列表展示；全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
+  // 全屏时工具栏上移到 PageHeader 右上角（顶替 PageMenu）
   const headerToolbar = useMemo(() => {
     const iconBtn =
-      "flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-interactive-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]";
+      "flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-[var(--goose-interactive-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]";
     return (
-      <div
-        className="flex items-center gap-0.5"
-        role="toolbar"
-        aria-label="AI 工具栏"
-      >
-        <button
-          type="button"
-          onClick={handleNewConversation}
-          className={iconBtn}
-          aria-label="新建会话"
-          title="新建会话"
-          disabled={isBusy}
+      <TooltipProvider delayDuration={300}>
+        <div
+          className="flex items-center gap-0.5"
+          role="toolbar"
+          aria-label="AI 工具栏"
         >
-          <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleNewConversation}
+                className={iconBtn}
+                aria-label="新建会话"
+                disabled={isBusy}
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>新建会话</TooltipContent>
+          </Tooltip>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={iconBtn}
-              aria-label="更多选项"
-              title="更多"
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className={iconBtn} aria-label="历史会话">
+                <HistoryIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={6}
+              className="w-72 max-w-72 overflow-hidden p-0"
             >
-              <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-56">
+              <ConversationHistoryList
+                notebookId={notebookId}
+                onSelectConversation={handleSelectConversation}
+                onDeleteConversation={handleDeleteConversation}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {onLayoutModeChange ? (
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-sm hover:bg-[var(--goose-interactive-selected)]"
+                  className={iconBtn}
+                  aria-label="更多面板选项"
                 >
-                  <HistoryIcon className="h-4 w-4" strokeWidth={1.75} />
-                  <span>历史会话</span>
+                  <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
                 </button>
               </PopoverTrigger>
-              <PopoverContent
-                side="right"
-                align="start"
-                className="w-72 max-w-72 overflow-hidden p-0"
-              >
-                <ConversationHistoryList
-                  notebookId={notebookId}
-                  onSelectConversation={handleSelectConversation}
-                  onDeleteConversation={handleDeleteConversation}
-                />
-              </PopoverContent>
-            </Popover>
-
-            {onLayoutModeChange ? (
-              <>
-                <div role="separator" className="my-1 h-px bg-border" />
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  打开方式
-                </div>
+              <PopoverContent align="end" sideOffset={6} className="w-48 p-1">
                 <PopoverAction
                   onSelect={() => onLayoutModeChange("side-panel")}
                   className="gap-2"
                 >
                   <PanelRight className="h-4 w-4" strokeWidth={1.75} />
                   <span className="flex-1">侧栏并排</span>
-                  {!layoutIsFullscreen ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
-                  ) : null}
+                  {!layoutIsFullscreen ? <Check className="h-3.5 w-3.5" /> : null}
                 </PopoverAction>
                 <PopoverAction
                   onSelect={() => onLayoutModeChange("fullscreen")}
@@ -475,25 +470,27 @@ export function NotebookAiPanel({
                 >
                   <AppWindow className="h-4 w-4" strokeWidth={1.75} />
                   <span className="flex-1">全屏</span>
-                  {layoutIsFullscreen ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
-                  ) : null}
+                  {layoutIsFullscreen ? <Check className="h-3.5 w-3.5" /> : null}
                 </PopoverAction>
-              </>
-            ) : null}
-          </PopoverContent>
-        </Popover>
+              </PopoverContent>
+            </Popover>
+          ) : null}
 
-        <button
-          type="button"
-          onClick={onClose}
-          className={iconBtn}
-          aria-label="关闭 AI"
-          title="关闭 AI"
-        >
-          <X className="h-4 w-4" strokeWidth={1.75} />
-        </button>
-      </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className={iconBtn}
+                aria-label="关闭 AI"
+              >
+                <X className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>关闭 AI</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
     );
   }, [
     onClose,
@@ -546,25 +543,25 @@ export function NotebookAiPanel({
       <ChatChrome
         onKeyDown={handlePanelKeyDown}
         className={cn(
-          "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden gap-2",
+          "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden",
           isFullscreen
             ? "min-w-0 w-full flex-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-2 pt-0"
-            : "bg-[hsl(var(--goose-shell-bg))] px-2 pb-2",
+            : "notebook-ai-shell px-2 pb-2",
         )}
       >
         {!isFullscreen ? (
-          <header className="notebook-ai-panel-header flex h-12 shrink-0 items-center gap-2 rounded-[12px] bg-[hsl(var(--goose-editor-bg))] px-2.5">
-            <ConversationTitle
-              summary={conversationSummary}
-              muted={isEmptyConversationSummary(conversationSummary)}
-            />
+          <header className="notebook-ai-panel-header flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+              AI 助手
+            </span>
             <div className="flex shrink-0 items-center">{headerToolbar}</div>
           </header>
         ) : null}
 
         <div
           className={cn(
-            "notebook-ai-zoom-slot rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
+            "notebook-ai-zoom-slot notebook-ai-content-surface",
+            isFullscreen ? "rounded-[12px]" : "rounded-b-[12px]",
             isFullscreen && "min-h-0 flex-1",
           )}
         >
@@ -586,6 +583,32 @@ export function NotebookAiPanel({
             ) : (
               <ChatMessages
                 messages={messages}
+                onEmptySuggestion={(text) => {
+                  const reference = initialReference
+                    ? { ...initialReference, role: "target" as const }
+                    : null;
+                  const tokens = reference
+                    ? [
+                        {
+                          type: "reference" as const,
+                          reference,
+                          role: "target" as const,
+                        },
+                        { type: "text" as const, text: `\n${text}` },
+                      ]
+                    : [{ type: "text" as const, text }];
+                  void handleSend(
+                    {
+                      promptText: text,
+                      freeformText: text,
+                      references: reference ? [reference] : [],
+                      images: [],
+                      skills: [],
+                      tokens,
+                    },
+                    [],
+                  );
+                }}
                 streamingMessageId={streamingMessageId}
                 editorRef={_editorRef}
                 layout={isFullscreen ? "fullscreen" : "side-panel"}
