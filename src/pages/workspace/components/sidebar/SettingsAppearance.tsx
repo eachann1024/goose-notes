@@ -12,7 +12,7 @@ import {
 } from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
-import { isLocalFontAvailable } from "@/lib/fontLoader";
+import { DEFAULT_FONT_NAMES, isLocalFontAvailable } from "@/lib/fontLoader";
 import { ReadingPreferences } from "../ReadingPreferences";
 import { AppearanceEditorPreview } from "./AppearanceEditorPreview";
 
@@ -27,10 +27,6 @@ interface SettingsAppearanceProps {
     "default" | "serif" | "mono",
     { label: string | null; font: string | null }
   >;
-  setCustomLabel: (
-    type: "default" | "serif" | "mono",
-    label: string | null,
-  ) => void;
   setCustomFont: (
     type: "default" | "serif" | "mono",
     font: string | null,
@@ -43,8 +39,6 @@ interface SettingsAppearanceProps {
   editorFontSize: number;
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
-  randomIconOnCreate: boolean;
-  setRandomIconOnCreate: (enabled: boolean) => void;
 }
 
 type AccentOption = {
@@ -102,10 +96,10 @@ const accentOptions: AccentOption[] = [
   {
     value: "amber",
     label: "琥珀",
-    previewLight: "#b45309",
+    previewLight: "#93702c",
     previewDark: "#fbbf24",
-    lightSurface: "#fef3c7",
-    lightForeground: "#b45309",
+    lightSurface: "#f5e8cb",
+    lightForeground: "#93702c",
     darkSurface: "rgba(245, 158, 11, 0.2)",
     darkForeground: "#fbbf24",
   },
@@ -183,16 +177,8 @@ const LEGACY_CODE_STYLE_DISPLAY_MAP: Partial<Record<CodeStyle, CodeStyle>> = {
 };
 
 const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
-const fontPlaceholders = {
-  default: "例：PingFang SC",
-  serif: "例：Songti SC",
-  mono: "例：JetBrains Mono",
-};
 const APPEARANCE_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
-
-const APPEARANCE_SWITCH_CLASS =
-  "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
 
 function LocalFontInput({
   id,
@@ -320,7 +306,6 @@ export function SettingsAppearance({
   codeStyle,
   setCodeStyle,
   customFonts,
-  setCustomLabel,
   setCustomFont,
   uiFontSize,
   setUIFontSize,
@@ -328,8 +313,6 @@ export function SettingsAppearance({
   increaseSidebarFontSize,
   decreaseSidebarFontSize,
   editorFontSize,
-  randomIconOnCreate,
-  setRandomIconOnCreate,
 }: SettingsAppearanceProps) {
   const editorLineHeight = useSettings((s) => s.editorLineHeight);
   const setEditorLineHeight = useSettings((s) => s.setEditorLineHeight);
@@ -398,7 +381,6 @@ export function SettingsAppearance({
         editorFontSize={editorFontSize}
         editorLineHeight={editorLineHeight}
         uiFontSize={uiFontSize}
-        randomIconOnCreate={randomIconOnCreate}
       />
       <div className="settings-appearance-options min-w-0 space-y-8">
         <SettingsSectionCard title="主题" className="border border-border/60">
@@ -555,7 +537,7 @@ export function SettingsAppearance({
         </SettingsSectionCard>
         <SettingsSectionCard
           title="字体与阅读"
-          description="按使用位置设置本机字体；留空时保持原有字体。"
+          description="按使用位置设置本机字体；留空时使用对应的默认字体。"
           className="border border-border/60"
         >
           <div className="grid gap-3 sm:grid-cols-2">
@@ -579,7 +561,7 @@ export function SettingsAppearance({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            正文可在页面中选择默认、衬线或等宽；下面可自定义这三组字体的名称与字形。
+            正文可在页面中选择默认、衬线或等宽；下面可自定义这三组字体的字形。
           </p>
           <div className="space-y-4">
             {(["default", "serif", "mono"] as const).map((type) => (
@@ -587,24 +569,14 @@ export function SettingsAppearance({
                 key={type}
                 className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 rounded-xl bg-[hsl(var(--goose-selected-bg)/0.4)] p-2"
               >
-                <div className="flex items-center gap-1">
-                  <Input
-                    value={customFonts[type].label || ""}
-                    onChange={(e) =>
-                      setCustomLabel(type, e.target.value || null)
-                    }
-                    aria-label={`${defaultLabels[type]}显示名称`}
-                    placeholder={defaultLabels[type]}
-                    className="h-9 min-w-0 border-border/60 bg-background px-2 text-sm"
-                  />
-                </div>
+                <Label>{defaultLabels[type]}</Label>
                 <div className="flex flex-1 items-center gap-2">
                   <LocalFontInput
                     id={`appearance-${type}-font`}
                     label={`${defaultLabels[type]}字体名称`}
                     value={customFonts[type].font || ""}
                     onChange={(value) => setCustomFont(type, value || null)}
-                    placeholder={fontPlaceholders[type]}
+                    placeholder={`默认：${DEFAULT_FONT_NAMES[type]}`}
                   />
                 </div>
               </div>
@@ -686,18 +658,9 @@ export function SettingsAppearance({
             </div>
           </div>
         </SettingsSectionCard>
-        <SettingsSectionCard
-          title={
-            <span className="flex items-center gap-2">
-              <LucideIcons.Code2
-                className="h-4 w-4 shrink-0 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              主题与代码风格
-            </span>
-          }
-          description="深浅模式自动适配。"
-        >
+        <details className="rounded-lg border border-border/60 p-4">
+          <summary className="cursor-pointer text-sm font-medium">代码主题</summary>
+          <p className="mt-2 text-xs text-muted-foreground">深浅模式自动适配。</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {codeStyles.map((t) => (
               <SelectableCard
@@ -722,37 +685,7 @@ export function SettingsAppearance({
               </SelectableCard>
             ))}
           </div>
-        </SettingsSectionCard>
-
-        <SettingsSectionCard title="新建笔记图标">
-          <div
-            className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-          >
-            <div>
-              <div className="flex items-center gap-3">
-                <LucideIcons.Sparkles
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <Label
-                  htmlFor="random-icon-on-create"
-                  className="cursor-pointer"
-                >
-                  新建笔记随机图标
-                </Label>
-              </div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">
-                新建笔记时自动选一个图标。本地文件同样生效，文件夹不受影响。
-              </p>
-            </div>
-            <Switch
-              id="random-icon-on-create"
-              checked={randomIconOnCreate}
-              onCheckedChange={setRandomIconOnCreate}
-              className={APPEARANCE_SWITCH_CLASS}
-            />
-          </div>
-        </SettingsSectionCard>
+        </details>
 
         <EditorLayoutSettings />
       </div>
@@ -770,13 +703,12 @@ function EditorLayoutSettings() {
       <div
         role="group"
         aria-label="默认布局"
-        className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
       >
         {(
           [
             ["full", "全宽", "铺满可用编辑区域"],
             ["standard", "标准", "均衡留白，日常编辑"],
-            ["compact", "目录", "页内目录，点击章节快速跳转"],
           ] as const
         ).map(([value, label, description]) => (
           <SelectableCard
@@ -796,9 +728,6 @@ function EditorLayoutSettings() {
               aria-hidden="true"
               className="flex h-14 w-full gap-2 rounded-md border border-current/20 bg-background/50 p-2"
             >
-              {value === "compact" && (
-                <span className="w-1/4 rounded-sm bg-current/15" />
-              )}
               <span
                 className={cn(
                   "flex flex-col gap-1.5",

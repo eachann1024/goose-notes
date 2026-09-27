@@ -104,11 +104,9 @@ test("应用强调色在浅色模式写入对应 light runtime token", () => {
 
   try {
     applyAccentColor("amber");
-    expect(properties.get("--goose-inline-code-bg")).toBe("#fffbeb");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#b45309");
-    expect(properties.get("--goose-interactive-hover")).toBe(
-      properties.get("--goose-interactive-selected"),
-    );
+    expect(properties.get("--goose-inline-code-bg")).toBe("#f5e8cb");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#93702c");
+    expect(properties.get("--goose-interactive-hover")).toBe("#ebdfc6");
     expect(properties.get("--goose-icon-chip-on-selected")).toBe(
       properties.get("--goose-interactive-selected"),
     );
@@ -161,8 +159,8 @@ test("主题 class 变化后 re-sync 会按 dark/light 重写 inline-code token"
 
   try {
     applyAccentColor("amber");
-    expect(properties.get("--goose-inline-code-bg")).toBe("#fffbeb");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#b45309");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#f5e8cb");
+    expect(properties.get("--goose-inline-code-fg")).toBe("#93702c");
 
     classList.add("dark");
     syncAccentColorCssVars();
@@ -220,7 +218,7 @@ test("跟随系统主题能解析系统明暗状态", () => {
 
 test("侧栏字号与编辑器字号互相独立且各自夹紧边界", () => {
   expect(APPEARANCE_INITIAL_STATE.sidebarFontSize).toBe(13);
-  expect(APPEARANCE_INITIAL_STATE.editorFontSize).toBe(16);
+  expect(APPEARANCE_INITIAL_STATE.editorFontSize).toBe(17);
 
   let sidebarFontSize = 13;
   let editorFontSize = 16;

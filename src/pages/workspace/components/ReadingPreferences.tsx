@@ -17,12 +17,12 @@ export function ReadingPreferences({ showPreview = true, fontSize, lineHeight, o
   const id = useId();
   const fields = [
     { key: "size", label: "正文字号", value: fontSize, min: EDITOR_FONT_SIZE_MIN, max: EDITOR_FONT_SIZE_MAX, step: 1, unit: "px", change: onFontSizeChange },
-    { key: "height", label: "正文行高", value: lineHeight, min: EDITOR_LINE_HEIGHT_MIN, max: EDITOR_LINE_HEIGHT_MAX, step: 0.1, unit: "倍", change: onLineHeightChange },
+    { key: "height", label: "正文行高", value: lineHeight, min: EDITOR_LINE_HEIGHT_MIN, max: EDITOR_LINE_HEIGHT_MAX, step: 0.05, unit: "倍", change: onLineHeightChange },
   ];
   return <div className="space-y-5">
     {showPreview && <section aria-label="阅读效果预览" className="border-b border-border px-2 pb-5">
       <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
-        <span>实时预览</span><span className="tabular-nums">{fontSize} px / {lineHeight.toFixed(1)}</span>
+        <span>实时预览</span><span className="tabular-nums">{fontSize} px / {lineHeight.toFixed(2)}</span>
       </div>
       <h3 className="mb-3 text-lg font-semibold tracking-tight">留一点呼吸，给文字</h3>
       <div className="space-y-3 text-foreground" style={{ fontSize, lineHeight }}>
@@ -34,7 +34,7 @@ export function ReadingPreferences({ showPreview = true, fontSize, lineHeight, o
       {fields.map(field => <div key={field.key}>
         <div className="flex items-center justify-between gap-3 text-sm">
           <label htmlFor={`${id}-${field.key}`}>{field.label}</label>
-          <output htmlFor={`${id}-${field.key}`} className="font-medium tabular-nums">{field.step < 1 ? field.value.toFixed(1) : field.value} {field.unit}</output>
+          <output htmlFor={`${id}-${field.key}`} className="font-medium tabular-nums">{field.step < 1 ? field.value.toFixed(2) : field.value} {field.unit}</output>
         </div>
         <input id={`${id}-${field.key}`} type="range" min={field.min} max={field.max} step={field.step} value={field.value}
           aria-valuetext={`${field.value} ${field.unit}`}
@@ -44,10 +44,10 @@ export function ReadingPreferences({ showPreview = true, fontSize, lineHeight, o
       </div>)}
     </div>
     <div className="flex flex-wrap gap-2" role="group" aria-label="行高预设">
-      {([[1.4, "紧凑"], [1.7, "舒适"], [2, "宽松"]] as const).map(([value, label]) =>
+      {([[1.4, "紧凑"], [1.95, "舒适"], [2, "宽松"]] as const).map(([value, label]) =>
         <Button key={value} type="button" variant="outline" size="sm" aria-pressed={lineHeight === value}
           className="rounded-lg border-border text-xs aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
-          onClick={() => onLineHeightChange(value)}>{label} {value.toFixed(1)}</Button>)}
+          onClick={() => onLineHeightChange(value)}>{label} {value.toFixed(2)}</Button>)}
     </div>
   </div>;
 }

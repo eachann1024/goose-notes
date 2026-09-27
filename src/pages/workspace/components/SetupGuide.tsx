@@ -16,7 +16,7 @@ import { editorSchema } from "@/components/editor/core/schema";
 import { createEditorSafeContent, normalizePageContent, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import "./setup-guide.css";
 
-const layouts = [["full", "全宽", "把可用空间留给内容"], ["standard", "标准", "适度留白，专心书写"], ["compact", "目录", "按章节跳转，目录宽度可拖动"]] as const;
+const layouts = [["standard", "标准", "适度留白，专心书写"], ["full", "全宽", "把可用空间留给内容"]] as const;
 
 const sampleNote: BlockNoteContent = [
   { type: "heading", props: { level: 1 }, content: "周会纪要" },
@@ -80,11 +80,9 @@ function SetupGuideSteps() {
   const [theme, setTheme] = useState<Theme>(settings.theme);
   const [fontSize, setFontSize] = useState(settings.editorFontSize);
   const [lineHeight, setLineHeight] = useState(settings.editorLineHeight);
-  const [contentsWidth, setContentsWidth] = useState(settings.contentsWidth);
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
   const heading = useRef<HTMLHeadingElement>(null);
   const preview = useRef<HTMLDivElement>(null);
-  const [section, setSection] = useState("讨论结论");
   const toggleAiShortcut = useSettings(state => state.appShortcuts.toggleAIPanel ?? DEFAULT_APP_SHORTCUTS.toggleAIPanel);
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -98,7 +96,7 @@ function SetupGuideSteps() {
     settings.setTheme(theme);
     settings.setEditorFontSize(fontSize);
     settings.setEditorLineHeight(lineHeight);
-    useSettings.setState({ defaultPageLayout: layout, contentsWidth, setupGuideSeen: true, setupGuideOpen: false });
+    useSettings.setState({ defaultPageLayout: layout, setupGuideSeen: true, setupGuideOpen: false });
   };
   const openSettings = (tab: "ai" | "shortcuts") => {
     finish();
@@ -123,15 +121,6 @@ function SetupGuideSteps() {
           <p className="setup-ai-guide-note">这些入口在正式笔记中使用；此处的练习笔记不唤起 AI。</p>
         </div> : <>
         <div className="setup-preview-body" data-preview-layout={layout}>
-          {layout === "compact" && <nav className="setup-preview-contents" aria-label="示例目录" style={{ width: contentsWidth }}>
-            <p>目录</p>
-            {["讨论结论", "提醒事项"].map(label => <button type="button" key={label} aria-current={section === label ? "location" : undefined} onClick={() => {
-              setSection(label);
-              Array.from(preview.current?.querySelectorAll('.bn-block-content[data-content-type="heading"]') ?? [])
-                .find(block => block.textContent?.trim() === label)
-                ?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
-            }}>{label}</button>)}
-          </nav>}
           <div className="setup-preview-scroll" ref={preview}>
             <div className="setup-preview-document" style={{ "--editor-font-size": `${fontSize}px`, "--editor-line-height": lineHeight } as CSSProperties}>
               <SetupGuideNote theme={theme === "dark" || (theme === "system" && systemDark) ? "dark" : "light"} />
@@ -149,7 +138,7 @@ function SetupGuideSteps() {
         </header>
         <div className="setup-step-body">
           {step === 0 && <div>
-            {[[Layout, "书写空间", "全宽、标准与目录，按习惯选择。"], [Palette, "阅读偏好", "主题、字号与行高，调到看得舒服。"], [ShieldCheck, "本地与备份", "了解文件保存方式与备份入口。"]].map(([Icon, title, text]) => {
+            {[[Layout, "书写空间", "标准与全宽，按习惯选择。"], [Palette, "阅读偏好", "主题、字号与行高，调到看得舒服。"], [ShieldCheck, "本地与备份", "了解文件保存方式与备份入口。"]].map(([Icon, title, text]) => {
               const ItemIcon = Icon as typeof Layout;
               return <div key={String(title)} className="setup-feature"><span><ItemIcon size={18} /></span><div><strong>{String(title)}</strong><p>{String(text)}</p></div></div>;
             })}
@@ -157,11 +146,10 @@ function SetupGuideSteps() {
           {step === 1 && <>
             <div className="setup-layouts" role="group" aria-label="默认编辑布局">
               {layouts.map(([value, label, text]) => <button type="button" key={value} aria-pressed={layout === value} onClick={() => setLayout(value)}>
-                <div className="setup-mini" data-layout={value} aria-hidden="true">{value === "compact" && <aside />}<div>{[1, 2, 3, 4].map(n => <i key={n} />)}</div></div>
+                <div className="setup-mini" data-layout={value} aria-hidden="true"><div>{[1, 2, 3, 4].map(n => <i key={n} />)}</div></div>
                 <div><strong>{label}{layout === value && <Check size={14} />}</strong><small>{text}</small></div>
               </button>)}
             </div>
-            {layout === "compact" && <label className="setup-width">目录宽度 <output>{contentsWidth}px</output><input aria-label="目录宽度" type="range" min={128} max={360} step={1} value={contentsWidth} onChange={event => setContentsWidth(event.currentTarget.valueAsNumber)} /></label>}
           </>}
           {step === 2 && <div className="setup-reading">
             <div className="setup-theme" role="group" aria-label="主题">
@@ -175,7 +163,7 @@ function SetupGuideSteps() {
           </div>}
           {step === 3 && <div className="setup-backup">
             <FolderOpen size={24} /><h3>本地文件夹，就是你的笔记本</h3>
-            <p>从左侧笔记本菜单添加文件夹。笔记保存在本地，单篇布局随笔记的 YAML 一起记录。</p>
+            <p>从左下角文件夹菜单添加文件夹。笔记保存在本地，单篇布局随笔记的 YAML 一起记录。</p>
             <div>设置 → 数据管理 → 本地备份</div>
             <p>导出 ZIP 留存副本。WebDAV 可稍后配置，当前不会自动开启。</p>
           </div>}

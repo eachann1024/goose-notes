@@ -12,7 +12,7 @@ import { extractFrontmatter } from "../../src/lib/markdown-raw-guard";
 
 const defaults = { fontFamily: "default", isLocked: false, isPinned: false, isFavorite: false } as const;
 const body = "# Mock layout\n\n**Keep** text\n\n| A | B |\n| - | - |\n| 1 | 2 |";
-for (const pageLayout of ["full", "standard", "compact"] as const) {
+for (const pageLayout of ["full", "standard"] as const) {
   const settings = { ...defaults, pageLayout };
   const result = merge("---\ntitle: keep\ntags: [one, two]\ngoose-font: mono\n---", settings);
   assert.equal(result.parseFailed, false);
@@ -27,15 +27,15 @@ for (const pageLayout of ["full", "standard", "compact"] as const) {
   assert.deepEqual(applyFrontmatterBodyToContent(content, `goose-layout: ${pageLayout}`), content);
 }
 assert.equal(merge(undefined, defaults).blob, undefined);
-assert.equal(isLocalPageFrontmatterSettingsUpdate({ pageLayout: "compact" }), true);
-for (const value of ["reading", "wide", "READING", "null", "true", "42", "[reading]", "{key: compact}"]) {
+assert.equal(isLocalPageFrontmatterSettingsUpdate({ pageLayout: "standard" }), true);
+for (const value of ["compact", "reading", "wide", "READING", "null", "true", "42", "[reading]", "{key: compact}"]) {
   assert.equal(parse(`goose-layout: ${value}`).settings.pageLayout, "standard");
 }
 for (const yaml of [": [broken", "- compact", "reading", "null", "42", "goose-layout: compact\ngoose-layout: reading"]) {
   const blob = `---\n${yaml}\n---`;
   assert.equal(parse(blob).ok, false);
   assert.equal(parse(blob).settings.pageLayout, undefined);
-  const result = merge(blob, { ...defaults, pageLayout: "compact" });
+  const result = merge(blob, { ...defaults, pageLayout: "standard" });
   assert.equal(result.parseFailed, true);
   assert.equal(result.blob, blob);
   assert.throws(() => mergeHeader(`${blob}\n\n${body}`, defaults), /阻止保存/);

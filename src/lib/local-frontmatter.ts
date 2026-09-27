@@ -2,7 +2,7 @@
  * 本地文件夹页面设置 ↔ YAML frontmatter（方案 A）
  *
  * 白名单键（命名空间 goose-*，默认值省略写盘）：
- * - goose-layout: full | standard | compact（未设置时跟随全局）
+ * - goose-layout: full | standard（旧 compact 按 standard 读取，未设置时跟随全局）
  * - goose-font: serif | mono（default 不写）
  * - goose-locked: true（false 不写）
  *
@@ -80,7 +80,7 @@ function wrapFrontmatter(yamlBody: string): string {
 }
 
 export function normalizePageLayout(value: unknown): PageLayout {
-  return value === "compact" || value === "full" ? value : "standard";
+  return value === "full" ? "full" : "standard";
 }
 
 function normalizeFont(value: unknown): FontFamily {

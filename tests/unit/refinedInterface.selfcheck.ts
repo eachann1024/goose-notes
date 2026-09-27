@@ -1,0 +1,57 @@
+// Run: bun --tsconfig-override tsconfig.app.json tests/unit/refinedInterface.selfcheck.ts
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
+import { DEFAULT_FONT_NAMES, getEditorFontFamilies } from "../../src/lib/fontLoader";
+import { normalizePageLayout, parseLocalFrontmatterBlob } from "../../src/lib/local-frontmatter";
+import { migrateSettingsPersistedState } from "../../src/stores/settings/migrations";
+import { EDITOR_FONT_SIZE_DEFAULT, EDITOR_LINE_HEIGHT_DEFAULT, normalizeEditorFontSize, normalizeEditorLineHeight } from "../../src/stores/settings/types";
+
+assert.equal(EDITOR_FONT_SIZE_DEFAULT, 17);
+assert.equal(EDITOR_LINE_HEIGHT_DEFAULT, 1.95);
+assert.equal(normalizeEditorLineHeight(1.95), 1.95);
+assert.equal(normalizeEditorLineHeight(NaN), 1.95);
+assert.equal(normalizeEditorLineHeight(9), 2.4);
+assert.equal(normalizeEditorFontSize(-1), 12);
+assert.equal(normalizeEditorFontSize(undefined), 17);
+for (const value of ["compact", undefined, null, "invalid"]) assert.equal(normalizePageLayout(value), "standard");
+assert.equal(normalizePageLayout("full"), "full");
+assert.equal(parseLocalFrontmatterBlob("goose-layout: compact").settings.pageLayout, "standard");
+const old = { editorFontSize: 16, editorLineHeight: 1.5, defaultPageLayout: "compact", customFonts: { default: { font: "Custom" } } };
+const migrated = migrateSettingsPersistedState(old, 5);
+assert.equal(migrated.editorFontSize, 17);
+assert.equal(migrated.editorLineHeight, 1.95);
+assert.equal(migrated.defaultPageLayout, "standard");
+assert.deepEqual(migrated.customFonts, old.customFonts);
+assert.equal(old.editorFontSize, 16, "Migration must not mutate the stored input");
+const custom = migrateSettingsPersistedState({ editorFontSize: 19, editorLineHeight: 1.7, defaultPageLayout: "full" }, 5);
+assert.equal(custom.editorFontSize, 19);
+assert.equal(custom.editorLineHeight, 1.7);
+assert.equal(custom.defaultPageLayout, "full");
+assert.equal(migrateSettingsPersistedState({ editorFontSize: 16, editorLineHeight: 1.5 }, 6).editorFontSize, 16);
+assert.equal(migrateSettingsPersistedState({ editorFontSize: 16, editorLineHeight: 1.5 }, 6).editorLineHeight, 1.5);
+const fonts = { default: { label: null, font: null }, serif: { label: null, font: null }, mono: { label: null, font: null } };
+assert.equal(DEFAULT_FONT_NAMES.default, "Songti SC");
+assert.deepEqual(getEditorFontFamilies("default", fonts), ["Songti SC", "Noto Serif CJK SC", "STSong"]);
+assert.equal(getEditorFontFamilies("default", { ...fonts, default: { label: null, font: "Custom Font" } })[0], "Custom Font");
+
+// Freeze the existing six other light palettes and all eight dark palettes.
+const keys = ["iris", "ocean", "mono", "pine", "amber", "coral", "rose", "grape"] as const;
+const protectedTokens = keys.flatMap(k => [false, true].filter(d => d || !["amber", "mono"].includes(k)).map(d => [k, d, resolveAccentRuntimeTokens(k, d)]));
+assert.equal(createHash("sha256").update(JSON.stringify(protectedTokens)).digest("hex"), "c3dd76bc499307380cbe4f06cea9cd45545a3208b8abd05385e215d30fe1722b");
+assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-interactive-selected"], "#fcf8f0");
+assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-sidebar-hover"], "#ebdfc6");
+assert.equal(resolveAccentRuntimeTokens("mono", false)["--goose-interactive-selected"], "#ffffff");
+const css = readFileSync(new URL("../../src/styles/goose-accent-colors.css", import.meta.url), "utf8");
+assert.match(css, /:root:not\(\.dark\)\[data-goose-accent="amber"\]/);
+assert.match(css, /:root:not\(\.dark\)\[data-goose-accent="mono"\]/);
+assert.match(css, /--goose-shell-surface: linear-gradient\(158deg, #f2e4c8, #f5efdf\)/);
+const layoutCss = readFileSync(new URL("../../src/pages/workspace/styles/page-layout.css", import.meta.url), "utf8");
+assert.match(layoutCss, /:has\(h1\)/, "BlockNote can wrap a heading; do not require a direct h1 child");
+assert.match(layoutCss, /page-layout-document > \.workspace-editor-surface \{ padding-block: 0;/, "Document owns both top and bottom gutters");
+assert.match(layoutCss, /--page-heading-gap: max\(0px, calc\(var\(--page-title-gap\) - var\(--previous-prose-gap, 0px\)\)\)/, "Wrapped prose must not add both neighboring margins");
+assert.match(layoutCss, /letter-spacing: normal;\s*-webkit-font-smoothing: auto;/, "Prose must not inherit UI tracking or smoothing");
+assert.match(layoutCss, /--bn-colors-editor-text: hsl\(var\(--foreground\)\)/, "Approved palettes must reach BlockNote's text token");
+assert.match(layoutCss, /@container page-layout \(max-width: 680px\) \{\s*\[data-page-layout\] \.page-layout-document/, "Responsive padding must match the base selector specificity");
+console.log("PASS refined interface: defaults, safe legacy migration, fonts, layout, 14 unchanged palettes, scoped surfaces");

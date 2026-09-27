@@ -20,29 +20,6 @@
   caret-color: var(--goose-accent-focus);
 }
 
-.bn-editor.goose-strong-caret-active,
-.bn-editor.goose-strong-caret-active * {
-  caret-color: transparent !important;
-}
-
-.goose-strong-editor-caret {
-  position: fixed;
-  z-index: 10;
-  width: 5px;
-  border-radius: 2px;
-  background: var(--goose-accent-focus);
-  pointer-events: none;
-  animation: goose-strong-caret-blink 1s step-end infinite;
-}
-
-@keyframes goose-strong-caret-blink {
-  50% { opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .goose-strong-editor-caret { animation: none; }
-}
-
 /* BlockNote 每个块自带固定行高，正文块需显式覆盖；代码块保留独立排版。 */
 .bn-editor .bn-block-outer {
   line-height: var(--editor-line-height, 1.5);

@@ -20,6 +20,7 @@ import {
 import { useHistoryView } from "@/stores/useHistoryView";
 import { deletePageWithUndo } from "@/lib/page-delete-actions";
 import { cn } from "@/lib/utils";
+import { normalizePageLayout } from "@/lib/local-frontmatter";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { isElectronRuntime } from "@/lib/electron/runtime";
@@ -442,33 +443,36 @@ export function PageMenu() {
           {!page.isFolder && (
             <section aria-label="页面布局" className="px-1 py-2">
               <div className="px-1 pb-2 text-xs text-muted-foreground">页面布局</div>
-              <div className="grid grid-cols-3 gap-1" role="group" aria-label="选择当前笔记布局">
+              <div className="grid grid-cols-2 gap-1" role="group" aria-label="选择当前笔记布局">
                 {([
-                  ["full", "全宽", "铺满可用编辑区域"],
-                  ["standard", "标准", "均衡留白，日常编辑"],
-                  ["compact", "目录", "页内目录，点击章节快速跳转"],
-                ] as const).map(([value, label, description]) => (
+                  ["standard", "标准"],
+                  ["full", "全宽"],
+                ] as const).map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
-                    title={description}
-                    aria-pressed={(page.pageLayout ?? defaultLayout) === value}
+                    aria-pressed={normalizePageLayout(page.pageLayout ?? defaultLayout) === value}
                     onClick={() => updatePage(activePageId, { pageLayout: value })}
                     className={cn(
                       "rounded-lg border px-2 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      (page.pageLayout ?? defaultLayout) === value
+                      normalizePageLayout(page.pageLayout ?? defaultLayout) === value
                         ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                         : "border-border hover:bg-[var(--goose-interactive-hover)]",
                     )}
                   >
-                    <span aria-hidden="true" className={cn("mx-auto mb-2 flex h-8 w-10 flex-col justify-center rounded border border-current opacity-60", value === "compact" ? "gap-0.5 px-1" : "gap-1 px-2")}>
-                      <span className="h-px w-2/3 bg-current" /><span className="h-px bg-current" /><span className="h-px bg-current" />
-                    </span>
                     {label}
                   </button>
                 ))}
               </div>
-              {page.pageLayout !== undefined && <button type="button" className="mt-2 px-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => updatePage(activePageId, { pageLayout: undefined })}>恢复跟随默认布局</button>}
+              {page.pageLayout !== undefined && (
+                <button
+                  type="button"
+                  className="mt-2 px-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => updatePage(activePageId, { pageLayout: undefined })}
+                >
+                  恢复跟随默认布局
+                </button>
+              )}
             </section>
           )}
           {/* Font Selector */}
@@ -484,111 +488,31 @@ export function PageMenu() {
 
           <div className="mx-1 my-1 h-px bg-border" />
 
-          <section aria-label="页面状态">
-            <div className="px-2 pb-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground">
-              页面状态
-            </div>
-            <div className="grid grid-cols-3 gap-1 px-1 pb-0.5">
-              <button
-                type="button"
-                aria-pressed={page.isFavorite}
-                onClick={() =>
-                  updatePage(activePageId, { isFavorite: !page.isFavorite })
-                }
-                className={cn(
-                  "goose-interactive relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                  page.isFavorite
-                    ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "grid h-5 w-5 place-items-center rounded-[7px]",
-                    page.isFavorite && "bg-[var(--goose-interactive-selected)]",
-                  )}
-                >
-                  <LucideIcons.Star
-                    className={cn(
-                      "h-3.5 w-3.5 text-current",
-                      page.isFavorite &&
-                        "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)]",
-                    )}
-                  />
-                </span>
-                <span className="min-w-0 truncate text-xs font-medium">
-                  {isLocalItem ? "收藏文件" : "收藏页面"}
-                </span>
-                {page.isFavorite && (
-                  <LucideIcons.Check className="absolute right-1.5 top-1.5 h-3 w-3" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                aria-pressed={page.isPinned}
-                onClick={() =>
-                  updatePage(activePageId, { isPinned: !page.isPinned })
-                }
-                className={cn(
-                  "goose-interactive relative grid min-h-[40px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 rounded-[9px] border px-2 py-1 pr-5 text-left transition-colors duration-150",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                  page.isPinned
-                    ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-                    : "border-[var(--goose-block-subtle-border)] bg-card text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "grid h-5 w-5 place-items-center rounded-[7px]",
-                    page.isPinned && "bg-[var(--goose-interactive-selected)]",
-                  )}
-                >
-                  <LucideIcons.Pin
-                    className={cn(
-                      "h-3.5 w-3.5 text-current",
-                      page.isPinned &&
-                        "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)]",
-                    )}
-                  />
-                </span>
-                <span className="min-w-0 truncate text-xs font-medium">
-                  置顶页面
-                </span>
-                {page.isPinned && (
-                  <LucideIcons.Check className="absolute right-1.5 top-1.5 h-3 w-3" />
-                )}
-              </button>
-            </div>
-
-            {/* 页面锁定同属页面状态，连续呈现，避免用分割线制造多余层级。 */}
-            <div
-              role="button"
-              tabIndex={0}
-              className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-              onClick={() =>
-                updatePage(activePageId, { isLocked: !page.isLocked })
+          <div
+            role="button"
+            tabIndex={0}
+            className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            onClick={() =>
+              updatePage(activePageId, { isLocked: !page.isLocked })
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                updatePage(activePageId, { isLocked: !page.isLocked });
               }
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  updatePage(activePageId, { isLocked: !page.isLocked });
-                }
-              }}
-            >
-              <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]" />
-              <span className="min-w-0 truncate">锁定页面</span>
-              <Switch
-                aria-label="锁定页面"
-                checked={page.isLocked}
-                onCheckedChange={(checked) =>
-                  updatePage(activePageId, { isLocked: checked })
-                }
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </section>
+            }}
+          >
+            <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]" />
+            <span className="min-w-0 truncate">锁定页面</span>
+            <Switch
+              aria-label="锁定页面"
+              checked={page.isLocked}
+              onCheckedChange={(checked) =>
+                updatePage(activePageId, { isLocked: checked })
+              }
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
 
           {canOpenInNewWindow && activeTab ? (
             <PopoverAction

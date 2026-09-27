@@ -1,76 +1,82 @@
-/* Layout is scoped to each pane; document content and explicit text styles stay intact. */
+/* Each pane owns its measure; explicit document and code formatting stay intact. */
 [data-page-layout] {
   container: page-layout / inline-size;
-  --page-layout-width: 880px;
+  --page-layout-width: 800px;
   --page-layout-gutter: 48px;
-  --page-layout-top: 32px;
-  --page-layout-row: 40px;
-  --page-layout-cell-y: 8px;
+  --page-layout-top: 80px;
+  --page-paragraph-gap: 23px;
+  --page-title-gap: 37px;
 }
-[data-page-layout="compact"] {
-  --page-layout-width: none;
-  --page-layout-gutter: 32px;
-  --page-layout-top: 24px;
-  --page-layout-row: 34px;
-  --page-layout-cell-y: 5px;
-}
+[data-page-layout="full"] { --page-layout-width: none; }
 [data-page-layout] .page-layout-document {
   width: 100%;
   max-width: var(--page-layout-width);
+  min-height: 100%;
   margin-inline: auto;
-  padding: var(--page-layout-top) var(--page-layout-gutter) 48px;
+  padding: var(--page-layout-top) var(--page-layout-gutter) 100px;
 }
-/* Keep the existing table wrapper gutter for drag/append handles. */
-[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="table"] :is(th, td) {
-  height: calc(var(--page-layout-row) * var(--editor-scale, 1));
-  padding: calc(var(--page-layout-cell-y) * var(--editor-scale, 1)) calc(12px * var(--editor-scale, 1));
+[data-page-layout] .page-layout-document > .workspace-editor-surface { padding-block: 0; }
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="paragraph"] {
+  padding-block: 0;
+  margin-bottom: var(--page-paragraph-gap);
 }
-[data-page-layout="compact"] .bn-editor .bn-block-content[data-content-type="paragraph"] {
-  padding-block: calc(2px * var(--editor-scale, 1));
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="heading"]:not([data-is-toggleable="true"]) {
+  --page-heading-gap: max(0px, calc(var(--page-title-gap) - var(--previous-prose-gap, 0px)));
+  --page-heading-padding: 0px;
+  padding-block: 0;
+  margin-block: var(--page-heading-gap) 14px;
+}
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="heading"]:not([data-is-toggleable="true"]):has(h1) {
+  --page-heading-gap: 0px;
+  margin-block: 0 var(--page-title-gap);
+}
+[data-page-layout] .bn-editor :is(h1, [data-content-type="heading"]:has(h1)) { --level: calc(34px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 650; letter-spacing: -0.5px; }
+[data-page-layout] .bn-editor :is(h2, [data-content-type="heading"]:has(h2)) { --level: calc(21px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 600; letter-spacing: -0.25px; }
+[data-page-layout] .bn-editor :is(h3, [data-content-type="heading"]:has(h3)) { --level: calc(19px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; }
+/* BlockNote wraps blocks in flex columns, so the HTML reference's prose margins
+ * cannot collapse naturally. Subtract the previous leaf block's trailing gap.
+ * ponytail: nested structures keep their own rhythm; extend their last-block rule if needed. */
+[data-page-layout] .bn-editor .bn-block-outer { --previous-prose-gap: 0px; }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="paragraph"]:only-child) + .bn-block-outer { --previous-prose-gap: var(--page-paragraph-gap); }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="heading"]:not([data-is-toggleable="true"]):only-child) + .bn-block-outer { --previous-prose-gap: 14px; }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="heading"]:has(h1):not([data-is-toggleable="true"]):only-child) + .bn-block-outer { --previous-prose-gap: var(--page-title-gap); }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="quote"]:only-child) + .bn-block-outer { --previous-prose-gap: 30px; }
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"] {
+  margin-block: max(0px, calc(30px - var(--previous-prose-gap, 0px))) 30px;
+  padding-block: 0;
+}
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"] > blockquote {
+  border-left-width: 2px;
+  padding: 3px 0 3px 20px;
+  font-size: calc(18px * var(--editor-scale, 1));
+}
+[data-page-layout] .bn-editor .bn-inline-content strong { font-weight: 650; }
+/* Dense structures keep their own rhythm rather than inheriting prose spacing. */
+[data-page-layout] .bn-editor :is(td, th, [data-content-type="bulletListItem"], [data-content-type="numberedListItem"]) {
+  --page-paragraph-gap: 0px;
 }
 @container page-layout (max-width: 680px) {
-  .page-layout-document { padding-inline: 32px; }
+  [data-page-layout] .page-layout-document { padding: 48px 32px 80px; }
+}
+@container page-layout (max-width: 400px) {
+  [data-page-layout] .page-layout-document { padding-inline: 24px; }
 }
 
-.page-contents {
-  width: 128px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  padding: 28px 12px;
-  border-right: 1px solid hsl(var(--border));
-  font-size: 11px;
-  background: hsl(var(--goose-editor-bg));
+[data-page-layout][data-font-family="default"] { --goose-document-font: var(--font-default); }
+[data-page-layout][data-font-family="serif"] { --goose-document-font: var(--font-serif); }
+[data-page-layout][data-font-family="mono"] { --goose-document-font: var(--font-mono); }
+[data-page-layout] .bn-editor {
+  --bn-font-family: var(--goose-document-font);
+  font-family: var(--goose-document-font);
+  letter-spacing: normal;
+  -webkit-font-smoothing: auto;
 }
-.page-contents-title { margin-bottom: 16px; color: hsl(var(--muted-foreground)); }
-.page-contents button {
-  display: block;
-  width: 100%;
-  margin-bottom: 4px;
-  padding: 8px;
-  border-radius: 6px;
-  text-align: left;
-  overflow-wrap: anywhere;
+/* Only the two approved light palettes replace BlockNote's independent ink. */
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="mono"]) [data-page-layout] .bn-editor {
+  --bn-colors-editor-text: hsl(var(--foreground));
+  --goose-accent-focus: hsl(var(--primary));
 }
-.page-contents button:hover { background: var(--goose-interactive-hover); }
-.page-contents button[aria-current] {
-  background: var(--goose-interactive-selected);
-  color: var(--goose-interactive-selected-fg);
-}
-.page-contents button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
-@container page-layout (max-width: 680px) {
-  .page-layout-body { flex-direction: column; }
-  .page-contents { width: 100%; max-height: 120px; border-right: 0; border-bottom: 1px solid hsl(var(--border)); padding: 12px 16px; }
-  .page-contents-title { margin-bottom: 8px; }
-  .page-contents button { display: inline-block; width: auto; margin-right: 4px; }
-}
-
-[data-page-layout="full"] { --page-layout-width: none; --page-layout-gutter: 48px; }
-/* The editing surface fills the pane even when the document is empty. */
-[data-page-layout] .page-layout-document { min-height: 100%; }
-.page-contents { position: relative; }
-.page-contents-resizer { position: absolute; top: 0; right: 0; bottom: 0; width: 6px; cursor: col-resize; touch-action: none; }
-.page-contents-resizer:hover, .page-contents-resizer:focus-visible { background: var(--goose-interactive-selected); outline: none; }
-@container page-layout (max-width: 680px) {
-  .page-contents { width: 100% !important; }
-  .page-contents-resizer { display: none; }
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="mono"]) [data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"]:not([data-text-color]) > blockquote {
+  color: hsl(var(--muted-foreground));
+  border-left-color: hsl(var(--primary));
 }

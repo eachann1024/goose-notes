@@ -136,14 +136,14 @@ export const useSettings = create<SettingsState>()(
       ),
       ...createWebdavSlice(set as Parameters<typeof createWebdavSlice>[0]),
       _hasHydrated: false,
-      defaultPageLayout: "full",
+      defaultPageLayout: "standard",
       contentsWidth: 180,
       setupGuideSeen: false,
       setupGuideOpen: false,
     }),
     {
       name: "goose-note-settings",
-      version: 5,
+      version: 6,
       migrate: (persistedState, version) =>
         migrateSettingsPersistedState(persistedState, version),
       storage: createJSONStorage(() => localStorageAdapter),
@@ -152,7 +152,7 @@ export const useSettings = create<SettingsState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           useSettings.setState({
-            defaultPageLayout: state.defaultPageLayout == null ? "full" : normalizePageLayout(state.defaultPageLayout),
+            defaultPageLayout: normalizePageLayout(state.defaultPageLayout),
             contentsWidth: Number.isFinite(state.contentsWidth) ? Math.min(360, Math.max(128, state.contentsWidth)) : 180,
             setupGuideSeen: state.setupGuideSeen === true,
             setupGuideOpen: false,

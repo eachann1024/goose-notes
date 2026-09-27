@@ -115,7 +115,6 @@ import { toast } from "@/components/ui/sonner";
 import { gooseInlineCodeBacktickWrapExtension } from "@/components/editor/extensions/inlineCodeBacktickWrapExtension";
 import { gooseActiveListMarkerExtension } from "@/components/editor/extensions/activeListMarkerExtension";
 import { gooseActiveHeadingCaretExtension } from "@/components/editor/extensions/activeHeadingCaretExtension";
-import { gooseStrongCaretExtension } from "@/components/editor/extensions/strongCaretExtension";
 import { gooseActiveLineExtension } from "@/components/editor/extensions/activeLineExtension";
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
@@ -372,7 +371,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseInlineCodeBacktickWrapExtension,
         gooseActiveListMarkerExtension,
         gooseActiveHeadingCaretExtension,
-        gooseStrongCaretExtension,
         gooseActiveLineExtension,
         gooseTabBehaviorExtension,
         gooseTableEnterExtension,

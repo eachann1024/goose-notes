@@ -1,7 +1,7 @@
 import type { CustomFonts } from "@/stores/useSettings";
 
 export const DEFAULT_FONT_NAMES = {
-  default: "ui-sans-serif",
+  default: "Songti SC",
   serif: "仓耳今楷",
   mono: "DM Mono",
 } as const;
@@ -21,6 +21,8 @@ const CANGER_JINKAI_LOCAL_NAMES = [
   "TsangerJinKai03-W04",
 ] as const;
 
+const EDITOR_DEFAULT_FALLBACKS = ["Songti SC", "Noto Serif CJK SC", "STSong"];
+
 const SERIF_LOCAL_FALLBACKS = ["Songti SC", "STSong", "SimSun", "Cambria"];
 
 /** 钉 commit 的仓耳今楷 woff2：国内镜像优先，再 jsDelivr / GitHub raw。不要拷进项目。 */
@@ -35,19 +37,6 @@ export const REMOTE_FONT_SOURCES = {
   "HarmonyOS Sans SC": HARMONYOS_SPLIT_CSS,
   仓耳今楷: CANGER_JINKAI_WOFF2_URLS,
 } as const;
-
-const UI_SANS_FALLBACKS = [
-  "-apple-system",
-  "BlinkMacSystemFont",
-  "Segoe UI",
-  "Helvetica Neue",
-  "Arial",
-  "HarmonyOS Sans SC",
-  "PingFang SC",
-  "Hiragino Sans GB",
-  "Microsoft YaHei",
-  "Noto Sans SC",
-];
 
 const UI_MONO_FALLBACKS = [
   "ui-monospace",
@@ -311,8 +300,8 @@ export function applyFontVariables(
   root.style.setProperty(
     "--font-ui",
     uiFont
-      ? `${toCssFontFamily(uiFont)}, var(--font-default)`
-      : "var(--font-default)",
+      ? `${toCssFontFamily(uiFont)}, -apple-system, BlinkMacSystemFont, sans-serif`
+      : "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif",
   );
   root.style.setProperty(
     "--font-sidebar",
@@ -329,9 +318,9 @@ export function applyFontVariables(
     buildFontStack(
       customDefaultList,
       DEFAULT_FONT_NAMES.default,
-      UI_SANS_FALLBACKS,
+      EDITOR_DEFAULT_FALLBACKS,
       [],
-      "sans-serif",
+      "serif",
     ),
   );
   root.style.setProperty(
@@ -367,7 +356,7 @@ export function getEditorFontFamilies(
     mono: customFonts.mono.font || DEFAULT_FONT_NAMES.mono,
   };
   const fallbackMap = {
-    default: UI_SANS_FALLBACKS,
+    default: EDITOR_DEFAULT_FALLBACKS,
     serif: ["仓耳今楷", ...SERIF_LOCAL_FALLBACKS],
     mono: UI_MONO_FALLBACKS,
   };

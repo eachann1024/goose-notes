@@ -3,6 +3,8 @@ import {
   DEFAULT_SEARCH_HOTKEY,
   LEGACY_DEFAULT_QUICKNOTE_HOTKEY,
   SIDEBAR_FONT_SIZE_DEFAULT,
+  EDITOR_FONT_SIZE_DEFAULT,
+  EDITOR_LINE_HEIGHT_DEFAULT,
 } from "./types";
 
 export function migrateSettingsPersistedState(
@@ -21,6 +23,13 @@ export function migrateSettingsPersistedState(
   ) {
     state.sidebarFontSize =
       state.uiFontSize === "normal" || state.uiFontSize === "large" ? 15 : SIDEBAR_FONT_SIZE_DEFAULT;
+  }
+
+  // ponytail: 旧设置没有“是否自定义”标记，只迁移旧默认值；以后显式记录用户覆盖。
+  if (version < 6) {
+    if (state.editorFontSize === 16) state.editorFontSize = EDITOR_FONT_SIZE_DEFAULT;
+    if (state.editorLineHeight === 1.5) state.editorLineHeight = EDITOR_LINE_HEIGHT_DEFAULT;
+    if (state.defaultPageLayout === "compact") state.defaultPageLayout = "standard";
   }
 
   // 极简工作区已成为固定交互，不再保留可切换设置。

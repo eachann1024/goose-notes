@@ -145,8 +145,8 @@
   > .bn-block-content[data-content-type="heading"]:not(
     [data-background-color]
   ) {
-  margin-top: 15px;
-  padding-top: 3px;
+  margin-top: var(--page-heading-gap, 15px);
+  padding-top: var(--page-heading-padding, 3px);
   border-radius: 4px;
 }
 

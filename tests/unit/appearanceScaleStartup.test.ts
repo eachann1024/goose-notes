@@ -59,9 +59,9 @@ test("首帧前同步写入界面字号与编辑器缩放变量", () => {
   expect(root().style.fontSize).toBe("16px");
   expect(root().style.getPropertyValue("--editor-font-size")).toBe("13px");
   expect(root().style.getPropertyValue("--sidebar-font-size")).toBe("13px");
-  // 13 / 16（默认字号）= 0.8125，首帧即恢复上次缩放而非默认 1
-  expect(root().style.getPropertyValue("--editor-scale")).toBe("0.8125");
-  expect(root().style.getPropertyValue("--editor-ui-scale")).toBe("0.8125");
+  // 13 / 17（默认字号）= 0.7647，首帧即恢复上次缩放而非默认 1
+  expect(root().style.getPropertyValue("--editor-scale")).toBe("0.7647");
+  expect(root().style.getPropertyValue("--editor-ui-scale")).toBe("0.7647");
   expect(root().style.getPropertyValue("--electron-titlebar-height")).toBe(
     "44px",
   );
@@ -71,7 +71,7 @@ test("未知界面字号回退到 small，避免启动时字体缺省跳变", ()
   applyAppearanceScaleVariables({
     // 模拟旧版本持久化里残留的非法值
     uiFontSize: "huge" as never,
-    editorFontSize: 16,
+    editorFontSize: 17,
   });
 
   expect(root().style.fontSize).toBe("14px");
@@ -83,11 +83,11 @@ test("未知界面字号回退到 small，避免启动时字体缺省跳变", ()
 });
 
 test("编辑器 UI 缩放叠加局部 zoom，并稳定输出四位小数", () => {
-  expect(computeEditorUiScale(20, 1.2)).toBe("1.5000");
-  expect(computeEditorUiScale(13)).toBe("0.8125");
-  expect(computeEditorUiScale(12, 0.7)).toBe("0.5250");
-  expect(computeEditorUiScale(16, 1)).toBe("1.0000");
-  expect(computeEditorUiScale(24, 1.8)).toBe("2.7000");
+  expect(computeEditorUiScale(20, 1.2)).toBe("1.4118");
+  expect(computeEditorUiScale(13)).toBe("0.7647");
+  expect(computeEditorUiScale(12, 0.7)).toBe("0.4941");
+  expect(computeEditorUiScale(17, 1)).toBe("1.0000");
+  expect(computeEditorUiScale(24, 1.8)).toBe("2.5412");
 });
 
 test("编辑器 UI 缩放遇到非法值时回退到默认比例", () => {
@@ -98,8 +98,8 @@ test("编辑器 UI 缩放遇到非法值时回退到默认比例", () => {
 });
 
 test("编辑器 UI 缩放只在值实际变化时派发事件", () => {
-  applyAppearanceScaleVariables({ uiFontSize: "small", editorFontSize: 16 });
-  applyAppearanceScaleVariables({ uiFontSize: "small", editorFontSize: 16 });
+  applyAppearanceScaleVariables({ uiFontSize: "small", editorFontSize: 17 });
+  applyAppearanceScaleVariables({ uiFontSize: "small", editorFontSize: 17 });
   applyAppearanceScaleVariables({ uiFontSize: "small", editorFontSize: 20 });
 
   expect(dispatchedEvents).toHaveLength(2);
@@ -107,7 +107,7 @@ test("编辑器 UI 缩放只在值实际变化时派发事件", () => {
     scale: "1.0000",
   });
   expect((dispatchedEvents[1] as CustomEvent).detail).toEqual({
-    scale: "1.2500",
+    scale: "1.1765",
   });
 });
 
@@ -121,7 +121,7 @@ test("侧栏字号与编辑器字号各自写入，互不影响", () => {
   expect(root().style.fontSize).toBe("14px");
   expect(root().style.getPropertyValue("--editor-font-size")).toBe("20px");
   expect(root().style.getPropertyValue("--sidebar-font-size")).toBe("15px");
-  expect(root().style.getPropertyValue("--editor-scale")).toBe("1.2500");
+  expect(root().style.getPropertyValue("--editor-scale")).toBe("1.1765");
 });
 
 test("侧栏行高跟随侧栏字号，不跟随编辑器字号", () => {
