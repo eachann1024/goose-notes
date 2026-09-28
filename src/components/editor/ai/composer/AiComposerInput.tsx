@@ -165,6 +165,7 @@ export const AiComposerInput = forwardRef<
     const lastEmittedContentRef = useRef<JSONContent | null | undefined>(
       initialContent,
     );
+    const lastReceivedContentRef = useRef(initialContent);
     // imageId → { file, previewUrl }；chip 只携带可序列化 attrs
     const imageRegistryRef = useRef<ComposerImageRegistry>(new Map());
     const imageDedupRef = useRef(new ImageDedupTracker());
@@ -550,6 +551,9 @@ export const AiComposerInput = forwardRef<
     // ── sync initialContent → DOM ────────────────────────────────────────────
 
     useEffect(() => {
+      // 回调变化不是新草稿，不能用挂载时的 seed 覆盖切页后的引用或未发送文本。
+      if (initialContent === lastReceivedContentRef.current) return;
+      lastReceivedContentRef.current = initialContent;
       // Skip the echo of our own emission — the DOM is already up to date and
       // rebuilding it would wipe the live text node our cached range points at.
       if (initialContent === lastEmittedContentRef.current) return;
