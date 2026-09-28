@@ -54,11 +54,11 @@ type AccentOption = {
 const accentOptions: AccentOption[] = [
   {
     value: "mono",
-    label: "黑白",
-    previewLight: "#171717",
+    label: "叶脉",
+    previewLight: "#756b42",
     previewDark: "#f5f5f5",
-    lightSurface: "#c4c4c4",
-    lightForeground: "#171717",
+    lightSurface: "#eeebde",
+    lightForeground: "#6b623d",
     darkSurface: "rgba(255, 255, 255, 0.16)",
     darkForeground: "#f5f5f5",
   },
@@ -94,13 +94,13 @@ const accentOptions: AccentOption[] = [
   },
   {
     value: "amber",
-    label: "琥珀",
-    previewLight: "#93702c",
-    previewDark: "#fbbf24",
-    lightSurface: "#f5e8cb",
-    lightForeground: "#93702c",
-    darkSurface: "rgba(245, 158, 11, 0.2)",
-    darkForeground: "#fbbf24",
+    label: "枫叶",
+    previewLight: "#75694f",
+    previewDark: "#b7a77f",
+    lightSurface: "#fcf8f0",
+    lightForeground: "#75694f",
+    darkSurface: "rgba(183, 167, 127, 0.16)",
+    darkForeground: "#e5dcc7",
   },
   {
     value: "coral",
@@ -456,7 +456,7 @@ export function SettingsAppearance({
             <div
               role="radiogroup"
               aria-labelledby="appearance-accent-color-label"
-              className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+              className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2"
             >
               {accentOptions.map((option, index) => {
                 const selected = accentColor === option.value;
@@ -501,7 +501,7 @@ export function SettingsAppearance({
                         style={{ backgroundColor: option.previewDark }}
                       />
                     </span>
-                    <span className="min-w-0 flex-1 truncate">
+                    <span className="flex-1 whitespace-nowrap">
                       {option.label}
                     </span>
                     <LucideIcons.Check

@@ -917,7 +917,7 @@
   /* 编辑器缩放变量（通过 JS 动态设置，供编辑器内容模块统一跟随缩放） */
   :root {
     --editor-font-size: 17px;
-    --editor-line-height: 1.95;
+    --editor-line-height: 1.5;
     --sidebar-font-size: 13px;
     --editor-scale: 1;
     /* 编辑器上下文 UI 的统一缩放契约。浮层通过显式 opt-in 使用，

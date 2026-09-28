@@ -44,10 +44,10 @@ function getRule(selector: string): string {
   return css.slice(bodyStart, bodyEnd);
 }
 
-test("默认强调色和缺失设置回退为海蓝，保留用户已有选择", () => {
-  expect(DEFAULT_ACCENT_COLOR).toBe("ocean");
-  expect(normalizeAccentColor(undefined)).toBe("ocean");
-  expect(normalizeAccentColor("invalid")).toBe("ocean");
+test("默认强调色和缺失设置回退为叶脉暖色，保留用户已有选择", () => {
+  expect(DEFAULT_ACCENT_COLOR).toBe("mono");
+  expect(normalizeAccentColor(undefined)).toBe("mono");
+  expect(normalizeAccentColor("invalid")).toBe("mono");
   expect(normalizeAccentColor("iris")).toBe("iris");
 });
 
@@ -155,8 +155,8 @@ test("深色行内代码 token 足够有色相和底色", () => {
 
   expect(getToken(irisDark, "--goose-inline-code-fg")).toBe("#c7d2fe");
   expect(getToken(oceanDark, "--goose-inline-code-fg")).toBe("#bfdbfe");
-  expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#4a3b24");
-  expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#fde68a");
+  expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#353229");
+  expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#e4dac2");
   expect(getToken(roseDark, "--goose-inline-code-fg")).toBe("#fecdd3");
   expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(
     /^#f[a-f0-9]{5}$/i,
@@ -271,7 +271,7 @@ test("跨块选区只给文字节点上色，块壳 ::selection 保持透明", (
   expect(css).not.toContain(".bn-inline-content ::selection");
 });
 
-test("方案 1：静态与运行时令牌一致，黑白无彩色，文字和描边保持对比", () => {
+test("静态与运行时令牌一致，深色黑白保持中性，文字和描边保持对比", () => {
   const luminance = (hex: string) =>
     hex
       .slice(1)
@@ -302,7 +302,7 @@ test("方案 1：静态与运行时令牌一致，黑白无彩色，文字和描
           tokens[key],
         );
         expect(tokens[key]).toMatch(/^#[a-f0-9]{6}$/);
-        if (accent === "mono")
+        if (accent === "mono" && dark)
           expect(new Set(tokens[key].slice(1).match(/../g)).size).toBe(1);
       }
       expect(contrast(tokens[keys[0]], tokens[keys[1]])).toBeGreaterThanOrEqual(

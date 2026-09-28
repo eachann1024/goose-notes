@@ -34,6 +34,11 @@ export function migrateSettingsPersistedState(
     if (state.defaultPageLayout === "compact") state.defaultPageLayout = "standard";
   }
 
+  // ponytail: 无法区分旧默认与手动选择的 1.95；仅迁移此值，未来用显式覆盖标记区分。
+  if (version < 8 && state.editorLineHeight === 1.95) {
+    state.editorLineHeight = EDITOR_LINE_HEIGHT_DEFAULT;
+  }
+
   // 极简工作区已成为固定交互，不再保留可切换设置。
   state.singleTabMode = true;
   if (typeof state.randomIconOnCreate !== "boolean") {

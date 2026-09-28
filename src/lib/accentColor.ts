@@ -1,4 +1,4 @@
-import type { AccentColor } from "@/stores/settings/types";
+import { DEFAULT_ACCENT_COLOR, type AccentColor } from "@/stores/settings/types";
 
 type AccentRuntimeTokens = {
   light: Record<string, string>;
@@ -71,17 +71,17 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   },
   mono: {
     light: {
-      "--goose-interactive-selected": "#ffffff",
-      "--goose-interactive-selected-fg": "#303030",
-      "--goose-interactive-selected-border": "#bcbcbc",
-      "--goose-sidebar-hover": "#e8e8e8",
-      "--goose-interactive-hover": "#e8e8e8",
-      "--goose-interactive-hover-fg": "#303030",
-      "--goose-interactive-hover-border": "#bcbcbc",
-      "--goose-inline-code-bg": "#f5f5f5",
-      "--goose-inline-code-fg": "#171717",
-      "--goose-inline-code-border-hover": "#d4d4d4",
-      "--goose-editor-selection-bg": "#e5e5e5",
+      "--goose-interactive-selected": "#fcfcf7",
+      "--goose-interactive-selected-fg": "#2b2e2b",
+      "--goose-interactive-selected-border": "#756b42",
+      "--goose-sidebar-hover": "#e3e1d5",
+      "--goose-interactive-hover": "#e3e1d5",
+      "--goose-interactive-hover-fg": "#2b2e2b",
+      "--goose-interactive-hover-border": "#756b42",
+      "--goose-inline-code-bg": "#eeebde",
+      "--goose-inline-code-fg": "#6b623d",
+      "--goose-inline-code-border-hover": "#756b42",
+      "--goose-editor-selection-bg": "#eeebde",
     },
     dark: {
       "--goose-interactive-selected": "#363636",
@@ -128,29 +128,29 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   amber: {
     light: {
       "--goose-interactive-selected": "#fcf8f0",
-      "--goose-interactive-selected-fg": "#2d2d29",
-      "--goose-interactive-selected-border": "#d5c39c",
-      "--goose-sidebar-hover": "#ebdfc6",
-      "--goose-interactive-hover": "#ebdfc6",
-      "--goose-interactive-hover-fg": "#2d2d29",
-      "--goose-interactive-hover-border": "#d5c39c",
-      "--goose-inline-code-bg": "#f5e8cb",
-      "--goose-inline-code-fg": "#93702c",
-      "--goose-inline-code-border-hover": "#d5c39c",
-      "--goose-editor-selection-bg": "#f5e8cb",
+      "--goose-interactive-selected-fg": "#332f27",
+      "--goose-interactive-selected-border": "#9d9072",
+      "--goose-sidebar-hover": "#eee5d3",
+      "--goose-interactive-hover": "#eee5d3",
+      "--goose-interactive-hover-fg": "#332f27",
+      "--goose-interactive-hover-border": "#96886a",
+      "--goose-inline-code-bg": "#f1e9da",
+      "--goose-inline-code-fg": "#594f3c",
+      "--goose-inline-code-border-hover": "#96886a",
+      "--goose-editor-selection-bg": "#efe6d6",
     },
     dark: {
-      "--goose-interactive-selected": "#443920",
-      "--goose-interactive-selected-fg": "#f0cd87",
-      "--goose-interactive-selected-border": "#c6a057",
-      "--goose-sidebar-hover": "#373123",
-      "--goose-interactive-hover": "#373123",
-      "--goose-interactive-hover-fg": "#f0cd87",
-      "--goose-interactive-hover-border": "#c6a057",
-      "--goose-inline-code-bg": "#4a3b24",
-      "--goose-inline-code-fg": "#fde68a",
-      "--goose-inline-code-border-hover": "#f59e0b",
-      "--goose-editor-selection-bg": "rgba(245, 158, 11, 0.35)",
+      "--goose-interactive-selected": "#39362f",
+      "--goose-interactive-selected-fg": "#e5dcc7",
+      "--goose-interactive-selected-border": "#95876a",
+      "--goose-sidebar-hover": "#302e28",
+      "--goose-interactive-hover": "#302e28",
+      "--goose-interactive-hover-fg": "#e5dcc7",
+      "--goose-interactive-hover-border": "#95876a",
+      "--goose-inline-code-bg": "#353229",
+      "--goose-inline-code-fg": "#e4dac2",
+      "--goose-inline-code-border-hover": "#978766",
+      "--goose-editor-selection-bg": "rgba(183, 167, 127, 0.32)",
     },
   },
   coral: {
@@ -248,7 +248,7 @@ export function resolveAccentRuntimeTokens(
   isDark: boolean,
 ): Record<string, string> {
   const tokens =
-    ACCENT_RUNTIME_TOKENS[accentColor] ?? ACCENT_RUNTIME_TOKENS.ocean;
+    ACCENT_RUNTIME_TOKENS[accentColor] ?? ACCENT_RUNTIME_TOKENS[DEFAULT_ACCENT_COLOR];
   const theme = isDark ? tokens.dark : tokens.light;
   const selected = theme["--goose-interactive-selected"];
   return {
@@ -340,6 +340,6 @@ export function syncAccentColorCssVars(): void {
   const root = document.documentElement;
   if (!root || typeof root.getAttribute !== "function") return;
   const accentAttr = root.getAttribute("data-goose-accent");
-  const accentColor = (accentAttr ?? "ocean") as AccentColor;
+  const accentColor = (accentAttr ?? DEFAULT_ACCENT_COLOR) as AccentColor;
   writeAccentRuntimeTokens(root, accentColor);
 }

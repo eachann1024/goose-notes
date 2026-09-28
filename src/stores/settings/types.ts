@@ -28,7 +28,7 @@ export const ACCENT_COLORS = [
   "grape",
 ] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
-export const DEFAULT_ACCENT_COLOR: AccentColor = "ocean";
+export const DEFAULT_ACCENT_COLOR: AccentColor = "mono";
 
 export type CodeTheme = "github-light" | "github-dark";
 
@@ -130,7 +130,7 @@ export const EDITOR_FONT_SIZE_DEFAULT = 17;
 
 export const EDITOR_LINE_HEIGHT_MIN = 1.2;
 export const EDITOR_LINE_HEIGHT_MAX = 2.4;
-export const EDITOR_LINE_HEIGHT_DEFAULT = 1.95;
+export const EDITOR_LINE_HEIGHT_DEFAULT = 1.5;
 
 export function normalizeEditorLineHeight(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return EDITOR_LINE_HEIGHT_DEFAULT;
