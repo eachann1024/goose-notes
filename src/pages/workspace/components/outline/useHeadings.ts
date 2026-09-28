@@ -34,7 +34,7 @@ function collectHeadings(doc: any[]): HeadingItem[] {
   const visit = (block: any) => {
     if (block.type === "heading" && block.props?.level) {
       const level = block.props.level;
-      // 仅记录 h1-h4
+      // H1 作为文档标题；正文大纲只记录 H2-H4。
       if (level >= 2 && level <= 4) {
         const item: HeadingItem = {
           id: block.id,
@@ -126,15 +126,21 @@ export function useHeadings(
     });
     const dom = (editor as { prosemirrorView?: { dom?: HTMLElement } })
       .prosemirrorView?.dom;
+    let compositionFrame: number | null = null;
     const handleCompositionEnd = () => {
-      requestAnimationFrame(() => refresh());
+      if (compositionFrame !== null) return;
+      compositionFrame = requestAnimationFrame(() => {
+        compositionFrame = null;
+        refresh();
+      });
     };
     dom?.addEventListener("compositionend", handleCompositionEnd);
     return () => {
+      if (compositionFrame !== null) cancelAnimationFrame(compositionFrame);
       if (typeof unsub === "function") unsub();
       dom?.removeEventListener("compositionend", handleCompositionEnd);
     };
-  }, [editor, refresh]);
+  }, [editor, refresh, pageId]);
 
   return headings;
 }

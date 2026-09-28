@@ -1,22 +1,20 @@
 interface SidebarSectionHeaderProps {
   title: string;
+  eyebrow?: string;
   onSearch: () => void;
   /** 不传则不渲染「新建」按钮（如 Electron 无仓库时） */
   onCreate?: () => void;
   createTitle?: string;
-  view: "pages" | "outline";
-  onSwitchToPages: () => void;
-  onSwitchToOutline: () => void;
+  onCollapseAll?: () => void;
 }
 
 export function SidebarSectionHeader({
   title,
+  eyebrow,
   onSearch,
   onCreate,
   createTitle,
-  view,
-  onSwitchToPages,
-  onSwitchToOutline,
+  onCollapseAll,
 }: SidebarSectionHeaderProps) {
   const appShortcuts = useSettings((state) => state.appShortcuts);
   const searchShortcut = appShortcuts.openSearch
@@ -25,71 +23,44 @@ export function SidebarSectionHeader({
   const createShortcut = formatShortcut(getFixedAppShortcuts().newNote);
 
   return (
-    <div className="sidebar-section-label group flex items-center justify-between py-2 pr-2 text-xs font-medium text-[hsl(var(--goose-nav-title))]">
-      <div className="group/tab-switch inline-flex items-center gap-1 rounded-lg p-0.5">
-        <button
-          type="button"
-          onClick={onSwitchToPages}
-          className={cn(
-            "group/page-tab relative inline-flex h-6 min-w-[42px] items-center justify-center overflow-hidden rounded-md px-2 py-1 transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            view === "pages"
-              ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-          )}
-          aria-pressed={view === "pages"}
-          aria-label={view === "pages" ? "收起全部页面" : title}
-        >
-          <span
-            className={cn(
-              "transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              view === "pages" &&
-                "group-hover/page-tab:-translate-y-1 group-hover/page-tab:opacity-0 group-focus-visible/page-tab:-translate-y-1 group-focus-visible/page-tab:opacity-0",
-            )}
-          >
-            {title}
-          </span>
-          {view === "pages" && (
-            <LucideIcons.ListCollapse
-              aria-hidden="true"
-              className="absolute h-3.5 w-3.5 translate-y-1 opacity-0 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/page-tab:translate-y-0 group-hover/page-tab:opacity-100 group-focus-visible/page-tab:translate-y-0 group-focus-visible/page-tab:opacity-100"
-            />
-          )}
-        </button>
-        <span
-          className={cn(
-            "px-0.5 text-muted-foreground/70 transition-colors",
-            "group-hover/tab-switch:text-foreground/80",
-          )}
-          aria-hidden="true"
-        >
-          /
+    <div
+      className="sidebar-section-label flex min-w-0 items-center gap-2 text-xs font-medium text-[hsl(var(--goose-nav-title))]"
+      data-outline-header={eyebrow ? "true" : undefined}
+    >
+      <span className="sidebar-heading-copy">
+        {eyebrow && <span className="sidebar-heading-eyebrow">{eyebrow}</span>}
+        <span className="sidebar-heading-title" title={title}>
+          {title}
         </span>
-        <button
-          type="button"
-          onClick={onSwitchToOutline}
-          className={cn(
-            "rounded-md px-2 py-1 transition-colors",
-            view === "outline"
-              ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
-              : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-          )}
-          aria-pressed={view === "outline"}
-        >
-          大纲
-        </button>
-      </div>
+      </span>
       <TooltipProvider delayDuration={600}>
-        <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground/70">
+        <div className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
+          {onCollapseAll && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                  aria-label="收起全部页面"
+                  onClick={onCollapseAll}
+                >
+                  <LucideIcons.ListCollapse className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">收起全部页面</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                className="h-6 w-6 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label="搜索"
                 onClick={onSearch}
               >
-                <LucideIcons.Search className="h-3.5 w-3.5" />
+                <LucideIcons.Search className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
@@ -109,7 +80,7 @@ export function SidebarSectionHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                  className="h-6 w-6 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   aria-label={createTitle}
                   onClick={onCreate}
                 >

@@ -13,7 +13,7 @@ export function getHeadingAnchorElement(
   container: HTMLElement,
   id: string,
 ): HTMLElement | null {
-  const block = container.querySelector(`[data-id="${id}"]`) as HTMLElement | null;
+  const block = container.querySelector(`[data-id="${CSS.escape(id)}"]`) as HTMLElement | null;
   if (!block) return null;
   return (
     (block.querySelector(HEADING_TEXT_SELECTOR) as HTMLElement | null) ??
@@ -120,7 +120,7 @@ export function useActiveHeading(
     container.addEventListener("scroll", scheduleFindTopMost, { passive: true });
 
     for (const id of headingIds) {
-      const el = container.querySelector(`[data-id="${id}"]`);
+      const el = container.querySelector(`[data-id="${CSS.escape(id)}"]`);
       if (el) observerRef.current.observe(el);
     }
 

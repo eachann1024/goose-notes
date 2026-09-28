@@ -18,6 +18,8 @@ interface OutlinePanelProps {
   activeId: string | null;
   onHeadingClick: (blockId: string) => void;
   onHeadingToggle: (blockId: string) => void;
+  emptyMessage?: string;
+  emptyHint?: string | null;
 }
 
 export function OutlinePanel({
@@ -25,6 +27,8 @@ export function OutlinePanel({
   activeId,
   onHeadingClick,
   onHeadingToggle,
+  emptyMessage = "暂无标题",
+  emptyHint = "使用 ## 或 ### 添加章节",
 }: OutlinePanelProps) {
   const itemHeight = useSidebarItemHeight();
   const [locallyCollapsedIds, setLocallyCollapsedIds] = useState<Set<string>>(
@@ -42,18 +46,22 @@ export function OutlinePanel({
 
   if (headings.length === 0) {
     return (
-      <div className="w-full h-full flex flex-col bg-[hsl(var(--goose-shell-bg))]">
+      <div className="w-full h-full flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
           <FileText className="h-8 w-8 text-muted-foreground/20 mb-2" />
-          <p className="text-xs text-muted-foreground/50">暂无标题</p>
-          <p className="text-[11px] text-muted-foreground/30 mt-0.5">使用 # 到 #### 添加</p>
+          <p className="text-xs text-muted-foreground/70">{emptyMessage}</p>
+          {emptyHint && (
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+              {emptyHint}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-[hsl(var(--goose-shell-bg))]">
+    <div className="w-full h-full flex flex-col">
       <div className="flex-1 overflow-y-auto py-2 px-2">
         <nav>
           {headings.map((heading) => (

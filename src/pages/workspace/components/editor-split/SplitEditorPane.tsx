@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
@@ -59,14 +59,21 @@ export function SplitEditorPane({
   const defaultLayout = useSettings(state => state.defaultPageLayout);
   const editorRef = useRef<EditorRef | null>(null);
   const scrollElRef = useRef<HTMLDivElement | null>(null);
+  const setEditorRef = useCallback(
+    (instance: EditorRef | null) => {
+      editorRef.current = instance;
+      registry.register(leaf.id, leaf.pageId, editorRef, scrollElRef.current);
+    },
+    [leaf.id, leaf.pageId, registry],
+  );
   useScrollRestoration(leaf.pageId, scrollElRef);
   const page = usePages((state) => state.pages[leaf.pageId]);
   const title = page ? getPageTitle(page) : (leaf.title ?? "页面已不存在");
 
   useLayoutEffect(() => {
-    registry.register(leaf.id, editorRef, scrollElRef.current);
+    registry.register(leaf.id, leaf.pageId, editorRef, scrollElRef.current);
     if (focused) registry.setFocused(leaf.id);
-  }, [focused, leaf.id, registry]);
+  }, [focused, leaf.id, leaf.pageId, registry]);
 
   useLayoutEffect(() => {
     return () => registry.unregister(leaf.id);
@@ -137,7 +144,7 @@ export function SplitEditorPane({
         <div
           ref={(el) => {
             scrollElRef.current = el;
-            if (el) registry.register(leaf.id, editorRef, el);
+            if (el) registry.register(leaf.id, leaf.pageId, editorRef, el);
           }}
           className="page-scroll-container h-full min-h-0 min-w-0 flex-1 overflow-y-auto [background:var(--goose-editor-surface)]"
         >
@@ -158,7 +165,7 @@ export function SplitEditorPane({
               )}
             >
               <Editor
-                ref={editorRef}
+                ref={setEditorRef}
                 editable={editable}
                 isActiveEditor={focused}
               />

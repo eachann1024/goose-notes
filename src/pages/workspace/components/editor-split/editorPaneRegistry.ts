@@ -2,13 +2,24 @@ import { createContext, useContext, type RefObject } from "react";
 import type { EditorRef } from "@/components/editor/core/Editor";
 
 type PaneEntry = {
+  paneId: string;
+  pageId: string;
   editorRef: RefObject<EditorRef | null>;
+  scrollEl: HTMLDivElement | null;
+  lastEditor: EditorRef["editor"];
+};
+
+export type FocusedPaneSnapshot = {
+  paneId: string;
+  pageId: string;
+  editor: EditorRef["editor"];
   scrollEl: HTMLDivElement | null;
 };
 
 export type EditorPaneRegistry = {
   register: (
     paneId: string,
+    pageId: string,
     editorRef: RefObject<EditorRef | null>,
     scrollEl: HTMLDivElement | null,
   ) => void;
@@ -16,12 +27,22 @@ export type EditorPaneRegistry = {
   setFocused: (paneId: string) => void;
   focusedEditorRef: RefObject<EditorRef | null>;
   focusedScrollRef: RefObject<HTMLDivElement | null>;
+  subscribe: (listener: () => void) => () => void;
+  getVersion: () => number;
+  getFocusedEntry: () => FocusedPaneSnapshot | null;
   getScrollElements: () => HTMLDivElement[];
 };
 
 export function createEditorPaneRegistry(): EditorPaneRegistry {
   const panes = new Map<string, PaneEntry>();
+  const listeners = new Set<() => void>();
   let focusedPaneId: string | null = null;
+  let version = 0;
+
+  const notify = () => {
+    version += 1;
+    listeners.forEach((listener) => listener());
+  };
 
   const focusedEntry = (): PaneEntry | undefined => {
     if (focusedPaneId) {
@@ -50,18 +71,50 @@ export function createEditorPaneRegistry(): EditorPaneRegistry {
   };
 
   return {
-    register(paneId, editorRef, scrollEl) {
-      panes.set(paneId, { editorRef, scrollEl });
+    register(paneId, pageId, editorRef, scrollEl) {
+      if (editorRef.current === null && scrollEl === null) return;
+      const lastEditor = editorRef.current?.editor ?? null;
+      const previous = panes.get(paneId);
+      if (
+        previous?.pageId === pageId &&
+        previous.editorRef === editorRef &&
+        previous.scrollEl === scrollEl &&
+        previous.lastEditor === lastEditor
+      ) {
+        return;
+      }
+      panes.set(paneId, { paneId, pageId, editorRef, scrollEl, lastEditor });
+      notify();
     },
     unregister(paneId) {
-      panes.delete(paneId);
+      if (!panes.delete(paneId)) return;
       if (focusedPaneId === paneId) focusedPaneId = null;
+      notify();
     },
     setFocused(paneId) {
+      if (focusedPaneId === paneId) return;
       focusedPaneId = paneId;
+      notify();
     },
     focusedEditorRef,
     focusedScrollRef,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getVersion() {
+      return version;
+    },
+    getFocusedEntry() {
+      const entry = focusedEntry();
+      if (!entry) return null;
+      return {
+        paneId: entry.paneId,
+        pageId: entry.pageId,
+        editor: entry.editorRef.current?.editor ?? null,
+        scrollEl: entry.scrollEl,
+      };
+    },
     getScrollElements() {
       const elements: HTMLDivElement[] = [];
       for (const entry of panes.values()) {
