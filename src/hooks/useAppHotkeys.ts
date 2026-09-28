@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { isSetupGuideVisible } from "@/lib/setupGuide";
 import { toast } from "@/components/ui/sonner";
 import { useSettings, EDITOR_FONT_SIZE_DEFAULT } from "@/stores/useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
@@ -145,6 +146,10 @@ export function useAppHotkeys() {
       (!isEditableEventTarget(event) || shortcutHasModifier(shortcut));
 
     const runUnifiedClose = () => {
+      if (isSetupGuideVisible(useSettings.getState())) {
+        void getGooseDesktop()?.closeWindow?.();
+        return;
+      }
       const toastEl = document.querySelector(
         '[data-sonner-toast]:not([data-removed="true"])',
       );
@@ -189,6 +194,7 @@ export function useAppHotkeys() {
     };
 
     const createNewNoteFromHotkey = () => {
+      if (isSetupGuideVisible(useSettings.getState())) return;
       closeNotebookAiIfFullscreen();
       void (async () => {
         const pagesStore = usePages.getState();
@@ -799,6 +805,10 @@ export function useAppHotkeys() {
     };
 
     const dispatcher = (event: KeyboardEvent) => {
+      if (isSetupGuideVisible(useSettings.getState())) {
+        pendingModifierOnlyEntry = null;
+        return;
+      }
       if (isImeKeyboardEvent(event)) {
         pendingModifierOnlyEntry = null;
         return;
@@ -848,7 +858,7 @@ export function useAppHotkeys() {
     const handleModifierOnlyKeyUp = (event: KeyboardEvent) => {
       const entry = pendingModifierOnlyEntry;
       pendingModifierOnlyEntry = null;
-      if (!entry) return;
+      if (!entry || isSetupGuideVisible(useSettings.getState())) return;
       if (isImeKeyboardEvent(event)) return;
 
       const target = event.target as HTMLElement | null;
@@ -862,6 +872,11 @@ export function useAppHotkeys() {
     const handleMouseSideButton = (event: MouseEvent) => {
       pendingModifierOnlyEntry = null;
       if (event.button !== 3 && event.button !== 4) return;
+      if (isSetupGuideVisible(useSettings.getState())) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target?.closest?.("[data-shortcut-recorder]")) return;
 

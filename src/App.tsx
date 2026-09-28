@@ -1,5 +1,6 @@
 import { SetupGuide } from "@/pages/workspace/components/SetupGuide";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { isSetupGuideVisible } from "@/lib/setupGuide";
 import { useShallow } from "zustand/react/shallow";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
@@ -43,6 +44,14 @@ function AppearanceSync() {
 }
 
 function App() {
+  const settingsHydrated = useSettings((state) => state._hasHydrated);
+  const showSetupGuide = useSettings(isSetupGuideVisible);
+  const [workspaceOpened, setWorkspaceOpened] = useState(false);
+  const mountWorkspace = workspaceOpened || (settingsHydrated && !showSetupGuide);
+
+  useEffect(() => {
+    if (settingsHydrated && !showSetupGuide) setWorkspaceOpened(true);
+  }, [settingsHydrated, showSetupGuide]);
   const privacy = useSettings((state) => state.privacy);
   const singleTabModeSetting = useSettings((state) => state.singleTabMode);
   const hydrated = usePages((s) => s.hydrated);
@@ -133,7 +142,12 @@ function App() {
   return (
     <>
       <AppearanceSync />
-      <WorkspacePage />
+      {mountWorkspace && (
+        <div hidden={showSetupGuide} inert={showSetupGuide} className="h-full">
+          {/* Keep an existing editor mounted when reopening the guide. */}
+          <WorkspacePage />
+        </div>
+      )}
       <SetupGuide />
       <Toaster />
     </>

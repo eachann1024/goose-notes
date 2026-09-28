@@ -160,6 +160,7 @@ declare global {
   const SIDEBAR_FONT_SIZE_MAX: typeof import('./stores/settings/index').SIDEBAR_FONT_SIZE_MAX
   const SIDEBAR_FONT_SIZE_MIN: typeof import('./stores/settings/index').SIDEBAR_FONT_SIZE_MIN
   const SIDEBAR_PAGE_LIST_SELECTOR: typeof import('./lib/sidebarListCollapse').SIDEBAR_PAGE_LIST_SELECTOR
+  const SYSTEM_FONT_STACK: typeof import('./lib/fontLoader').SYSTEM_FONT_STACK
   const ScrollArea: typeof import('./components/ui/scroll-area').ScrollArea
   const SelectableCard: typeof import('./components/ui/selectable-card').SelectableCard
   const Separator: typeof import('./components/ui/separator').Separator
@@ -210,6 +211,7 @@ declare global {
   const applyPersistedTabSplit: typeof import('./stores/useEditorSplit').applyPersistedTabSplit
   const applyRolldownPolyfills: typeof import('./lib/rolldown-polyfill').applyRolldownPolyfills
   const applyTrailingNewlineStyle: typeof import('./lib/local-md-snapshot').applyTrailingNewlineStyle
+  const areSetupGuideAIConnectionsEqual: typeof import('./lib/setupGuideAI').areSetupGuideAIConnectionsEqual
   const armSidebarListCollapse: typeof import('./lib/sidebarListCollapse').armSidebarListCollapse
   const assignExistingStableId: typeof import('./lib/local-page-idmap').assignExistingStableId
   const badgeVariants: typeof import('./components/ui/badge').badgeVariants
@@ -231,6 +233,7 @@ declare global {
   const cache: typeof import('react').cache
   const cachePasteTarget: typeof import('./components/editor/hooks/useEditorPaste').cachePasteTarget
   const cacheSignal: typeof import('react').cacheSignal
+  const canTestSetupGuideAI: typeof import('./lib/setupGuideAI').canTestSetupGuideAI
   const canonicalLocalPath: typeof import('./lib/canonicalLocalPath').canonicalLocalPath
   const canonicalRelativePath: typeof import('./lib/canonicalLocalPath').canonicalRelativePath
   const canonicalizeRecordedShortcut: typeof import('./lib/shortcut-platform').canonicalizeRecordedShortcut
@@ -395,12 +398,14 @@ declare global {
   const getSelectedImageUrl: typeof import('./components/editor/utils/selection').getSelectedImageUrl
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
   const getSettingsProviderId: typeof import('./lib/ai-provider/index').getSettingsProviderId
+  const getSetupGuideAIStatus: typeof import('./lib/setupGuideAI').getSetupGuideAIStatus
   const getShortcutFromMouseEvent: typeof import('./lib/shortcut-match').getShortcutFromMouseEvent
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
   const hasCurrentLocalFolderPage: typeof import('./lib/local-folder-file-actions').hasCurrentLocalFolderPage
   const hasSidebarListEscapeOverlay: typeof import('./lib/sidebarListCollapse').hasSidebarListEscapeOverlay
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
   const hasStyledSoftWrapItems: typeof import('./components/editor/utils/softWrapPaste').hasStyledSoftWrapItems
+  const hasValidSetupGuideAIResponse: typeof import('./lib/setupGuideAI').hasValidSetupGuideAIResponse
   const hasWholePageBlockTypeTransformScope: typeof import('./lib/ai-write/index').hasWholePageBlockTypeTransformScope
   const htmlHasInlineFormatting: typeof import('./components/editor/utils/softWrapPaste').htmlHasInlineFormatting
   const htmlHasNonDefaultGooseBlockAttrs: typeof import('./components/editor/utils/clipboard').htmlHasNonDefaultGooseBlockAttrs
@@ -462,6 +467,8 @@ declare global {
   const isPlatformPrimaryModifierEvent: typeof import('./lib/shortcut-platform').isPlatformPrimaryModifierEvent
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isRandomPageIcon: typeof import('./lib/randomPageIcon').isRandomPageIcon
+  const isSetupGuideAIRequestCurrent: typeof import('./lib/setupGuideAI').isSetupGuideAIRequestCurrent
+  const isSetupGuideVisible: typeof import('./lib/setupGuide').isSetupGuideVisible
   const isSidebarListCollapseArmed: typeof import('./lib/sidebarListCollapse').isSidebarListCollapseArmed
   const isSidebarPageListTarget: typeof import('./lib/sidebarListCollapse').isSidebarPageListTarget
   const isSpecialTab: typeof import('./stores/useTabs').isSpecialTab
@@ -559,7 +566,6 @@ declare global {
   const plainHasGooseMarkdownMarkers: typeof import('./components/editor/hooks/useEditorPaste').plainHasGooseMarkdownMarkers
   const planBlockTypeTransform: typeof import('./lib/ai-write/index').planBlockTypeTransform
   const planMultilinePaste: typeof import('./components/editor/utils/multilinePaste').planMultilinePaste
-  const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
   const prepareWorkspaceStartup: typeof import('./lib/workspaceStartup').prepareWorkspaceStartup
   const pruneLocalPageIdMap: typeof import('./lib/local-page-idmap').pruneLocalPageIdMap
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
@@ -571,6 +577,7 @@ declare global {
   const reconcilePageMentionSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcilePageMentionSuggestionMenu
   const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
   const recoverQuickNoteDrafts: typeof import('./stores/useQuickNote').recoverQuickNoteDrafts
+  const redactSetupGuideAIError: typeof import('./lib/setupGuideAI').redactSetupGuideAIError
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
   const rememberDiskWriteFailure: typeof import('./lib/diskWriteError').rememberDiskWriteFailure
   const rememberEditorSelectedBlocks: typeof import('./components/editor/utils/selection').rememberEditorSelectedBlocks
@@ -841,6 +848,9 @@ declare global {
   // @ts-ignore
   export type { PageMentionNavigationResult } from './lib/pageMentionNavigation'
   import('./lib/pageMentionNavigation')
+  // @ts-ignore
+  export type { SetupGuideAIConnection, SetupGuideAIStatus } from './lib/setupGuideAI'
+  import('./lib/setupGuideAI')
   // @ts-ignore
   export type { ModifierShortcut, MouseShortcut } from './lib/shortcut-match'
   import('./lib/shortcut-match')

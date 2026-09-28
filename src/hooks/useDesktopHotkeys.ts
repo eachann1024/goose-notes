@@ -9,6 +9,7 @@
  * 注册结果写回 desktop.*HotkeyStatus，供设置页展示 占用/无效/已关闭/错误。
  */
 import { useEffect } from "react";
+import { isSetupGuideVisible } from "@/lib/setupGuide";
 import { getGooseDesktop } from "@/lib/electron/runtime";
 import { syncAllDesktopGlobalHotkeys } from "@/lib/electron/globalHotkeys";
 import {
@@ -52,6 +53,7 @@ export function useDesktopHotkeys(): void {
     const api = getGooseDesktop();
     if (!api?.onOpenSearch) return;
     return api.onOpenSearch(() => {
+      if (isSetupGuideVisible(useSettings.getState())) return;
       window.dispatchEvent(new CustomEvent("goose-note:open-search"));
     });
   }, [hydrated]);
@@ -61,6 +63,7 @@ export function useDesktopHotkeys(): void {
     const api = getGooseDesktop();
     if (!api?.onWorkspaceAction) return;
     return api.onWorkspaceAction((action) => {
+      if (isSetupGuideVisible(useSettings.getState())) return;
       if (action === "search") {
         window.dispatchEvent(new CustomEvent("goose-note:open-search"));
         return;

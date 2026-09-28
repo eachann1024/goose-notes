@@ -309,6 +309,7 @@ export async function fetchCustomAIModels(config: {
   baseURL: string;
   apiKey: string;
   providerId?: AIProviderId | string | null;
+  signal?: AbortSignal;
 }) {
   const apiKey = config.apiKey.trim();
   if (!apiKey) {
@@ -340,6 +341,7 @@ export async function fetchCustomAIModels(config: {
             "anthropic-dangerous-direct-browser-access": "true",
           }
         : { Authorization: `Bearer ${apiKey}` },
+    ...(config.signal ? { signal: config.signal } : {}),
   });
 
   if (!response.ok) {

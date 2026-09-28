@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -35,15 +36,27 @@ import {
   getStoredAIModelOptions,
   isAIProviderId,
   resolveProtocolForProvider,
+  runAIText,
   type AIModelOption,
   type AIProviderId,
   type CustomAIProtocol,
 } from "@/lib/ai-provider";
+import {
+  areSetupGuideAIConnectionsEqual,
+  canTestSetupGuideAI,
+  getSetupGuideAIStatus,
+  hasValidSetupGuideAIResponse,
+  isSetupGuideAIRequestCurrent,
+  redactSetupGuideAIError,
+  type SetupGuideAIStatus,
+} from "@/lib/setupGuideAI";
 import type { AISettings } from "@/stores/useSettings";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { cn } from "@/lib/utils";
 
 interface SettingsAIProps {
+  mode?: "settings" | "onboarding";
+  onSetupStateChange?: (status: SetupGuideAIStatus) => void;
   ai: AISettings;
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
@@ -64,6 +77,7 @@ const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
 const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> AI 服务”补充 API Key";
+const EMPTY_AI_MODEL_OPTIONS: AIModelOption[] = [];
 
 /** 供应商菜单图标：与预设文案解耦，避免 presets 依赖 React */
 const PROVIDER_ICONS: Record<
@@ -142,6 +156,8 @@ function readStoredBaseURL(
 }
 
 export function SettingsAI({
+  mode = "settings",
+  onSetupStateChange,
   ai,
   enabled,
   setEnabled,
@@ -151,6 +167,7 @@ export function SettingsAI({
   setSelectedModelId,
   saveCustomConfig,
 }: SettingsAIProps) {
+  const isOnboarding = mode === "onboarding";
   const initialProviderId: AIProviderId = isAIProviderId(ai.customProviderId)
     ? ai.customProviderId
     : "deepseek";
@@ -164,12 +181,182 @@ export function SettingsAI({
   const [savingCustomConfig, setSavingCustomConfig] = useState(false);
   const [customSaveError, setCustomSaveError] = useState<string | null>(null);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<
+    "idle" | "success" | "failed" | "timeout"
+  >("idle");
+  const [connectionTestMessage, setConnectionTestMessage] = useState("");
   const modelSectionRef = useRef<HTMLDivElement | null>(null);
   const modelRequestIdRef = useRef(0);
+  const modelAbortControllerRef = useRef<AbortController | null>(null);
+  const modelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modelTimedOutRequestIdRef = useRef<number | null>(null);
+  const connectionTestRequestIdRef = useRef(0);
+  const connectionTestControllerRef = useRef<AbortController | null>(null);
+  const connectionTestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const isMountedRef = useRef(false);
+  const setupStateCallbackRef = useRef(onSetupStateChange);
+  useEffect(() => {
+    setupStateCallbackRef.current = onSetupStateChange;
+  }, [onSetupStateChange]);
+
+  const cancelModelRefresh = useCallback(() => {
+    const controller = modelAbortControllerRef.current;
+    if (!controller) return;
+
+    modelRequestIdRef.current += 1;
+    controller.abort();
+    modelAbortControllerRef.current = null;
+    modelTimedOutRequestIdRef.current = null;
+    if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
+    modelTimeoutRef.current = null;
+    if (isMountedRef.current) setSavingCustomConfig(false);
+  }, []);
+
+  const cancelConnectionTest = useCallback(() => {
+    connectionTestRequestIdRef.current += 1;
+    connectionTestControllerRef.current?.abort();
+    connectionTestControllerRef.current = null;
+    if (connectionTestTimeoutRef.current) {
+      clearTimeout(connectionTestTimeoutRef.current);
+    }
+    connectionTestTimeoutRef.current = null;
+    if (isMountedRef.current) {
+      setTestingConnection(false);
+      setConnectionTestResult("idle");
+      setConnectionTestMessage("");
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      modelRequestIdRef.current += 1;
+      connectionTestRequestIdRef.current += 1;
+      if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
+      if (connectionTestTimeoutRef.current) {
+        clearTimeout(connectionTestTimeoutRef.current);
+      }
+      modelAbortControllerRef.current?.abort();
+      connectionTestControllerRef.current?.abort();
+      modelTimeoutRef.current = null;
+      connectionTestTimeoutRef.current = null;
+      modelAbortControllerRef.current = null;
+      connectionTestControllerRef.current = null;
+    };
+  }, []);
+
+  const previousModelDraftRef = useRef({
+    providerId,
+    customBaseURL,
+    apiKeyDraft,
+    selectedModelId,
+  });
+  useEffect(() => {
+    const previous = previousModelDraftRef.current;
+    const changed =
+      previous.providerId !== providerId ||
+      previous.customBaseURL !== customBaseURL ||
+      previous.apiKeyDraft !== apiKeyDraft ||
+      previous.selectedModelId !== selectedModelId;
+    previousModelDraftRef.current = {
+      providerId,
+      customBaseURL,
+      apiKeyDraft,
+      selectedModelId,
+    };
+    if (isOnboarding && changed) cancelModelRefresh();
+  }, [
+    apiKeyDraft,
+    cancelModelRefresh,
+    customBaseURL,
+    isOnboarding,
+    providerId,
+    selectedModelId,
+  ]);
+
+  const savedModelIdsSignature = ai.customModelOptions
+    .map((model) => model.id)
+    .join("\u0000");
+  const previousTestConfigRef = useRef<{
+    mode: string;
+    enabled: boolean;
+    providerId: AIProviderId;
+    baseURL: string;
+    apiKey: string;
+    selectedModelId: string | null;
+    savedProviderId: AIProviderId;
+    savedProtocol: CustomAIProtocol;
+    responsesBaseURL: string;
+    openAIBaseURL: string;
+    claudeBaseURL: string;
+    responsesApiKey: string;
+    openAIApiKey: string;
+    claudeApiKey: string;
+    savedModelIds: string;
+  } | null>(null);
+  useEffect(() => {
+    const savedProviderId = isAIProviderId(ai.customProviderId)
+      ? ai.customProviderId
+      : initialProviderId;
+    const next = {
+      mode,
+      enabled,
+      providerId,
+      baseURL: customBaseURL,
+      apiKey: apiKeyDraft,
+      selectedModelId,
+      savedProviderId,
+      savedProtocol: ai.customProtocol,
+      responsesBaseURL: ai.customOpenAIResponsesBaseURL,
+      openAIBaseURL: ai.customOpenAIBaseURL,
+      claudeBaseURL: ai.customClaudeBaseURL,
+      responsesApiKey: ai.customOpenAIResponsesApiKey,
+      openAIApiKey: ai.customOpenAIApiKey,
+      claudeApiKey: ai.customClaudeApiKey,
+      savedModelIds: savedModelIdsSignature,
+    };
+    const previous = previousTestConfigRef.current;
+    previousTestConfigRef.current = next;
+    if (
+      mode === "onboarding" &&
+      previous &&
+      Object.keys(next).some(
+        (key) =>
+          next[key as keyof typeof next] !==
+          previous[key as keyof typeof previous],
+      )
+    ) {
+      cancelConnectionTest();
+    }
+  }, [
+    ai.customClaudeApiKey,
+    ai.customClaudeBaseURL,
+    ai.customOpenAIApiKey,
+    ai.customOpenAIBaseURL,
+    ai.customOpenAIResponsesApiKey,
+    ai.customOpenAIResponsesBaseURL,
+    ai.customProtocol,
+    ai.customProviderId,
+    apiKeyDraft,
+    cancelConnectionTest,
+    customBaseURL,
+    enabled,
+    initialProviderId,
+    mode,
+    providerId,
+    savedModelIdsSignature,
+    selectedModelId,
+  ]);
 
   const storedCustomModels = getStoredAIModelOptions(ai);
   const customModels =
-    providerId === ai.customProviderId ? storedCustomModels : [];
+    providerId === ai.customProviderId
+      ? storedCustomModels
+      : EMPTY_AI_MODEL_OPTIONS;
 
   const selectedProvider = useMemo(
     () => getAIProviderPreset(providerId),
@@ -242,6 +429,134 @@ export function SettingsAI({
     };
   };
 
+  const savedProviderId = isAIProviderId(ai.customProviderId)
+    ? ai.customProviderId
+    : initialProviderId;
+  const savedConnection = {
+    providerId: savedProviderId,
+    baseURL: readStoredBaseURL(ai, savedProviderId, ai.customProtocol),
+    apiKey: readStoredApiKey(ai, savedProviderId, ai.customProtocol),
+  };
+  const setupAIStatus = getSetupGuideAIStatus({
+    busy: savingCustomConfig || testingConnection,
+    draft: getConnectionForProvider(providerId),
+    saved: savedConnection,
+    selectedModelId,
+    modelOptions: storedCustomModels,
+  });
+  const canTestConnection = canTestSetupGuideAI(enabled, setupAIStatus);
+  const { busy: setupStatusBusy, dirty: setupStatusDirty, ready: setupStatusReady } =
+    setupAIStatus;
+
+  const handleTestConnection = async () => {
+    if (!canTestConnection || !selectedModelId) return;
+
+    cancelConnectionTest();
+    const controller = new AbortController();
+    const requestId = connectionTestRequestIdRef.current + 1;
+    connectionTestRequestIdRef.current = requestId;
+    connectionTestControllerRef.current = controller;
+    setTestingConnection(true);
+    setConnectionTestResult("idle");
+    setConnectionTestMessage("");
+
+    const timeoutId = setTimeout(() => {
+      if (
+        requestId !== connectionTestRequestIdRef.current ||
+        !isMountedRef.current
+      ) {
+        return;
+      }
+      controller.abort();
+      connectionTestRequestIdRef.current += 1;
+      connectionTestControllerRef.current = null;
+      connectionTestTimeoutRef.current = null;
+      setTestingConnection(false);
+      setConnectionTestResult("timeout");
+      setConnectionTestMessage("连接测试超时（30 秒），请检查配置后重试。");
+    }, 30_000);
+    connectionTestTimeoutRef.current = timeoutId;
+
+    try {
+      const response = await runAIText(
+        {
+          ...ai,
+          enabled,
+          selectedModelId,
+          workspaceReasoningLevel: "default",
+        },
+        [{ role: "user", content: "请只回复“连接成功”。" }],
+        {
+          abortSignal: controller.signal,
+          requestOverrides: {
+            selectedModelId,
+            reasoningLevel: "default",
+          },
+        },
+      );
+
+      if (
+        !isSetupGuideAIRequestCurrent({
+          requestId,
+          currentRequestId: connectionTestRequestIdRef.current,
+          alive: isMountedRef.current,
+          signal: controller.signal,
+        })
+      ) {
+        return;
+      }
+
+      if (hasValidSetupGuideAIResponse(response)) {
+        setConnectionTestResult("success");
+        setConnectionTestMessage("连接成功。");
+      } else {
+        setConnectionTestResult("failed");
+        setConnectionTestMessage("连接失败：服务未返回有效文本。");
+      }
+    } catch (error) {
+      if (
+        !isMountedRef.current ||
+        requestId !== connectionTestRequestIdRef.current ||
+        controller.signal.aborted
+      ) {
+        return;
+      }
+      const rawMessage =
+        error instanceof Error ? error.message : "连接失败，请检查配置后重试。";
+      const safeMessage = redactSetupGuideAIError(
+        rawMessage,
+        savedConnection.apiKey,
+      );
+      setConnectionTestResult("failed");
+      setConnectionTestMessage(safeMessage || "连接失败，请检查配置后重试。");
+    } finally {
+      if (requestId === connectionTestRequestIdRef.current) {
+        clearTimeout(timeoutId);
+        if (connectionTestTimeoutRef.current === timeoutId) {
+          connectionTestTimeoutRef.current = null;
+        }
+        connectionTestControllerRef.current = null;
+        if (isMountedRef.current) setTestingConnection(false);
+      }
+    }
+  };
+
+  const hasSetupStateCallback = Boolean(onSetupStateChange);
+  useEffect(() => {
+    if (!isOnboarding) return;
+    setupStateCallbackRef.current?.({
+      busy: setupStatusBusy,
+      dirty: setupStatusDirty,
+      ready: setupStatusReady,
+    });
+  }, [
+    hasSetupStateCallback,
+    isOnboarding,
+    setupStatusBusy,
+    setupStatusDirty,
+    setupStatusReady,
+  ]);
+
   const scrollToModelSection = () => {
     requestAnimationFrame(() => {
       const target = modelSectionRef.current;
@@ -266,9 +581,12 @@ export function SettingsAI({
         : null;
 
   const modelButtonDisabled =
-    !enabled || savingCustomConfig || customModels.length === 0;
+    !enabled || savingCustomConfig || customModels.length === 0 ||
+    (isOnboarding && setupAIStatus.dirty);
 
-  const modelButtonReason = !enabled
+  const modelButtonReason = isOnboarding && setupAIStatus.dirty
+    ? "请先保存当前服务配置"
+    : !enabled
     ? "先打开 AI 助手开关后才能选择模型"
     : savingCustomConfig
       ? "模型列表读取中，请稍候"
@@ -289,14 +607,32 @@ export function SettingsAI({
     }
 
     const provider = getAIProviderPreset(connection.providerId);
-    const requestId = modelRequestIdRef.current + 1;
-    modelRequestIdRef.current = requestId;
+    if (isOnboarding) cancelModelRefresh();
+    const requestId = ++modelRequestIdRef.current;
+    const controller = isOnboarding ? new AbortController() : null;
+    if (controller) {
+      modelAbortControllerRef.current = controller;
+      modelTimedOutRequestIdRef.current = null;
+      modelTimeoutRef.current = setTimeout(() => {
+        if (
+          requestId !== modelRequestIdRef.current ||
+          !isMountedRef.current
+        ) {
+          return;
+        }
+        modelTimedOutRequestIdRef.current = requestId;
+        controller.abort();
+      }, 30_000);
+    }
     setSavingCustomConfig(true);
     setCustomSaveError(null);
 
     // 先持久化供应商 / Key / Base URL，避免拉模型失败时配置丢失。
-    const previousModelOptions =
-      connection.providerId === ai.customProviderId ? storedCustomModels : [];
+    const sameSavedConnection = areSetupGuideAIConnectionsEqual(
+      { ...connection, apiKey },
+      savedConnection,
+    );
+    const previousModelOptions = sameSavedConnection ? storedCustomModels : [];
     saveCustomConfig({
       providerId: connection.providerId,
       protocol: connection.protocol,
@@ -314,8 +650,15 @@ export function SettingsAI({
         baseURL: connection.baseURL,
         apiKey,
         providerId: connection.providerId,
+        signal: controller?.signal,
       });
-      if (requestId !== modelRequestIdRef.current) return;
+      if (
+        !isMountedRef.current ||
+        requestId !== modelRequestIdRef.current ||
+        controller?.signal.aborted
+      ) {
+        return;
+      }
 
       const nextModel =
         modelOptions.find((model) => model.id === selectedModelId) ??
@@ -354,9 +697,19 @@ export function SettingsAI({
         });
       }
     } catch (error) {
-      if (requestId !== modelRequestIdRef.current) return;
-      const message =
-        error instanceof Error ? error.message : "保存 AI 配置失败";
+      if (
+        !isMountedRef.current ||
+        requestId !== modelRequestIdRef.current
+      ) {
+        return;
+      }
+      const timedOut = modelTimedOutRequestIdRef.current === requestId;
+      if (controller?.signal.aborted && !timedOut) return;
+      const rawMessage =
+        error instanceof Error ? error.message : "获取模型列表失败";
+      const message = timedOut
+        ? "获取模型列表超时（30 秒），配置已保存，可重试。"
+        : redactSetupGuideAIError(rawMessage, apiKey) || "获取模型列表失败";
       setCustomSaveError(message);
       toast.error(message, {
         description:
@@ -366,7 +719,11 @@ export function SettingsAI({
       });
     } finally {
       if (requestId === modelRequestIdRef.current) {
-        setSavingCustomConfig(false);
+        if (modelTimeoutRef.current) clearTimeout(modelTimeoutRef.current);
+        modelTimeoutRef.current = null;
+        modelTimedOutRequestIdRef.current = null;
+        modelAbortControllerRef.current = null;
+        if (isMountedRef.current) setSavingCustomConfig(false);
       }
     }
   };
@@ -382,6 +739,24 @@ export function SettingsAI({
   const handleProviderChange = (value: string) => {
     if (!isAIProviderId(value) || value === providerId) return;
     setCustomSaveError(null);
+    if (isOnboarding) {
+      cancelModelRefresh();
+      cancelConnectionTest();
+      setProviderId(value);
+
+      const nextPreset = getAIProviderPreset(value);
+      const nextBaseURL =
+        getProviderFixedBaseURL(value) ??
+        (nextPreset.protocol === "claude"
+          ? DEFAULT_CLAUDE_BASE_URL
+          : DEFAULT_OPENAI_BASE_URL);
+      setCustomBaseURL(nextBaseURL);
+      // Credential slots are shared by protocol, not by provider. Never carry
+      // a draft key over to a different host before the user saves explicitly.
+      setApiKeyDraft("");
+      return;
+    }
+
     setProviderId(value);
 
     const nextPreset = getAIProviderPreset(value);
@@ -413,6 +788,8 @@ export function SettingsAI({
   };
 
   const handleModelChange = (modelId: string) => {
+    if (isOnboarding) cancelConnectionTest();
+    setCustomSaveError(null);
     setSelectedModelId(modelId);
     // DeepSeek 选 Pro/Flash 时协议会变；若已有 Key，同步持久化协议槽位。
     if (providerId !== "deepseek" || !apiKeyDraft.trim()) return;
@@ -431,15 +808,11 @@ export function SettingsAI({
     });
   };
 
-  return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold tracking-tight text-foreground">
-        AI 助手
-      </h3>
-
-      <div className="settings-card-columns">
-        <div className="space-y-5">
-      <SettingsSectionCard>
+  const enabledSection = (
+    <SettingsSectionCard
+      className={isOnboarding ? "p-4" : undefined}
+      contentClassName={isOnboarding ? "space-y-3" : undefined}
+    >
         <div
           className={cn(
             "flex items-center justify-between gap-4 p-4",
@@ -466,15 +839,18 @@ export function SettingsAI({
             onCheckedChange={setEnabled}
           />
         </div>
-      </SettingsSectionCard>
+    </SettingsSectionCard>
+  );
 
-      <div
+  const modelSection = (
+    <div
         ref={modelSectionRef}
         id="ai-model-settings"
         tabIndex={-1}
         className="scroll-mt-6 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <SettingsSectionCard
+          className={isOnboarding ? "p-4" : undefined}
           title={
             <span className="flex items-center gap-2">
               <LucideIcons.Brain
@@ -506,7 +882,7 @@ export function SettingsAI({
             <Button
               variant="secondary"
               size="sm"
-              disabled={Boolean(saveButtonReason)}
+              disabled={Boolean(saveButtonReason) || testingConnection}
               onClick={() => {
                 void refreshCustomModels(
                   getConnectionForProvider(providerId),
@@ -606,9 +982,12 @@ export function SettingsAI({
             </div>
           </div>
         </SettingsSectionCard>
-      </div>
+    </div>
+  );
 
-      <SettingsSectionCard
+  const contextSection = (
+    <SettingsSectionCard
+        className={isOnboarding ? "p-4" : undefined}
         title={
           <span className="flex items-center gap-2">
             <LucideIcons.FolderCog
@@ -669,10 +1048,11 @@ export function SettingsAI({
           </div>
         </div>
       </SettingsSectionCard>
+  );
 
-        </div>
-        <div className="space-y-5">
-      <SettingsSectionCard
+  const serviceSection = (
+    <SettingsSectionCard
+        className={isOnboarding ? "p-4" : undefined}
         title={
           <span className="flex items-center gap-2">
             <LucideIcons.Bot
@@ -708,7 +1088,7 @@ export function SettingsAI({
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={savingCustomConfig}
+                    disabled={savingCustomConfig || testingConnection}
                     className="min-w-[200px] justify-between rounded-[10px] px-2.5"
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -773,6 +1153,10 @@ export function SettingsAI({
                   id="custom-ai-base-url"
                   value={customBaseURL}
                   onChange={(event) => {
+                    if (isOnboarding) {
+                      cancelModelRefresh();
+                      cancelConnectionTest();
+                    }
                     setCustomSaveError(null);
                     setCustomBaseURL(event.target.value);
                   }}
@@ -806,6 +1190,10 @@ export function SettingsAI({
                   type={apiKeyVisible ? "text" : "password"}
                   value={apiKeyDraft}
                   onChange={(event) => {
+                    if (isOnboarding) {
+                      cancelModelRefresh();
+                      cancelConnectionTest();
+                    }
                     setCustomSaveError(null);
                     setApiKeyDraft(event.target.value);
                   }}
@@ -857,40 +1245,145 @@ export function SettingsAI({
                   </p>
                 </div>
               </div>
-              <TooltipProvider delayDuration={600}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <Button
-                        size="sm"
-                        disabled={Boolean(saveButtonReason)}
-                        onClick={() => {
-                          void handleSaveCustomConfig();
-                        }}
-                        className={cn(
-                          Boolean(saveButtonReason) && "cursor-not-allowed",
-                        )}
-                      >
-                        {!savingCustomConfig && (
-                          <LucideIcons.Save className="h-4 w-4" />
-                        )}
-                        {savingCustomConfig ? "保存中..." : "保存"}
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  {saveButtonReason ? (
-                    <TooltipContent side="left">
-                      {saveButtonReason}
-                    </TooltipContent>
-                  ) : null}
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex shrink-0 items-center gap-2">
+                <TooltipProvider delayDuration={600}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          size="sm"
+                          disabled={Boolean(saveButtonReason) || testingConnection}
+                          onClick={() => {
+                            void handleSaveCustomConfig();
+                          }}
+                          className={cn(
+                            Boolean(saveButtonReason) && "cursor-not-allowed",
+                          )}
+                        >
+                          {!savingCustomConfig && (
+                            <LucideIcons.Save className="h-4 w-4" />
+                          )}
+                          {savingCustomConfig
+                            ? "获取模型中…"
+                            : isOnboarding
+                              ? "保存并获取模型"
+                              : "保存"}
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {saveButtonReason ? (
+                      <TooltipContent side="left">
+                        {saveButtonReason}
+                      </TooltipContent>
+                    ) : null}
+                  </Tooltip>
+                </TooltipProvider>
+                {isOnboarding && savingCustomConfig ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelModelRefresh}
+                  >
+                    取消获取
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
       </SettingsSectionCard>
+  );
 
+  const connectionTestSection = isOnboarding ? (
+    <SettingsSectionCard
+      className="p-4"
+      title="连接测试"
+      description="仅发送固定测试文本，不读取笔记、全局提示词或本地 Skill。"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={!canTestConnection}
+          onClick={() => void handleTestConnection()}
+        >
+          {testingConnection ? (
+            <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <LucideIcons.PlugZap className="h-4 w-4" />
+          )}
+          {testingConnection ? "测试中…" : "测试连接"}
+        </Button>
+        {testingConnection ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={cancelConnectionTest}
+          >
+            取消测试
+          </Button>
+        ) : null}
+      </div>
+      <p
+        className={cn(
+          "mt-3 text-sm",
+          connectionTestResult === "success"
+            ? "text-foreground"
+            : connectionTestResult === "failed" ||
+                connectionTestResult === "timeout"
+              ? "text-destructive"
+              : "text-muted-foreground",
+        )}
+        role="status"
+        aria-live="polite"
+      >
+        {testingConnection
+          ? "正在测试连接…"
+          : connectionTestResult !== "idle"
+            ? connectionTestMessage
+            : !enabled
+              ? "启用 AI 并保存配置、获取模型后可测试连接。"
+              : setupAIStatus.dirty
+                ? "请先保存当前服务商配置。"
+                : !setupAIStatus.ready
+                  ? "请先保存配置并获取可用模型。"
+                  : "测试不会读取笔记或本地上下文。"}
+      </p>
+    </SettingsSectionCard>
+  ) : null;
+
+  if (isOnboarding) {
+    return (
+      <div className="mx-auto w-full max-w-xl space-y-3">
+        {enabledSection}
+        {serviceSection}
+        {modelSection}
+        {connectionTestSection}
+        <details className="rounded-lg border border-border bg-background/50 p-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            高级选项
+          </summary>
+          <div className="pt-3">{contextSection}</div>
+        </details>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        AI 助手
+      </h3>
+      <div className="settings-card-columns">
+        <div className="space-y-5">
+          {enabledSection}
+          {modelSection}
+          {contextSection}
         </div>
+        <div className="space-y-5">{serviceSection}</div>
       </div>
     </div>
   );
