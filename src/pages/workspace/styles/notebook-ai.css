@@ -8,11 +8,14 @@
  * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
  */
 
-/* ── 面板灰底 + 白块分层 ───────────────────────────────── */
-.notebook-ai-shell,
-.notebook-ai-content-surface,
-.notebook-ai-panel-header {
- background: var(--goose-ai-surface);
+/* AI 与编辑器共用内容底色，外层主面板统一裁切圆角。 */
+.notebook-ai-shell {
+ background: var(--workspace-main-surface);
+}
+
+[data-ai-panel-layout="side-panel"] .notebook-ai-shell {
+ background: var(--workspace-sidebar-surface);
+ box-shadow: inset 1px 0 var(--workspace-divider);
 }
 
 .notebook-ai-panel-header {
@@ -21,11 +24,12 @@
 
 .notebook-ai-empty-state {
  max-width: 100%;
- padding: 86px 22px 0;
+ padding: 48px 24px 0;
 }
 
 .notebook-ai-empty-state-fullscreen {
- padding: 2.75rem 0.75rem 0;
+ max-width: 720px;
+ padding: 2.75rem 0 0;
 }
 
 .notebook-ai-empty-title {
@@ -158,7 +162,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  pointer-events: none;
 }
 
-/* 消息区外留 0.5rem，输入条在白色消息区内三边再留 0.5rem，随应用字号缩放。 */
+/* 侧栏输入条保留独立内边距，随应用字号缩放。 */
 [data-ai-panel-layout="side-panel"] .notebook-ai-composer-dock {
  left: 1rem;
  right: 1rem;

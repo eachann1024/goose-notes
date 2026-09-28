@@ -336,7 +336,7 @@ export function PageEmptyState() {
 
   return (
     <div
-      className="h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]"
+      className="workspace-page-empty h-full overflow-y-auto px-3 py-4 sm:px-6 sm:py-8 md:p-8 relative bg-[hsl(var(--goose-editor-bg))]"
       data-paused={paused ? "true" : "false"}
     >
       <div className="min-h-full flex items-start justify-center pt-2 sm:pt-4 md:pt-6">

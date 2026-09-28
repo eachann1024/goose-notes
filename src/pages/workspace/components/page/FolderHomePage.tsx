@@ -128,7 +128,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
   const count = children.length;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
+    <div className="workspace-folder-home flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--goose-editor-bg))]">
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-8 py-8 md:px-12 md:py-10">
         {/* 头部 */}
         <div className="mb-6 flex shrink-0 items-center gap-3.5">

@@ -25,8 +25,6 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Sparkles } from "lucide-react";
-import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { isElectronRuntime } from "@/lib/electron/runtime";
@@ -236,7 +234,7 @@ function SortableTabItem({
               className="h-3 w-3 shrink-0 text-primary"
             />
           )}
-          {shouldEditTitleInTab(tabPage, editTitleInPill) && tabPage ? (
+          {isActive && shouldEditTitleInTab(tabPage, editTitleInPill) && tabPage ? (
             <SingleTabTitle
               key={`${tabPage.id}:${tabPage.localFilePath ?? ""}:${getPageTitle(tabPage)}`}
               page={tabPage}
@@ -342,12 +340,7 @@ interface TabRailProps {
   onBeforeActivateTab?: () => void;
   aiPanelOpen?: boolean;
   aiLayoutMode?: NotebookAiLayoutMode;
-  onToggleAiPanel?: () => void;
-  showAiOnTabRail?: boolean;
 }
-
-const actionButtonClass =
-  "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-selected-fg)]";
 
 export function TabRail({
   variant,
@@ -356,10 +349,7 @@ export function TabRail({
   onBeforeActivateTab,
   aiPanelOpen,
   aiLayoutMode = "fullscreen",
-  onToggleAiPanel,
-  showAiOnTabRail = false,
 }: TabRailProps) {
-  const aiPhase = useAiStatus((state) => state.phase);
   const getPage = usePages((s) => s.getPage);
   const activeNotebookId = useNotebooks((state) => state.activeNotebookId);
   const {
@@ -379,7 +369,7 @@ export function TabRail({
     syncNotebookForPage(pageId);
     setExpandPageId(pageId);
   };
-  const { closeTabShortcut, appShortcuts } = useSettings();
+  const { closeTabShortcut } = useSettings();
   const visibleTabs = listVisibleWorkspaceTabs(
     openTabs,
     getPage,
@@ -515,9 +505,6 @@ export function TabRail({
     : isElectronRuntime()
       ? formatShortcut("Mod+W")
       : "";
-  const toggleAiPanelShortcutLabel = appShortcuts.toggleAIPanel
-    ? formatShortcut(appShortcuts.toggleAIPanel)
-    : "";
   const canOpenInNewWindow = isElectronRuntime();
   const editTitleInPill = shouldEditTitleInTabPill(visibleTabs);
 
@@ -655,39 +642,6 @@ export function TabRail({
           }
         }}
       >
-      {showAiOnTabRail ? (
-        <TooltipProvider delayDuration={600}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  "ai-icon-button",
-                  actionButtonClass,
-                  "mr-0.5 shrink-0 text-foreground",
-                )}
-                data-ai-state={aiPhase}
-                onClick={onToggleAiPanel}
-                aria-label={aiPanelOpen ? "关闭 AI" : "打开 AI"}
-                aria-pressed={aiPanelOpen}
-              >
-                <Sparkles className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <div className="flex items-center gap-2">
-                <span>{aiPanelOpen ? "关闭 AI" : "打开 AI"}</span>
-                {toggleAiPanelShortcutLabel && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {toggleAiPanelShortcutLabel}
-                  </span>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ) : null}
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -734,6 +688,7 @@ export function TabRail({
                   size="icon"
                   className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   onClick={onOpenSearch}
+                  aria-label="新标签页"
                 >
                   <LucideIcons.Plus className="h-4 w-4" />
                 </Button>

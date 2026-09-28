@@ -345,10 +345,6 @@
   background: transparent;
 }
 
-.notebook-ai-messages {
-  background: hsl(var(--goose-editor-bg));
-}
-
 .bui-chip-row {
   display: flex;
   min-width: 0;

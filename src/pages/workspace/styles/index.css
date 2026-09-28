@@ -31,12 +31,15 @@
 .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.06);
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
-  --workspace-sidebar-surface: var(--goose-shell-surface);
+  --workspace-sidebar-surface: var(--goose-sidebar-surface, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
   --workspace-main-surface: var(--goose-editor-surface);
-  --workspace-stage-pad-left: 10px;
-  --workspace-stage-pad-bottom: 12px;
-  --workspace-sidebar-gap: 8px;
+  --workspace-stage-pad-top: 8px;
+  --workspace-stage-pad-left: 8px;
+  --workspace-stage-pad-right: 8px;
+  --workspace-stage-pad-bottom: 8px;
+  --workspace-sidebar-gap: 0px;
   --workspace-sidebar-width: 240px;
+  --workspace-rail-width: 48px;
   --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
   --workspace-resize-line: linear-gradient(
     180deg,
@@ -61,7 +64,6 @@
 .dark .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.12);
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
-  --workspace-sidebar-surface: var(--goose-shell-surface);
   --workspace-main-surface: var(--goose-editor-surface);
   --workspace-resize-line: linear-gradient(
     180deg,
@@ -82,6 +84,24 @@
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
 }
 
+/* 枫叶：正文留白，次级页面与浮层沿用参考图的浅暖渐变。 */
+:root[data-goose-accent="amber"] :is(
+  .workspace-page-empty,
+  .workspace-folder-home,
+  .notebook-ai-shell,
+  .settings-shell > header,
+  .settings-shell > nav,
+  .settings-shell > .min-h-0,
+  .goose-floating-surface,
+  .goose-menu-surface
+) {
+  background: var(--goose-secondary-surface);
+}
+
+:root[data-goose-accent="amber"] .settings-shell :is([data-slot="input"], textarea, select) {
+  background: var(--goose-input-surface);
+}
+
 .workspace-shell .workspace-divider {
   border-color: var(--workspace-divider) !important;
 }
@@ -95,12 +115,25 @@
 }
 
 .workspace-shell .workspace-stage {
+  position: relative;
   display: flex;
   height: 100%;
   width: 100%;
   gap: var(--workspace-sidebar-gap);
-  padding: 10px 10px 12px var(--workspace-stage-pad-left);
+  padding: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
   transition: gap var(--workspace-sidebar-motion);
+}
+
+/* ponytail: 共用外沿、不裁切跨栏拖拽热区；需要整板裁切时再重组容器。 */
+.workspace-shell .workspace-content-frame {
+  position: absolute;
+  inset: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
+  z-index: 3;
+  border: 1px solid var(--workspace-divider);
+  transition: left var(--workspace-sidebar-motion);
+}
+.workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) > .workspace-content-frame {
+  left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
 }
 
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
@@ -111,6 +144,7 @@
 }
 .workspace-shell[data-electron-chrome] .workspace-stage,
 .workspace-shell[data-settings] .workspace-stage {
+  --workspace-stage-pad-top: 0px;
   flex: 1;
   min-height: 0;
   height: auto;
@@ -118,15 +152,47 @@
 }
 .workspace-shell[data-electron-chrome] .electron-titlebar {
   position: relative;
-  background: var(--workspace-sidebar-surface);
+  background: var(--goose-shell-surface);
   padding-left: max(
-    var(--electron-traffic-inset, 78px),
+    calc(var(--electron-traffic-inset, 78px) + 7rem + 8px),
     calc(
       var(--workspace-stage-pad-left) + var(--workspace-sidebar-width) +
         var(--workspace-sidebar-gap)
     )
   );
   transition: padding-left var(--workspace-sidebar-motion);
+}
+
+.electron-document-header,
+.electron-ai-header {
+  height: 100%;
+}
+.electron-document-header {
+  padding-inline: 8px;
+}
+.electron-document-header::before,
+.electron-ai-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 24px;
+  transform: translateY(-50%);
+  background: var(--workspace-divider-strong);
+  pointer-events: none;
+}
+.electron-document-header::before {
+  left: -1px;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-ai-side-panel] {
+  padding-right: var(--electron-titlebar-end-inset, 8px);
+}
+.electron-ai-header {
+  width: calc(var(--workspace-ai-width, 338px) + var(--workspace-stage-pad-right) - var(--electron-titlebar-end-inset, 8px) - var(--electron-window-controls-width, 0px));
+}
+.workspace-shell:has(.workspace-sidebar-pane[data-sidebar-resizing]) .electron-titlebar {
+  transition: none;
 }
 
 /* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
@@ -140,8 +206,9 @@
   top: 50%;
   transform: translateY(-50%);
 }
-.workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"] {
-  padding-left: calc(var(--electron-traffic-inset, 78px) + 76px);
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+.workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+  padding-left: calc(var(--electron-traffic-inset, 78px) + 7rem + 8px);
 }
 
 html.is-electron {
@@ -149,6 +216,19 @@ html.is-electron {
 }
 html.is-electron.is-win {
   --electron-traffic-inset: 12px;
+  --electron-titlebar-end-inset: 0px;
+  /* 三个 w-11 按钮和 ml-1，与 WinWindowControls 共用尺寸。 */
+  --electron-window-controls-width: 8.5rem;
+}
+
+@media (max-width: 680px) {
+  .electron-window-controls button:is([aria-label="后退"], [aria-label="前进"]) {
+    display: none;
+  }
+  .workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+  .workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+    padding-left: calc(var(--electron-traffic-inset, 78px) + 40px);
+  }
 }
 
 html.is-electron .electron-titlebar {
@@ -269,11 +349,37 @@ html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
 }
 
 
-/* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
-   导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。
-   用 data 属性而不是 :has()，避免侧栏开关时整页重算 :has()。 */
+/* 收起与覆盖模式下，编辑器恢复完整外角，不改变侧栏宽度状态。 */
 .workspace-shell .workspace-stage[data-sidebar-collapsed] {
   gap: 0;
+}
+
+/* 外层包含标题、多标签和入口栏；文件列表与底部切换器共用第二层。 */
+.workspace-shell .sidebar-mode-rail {
+  border-right: 0;
+  background: var(--goose-shell-surface);
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > div {
+  background: var(--workspace-sidebar-surface);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+.workspace-shell .workspace-stage .workspace-sidebar-pane .sidebar-size-container .sidebar-design {
+  background: transparent;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] .sidebar-size-container > div > div {
+  border-radius: var(--radius-lg);
+}
+.workspace-shell .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-main-sheet {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 1px;
+  background: var(--workspace-divider);
+  pointer-events: none;
 }
 
 /* 侧栏收起时把手仍可能由 BlockNote 挂到 portal；用根属性藏掉，不让编辑器订侧栏 store。 */
@@ -286,7 +392,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  /* 把手伸出到 8px 缝上，必须盖住后置主栏，否则中间被白卡片挡住、只剩圆角线头。 */
+  /* 保留跨越两栏接缝的拖拽热区，不增加常驻分隔线。 */
   overflow: visible;
   position: relative;
   z-index: 2;
@@ -302,6 +408,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 @media (prefers-reduced-motion: reduce) {
   .workspace-shell .workspace-stage,
+  .workspace-shell .workspace-content-frame,
   .workspace-shell .workspace-sidebar-pane,
   .workspace-shell[data-electron-chrome] .electron-titlebar {
     transition: none;
@@ -322,8 +429,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .workspace-main-sheet {
   background: var(--workspace-main-surface);
   border: 0;
-  border-radius: 12px;
-  box-shadow: none;
+  border-radius: var(--radius-lg);
   margin-left: 0;
   overflow: hidden;
   position: relative;
@@ -465,6 +571,17 @@ html[data-sidebar-collapsed] .bn-side-menu {
   box-shadow: none;
 }
 
+/* 页面、文件夹与空白标签由主内容面统一裁切，避免接缝露出第二组内圆角。 */
+.workspace-shell .workspace-content-columns {
+  background: var(--workspace-main-surface);
+}
+.workspace-content-columns:has(> [data-ai-panel-layout="side-panel"]) {
+  gap: 0;
+}
+.workspace-shell .workspace-content-columns > :first-child:not([data-editor-split="true"]) {
+  border-radius: 0;
+}
+
 .workspace-shell .page-scroll-container {
   overflow-anchor: none;
 }
@@ -561,6 +678,13 @@ html[data-sidebar-collapsed] .bn-side-menu {
 }
 
 @media (max-width: 768px) {
+  .workspace-shell .workspace-content-frame {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   .workspace-shell .workspace-stage {
     padding: 0;
     gap: 0;
@@ -580,7 +704,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 
 
 
-/* Electron 工作区用壳层实色：侧栏、舞台留白、顶栏同一底，避免半透明把侧栏衬成独立一栏。 */
+/* 外壳与顶栏同色；文件导航和编辑正文各自拥有独立表面。 */
 html.is-electron .workspace-shell,
 html.is-electron body {
   background: var(--goose-shell-surface);

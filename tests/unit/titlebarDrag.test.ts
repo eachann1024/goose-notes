@@ -48,11 +48,11 @@ test("桌面端顶栏标题闲置可拖、单击才编辑", () => {
   expect(titleBar).toContain("min-w-0 flex-1");
   expect(titleBar).not.toContain("min-w-[12px]");
   expect(titleBar).not.toContain("h-11");
-  expect(titleBar).toContain("PageIconButton");
-  expect(titleBar).toContain("canCustomizePageIcon");
+  expect(titleBar).not.toContain("PageIconButton");
+  expect(titleBar).not.toContain("canCustomizePageIcon");
   expect(titleBar.indexOf("ai-icon-button")).toBeGreaterThan(-1);
-  expect(titleBar.indexOf("ai-icon-button")).toBeLessThan(
-    titleBar.indexOf("<PageIconButton"),
+  expect(titleBar.indexOf("ai-icon-button")).toBeGreaterThan(
+    titleBar.indexOf("<TabRail"),
   );
   expect(titleBar).toContain("data-electron-no-drag");
   expect(titleBar).toContain("LucideIcons.Pin");

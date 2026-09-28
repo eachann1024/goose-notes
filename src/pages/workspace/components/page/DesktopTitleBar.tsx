@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Sparkles } from "lucide-react";
 import { usePages } from "@/stores/usePages";
+import { useTabs } from "@/stores/useTabs";
+import { useFileNavHistory } from "@/stores/useFileNavHistory";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
 import { useSettings } from "@/stores/useSettings";
@@ -38,11 +40,8 @@ import {
 } from "../notebook-ai/aiHeaderSlot";
 import { ConversationTitle } from "../notebook-ai/ConversationTitle";
 import { HistoryToolbar } from "../history/HistoryView";
-import { PageIconButton } from "./PageIconButton";
 import { PageMenu } from "./PageMenu";
 import { TabRail } from "./TabRail";
-import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
-import { useNotebooks } from "@/stores/useNotebooks";
 
 interface DesktopTitleBarProps {
   page?: Page;
@@ -74,7 +73,6 @@ export function DesktopTitleBar({
   onToggleAiPanel,
 }: DesktopTitleBarProps) {
   const activePageId = usePages((s) => s.activePageId);
-  const notebooks = useNotebooks((s) => s.notebooks);
   const sidebarCollapsed = useEffectiveSidebarCollapsed();
   const toggleSidebarCollapsed = useSidebarView(
     (s) => s.toggleSidebarCollapsed,
@@ -83,6 +81,8 @@ export function DesktopTitleBar({
   const aiPhase = useAiStatus((s) => s.phase);
   const aiHeaderActions = useAiHeaderActions();
   const aiHeaderTitle = useAiHeaderTitle();
+  const canGoBack = useFileNavHistory((s) => s.index > 0);
+  const canGoForward = useFileNavHistory((s) => s.index >= 0 && s.index < s.entries.length - 1);
 
   const toggleSidebarShortcutLabel = appShortcuts.toggleSidebar
     ? formatShortcut(appShortcuts.toggleSidebar)
@@ -93,16 +93,30 @@ export function DesktopTitleBar({
 
   const aiFullscreenOpen =
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
+  const aiSidePanelOpen = Boolean(aiPanelOpen) && !aiFullscreenOpen;
 
   const isWinElectron =
     typeof navigator !== "undefined" && /Win/i.test(navigator.platform);
 
   const windowControls = (
     <div
-      className="electron-window-controls flex shrink-0 items-center gap-2"
+      className="electron-window-controls flex shrink-0 items-center gap-1"
       data-electron-no-drag
     >
       <TooltipProvider delayDuration={600}>
+        {[
+          { label: "后退", Icon: LucideIcons.ArrowLeft, disabled: !canGoBack, onClick: () => useTabs.getState().goBackTabHistory() },
+          { label: "前进", Icon: LucideIcons.ArrowRight, disabled: !canGoForward, onClick: () => useTabs.getState().goForwardTabHistory() },
+        ].map(({ label, Icon, disabled, onClick }) => (
+          <Tooltip key={label}>
+            <TooltipTrigger asChild>
+              <button type="button" className={cn(actionButtonClass, "disabled:pointer-events-none disabled:opacity-35")} aria-label={label} disabled={disabled} onClick={onClick}>
+                <Icon className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{label}</TooltipContent>
+          </Tooltip>
+        ))}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -142,61 +156,14 @@ export function DesktopTitleBar({
   }
 
   const showPageActions = Boolean(page) && !page?.trashedAt;
-  const showPageIcon = Boolean(
-    page &&
-    canCustomizePageIcon(
-      page,
-      notebooks[page.workspaceId]?.source === "local-folder",
-    ),
-  );
-
   const titleBarRow = (
-    <div className="flex min-w-0 w-full flex-1 items-center justify-between">
+    <div className="electron-document-header relative flex min-w-0 w-full flex-1 items-center justify-between">
       <div
         className={cn(
           "min-w-0 flex-1 items-center gap-2 overflow-hidden",
           "flex",
         )}
       >
-        {onToggleAiPanel && !page?.trashedAt && (
-          <TooltipProvider delayDuration={600}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "ai-icon-button shrink-0",
-                    actionButtonClass,
-                    "text-foreground",
-                  )}
-                  data-ai-state={aiPhase}
-                  onClick={onToggleAiPanel}
-                  aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
-                  aria-pressed={aiPanelOpen}
-                >
-                  <Sparkles className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <div className="flex items-center gap-2">
-                  <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
-                  {toggleAiPanelShortcutLabel && (
-                    <span className="text-[11px] text-muted-foreground">
-                      {toggleAiPanelShortcutLabel}
-                    </span>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-
-        {!aiFullscreenOpen && showPageIcon && page && !page.trashedAt ? (
-          <div data-electron-no-drag className="shrink-0">
-            <PageIconButton page={page} />
-          </div>
-        ) : null}
-
         {aiFullscreenOpen ? (
           <div
             className="tab-rail flex min-w-0 flex-1 items-center"
@@ -239,6 +206,39 @@ export function DesktopTitleBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {onToggleAiPanel && !page?.trashedAt && (
+          <TooltipProvider delayDuration={600}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "ai-icon-button shrink-0",
+                    actionButtonClass,
+                    "text-foreground",
+                  )}
+                  data-ai-state={aiPhase}
+                  onClick={onToggleAiPanel}
+                  aria-label={aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}
+                  aria-pressed={aiPanelOpen}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="flex items-center gap-2">
+                  <span>{aiPanelOpen ? "关闭 AI 面板" : "打开 AI 面板"}</span>
+                  {toggleAiPanelShortcutLabel && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {toggleAiPanelShortcutLabel}
+                    </span>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
         {page?.trashedAt && onRestore && onDelete && (
           <>
             <TooltipProvider delayDuration={600}>
@@ -289,14 +289,21 @@ export function DesktopTitleBar({
   return (
     <div
       className={cn(
-        "electron-titlebar flex w-full shrink-0 items-center gap-2",
+        "electron-titlebar flex w-full shrink-0 items-center",
         isWinElectron ? "pr-0" : "pr-4",
       )}
       data-ai-conversation-header={aiFullscreenOpen || undefined}
+      data-ai-side-panel={aiSidePanelOpen || undefined}
       data-sidebar-collapsed={sidebarCollapsed}
     >
       {windowControls}
       {titleBarRow}
+      {aiSidePanelOpen && (
+        <div className="electron-ai-header relative flex min-w-0 shrink-0 items-center gap-2 px-3">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">AI 助手</span>
+          {aiHeaderActions}
+        </div>
+      )}
       {isWinElectron ? <WinWindowControls /> : null}
     </div>
   );

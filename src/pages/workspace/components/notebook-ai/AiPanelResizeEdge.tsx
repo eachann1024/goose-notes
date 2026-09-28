@@ -6,7 +6,7 @@ interface AiPanelResizeEdgeProps {
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
 }
 
-/** 落在编辑区与 AI 面板的 8px 缝上，命中区比 4px 内边手柄宽。 */
+/** 命中区居中跨过两栏共用的分隔线，不额外占用布局宽度。 */
 export function AiPanelResizeEdge({
   isResizing,
   onMouseDown,
@@ -15,7 +15,7 @@ export function AiPanelResizeEdge({
   return (
     <div
       className="absolute top-0 z-[60] h-full cursor-col-resize group/resize"
-      style={{ left: "-10px", width: "16px" }}
+      style={{ left: "-8px", width: "16px" }}
       onMouseDown={onMouseDown}
       onPointerDown={onPointerDown}
       role="separator"
@@ -30,8 +30,7 @@ export function AiPanelResizeEdge({
             : "opacity-0 group-hover/resize:opacity-100",
         )}
         style={{
-          width: "2px",
-          marginLeft: "-1px",
+          width: "1px",
           borderRadius: 0,
           background: isResizing
             ? "var(--workspace-resize-line-active)"

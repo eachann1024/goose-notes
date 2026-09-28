@@ -433,12 +433,12 @@ export function WorkspaceLayout({
         <LocalFolderTargetPicker />
         <AIFeatureNotice />
         <div className="workspace-stage">
+          <div className="workspace-content-frame pointer-events-none rounded-lg shadow-md" aria-hidden="true" />
           <Sidebar
             className="workspace-sidebar-pane"
             disableResize={false}
             // 全屏 AI 时取消侧栏高亮：用户再点页面会触发选中并切回该标签
             selectedPageId={showFullscreenAi ? null : activePageId}
-            editorRef={editorRef}
             scrollContainerRef={scrollContainerRef}
           />
 
@@ -586,7 +586,7 @@ function NotebookEditorSplitColumn({
 
   return (
     <div
-      className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]"
+      className="workspace-editor-surface workspace-content-columns relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden"
       data-local-file-page={isLocalFolderPage ? "true" : undefined}
     >
       <div
@@ -724,7 +724,7 @@ function NotebookAiWorkspaceBody({
                       }
                     />
                   )}
-                  <div className="relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
+                  <div className="workspace-content-columns relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden">
                     <div
                       className={cn(
                         "flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]",
@@ -770,7 +770,7 @@ function NotebookAiWorkspaceBody({
                 page.isFolder && isLocalFolderPage ? (
                   /* Electron 本地文件夹目录页：主区渲染 FolderHomePage，不挂编辑器 */
                   <>
-                    <div className="workspace-editor-surface relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden !bg-[hsl(var(--goose-shell-bg))]">
+                    <div className="workspace-editor-surface workspace-content-columns relative ml-0 mt-0 flex min-h-0 flex-1 flex-row gap-2 overflow-hidden">
                       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-[hsl(var(--goose-editor-bg))]">
                         {!isElectronChrome && (
                           <PageHeader
@@ -837,7 +837,7 @@ function NotebookAiWorkspaceBody({
             </div>
 
             {showFullscreenAi && aiNotebookId && aiAvailableForNotebook ? (
-              <div className="notebook-ai-fullscreen-host absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden bg-[hsl(var(--goose-shell-bg))]">
+              <div className="notebook-ai-fullscreen-host absolute inset-x-0 bottom-0 z-20 flex flex-col overflow-hidden">
                 <NotebookAiHostScope notebookId={aiNotebookId}>
                   <GuardedNotebookAiPanel
                     key={`fullscreen-${aiNotebookId}`}

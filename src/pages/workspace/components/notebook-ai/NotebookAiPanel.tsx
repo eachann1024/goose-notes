@@ -64,6 +64,7 @@ import { getCurrentNotebookAiPageId } from "@/lib/notebook-ai/context";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { cn } from "@/lib/utils";
+import { isElectronRuntime } from "@/lib/electron/runtime";
 import {
   Tooltip,
   TooltipContent,
@@ -109,6 +110,7 @@ export function NotebookAiPanel({
   // editorRef 由 SessionProvider 持有，面板侧仅保留 prop 兼容调用方签名
   void _editorRef;
   const isFullscreen = variant === "fullscreen";
+  const isElectronChrome = isElectronRuntime();
   const layoutIsFullscreen = isFullscreenAiLayout(layoutMode);
 
   const { width, isResizing, onDragHandleMouseDown, onDragHandlePointerDown } =
@@ -151,14 +153,12 @@ export function NotebookAiPanel({
     if (!parent) return;
 
     const EDITOR_MIN = 200;
-    const GAP = 8;
-
     const recompute = () => {
       const parentW = parent.clientWidth;
-      const room = parentW - EDITOR_MIN - GAP;
+      const room = parentW - EDITOR_MIN;
       // room 足够时：不超过 stored，且留给编辑区至少 EDITOR_MIN
-      // 极窄时（如 Electron 窄窗口）：让面板占用扣除 flex gap 后的可用宽度，避免右侧裁切
-      const availableRoom = room > 0 ? room : Math.max(0, parentW - GAP);
+      // 极窄时使用父级可用宽度，避免右侧裁切。
+      const availableRoom = room > 0 ? room : Math.max(0, parentW);
       const next = Math.min(width, availableRoom);
       setEffectiveWidth(next);
     };
@@ -168,6 +168,14 @@ export function NotebookAiPanel({
     ro.observe(parent);
     return () => ro.disconnect();
   }, [isFullscreen, width]);
+
+  // 顶栏 AI 列与正文使用同一展示宽度，拖宽和窗口缩放时不各算一遍。
+  useLayoutEffect(() => {
+    if (isFullscreen || !isElectronChrome) return;
+    const shell = panelRootRef.current?.closest<HTMLElement>(".workspace-shell");
+    shell?.style.setProperty("--workspace-ai-width", `${effectiveWidth}px`);
+    return () => { shell?.style.removeProperty("--workspace-ai-width"); };
+  }, [effectiveWidth, isFullscreen, isElectronChrome]);
 
   // 输入条浮动叠在消息上：把 dock 高度换算进 zoom 坐标系，给消息区垫底。
   useLayoutEffect(() => {
@@ -503,9 +511,9 @@ export function NotebookAiPanel({
     layoutIsFullscreen,
   ]);
 
-  // 全屏：工具栏挂到标签栏右上角；侧栏并排：仍在面板内右上角
+  // 桌面两种布局都把工具栏交给顶栏；网页侧栏仍保留面板内标题。
   useEffect(() => {
-    if (!isFullscreen) {
+    if (!isFullscreen && !isElectronChrome) {
       clearAiHeaderActions();
       clearAiHeaderTitle();
       return;
@@ -516,7 +524,7 @@ export function NotebookAiPanel({
       clearAiHeaderActions();
       clearAiHeaderTitle();
     };
-  }, [isFullscreen, headerToolbar, conversationSummary]);
+  }, [isFullscreen, isElectronChrome, headerToolbar, conversationSummary]);
 
   return (
     <div
@@ -542,15 +550,10 @@ export function NotebookAiPanel({
 
       <ChatChrome
         onKeyDown={handlePanelKeyDown}
-        className={cn(
-          "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden",
-          isFullscreen
-            ? "min-w-0 w-full flex-1 bg-[hsl(var(--goose-shell-bg))] px-2 pb-2 pt-0"
-            : "notebook-ai-shell px-2 pb-2",
-        )}
+        className="notebook-ai-shell relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden"
       >
-        {!isFullscreen ? (
-          <header className="notebook-ai-panel-header flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+        {!isFullscreen && !isElectronChrome ? (
+          <header className="notebook-ai-panel-header flex h-12 shrink-0 items-center gap-2 px-3">
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
               AI 助手
             </span>
@@ -558,13 +561,7 @@ export function NotebookAiPanel({
           </header>
         ) : null}
 
-        <div
-          className={cn(
-            "notebook-ai-zoom-slot notebook-ai-content-surface",
-            isFullscreen ? "rounded-[12px]" : "rounded-b-[12px]",
-            isFullscreen && "min-h-0 flex-1",
-          )}
-        >
+        <div className="notebook-ai-zoom-slot notebook-ai-content-surface">
           <div className="notebook-ai-zoom-surface">
             {!bodyReady ? null : unavailableReason ? (
               <div className="flex flex-1 items-center justify-center px-6 pb-[var(--ai-composer-float-pad,7.5rem)]">
