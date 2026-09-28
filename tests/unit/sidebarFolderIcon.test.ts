@@ -18,10 +18,6 @@ const sidebarContextMenu = readFileSync(
   resolve("src/pages/workspace/components/sidebar/SidebarContextMenu.tsx"),
   "utf8",
 );
-const iconSelector = readFileSync(
-  resolve("src/pages/workspace/components/shared/IconSelector.tsx"),
-  "utf8",
-);
 const treeAdapter = readFileSync(
   resolve("src/pages/workspace/components/sidebar/main-tree/treeAdapter.ts"),
   "utf8",
@@ -120,7 +116,7 @@ test("侧栏恢复文件图标，文件夹图标展开且 hover 不切换箭头"
   }
   expect(mainTreeItem).toContain("const renderedIcon = (");
   expect(treeRow).not.toContain("ChevronRight");
-  // 图标设置保留右键入口，不恢复点击图标换图标的旧交互
+  // 不恢复点击图标换图标的旧交互
   expect(mainTreeItem).not.toContain("IconSelector");
   expect(mainTreeItem).not.toContain("canCustomizePageIcon");
   expect(treeRow).not.toContain("IconSelector");
@@ -143,12 +139,7 @@ test("空文件夹占位是渲染层产物，不进数据层也不参与拖拽",
   expect(treeAdapter).not.toContain("__placeholder");
 });
 
-test("文件夹右键菜单给图标入口，弹层落在右键位置并复用持久化", () => {
-  expect(sidebarContextMenu).toContain("isFolderRow");
-  expect(sidebarContextMenu).toContain("设置图标");
-  expect(sidebarContextMenu).toContain("anchorPoint={menuPoint");
-  expect(sidebarContextMenu).toContain("open={iconPickerOpen}");
-  expect(sidebarContextMenu).toContain("updatePage(page.id, { icon: nextIcon })");
-  expect(iconSelector).toContain("anchorPoint");
-  expect(iconSelector).toMatch(/anchorPoint \? \([\s\S]{0,200}fixed h-0 w-0/);
+test("文件夹右键菜单不再提供图标设置", () => {
+  expect(sidebarContextMenu).not.toContain("IconSelector");
+  expect(sidebarContextMenu).not.toContain("设置图标");
 });

@@ -1,5 +1,3 @@
-import { renderNotebookIcon } from "./notebookUtils";
-import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 import { AlertTriangle, Save } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -8,13 +6,11 @@ interface NotebookEditDialogProps {
   notebookId: string;
   name: string;
   confirmName: string;
-  icon: string;
   excludeFromGlobalSearch?: boolean;
   openDeleteConfirm?: boolean;
   isLocalFolder?: boolean;
   onOpenChange: (open: boolean) => void;
   onNameChange: (name: string) => void;
-  onIconChange: (icon: string) => void;
   onExcludeFromGlobalSearchChange: (value: boolean) => void;
   onSave: () => void;
   onDelete: () => void;
@@ -25,18 +21,15 @@ export function NotebookEditDialog({
   notebookId,
   name,
   confirmName,
-  icon,
   excludeFromGlobalSearch = false,
   openDeleteConfirm = false,
   isLocalFolder = false,
   onOpenChange,
   onNameChange,
-  onIconChange,
   onExcludeFromGlobalSearchChange,
   onSave,
   onDelete,
 }: NotebookEditDialogProps) {
-  const editDialogContentRef = useRef<HTMLDivElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
@@ -64,7 +57,7 @@ export function NotebookEditDialog({
       bodyClassName="relative h-full overflow-y-auto p-6 animate-in fade-in duration-200"
     >
       {/* 内容卡片 */}
-      <div ref={editDialogContentRef} className="relative mx-auto w-full max-w-md py-6">
+      <div className="relative mx-auto w-full max-w-md py-6">
         {/* 标题 */}
         <div className="text-center mb-8">
           {showDeleteConfirm && (
@@ -80,7 +73,7 @@ export function NotebookEditDialog({
           <p className="text-muted-foreground">
             {showDeleteConfirm
               ? (isLocalFolder ? "仅移除挂载，不会删除磁盘上的文件" : "此操作无法撤销，请谨慎操作")
-              : "修改记事本的名称与图标"}
+              : "修改记事本的名称与搜索设置"}
           </p>
         </div>
 
@@ -137,34 +130,6 @@ export function NotebookEditDialog({
           </div>
         ) : (
           <div className="bg-card backdrop-blur-[1px] border-0 rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">
-                选择图标
-              </Label>
-              <div className="flex justify-center">
-                <Suspense
-                  fallback={
-                    <Button variant="outline" className="h-16 w-16 text-2xl">
-                      ...
-                    </Button>
-                  }
-                >
-                  <IconSelector
-                    value={icon}
-                    onChange={(val) => onIconChange(val || (isLocalFolder ? "FolderOpen" : "BookOpen"))}
-                    portalContainerRef={editDialogContentRef}
-                  >
-                    <Button
-                      variant="outline"
-                      className="inline-flex h-20 w-20 items-center justify-center p-0 rounded-[16px] bg-[hsl(var(--goose-selected-bg)/0.6)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] transition-all duration-200 [&>span]:flex [&>span]:items-center [&>span]:justify-center"
-                    >
-                      {renderNotebookIcon(icon, "!h-11 !w-11 stroke-[1.5] text-[2.75rem]")}
-                    </Button>
-                  </IconSelector>
-                </Suspense>
-              </div>
-            </div>
-
             <div className="space-y-3">
               <Label
                 htmlFor="notebook-name"

@@ -7,7 +7,6 @@ import {
   type DragEvent,
   type HTMLProps,
   type MouseEvent,
-  type PointerEvent,
   type ReactNode,
 } from "react";
 import type {
@@ -46,8 +45,8 @@ import {
 
 const INDENT = MAIN_TREE_INDENT;
 const ROW_PADDING_LEFT = MAIN_TREE_ROW_PADDING_LEFT;
-/** 子行标题相对父行的左偏移：箭头槽（ml-1.5 + w-5 + gap-0.5）+ 图标槽（w-5 + mr-0.5） */
-const CHILD_TITLE_OFFSET = 6 + 20 + 2 + 20 + 2;
+/** 子行标题相对行起点：行内补偿 4px + 图标槽 18px + sidebar-design 行距 10px。 */
+const CHILD_TITLE_OFFSET = 4 + INDENT + 10;
 let activeMainTreeDragId: string | null = null;
 
 function TreeRowIcon({
@@ -69,7 +68,8 @@ function TreeRowIcon({
     const live = s.pages[page.id];
     return live ? live.icon : page?.icon;
   });
-  // 文件与文件夹均显示图标，只有文件夹图标负责展开。
+  // 文件夹占一个折叠槽和一个图标槽；子文件从自己的行起点放图标，
+  // 因而正好与父文件夹的图标槽对齐，不额外缩进一列。
   const isFolderRow = isSidebarFolderRow({
     isFolder: !!page.isFolder,
     hasChildren,
@@ -84,19 +84,6 @@ function TreeRowIcon({
       isExpanded={isExpanded}
     />
   );
-
-  const toggleFromPointer = (e: PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.button !== 0 || e.ctrlKey) return;
-    onToggleExpanded();
-  };
-  const toggleFromClick = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // 键盘激活的 click 才补一次；指针已在 pointerdown 翻转，避免连点打成同向两次。
-    if (e.detail === 0) onToggleExpanded();
-  };
   const stopDoubleClick = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -106,36 +93,35 @@ function TreeRowIcon({
     e.stopPropagation();
   };
 
-  // 文件夹图标就是展开控件，换图标走右键菜单。
-  if (isFolderRow && !isRenaming) {
-    return (
-      <button
-        type="button"
-        className="main-tree-folder-icon group/folder-icon relative z-10 flex items-center justify-center h-5 w-5 shrink-0 mr-0.5 rounded-[6px] cursor-pointer transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
-        draggable={false}
-        aria-label={isExpanded ? "折叠子项" : "展开子项"}
-        aria-expanded={isExpanded}
-        onPointerDown={toggleFromPointer}
-        onClick={toggleFromClick}
-        onDoubleClick={stopDoubleClick}
-        onDragStart={blockDragStart}
-      >
-        <span className="flex h-4 w-4 items-center justify-center">
-          {renderedIcon}
-        </span>
-      </button>
-    );
-  }
-
   return (
-    <div
-      className="pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5"
-      aria-disabled={isRenaming ? "true" : undefined}
+    <span
+      className="main-tree-row-icon-group pointer-events-none relative z-10 flex h-[18px] shrink-0 items-center gap-0"
+      style={{ width: isFolderRow ? INDENT * 2 : INDENT, height: INDENT }}
     >
-      <div className="flex h-4 w-4 items-center justify-center">
+      {isFolderRow && !isRenaming ? (
+        <MainTreeRowDisclosure
+          expanded={isExpanded}
+          label={isExpanded ? "折叠子项" : "展开子项"}
+          onToggle={onToggleExpanded}
+          className="ml-0 rounded-md pointer-events-auto"
+          nativeProps={{
+            draggable: false,
+            style: { width: INDENT, height: INDENT },
+            onDoubleClick: stopDoubleClick,
+            onDragStart: blockDragStart,
+          }}
+        />
+      ) : isFolderRow ? (
+        <span
+          className="main-tree-row-disclosure-placeholder shrink-0"
+          style={{ width: INDENT, height: INDENT }}
+          aria-hidden="true"
+        />
+      ) : null}
+      <span className="main-tree-row-icon-slot pointer-events-none flex shrink-0 items-center justify-center">
         {renderedIcon}
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
 

@@ -26,7 +26,7 @@ const LUCIDE_ICON_NAME_RE = /^[A-Z][A-Za-z0-9]*$/;
 export function normalizeCalloutIcon(iconStr?: string): string {
   const raw = (iconStr || DEFAULT_CALLOUT_ICON).trim();
   if (!raw) return DEFAULT_CALLOUT_ICON;
-  // IconSelector / 新文档存 Lucide 组件名；旧文档与 Markdown 导入可能是 emoji。
+  // 历史文档存 Lucide 组件名；旧文档与 Markdown 导入可能是 emoji。
   if (LUCIDE_ICON_NAME_RE.test(raw)) return raw;
   return EMOJI_TO_LUCIDE_ICON[raw] ?? raw;
 }

@@ -1,7 +1,6 @@
 import { SidebarRenameContext } from "./SidebarInlineRename";
 import type { ReactNode } from "react";
 import type { Page } from "@/types";
-import { IconSelector } from "../shared/IconSelector";
 import {
   deletePageWithUndo,
   permanentlyDeletePageWithCleanup,
@@ -71,7 +70,7 @@ function scheduleAfterMenuClose(action: () => void) {
 interface SidebarContextMenuProps {
   page: Page;
   children: React.ReactNode;
-  /** 该行在侧栏里是不是文件夹行：只有文件夹行能在右键菜单里换图标 */
+  /** 该行在侧栏里是不是文件夹行 */
   isFolderRow?: boolean;
   onCreateLocalFile?: (parentId?: string) => void;
   onCreateLocalFolder?: (parentId?: string) => void;
@@ -80,21 +79,11 @@ interface SidebarContextMenuProps {
 export function SidebarContextMenu({
   page,
   children,
-  isFolderRow = false,
   onCreateLocalFile,
   onCreateLocalFolder,
 }: SidebarContextMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // 右键位置：菜单项不是锚点，图标选择器要落在用户右键的地方
-  const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(
-    null,
-  );
-  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const updatePage = usePages((s) => s.updatePage);
-  const iconName = usePages((s) => {
-    const live = s.pages[page.id];
-    return live ? live.icon : page.icon;
-  });
   const duplicatePage = usePages((s) => s.duplicatePage);
   const movePageTreeToNotebook = usePages((s) => s.movePageTreeToNotebook);
   const undoMovePageTree = usePages((s) => s.undoMovePageTree);
@@ -193,9 +182,6 @@ export function SidebarContextMenu({
             data-goose-context-trigger="true"
             data-context-open={menuOpen ? "true" : undefined}
             className="h-full w-full"
-            onContextMenu={(event) => {
-              setMenuPoint({ x: event.clientX, y: event.clientY });
-            }}
           >
             {children}
           </div>
@@ -229,12 +215,6 @@ export function SidebarContextMenu({
               !!page.isFolder &&
               folderHasManualOrder;
             const showCopy = showLocalOpen;
-            // 换图标限定文件夹：文件不再展示图标，也不给自定义入口
-            const showIconSetting =
-              isFolderRow && !isTrashed && !page.localPendingCreate;
-            const openIconPicker = () =>
-              scheduleAfterMenuClose(() => setIconPickerOpen(true));
-
             const sections: ReactNode[] = [];
 
             if (!isTrashed && !page.localPendingCreate && !page.localUnsaved) {
@@ -375,27 +355,10 @@ export function SidebarContextMenu({
               );
             }
 
-            if (showIconSetting && !showOrganize) {
-              sections.push(
-                <ContextMenuGroup key="icon" className="mt-2">
-                  <ContextMenuItem onSelect={openIconPicker}>
-                    <LucideIcons.SmilePlus className="h-4 w-4" />
-                    <span>设置图标</span>
-                  </ContextMenuItem>
-                </ContextMenuGroup>,
-              );
-            }
-
             if (showOrganize) {
               sections.push(
                 <ContextMenuGroup key="organize" className="mt-2">
                   <ContextMenuLabel>整理</ContextMenuLabel>
-                  {showIconSetting ? (
-                    <ContextMenuItem onSelect={openIconPicker}>
-                      <LucideIcons.SmilePlus className="h-4 w-4" />
-                      <span>设置图标</span>
-                    </ContextMenuItem>
-                  ) : null}
                   <ContextMenuItem onSelect={handleDuplicatePage}>
                     <LucideIcons.Copy className="h-4 w-4" />
                     <span>创建副本</span>
@@ -533,13 +496,6 @@ export function SidebarContextMenu({
           })()}
         </ContextMenuContent>
       </ContextMenu>
-      <IconSelector
-        value={iconName}
-        onChange={(nextIcon) => updatePage(page.id, { icon: nextIcon })}
-        open={iconPickerOpen}
-        onOpenChange={setIconPickerOpen}
-        anchorPoint={menuPoint ?? undefined}
-      />
     </SidebarRenameContext.Provider>
   );
 }

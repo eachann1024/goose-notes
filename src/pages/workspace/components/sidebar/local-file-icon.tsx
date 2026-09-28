@@ -13,21 +13,8 @@ interface LocalFileIconProps {
 }
 
 /**
- * 正文与标题栏的页面图标：本地仓库里的目录没有正文，不提供换图标；
- * 文件与内置笔记本页面可以。侧栏的文件夹图标不走这里（见 isSidebarFolderRow）。
- */
-export function canCustomizePageIcon(
-  page: Pick<Page, "isFolder" | "localPendingCreate">,
-  isLocalNotebook: boolean,
-): boolean {
-  if (page.localPendingCreate) return false;
-  if (isLocalNotebook && page.isFolder) return false;
-  return true;
-}
-
-/**
  * 侧栏行是不是文件夹：本地仓库看 isFolder，内置笔记本看是否已有子页面。
- * 只有文件夹行画图标、才有展开箭头，也才允许在右键菜单里换图标。
+ * 只有文件夹行画图标、才有展开箭头。
  */
 export function isSidebarFolderRow({
   isFolder,

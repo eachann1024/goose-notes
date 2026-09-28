@@ -162,7 +162,6 @@ export function SortablePageRow({
       hasChildren,
       isLocalNotebook: isLocalFolder,
     });
-  const iconCarriesExpand = showExpandControls && showArrow;
   const iconName = usePages((s) => {
     const live = s.pages[page.id];
     return live ? live.icon : page.icon;
@@ -362,37 +361,45 @@ export function SortablePageRow({
             className="flex items-center h-full flex-1 min-w-0"
             style={{ paddingLeft: depth * TREE_INDENT + ROW_PADDING_LEFT + 4 }}
           >
-            {iconCarriesExpand ? (
-              <button
-                type="button"
-                aria-label={item.isOpen ? "折叠子项" : "展开子项"}
-                aria-expanded={item.isOpen}
-                className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] mr-0.5 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)]"
-                onPointerDown={handleHiddenArrowPointerDown}
-                onClick={handleHiddenArrowClick}
-                onDoubleClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDragStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <span className="flex h-4 w-4 items-center justify-center">
-                  {isFolderRow ? (
-                    <LocalFileIcon
-                      page={page}
-                      iconName={iconName}
-                      isLocalFolder={isLocalFolder}
-                      hasChildren={displayHasChildren}
-                      isExpanded={item.isOpen}
-                    />
-                  ) : null}
+            {showArrow ? (
+              <span className="flex h-[18px] shrink-0 items-center gap-0">
+                <button
+                  type="button"
+                  aria-label={item.isOpen ? "折叠子项" : "展开子项"}
+                  aria-expanded={item.isOpen}
+                  className="goose-hidden-expand-icon group/hidden-toggle relative z-10 flex h-[18px] shrink-0 items-center justify-center rounded-md text-muted-foreground/80 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+                  style={{ width: TREE_INDENT }}
+                  onPointerDown={handleHiddenArrowPointerDown}
+                  onClick={handleHiddenArrowClick}
+                  onDoubleClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <LucideIcons.ChevronRight
+                    aria-hidden="true"
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform duration-150 ease-out",
+                      item.isOpen && "rotate-90",
+                    )}
+                  />
+                </button>
+                <span className="sidebar-tree-row-icon-slot pointer-events-none flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+                  <LocalFileIcon
+                    page={page}
+                    iconName={iconName}
+                    isLocalFolder={isLocalFolder}
+                    hasChildren={displayHasChildren}
+                    isExpanded={item.isOpen}
+                  />
                 </span>
-              </button>
+              </span>
             ) : (
-              <div className="pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5">
+              <div className="pointer-events-none flex h-[18px] w-[18px] shrink-0 items-center justify-center">
                 <LocalFileIcon
                   page={page}
                   iconName={iconName}

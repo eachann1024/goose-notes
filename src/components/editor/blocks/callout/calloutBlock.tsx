@@ -1,9 +1,7 @@
-import { useCallback } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps, type BlockNoteEditor } from "@blocknote/core";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { IconSelector } from "@/pages/workspace/components/shared/IconSelector";
 import { cn } from "@/components/editor/utils/cn";
 import {
   DEFAULT_CALLOUT_ICON,
@@ -32,44 +30,9 @@ function renderCalloutIcon(iconStr: string, className?: string) {
   );
 }
 
-function stopEditorMouseDown(e: React.MouseEvent) {
-  e.preventDefault();
-  e.stopPropagation();
-}
-
-function CalloutIconPicker({
-  icon,
-  onPick,
-}: {
-  icon: string;
-  onPick: (iconName: string) => void;
-}) {
-  const normalizedIcon = normalizeCalloutIcon(icon);
-
-  return (
-    <div contentEditable={false} onMouseDown={stopEditorMouseDown}>
-      <IconSelector
-        value={normalizedIcon}
-        onChange={(nextIcon) => onPick(nextIcon || DEFAULT_CALLOUT_ICON)}
-        editorContext
-      >
-        <button
-          type="button"
-          className="callout-icon-slot shrink-0 rounded transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-          onMouseDown={stopEditorMouseDown}
-          data-callout-icon-trigger
-        >
-          {renderCalloutIcon(normalizedIcon)}
-        </button>
-      </IconSelector>
-    </div>
-  );
-}
-
 function CalloutBlockView({
   block,
   contentRef,
-  editor,
 }: {
   block: any;
   contentRef: (node: HTMLElement | null) => void;
@@ -77,21 +40,14 @@ function CalloutBlockView({
 }) {
   const icon = (block.props.icon as string) || DEFAULT_CALLOUT_ICON;
 
-  const handleIconPick = useCallback(
-    (iconName: string) => {
-      editor.updateBlock(block.id, {
-        props: { icon: iconName },
-      });
-    },
-    [editor, block.id],
-  );
-
   return (
     <div
       className="callout-block group flex w-full items-start gap-3 rounded-lg border border-[var(--goose-callout-border)] bg-[var(--goose-callout-bg)] px-3 py-2 text-[length:var(--editor-module-sm-font-size)] leading-[1.5]"
       data-callout="true"
     >
-      <CalloutIconPicker icon={icon} onPick={handleIconPick} />
+      <div contentEditable={false} className="callout-icon-slot shrink-0">
+        {renderCalloutIcon(icon)}
+      </div>
       <div
         ref={contentRef}
         className="callout-content min-w-0 flex-1"

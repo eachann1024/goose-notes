@@ -8,8 +8,6 @@ import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
 import { PageMenu } from "./PageMenu";
-import { PageIconButton } from "./PageIconButton";
-import { canCustomizePageIcon } from "@/pages/workspace/components/sidebar/local-file-icon";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { SingleTabTitle } from "./SingleTabTitle";
 import { TabRail } from "./TabRail";
@@ -23,7 +21,7 @@ interface PageHeaderProps {
   onDelete?: () => void;
   /** AI 面板当前是否打开 */
   aiPanelOpen?: boolean;
-  /** AI 打开方式：全屏时入口在标签栏最左（仅图标） */
+  /** AI 打开方式：入口统一位于标题栏右侧 */
   aiLayoutMode?: NotebookAiLayoutMode;
   /** 切换 AI 面板（传入时显示按钮，不传则不渲染） */
   onToggleAiPanel?: () => void;
@@ -45,14 +43,6 @@ export function PageHeader({
   hideDocumentTitle = false,
 }: PageHeaderProps) {
   const aiPhase = useAiStatus((state) => state.phase);
-  const notebooks = useNotebooks((state) => state.notebooks);
-  const showPageIcon = Boolean(
-    page &&
-      canCustomizePageIcon(
-        page,
-        notebooks[page.workspaceId]?.source === "local-folder",
-      ),
-  );
   const { appShortcuts } = useSettings();
   const singleTabMode = useEffectiveSingleTabMode();
   const aiHeaderActions = useAiHeaderActions();
@@ -83,10 +73,7 @@ export function PageHeader({
     prevSidebarCollapsedRef.current = userSidebarCollapsed;
   }, [userSidebarCollapsed]);
 
-  const showAiOnTabRail =
-    Boolean(onToggleAiPanel) && isFullscreenAiLayout(aiLayoutMode);
-  const showAiOnActions =
-    Boolean(onToggleAiPanel) && !isFullscreenAiLayout(aiLayoutMode);
+  const showAiOnActions = Boolean(onToggleAiPanel);
   const aiFullscreenOpen =
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
 
@@ -152,7 +139,6 @@ export function PageHeader({
         {singleTabMode ? (
           page && !hideDocumentTitle ? (
             <>
-              {showPageIcon ? <PageIconButton page={page} /> : null}
               <SingleTabTitle
                 key={`${page.id}:${getPageTitle(page)}`}
                 page={page}
@@ -171,8 +157,6 @@ export function PageHeader({
             onBeforeActivateTab={onBeforeActivateTab}
             aiPanelOpen={aiPanelOpen}
             aiLayoutMode={aiLayoutMode}
-            onToggleAiPanel={onToggleAiPanel}
-            showAiOnTabRail={showAiOnTabRail}
           />
         )}
 
@@ -258,10 +242,6 @@ export function PageHeader({
             </TooltipProvider>
           </>
         )}
-
-        {!singleTabMode && showPageIcon && page && !page.trashedAt ? (
-          <PageIconButton page={page} />
-        ) : null}
 
         {aiFullscreenOpen ? (
           aiHeaderActions

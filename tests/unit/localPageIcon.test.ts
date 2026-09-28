@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "playwright/test";
 import {
-  canCustomizePageIcon,
   shouldShowFolderExpandArrow,
 } from "../../src/pages/workspace/components/sidebar/local-file-icon";
 import {
@@ -71,19 +70,6 @@ test("侧栏文件图标固定 16px，避免 Lucide 默认 24 撑大收藏行", 
   expect(iconSource).toMatch(/SelectedIcon[\s\S]*?size=\{16\}/);
 });
 
-test("Electron 图标选择器用扁平 :hover，避免旧内核吃不到 Tailwind 嵌套 hover", () => {
-  const selector = readFileSync(
-    resolve("src/pages/workspace/components/shared/IconSelector.tsx"),
-    "utf8",
-  );
-  expect(selector).toContain(".goose-icon-selector button:hover");
-  const workspaceCss = readFileSync(
-    resolve("src/pages/workspace/styles/index.css"),
-    "utf8",
-  );
-  expect(workspaceCss).toContain(".goose-page-icon-trigger:hover");
-});
-
 test("主树悬停用 --hovered 类而不是 :hover，才能压过 rct 的 transparent !important", () => {
   const css = readFileSync(
     resolve("src/pages/workspace/components/sidebar/main-tree/main-tree.css"),
@@ -104,21 +90,6 @@ test("主树悬停用 --hovered 类而不是 :hover，才能压过 rct 的 trans
   );
   expect(item).toContain("main-tree-row--hovered");
   expect(item).toContain("onPointerEnter");
-});
-
-test("本地仓库：文件可换图标，文件夹和待创建项不可以", () => {
-  expect(
-    canCustomizePageIcon({ isFolder: false }, true),
-  ).toBe(true);
-  expect(
-    canCustomizePageIcon({ isFolder: true }, true),
-  ).toBe(false);
-  expect(
-    canCustomizePageIcon({ isFolder: false, localPendingCreate: "file" }, true),
-  ).toBe(false);
-  expect(
-    canCustomizePageIcon({ isFolder: true }, false),
-  ).toBe(true);
 });
 
 test("本地仓库：空文件夹也显示展开箭头，文件不显示", () => {

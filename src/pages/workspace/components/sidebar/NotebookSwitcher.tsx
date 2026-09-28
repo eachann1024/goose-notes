@@ -498,13 +498,11 @@ export function NotebookSwitcher({
           notebookId={editDialog.id}
           name={editDialog.name}
           confirmName={editDialog.confirmName}
-          icon={editDialog.icon}
           excludeFromGlobalSearch={editDialog.excludeFromGlobalSearch}
           openDeleteConfirm={editDialog.openDeleteConfirm}
           isLocalFolder={editDialog.isLocalFolder}
           onOpenChange={(open) => setEditDialog({ ...editDialog, open })}
           onNameChange={(name) => setEditDialog({ ...editDialog, name })}
-          onIconChange={(icon) => setEditDialog({ ...editDialog, icon })}
           onExcludeFromGlobalSearchChange={(excludeFromGlobalSearch) =>
             setEditDialog({ ...editDialog, excludeFromGlobalSearch })
           }
@@ -517,13 +515,11 @@ export function NotebookSwitcher({
         <NotebookCreateDialog
           open={createDialog.open}
           name={createDialog.name}
-          icon={createDialog.icon}
           error={createDialog.error}
           onOpenChange={(open) =>
             setCreateDialog({ ...createDialog, open, error: "" })
           }
           onNameChange={(name) => setCreateDialog({ ...createDialog, name })}
-          onIconChange={(icon) => setCreateDialog({ ...createDialog, icon })}
           onCreate={handleConfirmCreate}
           onClearError={() =>
             createDialog.error &&
