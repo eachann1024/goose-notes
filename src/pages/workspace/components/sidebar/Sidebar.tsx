@@ -100,6 +100,11 @@ export function Sidebar({
 
   const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
+  const searchShortcut = useSettings((state) =>
+    state.appShortcuts.openSearch
+      ? formatShortcut(state.appShortcuts.openSearch)
+      : "",
+  );
 
   // 历史模式暂时隐藏窄轨和页面树，但保留当前模式与 Footer；退出后回到原侧栏状态。
   const historyActivePageId = useHistoryView((s) => s.active);
@@ -292,7 +297,6 @@ export function Sidebar({
       )}
       data-sidebar-resizing={isResizing || undefined}
       style={{
-        background: "var(--goose-shell-surface)",
         width: sidebarCollapsed ? 0 : width,
         minWidth: 0,
         opacity: sidebarCollapsed ? 0 : 1,
@@ -322,9 +326,15 @@ export function Sidebar({
         }}
       >
         <div className="flex min-h-0 flex-1">
-          {!inHistoryMode && (
+          <div className="sidebar-rail-shell">
             <TooltipProvider delayDuration={600}>
-              <nav className="sidebar-mode-rail" aria-label="侧栏视图">
+              <nav
+                className="sidebar-mode-rail"
+                aria-label="侧栏视图"
+                hidden={inHistoryMode}
+                inert={inHistoryMode}
+                aria-hidden={inHistoryMode}
+              >
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -335,10 +345,9 @@ export function Sidebar({
                       onClick={() => switchSidebarView("pages")}
                     >
                       <LucideIcons.FolderOpen aria-hidden="true" className="h-4 w-4" />
-                      <span>本地</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">切换到本地页面</TooltipContent>
+                  <TooltipContent side="right">本地页面</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -350,14 +359,42 @@ export function Sidebar({
                       onClick={() => switchSidebarView("outline")}
                     >
                       <LucideIcons.ListTree aria-hidden="true" className="h-4 w-4" />
-                      <span>大纲</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">切换到当前文档大纲</TooltipContent>
+                  <TooltipContent side="right">当前文档大纲</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="sidebar-mode-rail-button"
+                      aria-label="搜索"
+                      onClick={handleSearch}
+                    >
+                      <LucideIcons.Search aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div className="flex items-center gap-2">
+                      <span>搜索</span>
+                      {searchShortcut && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {searchShortcut}
+                        </span>
+                      )}
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
               </nav>
             </TooltipProvider>
-          )}
+            <SidebarFooter
+              isSettingsOpen={showSettings}
+              onOpenSettings={() => {
+                if (inHistoryMode) exitHistoryView();
+                setShowSettings(true);
+              }}
+            />
+          </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {inHistoryMode && (
               <div className="min-h-0 flex-1 overflow-hidden rounded-[inherit]">
@@ -376,7 +413,6 @@ export function Sidebar({
                     <SidebarSectionHeader
                       title={headerTitle}
                       eyebrow={currentView === "outline" ? "文档大纲" : undefined}
-                      onSearch={handleSearch}
                       onCreate={electronNoVault ? undefined : handleCreatePage}
                       createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                       onCollapseAll={
@@ -417,13 +453,6 @@ export function Sidebar({
                 </div>
               </div>
             </div>
-            <SidebarFooter
-              isSettingsOpen={showSettings}
-              onOpenSettings={() => {
-                if (inHistoryMode) exitHistoryView();
-                setShowSettings(true);
-              }}
-            />
           </div>
         </div>
         <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />

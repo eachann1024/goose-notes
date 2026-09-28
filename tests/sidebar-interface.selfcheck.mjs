@@ -10,14 +10,18 @@ const appearance = read("src/pages/workspace/components/sidebar/SettingsAppearan
 const preview = read("src/pages/workspace/components/sidebar/AppearanceEditorPreview.tsx");
 const general = read("src/pages/workspace/components/sidebar/SettingsGeneral.tsx");
 const contextMenu = read("src/components/editor/menus/EditorContextMenu.tsx");
+const sidebarLayout = read("src/pages/workspace/components/sidebar/sidebar-layout.css");
 
 assert.doesNotMatch(sidebar, /FavoritesSection|SidebarHeader/);
-assert.match(sidebar, /var\(--goose-shell-surface\)/);
-assert.match(footer, /<NotebookSwitcher/);
+assert.match(sidebarLayout, /\.sidebar-rail-shell[\s\S]*?background: var\(--goose-shell-surface\)/);
+assert.match(sidebar, /aria-label="搜索"[\s\S]*?onClick=\{handleSearch\}/);
+assert.doesNotMatch(sidebar, /button\s+type="button"[\s\S]*?aria-label="本地"[\s\S]*?<span>本地<\/span>/);
+assert.match(footer, /<NotebookSwitcher variant="rail"/);
 assert.match(footer, /发现新版本|已下载/);
-const switcherPopover = switcher.match(/<PopoverContent\b[\s\S]*?className="goose-notebook-menu-surface[\s\S]*?side="(\w+)"[\s\S]*?>/);
+const switcherPopover = switcher.match(/<PopoverContent\b[\s\S]*?className=\{cn\([\s\S]*?\)\}[\s\S]*?side=\{isRail \? "right" : "top"\}[\s\S]*?align=\{isRail \? "end" : "start"\}/);
 assert.ok(switcherPopover, "notebook switcher popover exists");
-assert.equal(switcherPopover[1], "top");
+assert.match(switcher, /sidebar-notebook-trigger--rail/);
+assert.match(switcher, /aria-current=\{isActive \? "true" : undefined\}/);
 assert.match(pageMenu, /\["standard", "标准"\]/);
 assert.match(pageMenu, /\["full", "全宽"\]/);
 assert.doesNotMatch(pageMenu, /isFavorite|isPinned|\["compact"/);

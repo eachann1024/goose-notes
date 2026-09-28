@@ -168,7 +168,11 @@ function SortableNotebookItem({
 
 export function NotebookSwitcher({
   onOpenSettings,
-}: { onOpenSettings?: () => void } = {}) {
+  variant = "default",
+}: {
+  onOpenSettings?: () => void;
+  variant?: "default" | "rail";
+} = {}) {
   const toggleDarkMode = useSettings((s) => s.toggleDarkMode);
 
   const toggleSidebarCollapsed = useSidebarView(
@@ -222,7 +226,10 @@ export function NotebookSwitcher({
   });
 
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
+  const isRail = variant === "rail";
   const notebookKind = isElectronHost ? "文件夹" : "笔记本";
+  const activeNotebookLabel =
+    activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本");
   const notebookList = sortNotebooksByOrder(notebooks);
   // Electron 仅本地文件夹模式：最后一个文件夹也允许移除（回到空态）
   const canDeleteNotebook = isElectronHost
@@ -339,39 +346,53 @@ export function NotebookSwitcher({
         variant="notebook"
         openOnHover={notebookDropdownHoverExpand}
       >
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={`当前${notebookKind} ${activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本")}，点击切换`}
-            className="sidebar-notebook-trigger group text-foreground outline-none"
-            onKeyDown={(event) => {
-              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-              event.preventDefault();
-              setIsOpen(true);
-              menuRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus();
-            }}
-          >
-            <span
-              aria-hidden="true"
-              className="goose-notebook-monogram"
-            >
-              {Array.from(activeNotebook?.name.trim() || "")[0] || "N"}
-            </span>
-            <span
-              className="min-w-0 truncate leading-5"
-              title={activeNotebook?.name}
-            >
-              {activeNotebook?.name ||
-                (isElectronHost ? "打开文件夹" : "选择记事本")}
-            </span>
-            <LucideIcons.ChevronDown className="goose-notebook-chevron" aria-hidden="true" />
-          </button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`当前${notebookKind} ${activeNotebookLabel}，点击切换`}
+                title={isRail ? `${activeNotebookLabel} · 点击切换${notebookKind}` : undefined}
+                className={cn(
+                  "sidebar-notebook-trigger group text-foreground outline-none",
+                  isRail && "sidebar-notebook-trigger--rail",
+                )}
+                onKeyDown={(event) => {
+                  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                  event.preventDefault();
+                  setIsOpen(true);
+                  menuRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus();
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="goose-notebook-monogram"
+                >
+                  {Array.from(activeNotebook?.name.trim() || "")[0] || "N"}
+                </span>
+                <span
+                  className="min-w-0 truncate leading-5"
+                  title={activeNotebook?.name}
+                  hidden={isRail}
+                >
+                  {activeNotebookLabel}
+                </span>
+                <LucideIcons.ChevronDown className="goose-notebook-chevron" aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side={isRail ? "right" : "top"}>
+            {activeNotebookLabel} · 点击切换{notebookKind}
+          </TooltipContent>
+        </Tooltip>
         <PopoverContent
           aria-label={`切换${notebookKind}`}
-          className="goose-notebook-menu-surface goose-floating-surface w-56 max-w-[calc(100vw-1rem)] p-1 backdrop-blur-0"
-          side="top"
-          align="start"
+          className={cn(
+            "goose-notebook-menu-surface goose-floating-surface w-56 max-w-[calc(100vw-1rem)] p-1 backdrop-blur-0",
+            isRail && "goose-notebook-menu-surface--rail",
+          )}
+          side={isRail ? "right" : "top"}
+          align={isRail ? "end" : "start"}
           alignOffset={0}
           sideOffset={8}
           collisionPadding={8}

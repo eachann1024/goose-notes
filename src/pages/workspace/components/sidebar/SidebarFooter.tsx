@@ -43,47 +43,67 @@ export function SidebarFooter({
     "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]";
 
   return (
-    <div className="mt-auto flex shrink-0 items-center gap-1 bg-transparent px-2 pb-1 pt-1">
-      <div className="min-w-0 flex-1">
-        <NotebookSwitcher onOpenSettings={onOpenSettings} />
+    <TooltipProvider delayDuration={600}>
+      <div className="sidebar-rail-footer">
+        {readyVersion ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(btnClass, activeClass)}
+                aria-label={`更新 ${readyVersion} 已下载，点击重启安装`}
+                title={`更新 ${readyVersion} 已下载，点击重启安装`}
+                onClick={() => void getGooseDesktop()?.installReadyUpdate()}
+              >
+                <LucideIcons.RotateCw className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              更新 {readyVersion} 已下载，点击重启安装
+            </TooltipContent>
+          </Tooltip>
+        ) : availableVersion ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(btnClass, activeClass)}
+                aria-label={`发现新版本 ${availableVersion}，打开更新说明`}
+                title={`发现新版本 ${availableVersion}，打开更新说明`}
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("goose-note:settings-tab-change", {
+                      detail: { tab: "about" },
+                    }),
+                  );
+                  onOpenSettings();
+                }}
+              >
+                <LucideIcons.Download className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              发现新版本 {availableVersion}，打开更新说明
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+        <NotebookSwitcher variant="rail" onOpenSettings={onOpenSettings} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn(btnClass, isSettingsOpen && activeClass)}
+              aria-label="设置"
+              title="设置"
+              aria-pressed={isSettingsOpen}
+              onClick={onOpenSettings}
+            >
+              <LucideIcons.Settings className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">设置</TooltipContent>
+        </Tooltip>
       </div>
-      {readyVersion ? (
-        <button
-          type="button"
-          className={cn(btnClass, activeClass)}
-          aria-label={`更新 ${readyVersion} 已下载，点击重启安装`}
-          title={`更新 ${readyVersion} 已下载，点击重启安装`}
-          onClick={() => void getGooseDesktop()?.installReadyUpdate()}
-        >
-          <LucideIcons.RotateCw className="h-4 w-4" />
-        </button>
-      ) : availableVersion ? (
-        <button
-          type="button"
-          className={cn(btnClass, activeClass)}
-          aria-label={`发现新版本 ${availableVersion}，打开更新说明`}
-          title={`发现新版本 ${availableVersion}，打开更新说明`}
-          onClick={() => {
-            window.dispatchEvent(
-              new CustomEvent("goose-note:settings-tab-change", {
-                detail: { tab: "about" },
-              }),
-            );
-            onOpenSettings();
-          }}
-        >
-          <LucideIcons.Download className="h-4 w-4" />
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className={cn(btnClass, isSettingsOpen && activeClass)}
-        aria-label="设置"
-        aria-pressed={isSettingsOpen}
-        onClick={onOpenSettings}
-      >
-        <LucideIcons.Settings className="h-4 w-4" />
-      </button>
-    </div>
+    </TooltipProvider>
   );
 }

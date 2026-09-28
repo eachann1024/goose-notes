@@ -68,10 +68,8 @@
   line-height: 16px;
 }
 .sidebar-design .sidebar-tree-heading .sidebar-section-label > div:last-child { gap: 2px; }
-.sidebar-design .sidebar-tree-heading button[aria-label="搜索"],
 .sidebar-design .sidebar-tree-heading button[aria-label="收起全部页面"],
 .sidebar-design .sidebar-tree-heading button[aria-label^="新建"] { width: 24px; height: 24px; min-width: 24px; }
-.sidebar-design .sidebar-tree-heading button[aria-label="搜索"] svg { width: 16px; height: 16px; }
 .sidebar-design[hidden],
 .sidebar-content-pane[hidden] { display: none !important; }
 .workspace-shell .workspace-stage[data-sidebar-overlay] { position: relative; }
@@ -104,11 +102,12 @@
 .workspace-shell[data-electron-chrome] .workspace-sidebar-pane[data-sidebar-overlay] {
   inset-block: 0;
 }
-.sidebar-mode-rail {
+.sidebar-rail-shell {
   box-sizing: border-box;
   display: flex;
   width: var(--workspace-rail-width);
   flex: 0 0 var(--workspace-rail-width);
+  min-height: 0;
   flex-direction: column;
   align-items: center;
   gap: 4px;
@@ -116,14 +115,27 @@
   border-right: 1px solid hsl(var(--border));
   background: var(--goose-shell-surface);
 }
+.sidebar-mode-rail {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidebar-mode-rail[hidden] { display: none !important; }
 .sidebar-mode-rail-button {
   display: flex;
   width: 40px;
   min-height: 44px;
+  flex: 0 0 44px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 0;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -144,6 +156,24 @@
 .sidebar-mode-rail-button:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 1px;
+}
+.sidebar-rail-footer {
+  display: flex;
+  width: 100%;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-bottom: 4px;
+}
+.sidebar-rail-footer .sidebar-footer-control {
+  box-sizing: border-box;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  flex-basis: 32px;
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row, .sidebar-tree-row) {
   border-radius: 8px;

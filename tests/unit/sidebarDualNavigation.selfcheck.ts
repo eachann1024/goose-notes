@@ -268,7 +268,12 @@ assert.match(
   /\{inHistoryMode && \([\s\S]*?<HistoryVersionList \/>\s*<\/div>\s*\)\}\s*<div\s+className="sidebar-design[^"]*"\s+hidden=\{inHistoryMode\}\s+inert=\{inHistoryMode\}\s+aria-hidden=\{inHistoryMode\}/,
   "history is conditional; the normal sidebar stays mounted and inaccessible while hidden",
 );
-assert.match(sidebar, /<\/div>\s*<SidebarFooter/, "footer stays outside the hidden normal sidebar");
+assert.match(
+  sidebar,
+  /className="sidebar-rail-shell">[\s\S]*?<SidebarFooter[\s\S]*?<div className="flex min-h-0 min-w-0 flex-1 flex-col">/,
+  "rail footer remains visible beside history and outside the hidden normal sidebar",
+);
+assert.match(sidebar, /aria-label="搜索"[\s\S]*?onClick=\{handleSearch\}/);
 assert.doesNotMatch(sidebar, /setActivePage\s*\(/);
 assert.match(sidebar, /focusedPageIdOf\(split\)/);
 assert.match(sidebar, /focusKey:/);
@@ -291,7 +296,11 @@ assert.match(outline, /focusedPane\?\.paneId === paneId/);
 assert.doesNotMatch(outline, /setTimeout|requestAnimationFrame/);
 assert.match(outline, /\[focusKey, pageId, paneId, registry, registryVersion/);
 assert.match(panel, /emptyHint = "使用 ## 或 ### 添加章节"/);
-assert.match(css, /width: 48px/);
+assert.match(
+  css,
+  /\.sidebar-rail-shell\s*\{[^}]*width: var\(--workspace-rail-width\)/s,
+  "the compact navigation and footer share the workspace rail width",
+);
 assert.match(css, /\.sidebar-design\[hidden\],\s*\.sidebar-content-pane\[hidden\] \{ display: none !important; \}/);
 assert.match(sidebar, /forceCollapseLeft && leftExpandOverride/);
 assert.match(sidebar, /sidebarOverlay \? 0 : width/);
@@ -307,7 +316,7 @@ assert.match(outline, /prefers-reduced-motion: reduce/);
 assert.match(outline, /!page\.isFolder && !page\.trashedAt/);
 assert.match(
   workspaceCss,
-  /\[data-sidebar-collapsed="true"\],\s*\.workspace-shell\[data-electron-chrome\]:has\(> \.workspace-stage\[data-sidebar-overlay\]\) \.electron-titlebar \{\s*padding-left: calc\(var\(--electron-traffic-inset, 78px\) \+ 76px\);\s*\}/,
+  /\[data-sidebar-collapsed="true"\],\s*\.workspace-shell\[data-electron-chrome\]:has\(> \.workspace-stage\[data-sidebar-overlay\]\) \.electron-titlebar \{\s*padding-left: calc\(var\(--electron-traffic-inset, 78px\) \+ 7rem \+ 8px\);\s*\}/,
   "overlay shares collapsed titlebar control clearance without changing collapsed state",
 );
 

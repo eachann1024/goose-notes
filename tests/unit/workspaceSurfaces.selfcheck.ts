@@ -17,9 +17,27 @@ const rule = (selector: string) => {
 assert.match(css, /--workspace-sidebar-surface: var\(--goose-sidebar-surface, color-mix\(in srgb, hsl\(var\(--goose-shell-bg\)\) 60%, hsl\(var\(--goose-editor-bg\)\)\)\)/);
 assert.equal(css.match(/--workspace-sidebar-surface:/g)?.length, 1, "Dark mode must inherit the independent file surface");
 for (const selector of [".workspace-shell[data-electron-chrome] .electron-titlebar", ".workspace-shell .sidebar-mode-rail"]) {
-  assert.match(rule(selector), /background: var\(--goose-shell-surface\)/);
+  assert.match(rule(selector), /background: transparent/, "Paint the outer gradient only once on the shell");
 }
 assert.match(rule(".workspace-shell .sidebar-mode-rail"), /border-right: 0/);
+assert.match(rule(".workspace-shell .workspace-sidebar-pane"), /background: transparent/);
+assert.match(rule(".workspace-shell .workspace-sidebar-pane[data-sidebar-overlay]"), /background: var\(--goose-shell-surface\)/);
+assert.doesNotMatch(read("../../src/pages/workspace/components/sidebar/Sidebar.tsx"), /background: "var\(--goose-shell-surface\)"/, "Inline paint must not restart the outer gradient");
+assert.match(rule(".workspace-shell[data-electron-chrome] .workspace-content-frame"), /border-top-color: var\(--workspace-top-edge\)/);
+for (const selector of [".workspace-shell", ".dark .workspace-shell"]) {
+  const topEdge = rule(selector).match(/--workspace-top-edge: ([^;]+);/)?.[1];
+  assert.ok(topEdge, "Light and dark chrome need a shared top edge");
+  assert.doesNotMatch(topEdge, /transparent|\/|var\(--workspace-divider/, "The shared top edge must not blend with individual pane backgrounds");
+  assert.match(topEdge, /hsl\(var\(--foreground\)\)/);
+  assert.match(topEdge, /hsl\(var\(--goose-shell-bg\)\)/);
+  assert.match(topEdge, /hsl\(var\(--goose-editor-bg\)\)/);
+}
+assert.doesNotMatch(css, /\.workspace-shell\[data-electron-chrome\] :is\(\.workspace-content-frame, \.workspace-main-sheet\)/, "Do not flatten the shared panel's outer corners");
+assert.match(rule(".workspace-shell .workspace-main-sheet"), /border-radius: var\(--radius-lg\)/);
+assert.match(rule(".workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > div"), /border-radius: var\(--radius-lg\) 0 0 var\(--radius-lg\)/);
+
+assert.match(rule(".workspace-shell[data-electron-chrome] .workspace-content-frame"), /clip-path: inset\(0 -16px -16px\)/);
+
 assert.match(css, /--workspace-sidebar-gap: 0px/);
 assert.equal(layout.match(/workspace-content-frame/g)?.length, 1, "File list, editor and AI share one outer frame");
 assert.match(layout, /workspace-content-frame pointer-events-none rounded-lg shadow-md" aria-hidden="true"/);

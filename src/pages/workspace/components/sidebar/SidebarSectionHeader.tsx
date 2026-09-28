@@ -1,7 +1,6 @@
 interface SidebarSectionHeaderProps {
   title: string;
   eyebrow?: string;
-  onSearch: () => void;
   /** 不传则不渲染「新建」按钮（如 Electron 无仓库时） */
   onCreate?: () => void;
   createTitle?: string;
@@ -11,15 +10,10 @@ interface SidebarSectionHeaderProps {
 export function SidebarSectionHeader({
   title,
   eyebrow,
-  onSearch,
   onCreate,
   createTitle,
   onCollapseAll,
 }: SidebarSectionHeaderProps) {
-  const appShortcuts = useSettings((state) => state.appShortcuts);
-  const searchShortcut = appShortcuts.openSearch
-    ? formatShortcut(appShortcuts.openSearch)
-    : "";
   const createShortcut = formatShortcut(getFixedAppShortcuts().newNote);
 
   return (
@@ -51,29 +45,6 @@ export function SidebarSectionHeader({
               <TooltipContent side="bottom">收起全部页面</TooltipContent>
             </Tooltip>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-                aria-label="搜索"
-                onClick={onSearch}
-              >
-                <LucideIcons.Search className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <div className="flex items-center gap-2">
-                <span>搜索</span>
-                {searchShortcut && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {searchShortcut}
-                  </span>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
           {onCreate && (
             <Tooltip>
               <TooltipTrigger asChild>
