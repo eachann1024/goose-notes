@@ -73,11 +73,15 @@ test("侧栏树行字号图标与主树列表一致", () => {
   expect(treeRow).not.toMatch(
     /sidebar-tree-row[\s\S]{0,220}text-sm font-medium/,
   );
+  expect(mainTree).toContain("main-tree-row-icon-group");
+  expect(mainTree).toContain("MainTreeRowDisclosure");
   expect(mainTree).toContain(
-    "main-tree-folder-icon group/folder-icon relative z-10 flex items-center justify-center h-5 w-5 shrink-0 mr-0.5",
+    "style={{ width: isFolderRow ? INDENT * 2 : INDENT, height: INDENT }}",
   );
+  expect(treeRow).toContain("LucideIcons.ChevronRight");
+  expect(treeRow).toContain("style={{ width: TREE_INDENT }}");
   expect(treeRow).toContain(
-    "pointer-events-none flex h-5 w-5 shrink-0 items-center justify-center mr-0.5",
+    "pointer-events-none flex h-[18px] w-[18px] shrink-0 items-center justify-center",
   );
   expect(treeRow).not.toContain("IconSelector");
   expect(treeRow).not.toContain("goose-page-icon-trigger");
