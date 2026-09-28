@@ -9,7 +9,10 @@ import {
 import { pageMentionLabel } from "@/components/editor/inline/pageMention";
 import { stripEditorObjectReplacementCharacters } from "@/lib/imageExport/serializer/utils";
 import type { CustomFonts } from "@/stores/useSettings";
-import { getEditorFontFamilies } from "@/lib/fontLoader";
+import {
+  getEditorFontFamilies,
+  SYSTEM_FONT_STACK,
+} from "@/lib/fontLoader";
 import {
   DOCX_BACKGROUND_COLORS,
   DOCX_BODY_SIZE,
@@ -37,12 +40,14 @@ const GENERIC_FONTS = new Set([
   "ui-sans-serif",
   "ui-monospace",
   "ui-rounded",
-]);
+  "-apple-system",
+  "BlinkMacSystemFont",
+].map((family) => family.toLowerCase()));
 
 function firstNamedFont(families: string[], fallback: string): string {
   for (const family of families) {
     const name = family.replace(/^["']+|["']+$/g, "").trim();
-    if (name && !GENERIC_FONTS.has(name)) return name;
+    if (name && !GENERIC_FONTS.has(name.toLowerCase())) return name;
   }
   return fallback;
 }
@@ -58,13 +63,39 @@ function platformEastAsiaFallback(
   return isMac ? "PingFang SC" : "Microsoft YaHei";
 }
 
+function selectedSystemFontFallback(
+  kind: "default" | "serif" | "mono",
+  selectedFont: string | null,
+): string | null {
+  const name = selectedFont?.trim().replace(/^["']+|["']+$/g, "").toLowerCase();
+  if (!name) return kind === "default" ? platformEastAsiaFallback(kind) : null;
+  if (name === SYSTEM_FONT_STACK.toLowerCase()) {
+    return platformEastAsiaFallback("default");
+  }
+  if (name === "serif" || name === "ui-serif") {
+    return platformEastAsiaFallback("serif");
+  }
+  if (name === "monospace" || name === "ui-monospace") {
+    return platformEastAsiaFallback("mono");
+  }
+  if (
+    kind === "default" &&
+    ["sans-serif", "ui-sans-serif", "system-ui", "-apple-system", "blinkmacsystemfont"].includes(name)
+  ) {
+    return platformEastAsiaFallback("default");
+  }
+  return null;
+}
+
 export function resolveDocxFonts(
   fontFamily: "default" | "serif" | "mono" | undefined,
   customFonts: CustomFonts,
 ): DocxFontConfig {
   const kind = fontFamily ?? "default";
   const families = getEditorFontFamilies(kind, customFonts);
-  const eastAsia = firstNamedFont(families, platformEastAsiaFallback(kind));
+  const eastAsia =
+    selectedSystemFontFallback(kind, customFonts[kind].font) ??
+    firstNamedFont(families, platformEastAsiaFallback(kind));
   const monoFamilies = getEditorFontFamilies("mono", customFonts);
   return {
     body: eastAsia,

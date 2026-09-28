@@ -4,6 +4,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { SYSTEM_FONT_STACK } from "@/lib/fontLoader";
 
 /** 磁盘读入口时展开相对 @import，避免只拿到声明、丢掉拆分后的规则。 */
 function readCssResolvingLocalImports(file: string): string {
@@ -23,10 +24,8 @@ const EXPORT_LIGHT_TOKENS = `
   --editor-font-size: 16px;
   --editor-scale: 1;
   --editor-module-sm-font-size: 14px;
-  --font-default: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  --font-mono: ui-monospace, "DM Mono", Menlo, Consolas, "HarmonyOS Sans SC",
+  --font-default: ${SYSTEM_FONT_STACK};
+  --font-mono: ui-monospace, "DM Mono", Menlo, Consolas,
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
     monospace;
   --foreground: 0 0% 12%;

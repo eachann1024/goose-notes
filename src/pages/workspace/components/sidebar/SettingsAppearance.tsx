@@ -1,6 +1,5 @@
 import { useSettings } from "@/stores/useSettings";
 import {
-  useEffect,
   type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
@@ -13,9 +12,11 @@ import {
 } from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
-import { DEFAULT_FONT_NAMES, isLocalFontAvailable, normalizeLocalFontName } from "@/lib/fontLoader";
+import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
 import { ReadingPreferences } from "../ReadingPreferences";
 import { AppearanceEditorPreview } from "./AppearanceEditorPreview";
+import { DefaultFontSelect } from "../shared/DefaultFontSelect";
+import { LocalFontInput } from "../shared/LocalFontInput";
 
 interface SettingsAppearanceProps {
   theme: "light" | "dark" | "system";
@@ -38,6 +39,8 @@ interface SettingsAppearanceProps {
   editorFontSize: number;
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
+  section?: "all" | "appearance" | "reading";
+  showPreview?: boolean;
 }
 
 type AccentOption = {
@@ -94,13 +97,13 @@ const accentOptions: AccentOption[] = [
   },
   {
     value: "amber",
-    label: "枫叶",
-    previewLight: "#75694f",
-    previewDark: "#b7a77f",
-    lightSurface: "#fcf8f0",
-    lightForeground: "#75694f",
-    darkSurface: "rgba(183, 167, 127, 0.16)",
-    darkForeground: "#e5dcc7",
+    label: "晨橙",
+    previewLight: "#ed963e",
+    previewDark: "#edaa62",
+    lightSurface: "#fffaf3",
+    lightForeground: "#ad4e15",
+    darkSurface: "rgba(237, 170, 98, 0.16)",
+    darkForeground: "#f4c99b",
   },
   {
     value: "coral",
@@ -141,86 +144,9 @@ type AccentOptionStyle = CSSProperties & {
   "--goose-accent-option-dark-fg": string;
 };
 
-const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
+const defaultLabels = { serif: "衬线体", mono: "等宽体" };
 const APPEARANCE_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
-
-function LocalFontInput({
-  id,
-  value,
-  onChange,
-  placeholder,
-  label,
-}: {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  label?: string;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const fontValue = draft ?? value;
-  const [available, setAvailable] = useState(true);
-  const unavailable = Boolean(fontValue.trim()) && !available;
-  const commit = () => {
-    const font = fontValue.trim();
-    if (font && !normalizeLocalFontName(font)) {
-      setAvailable(false);
-      return;
-    }
-    if (font !== value) onChange(font);
-    setDraft(null);
-  };
-  useEffect(() => {
-    if (!fontValue.trim()) return;
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void isLocalFontAvailable(fontValue.trim()).then((found) => {
-        if (!cancelled) setAvailable(found);
-      });
-    }, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [fontValue]);
-  return (
-    <>
-      <Input
-        id={id}
-        value={fontValue}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing) return;
-          if (event.key === "Enter") {
-            event.preventDefault();
-            commit();
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            event.stopPropagation();
-            setDraft(null);
-          }
-        }}
-        placeholder={placeholder}
-        aria-label={label}
-        maxLength={80}
-        aria-invalid={unavailable}
-        aria-describedby={unavailable ? `${id}-warning` : undefined}
-        className="min-w-0 bg-background"
-      />
-      {unavailable && (
-        <p
-          id={`${id}-warning`}
-          role="status"
-          className="text-xs text-destructive"
-        >
-          未找到本机字体，当前显示回退字体
-        </p>
-      )}
-    </>
-  );
-}
 
 function FontSizeStepper({
   label,
@@ -297,6 +223,8 @@ export function SettingsAppearance({
   increaseSidebarFontSize,
   decreaseSidebarFontSize,
   editorFontSize,
+  section = "all",
+  showPreview = true,
 }: SettingsAppearanceProps) {
   const editorLineHeight = useSettings((s) => s.editorLineHeight);
   const setEditorLineHeight = useSettings((s) => s.setEditorLineHeight);
@@ -356,16 +284,157 @@ export function SettingsAppearance({
     }
   };
 
-  return (
-    <div className="settings-appearance-layout">
-      <AppearanceEditorPreview
-        sidebarFontSize={sidebarFontSize}
-        editorFontSize={editorFontSize}
-        editorLineHeight={editorLineHeight}
-        uiFontSize={uiFontSize}
+  const interfaceFontSettings = (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="appearance-ui-font">界面字体</Label>
+          <LocalFontInput
+            id="appearance-ui-font"
+            value={uiFontFamily ?? ""}
+            onChange={setUIFontFamily}
+            placeholder="系统默认"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="appearance-sidebar-font">侧栏字体</Label>
+          <LocalFontInput
+            id="appearance-sidebar-font"
+            value={sidebarFontFamily ?? ""}
+            onChange={setSidebarFontFamily}
+            placeholder="系统默认"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        正文默认字体与首次引导共用；页面仍可单独切换默认、衬线或等宽字体。
+      </p>
+    </>
+  );
+
+  const defaultFontSettings = (
+    <DefaultFontSelect
+      id="appearance-default-font"
+      value={customFonts.default.font}
+      fontSize={editorFontSize}
+      lineHeight={editorLineHeight}
+      onChange={(font) => setCustomFont("default", font)}
+      showPreview={section === "all"}
+    />
+  );
+
+  const additionalFontSettings = (
+    <div className="space-y-4">
+      {(["serif", "mono"] as const).map((type) => (
+        <div
+          key={type}
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 rounded-xl bg-[hsl(var(--goose-selected-bg)/0.4)] p-2"
+        >
+          <Label htmlFor={`appearance-${type}-font`}>{defaultLabels[type]}</Label>
+          <div className="flex flex-1 items-center gap-2">
+            <LocalFontInput
+              id={`appearance-${type}-font`}
+              label={`${defaultLabels[type]}字体名称`}
+              value={customFonts[type].font || ""}
+              onChange={(value) => setCustomFont(type, value || null)}
+              placeholder={`默认：${DEFAULT_FONT_NAMES[type]}`}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const sidebarFontSizeSettings = (
+    <FontSizeStepper
+      label="侧栏字体大小"
+      description="只影响左侧栏的页面树、分区标题和笔记本名称。"
+      icon={
+        <LucideIcons.PanelLeft
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          strokeWidth={1.75}
+        />
+      }
+      value={sidebarFontSize}
+      min={SIDEBAR_FONT_SIZE_MIN}
+      max={SIDEBAR_FONT_SIZE_MAX}
+      onDecrease={decreaseSidebarFontSize}
+      onIncrease={increaseSidebarFontSize}
+    />
+  );
+
+  const readingSettings = (
+    <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+      <ReadingPreferences
+        showPreview={false}
+        fontSize={editorFontSize}
+        lineHeight={editorLineHeight}
+        onFontSizeChange={setEditorFontSize}
+        onLineHeightChange={setEditorLineHeight}
       />
+      <p className="mt-4 text-xs text-muted-foreground">
+        代码块保留独立行高。
+      </p>
+    </div>
+  );
+
+  const uiFontSizeSettings = (
+    <div
+      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+    >
+      <div>
+        <div className="flex items-center gap-3">
+          <LucideIcons.AppWindow
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            strokeWidth={1.75}
+          />
+          <Label>界面缩放</Label>
+        </div>
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">
+          调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
+        </p>
+      </div>
+      <div
+        role="group"
+        aria-label="界面缩放"
+        className="flex shrink-0 items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1"
+      >
+        {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            size="sm"
+            variant="ghost"
+            aria-pressed={uiFontSize === value}
+            className={cn(
+              "h-7 rounded-full px-3 text-xs transition-all duration-200",
+              uiFontSize === value &&
+                "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+            )}
+            onClick={() => setUIFontSize(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className="settings-appearance-layout"
+      data-appearance-section={section}
+    >
+      {showPreview && (
+        <AppearanceEditorPreview
+          sidebarFontSize={sidebarFontSize}
+          editorFontSize={editorFontSize}
+          editorLineHeight={editorLineHeight}
+          uiFontSize={uiFontSize}
+        />
+      )}
       <div className="settings-appearance-options min-w-0 space-y-8">
-        <SettingsSectionCard title="主题" className="border border-border/60">
+        {section !== "reading" && (
+          <SettingsSectionCard title="主题" className="border border-border/60">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <LucideIcons.SunMoon
@@ -516,121 +585,47 @@ export function SettingsAppearance({
               })}
             </div>
           </div>
-        </SettingsSectionCard>
-        <SettingsSectionCard
-          title="字体与阅读"
-          description="输入字体后按 Enter 或移开焦点应用；留空使用默认字体。"
-          className="border border-border/60"
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="appearance-ui-font">界面字体</Label>
-              <LocalFontInput
-                id="appearance-ui-font"
-                value={uiFontFamily ?? ""}
-                onChange={setUIFontFamily}
-                placeholder="系统默认"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="appearance-sidebar-font">侧栏字体</Label>
-              <LocalFontInput
-                id="appearance-sidebar-font"
-                value={sidebarFontFamily ?? ""}
-                onChange={setSidebarFontFamily}
-                placeholder="系统默认"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            正文可在页面中选择默认、衬线或等宽；下面可自定义这三组字体的字形。
-          </p>
-          <div className="space-y-4">
-            {(["default", "serif", "mono"] as const).map((type) => (
-              <div
-                key={type}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 rounded-xl bg-[hsl(var(--goose-selected-bg)/0.4)] p-2"
-              >
-                <Label>{defaultLabels[type]}</Label>
-                <div className="flex flex-1 items-center gap-2">
-                  <LocalFontInput
-                    id={`appearance-${type}-font`}
-                    label={`${defaultLabels[type]}字体名称`}
-                    value={customFonts[type].font || ""}
-                    onChange={(value) => setCustomFont(type, value || null)}
-                    placeholder={`默认：${DEFAULT_FONT_NAMES[type]}`}
-                  />
+          </SettingsSectionCard>
+        )}
+        {section !== "appearance" && (
+          <SettingsSectionCard
+            title="字体与阅读"
+            description={section === "all"
+              ? "界面、侧栏与正文默认字体彼此独立；选择后保存，自定义字体按 Enter 或移开焦点应用。"
+              : undefined}
+            className="border border-border/60"
+          >
+            {section === "reading" ? (
+              <>
+                {defaultFontSettings}
+                {readingSettings}
+                <details className="setup-guide-advanced-settings border-t border-border/60 pt-3">
+                  <summary className="cursor-pointer rounded-md py-2 text-sm font-medium text-foreground">
+                    界面与侧栏调节
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                    {interfaceFontSettings}
+                    {additionalFontSettings}
+                    {sidebarFontSizeSettings}
+                    {uiFontSizeSettings}
+                  </div>
+                </details>
+              </>
+            ) : (
+              <>
+                {interfaceFontSettings}
+                {defaultFontSettings}
+                {additionalFontSettings}
+                <div className="space-y-3 border-t border-border/60 pt-4">
+                  {sidebarFontSizeSettings}
+                  {readingSettings}
+                  {uiFontSizeSettings}
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-3 border-t border-border/60 pt-4">
-            <FontSizeStepper
-              label="侧栏字体大小"
-              description="只影响左侧栏的页面树、分区标题和笔记本名称。"
-              icon={
-                <LucideIcons.PanelLeft
-                  className="h-4 w-4 shrink-0 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-              }
-              value={sidebarFontSize}
-              min={SIDEBAR_FONT_SIZE_MIN}
-              max={SIDEBAR_FONT_SIZE_MAX}
-              onDecrease={decreaseSidebarFontSize}
-              onIncrease={increaseSidebarFontSize}
-            />
-
-            <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
-              <ReadingPreferences
-                showPreview={false}
-                fontSize={editorFontSize}
-                lineHeight={editorLineHeight}
-                onFontSizeChange={setEditorFontSize}
-                onLineHeightChange={setEditorLineHeight}
-              />
-              <p className="mt-4 text-xs text-muted-foreground">
-                代码块保留独立行高。
-              </p>
-            </div>
-
-            <div
-              className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-            >
-              <div>
-                <div className="flex items-center gap-3">
-                  <LucideIcons.AppWindow
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                    strokeWidth={1.75}
-                  />
-                  <Label>界面缩放</Label>
-                </div>
-                <p className="mt-1 pl-7 text-xs text-muted-foreground">
-                  调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
-                </p>
-              </div>
-              <div role="group" aria-label="界面缩放" className="flex shrink-0 items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-                {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
-                  <Button
-                    key={value}
-                    size="sm"
-                    variant="ghost"
-                    aria-pressed={uiFontSize === value}
-                    className={cn(
-                      "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                      uiFontSize === value &&
-                        "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
-                    )}
-                    onClick={() => setUIFontSize(value)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </SettingsSectionCard>
-        <EditorLayoutSettings />
+              </>
+            )}
+          </SettingsSectionCard>
+        )}
+        {section !== "reading" && <EditorLayoutSettings />}
       </div>
     </div>
   );

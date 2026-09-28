@@ -223,10 +223,7 @@ import { toast } from "@/components/ui/sonner";
 import { describeDiskWriteError } from "@/lib/diskWriteError";
 import "./index.css";
 import "./fonts.css";
-import {
-  applyFontVariables,
-  preloadFonts,
-} from "./lib/fontLoader";
+import { applyFontVariables } from "./lib/fontLoader";
 import {
   applyAppearanceScaleVariables,
   clearStartupSettling,
@@ -238,12 +235,6 @@ import { useNotebooks } from "./stores/useNotebooks";
 import { usePages } from "./stores/usePages";
 import { useSettings } from "./stores/useSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-
-try {
-  preloadFonts();
-} catch (error) {
-  console.warn("[fontLoader] preloadFonts failed", error);
-}
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

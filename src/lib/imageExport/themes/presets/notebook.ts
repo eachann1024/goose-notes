@@ -1,4 +1,8 @@
-import { getEditorFontFamilies, toCssFontFamily } from "@/lib/fontLoader";
+import {
+  getEditorFontFamilies,
+  SYSTEM_FONT_STACK,
+  toCssFontFamily,
+} from "@/lib/fontLoader";
 import { EDITOR_FONT_SIZE_DEFAULT, type CustomFonts } from "@/stores/settings/types";
 import type { FontFamily } from "@/types";
 import type { CardTheme } from "../types";
@@ -16,10 +20,9 @@ const DEFAULT_CUSTOM_FONTS: CustomFonts = {
   mono: { label: null, font: null },
 };
 
-const LIGHT_PAGE_FONT =
-  'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif';
+const LIGHT_PAGE_FONT = SYSTEM_FONT_STACK;
 const LIGHT_CODE_FONT =
-  'ui-monospace, "DM Mono", Menlo, Consolas, "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", monospace';
+  'ui-monospace, "DM Mono", Menlo, Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", monospace';
 
 function readCssVar(name: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;

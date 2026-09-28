@@ -7,6 +7,55 @@ import {
   EDITOR_LINE_HEIGHT_DEFAULT,
 } from "./types";
 
+const LEGACY_HARMONY_FONTS = new Set([
+  "harmonyos sans",
+  "harmonyos sans sc",
+]);
+
+function migrateLegacyHarmonyFont(value: unknown) {
+  if (typeof value !== "string") return value;
+  const name = value.trim().replace(/^["']+|["']+$/g, "").toLowerCase();
+  return LEGACY_HARMONY_FONTS.has(name) ? null : value;
+}
+
+function migrateLegacyHarmonyFontStack(value: unknown) {
+  if (typeof value !== "string") return value;
+  const families = value.split(",");
+  const remaining = families.filter((family) => {
+    const name = family.trim().replace(/^["']+|["']+$/g, "").toLowerCase();
+    return !LEGACY_HARMONY_FONTS.has(name);
+  });
+  return remaining.length === families.length
+    ? value
+    : remaining.length
+      ? remaining.join(",")
+      : null;
+}
+
+function migrateLegacyHarmonyFonts(state: Record<string, unknown>) {
+  for (const key of ["uiFontFamily", "sidebarFontFamily"] as const) {
+    const migrated = migrateLegacyHarmonyFont(state[key]);
+    if (migrated !== state[key]) state[key] = migrated;
+  }
+
+  const fonts = state.customFonts;
+  if (!fonts || typeof fonts !== "object" || Array.isArray(fonts)) return;
+
+  let changed = false;
+  const migratedFonts = { ...(fonts as Record<string, unknown>) };
+  for (const key of ["default", "serif", "mono"] as const) {
+    const config = migratedFonts[key];
+    if (!config || typeof config !== "object" || Array.isArray(config)) continue;
+    const current = config as Record<string, unknown>;
+    const font = migrateLegacyHarmonyFontStack(current.font);
+    if (font !== current.font) {
+      migratedFonts[key] = { ...current, font };
+      changed = true;
+    }
+  }
+  if (changed) state.customFonts = migratedFonts;
+}
+
 export function migrateSettingsPersistedState(
   persistedState: unknown,
   version = 3,
@@ -17,6 +66,9 @@ export function migrateSettingsPersistedState(
       : {};
 
   delete state.codeStyle;
+
+  // v9 removes only the retired system-font selection; preserve every other saved family.
+  if (version < 9) migrateLegacyHarmonyFonts(state);
 
   // 旧版只有「界面字号」两档，且侧栏树写死 13px。缺省时从界面档位推断侧栏字号。
   if (

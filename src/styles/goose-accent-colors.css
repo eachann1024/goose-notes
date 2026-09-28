@@ -207,53 +207,53 @@
 }
 
 :root[data-goose-accent="amber"] {
-  --primary: 40 27% 35%;
-  --ring: 40 27% 35%;
+  --primary: 22.500 78.351% 38.039%;
+  --ring: 22.500 78.351% 38.039%;
   --goose-primary-hover-bg: var(--goose-interactive-hover);
   --goose-primary-active-bg: var(--goose-interactive-selected);
-  --goose-interactive-selected: #fcf8f0;
-  --goose-interactive-selected-fg: #332f27;
-  --goose-interactive-selected-border: #9d9072;
-  --goose-sidebar-hover: #eee5d3;
-  --goose-interactive-hover: #eee5d3;
-  --goose-interactive-hover-fg: #332f27;
-  --goose-interactive-hover-border: #96886a;
+  --goose-interactive-selected: #fffaf3;
+  --goose-interactive-selected-fg: #ad4e15;
+  --goose-interactive-selected-border: #ad4e15;
+  --goose-sidebar-hover: #f5dfc5;
+  --goose-interactive-hover: #f5dfc5;
+  --goose-interactive-hover-fg: #8c3c0c;
+  --goose-interactive-hover-border: #ad4e15;
   --goose-icon-chip-on-selected: var(--goose-interactive-selected);
-  --goose-inline-code-bg: #f1e9da;
-  --goose-inline-code-fg: #594f3c;
-  --goose-inline-code-border-hover: #96886a;
-  --goose-callout-accent: #716141;
-  --goose-ai-approval-check-bg: #716141;
-  --goose-accent-link: #716141;
-  --goose-accent-link-hover: #564b32;
-  --goose-accent-focus: #716141;
-  --goose-accent-drag-line: #716141;
-  --goose-accent-drag-glow: 0 0 8px rgba(113, 97, 65, 0.28);
+  --goose-inline-code-bg: #fff0de;
+  --goose-inline-code-fg: #ad4e15;
+  --goose-inline-code-border-hover: #ad4e15;
+  --goose-callout-accent: #ad4e15;
+  --goose-ai-approval-check-bg: #ad4e15;
+  --goose-accent-link: #ad4e15;
+  --goose-accent-link-hover: #8c3c0c;
+  --goose-accent-focus: #ad4e15;
+  --goose-accent-drag-line: #ad4e15;
+  --goose-accent-drag-glow: 0 0 8px rgba(173, 78, 21, 0.28);
 }
 
 :root.dark[data-goose-accent="amber"] {
-  --primary: 40 27% 35%;
-  --ring: 42.857 28% 60.784%;
+  --primary: 22.500 78.351% 38.039%;
+  --ring: 31.079 79.429% 65.686%;
   --goose-primary-hover-bg: var(--goose-interactive-hover);
   --goose-primary-active-bg: var(--goose-interactive-selected);
-  --goose-interactive-selected: #39362f;
-  --goose-interactive-selected-fg: #e5dcc7;
-  --goose-interactive-selected-border: #95876a;
-  --goose-sidebar-hover: #302e28;
-  --goose-interactive-hover: #302e28;
-  --goose-interactive-hover-fg: #e5dcc7;
-  --goose-interactive-hover-border: #95876a;
+  --goose-interactive-selected: #3f3025;
+  --goose-interactive-selected-fg: #f4c99b;
+  --goose-interactive-selected-border: #b38451;
+  --goose-sidebar-hover: #30271f;
+  --goose-interactive-hover: #30271f;
+  --goose-interactive-hover-fg: #f4c99b;
+  --goose-interactive-hover-border: #b38451;
   --goose-icon-chip-on-selected: var(--goose-interactive-selected);
-  --goose-inline-code-bg: #353229;
-  --goose-inline-code-fg: #e4dac2;
-  --goose-inline-code-border-hover: #978766;
-  --goose-callout-accent: #b7a77f;
-  --goose-ai-approval-check-bg: #85785a;
-  --goose-accent-link: #d0c3a2;
-  --goose-accent-link-hover: #efe7d6;
-  --goose-accent-focus: #b7a77f;
-  --goose-accent-drag-line: #b7a77f;
-  --goose-accent-drag-glow: 0 0 8px rgba(183, 167, 127, 0.34);
+  --goose-inline-code-bg: #392b20;
+  --goose-inline-code-fg: #f4c99b;
+  --goose-inline-code-border-hover: #b38451;
+  --goose-callout-accent: #edaa62;
+  --goose-ai-approval-check-bg: #ad4e15;
+  --goose-accent-link: #f4c99b;
+  --goose-accent-link-hover: #ffe3c2;
+  --goose-accent-focus: #edaa62;
+  --goose-accent-drag-line: #edaa62;
+  --goose-accent-drag-glow: 0 0 8px rgba(237, 170, 98, 0.34);
 }
 
 :root[data-goose-accent="coral"] {
@@ -409,7 +409,7 @@
 /*
  * 编辑器文字选区（::selection / ShowSelection / fake-selection）。
  * 旧 Chromium 上 ::selection 对继承来的 CSS 变量不稳定，会掉回 .dark 的 iris 默认紫，
- * 与侧栏强调色（如琥珀）不一致。这里按 data-goose-accent 写死实色，确保跟强调色。
+ * 与侧栏强调色（如橙）不一致。这里按 data-goose-accent 写死实色，确保跟强调色。
  * 深色用 0.35 透明度（比侧栏选中 0.2 略实），浅字可读。
  */
 :root[data-goose-accent="iris"] {
@@ -437,10 +437,10 @@
   --goose-editor-selection-bg: rgba(34, 197, 94, 0.35);
 }
 :root[data-goose-accent="amber"] {
-  --goose-editor-selection-bg: #efe6d6;
+  --goose-editor-selection-bg: #f5dfc5;
 }
 :root.dark[data-goose-accent="amber"] {
-  --goose-editor-selection-bg: rgba(183, 167, 127, 0.32);
+  --goose-editor-selection-bg: rgba(237, 170, 98, 0.32);
 }
 :root[data-goose-accent="coral"] {
   --goose-editor-selection-bg: #ffedd5;
@@ -658,12 +658,12 @@
 :root[data-goose-accent="amber"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root[data-goose-accent="amber"] .goose-blocknote-editor .goose-fake-selection,
 :root[data-goose-accent="amber"] .bn-editor .goose-fake-selection {
-  background-color: #efe6d6;
+  background-color: #f5dfc5;
   color: inherit;
 }
 :root[data-goose-accent="amber"] .goose-blocknote-editor [data-show-selection],
 :root[data-goose-accent="amber"] .bn-editor [data-show-selection] {
-  background-color: #efe6d6 !important;
+  background-color: #f5dfc5 !important;
   color: inherit;
 }
 :root.dark[data-goose-accent="amber"] .goose-blocknote-editor .bn-inline-content::selection,
@@ -680,12 +680,12 @@
 :root.dark[data-goose-accent="amber"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="amber"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="amber"] .bn-editor .goose-fake-selection {
-  background-color: rgba(183, 167, 127, 0.32);
+  background-color: rgba(237, 170, 98, 0.32);
   color: inherit;
 }
 :root.dark[data-goose-accent="amber"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="amber"] .bn-editor [data-show-selection] {
-  background-color: rgba(183, 167, 127, 0.32) !important;
+  background-color: rgba(237, 170, 98, 0.32) !important;
   color: inherit;
 }
 
@@ -872,49 +872,38 @@
   --goose-input-surface: hsl(var(--goose-editor-bg));
 }
 :root:not(.dark)[data-goose-accent="amber"] {
-  --goose-shell-bg: 40 45% 89%;
-  --goose-editor-bg: 0 0% 100%;
-  --foreground: 36 9% 18%;
+  --goose-shell-bg: 33.529 68.000% 90.196%;
+  --goose-editor-bg: 38.182 57.895% 96.275%;
+  --foreground: 34.286 7.865% 17.451%;
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
-  --muted-foreground: 35 8% 36%;
+  --muted-foreground: 32.000 8.671% 33.922%;
   --popover: 0 0% 100%;
-  --border: 37 23% 84%;
+  --border: 36.923 21.311% 88.039%;
   --goose-menu-surface: var(--popover);
   --goose-menu-border: var(--border);
-  --goose-selected-bg: 40 43% 92%;
-  --primary: 40 27% 35%;
+  --goose-selected-bg: 32.727 100.000% 93.529%;
+  --primary: 22.500 78.351% 38.039%;
   --ring: var(--primary);
   --goose-shell-surface: var(--goose-sidebar-surface);
-  --goose-sidebar-surface: linear-gradient(
-    165deg,
-    #f1e7d1 0%,
-    #f2e8d4 26%,
-    #f3ecdd 73%,
-    #f4efe1 100%
-  );
-  --goose-editor-surface: #ffffff;
-  --goose-ai-surface: linear-gradient(
-    165deg,
-    #fcf8f1 0%,
-    #fcf8f2 50%,
-    #fdfbf7 100%
-  );
+  --goose-sidebar-surface: linear-gradient(180deg, #f7e8d5, #faf4e8);
+  --goose-editor-surface: linear-gradient(180deg, #fbf7f0, #fbfaf5);
+  --goose-ai-surface: linear-gradient(180deg, #faf4e9, #fbfaf5);
   --goose-secondary-surface: var(--goose-ai-surface);
-  --goose-input-surface: #feffff;
+  --goose-input-surface: #ffffff;
 }
 :root.dark[data-goose-accent="amber"] {
   --goose-sidebar-surface: linear-gradient(
     165deg,
-    #1b1b19 0%,
-    #1e1e1b 50%,
-    #22211e 100%
+    #211c17 0%,
+    #241e18 50%,
+    #282019 100%
   );
   --goose-ai-surface: linear-gradient(
     165deg,
-    #1b1c1a 0%,
-    #1e1e1b 50%,
-    #22211e 100%
+    #211d19 0%,
+    #241e18 50%,
+    #282019 100%
   );
   --goose-secondary-surface: var(--goose-ai-surface);
 }

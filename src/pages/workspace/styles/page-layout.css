@@ -30,7 +30,7 @@
   --page-heading-gap: 0px;
   margin-block: 0 var(--page-title-gap);
 }
-[data-page-layout] .bn-editor :is(h1, [data-content-type="heading"]:has(h1)) { --level: calc(34px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 650; letter-spacing: -0.5px; }
+[data-page-layout] .bn-editor :is(h1, [data-content-type="heading"]:has(h1)) { --level: calc(34px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 700; letter-spacing: -0.5px; }
 [data-page-layout] .bn-editor :is(h2, [data-content-type="heading"]:has(h2)) { --level: calc(21px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 600; letter-spacing: -0.25px; }
 [data-page-layout] .bn-editor :is(h3, [data-content-type="heading"]:has(h3)) { --level: calc(19px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; }
 /* BlockNote wraps blocks in flex columns, so the HTML reference's prose margins
@@ -50,7 +50,7 @@
   padding: 3px 0 3px 20px;
   font-size: calc(18px * var(--editor-scale, 1));
 }
-[data-page-layout] .bn-editor .bn-inline-content strong { font-weight: 650; }
+[data-page-layout] .bn-editor .bn-inline-content strong { font-weight: 700; }
 /* Dense structures keep their own rhythm rather than inheriting prose spacing. */
 [data-page-layout] .bn-editor :is(td, th, [data-content-type="bulletListItem"], [data-content-type="numberedListItem"]) {
   --page-paragraph-gap: 0px;
@@ -69,7 +69,6 @@
   --bn-font-family: var(--goose-document-font);
   font-family: var(--goose-document-font);
   letter-spacing: normal;
-  -webkit-font-smoothing: auto;
 }
 /* Only the two approved light palettes replace BlockNote's independent ink. */
 :root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="mono"]) [data-page-layout] .bn-editor {

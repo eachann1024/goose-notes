@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
-import { DEFAULT_FONT_NAMES, getEditorFontFamilies } from "../../src/lib/fontLoader";
+import { DEFAULT_FONT_NAMES, getEditorFontFamilies, SYSTEM_FONT_STACK } from "../../src/lib/fontLoader";
 import { normalizePageLayout, parseLocalFrontmatterBlob } from "../../src/lib/local-frontmatter";
 import { migrateSettingsPersistedState } from "../../src/stores/settings/migrations";
 import { DEFAULT_ACCENT_COLOR, EDITOR_FONT_SIZE_DEFAULT, EDITOR_LINE_HEIGHT_DEFAULT, normalizeAccentColor, normalizeEditorFontSize, normalizeEditorLineHeight } from "../../src/stores/settings/types";
@@ -32,19 +32,20 @@ assert.equal(custom.defaultPageLayout, "full");
 assert.equal(migrateSettingsPersistedState({ editorFontSize: 16, editorLineHeight: 1.5 }, 6).editorFontSize, 16);
 assert.equal(migrateSettingsPersistedState({ editorFontSize: 16, editorLineHeight: 1.5 }, 6).editorLineHeight, 1.5);
 const fonts = { default: { label: null, font: null }, serif: { label: null, font: null }, mono: { label: null, font: null } };
-assert.equal(DEFAULT_FONT_NAMES.default, "Songti SC");
-assert.deepEqual(getEditorFontFamilies("default", fonts), ["Songti SC", "Noto Serif CJK SC", "STSong"]);
+assert.equal(DEFAULT_FONT_NAMES.default, SYSTEM_FONT_STACK);
+assert.equal(SYSTEM_FONT_STACK, '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+assert.deepEqual(getEditorFontFamilies("default", fonts), ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"]);
 assert.equal(getEditorFontFamilies("default", { ...fonts, default: { label: null, font: "Custom Font" } })[0], "Custom Font");
 
-// Freeze every palette outside the intentionally redesigned mono-light and maple themes.
+// Freeze every palette outside the intentionally redesigned mono-light and orange themes.
 const keys = ["iris", "ocean", "mono", "pine", "amber", "coral", "rose", "grape"] as const;
 const protectedTokens = keys.flatMap(k => [false, true].filter(d => k !== "amber" && (d || k !== "mono")).map(d => [k, d, resolveAccentRuntimeTokens(k, d)]));
 assert.equal(createHash("sha256").update(JSON.stringify(protectedTokens)).digest("hex"), "5a8d22af83babcb65f3ade0d3ca52f56e086fb0ab06a50eafa0292127afecfb1");
 assert.equal(DEFAULT_ACCENT_COLOR, "mono");
 for (const value of [undefined, null, "invalid"]) assert.equal(normalizeAccentColor(value), "mono");
 for (const value of keys) assert.equal(normalizeAccentColor(value), value, "Never overwrite a saved theme choice");
-assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-interactive-selected"], "#fcf8f0");
-assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-sidebar-hover"], "#eee5d3");
+assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-interactive-selected"], "#fffaf3");
+assert.equal(resolveAccentRuntimeTokens("amber", false)["--goose-sidebar-hover"], "#f5dfc5");
 const warm = resolveAccentRuntimeTokens("mono", false);
 assert.equal(warm["--goose-interactive-selected"], "#fcfcf7");
 assert.equal(warm["--goose-sidebar-hover"], "#e3e1d5");
@@ -79,7 +80,8 @@ const layoutCss = readFileSync(new URL("../../src/pages/workspace/styles/page-la
 assert.match(layoutCss, /:has\(h1\)/, "BlockNote can wrap a heading; do not require a direct h1 child");
 assert.match(layoutCss, /page-layout-document > \.workspace-editor-surface \{ padding-block: 0;/, "Document owns both top and bottom gutters");
 assert.match(layoutCss, /--page-heading-gap: max\(0px, calc\(var\(--page-title-gap\) - var\(--previous-prose-gap, 0px\)\)\)/, "Wrapped prose must not add both neighboring margins");
-assert.match(layoutCss, /letter-spacing: normal;\s*-webkit-font-smoothing: auto;/, "Prose must not inherit UI tracking or smoothing");
+assert.match(layoutCss, /letter-spacing: normal;/, "Prose must not inherit UI tracking");
+assert.doesNotMatch(layoutCss, /font-smoothing/);
 assert.match(layoutCss, /--bn-colors-editor-text: hsl\(var\(--foreground\)\)/, "Approved palettes must reach BlockNote's text token");
 assert.match(layoutCss, /@container page-layout \(max-width: 680px\) \{\s*\[data-page-layout\] \.page-layout-document/, "Responsive padding must match the base selector specificity");
 console.log("PASS refined interface: defaults, safe legacy migration, fonts, layout, 13 unchanged palettes, B warm surfaces and contrast");

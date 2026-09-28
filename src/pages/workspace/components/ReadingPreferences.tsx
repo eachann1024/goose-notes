@@ -44,7 +44,7 @@ export function ReadingPreferences({ showPreview = true, fontSize, lineHeight, o
       </div>)}
     </div>
     <div className="flex flex-wrap gap-2" role="group" aria-label="行距预设">
-      {([[1.4, "紧凑"], [1.5, "标准"], [1.8, "舒适"], [2, "宽松"]] as const).map(([value, label]) =>
+      {([[1.4, "紧凑"], [1.5, "标准"], [1.65, "舒适"], [2, "宽松"]] as const).map(([value, label]) =>
         <Button key={value} type="button" variant="outline" size="sm" aria-pressed={lineHeight === value}
           className="rounded-lg border-border text-xs aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
           onClick={() => onLineHeightChange(value)}>{label} {value.toFixed(2)}</Button>)}

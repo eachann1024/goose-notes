@@ -77,7 +77,7 @@ const emptyCustomFonts = {
   mono: { font: null },
 };
 
-test("default / 空 / HarmonyOS / ui-sans-serif 走 Noto TTF，不用鸿蒙 WOFF2", () => {
+test("default / 空 / 未知自定义字体 / ui-sans-serif 走 Noto TTF", () => {
   const fromEmpty = resolvePdfFontPlan("default", emptyCustomFonts);
   expect(fromEmpty.embed).toBe("noto");
   expect(fromEmpty.bodyFamily).toBe(PDF_FONT_FAMILY);
@@ -88,16 +88,16 @@ test("default / 空 / HarmonyOS / ui-sans-serif 走 Noto TTF，不用鸿蒙 WOFF
     expect(url.toLowerCase().endsWith(".ttf")).toBeTruthy();
   }
 
-  const fromHarmony = resolvePdfFontPlan("default", {
+  const fromUnknown = resolvePdfFontPlan("default", {
     ...emptyCustomFonts,
-    default: { font: "HarmonyOS Sans SC" },
+    default: { font: "Unrecognized Custom Font" },
   });
-  expect(fromHarmony.embed).toBe("noto");
-  expect(fromHarmony.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
+  expect(fromUnknown.embed).toBe("noto");
+  expect(fromUnknown.bodyUrls).toEqual([...PDF_CJK_FONT_URLS]);
 
   const fromUiSans = resolvePdfFontPlan("default", {
     ...emptyCustomFonts,
-    default: { font: "ui-sans-serif, HarmonyOS Sans SC" },
+    default: { font: "ui-sans-serif, Unrecognized Custom Font" },
   });
   expect(fromUiSans.embed).toBe("noto");
   expect(fromUiSans.bodyUrls[0]).toBe(PDF_CJK_FONT_URLS[0]);
@@ -232,9 +232,9 @@ test("WOFF2 不当作成功，也不去 fetch", async () => {
     return new Response(new Uint8Array(120_000), { status: 200 });
   }) as typeof fetch;
   try {
-    expect(isEmbeddablePdfFontUrl("https://cdn.example/HarmonyOS.woff2")).toBeFalsy();
+    expect(isEmbeddablePdfFontUrl("https://cdn.example/custom-font.woff2")).toBeFalsy();
     const src = await loadFirstPdfFontDataUrl([
-      "https://cdn.example/HarmonyOS.woff2",
+      "https://cdn.example/custom-font.woff2",
     ]);
     expect(src).toBeNull();
     expect(calls).toBe(0);

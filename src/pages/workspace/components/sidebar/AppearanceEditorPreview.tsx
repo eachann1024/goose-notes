@@ -7,6 +7,7 @@ interface Props {
   editorFontSize: number;
   editorLineHeight: number;
   uiFontSize: UIFontSize;
+  showDemoEnglish?: boolean;
 }
 
 function EditorSample({
@@ -14,6 +15,7 @@ function EditorSample({
   editorFontSize,
   editorLineHeight,
   uiFontSize,
+  showDemoEnglish = true,
 }: Props) {
   const layout = useSettings((state) => state.defaultPageLayout);
   return (
@@ -90,9 +92,11 @@ function EditorSample({
               >
                 “日子不必安排得太满。留一点空白，才有时间看看窗外的云。”
               </blockquote>
-              <p className="mb-2" style={{ fontFamily: "var(--font-serif)" }}>
-                衬线体示例 · A little room to breathe.
-              </p>
+              {showDemoEnglish && (
+                <p className="mb-2" style={{ fontFamily: "var(--font-serif)" }}>
+                  衬线体示例 · A little room to breathe.
+                </p>
+              )}
               <div className="goose-code-block-node">
                 <div className="goose-code-content-wrapper !pt-0">
                   <pre className="goose-code-pre">

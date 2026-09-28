@@ -155,8 +155,8 @@ test("深色行内代码 token 足够有色相和底色", () => {
 
   expect(getToken(irisDark, "--goose-inline-code-fg")).toBe("#c7d2fe");
   expect(getToken(oceanDark, "--goose-inline-code-fg")).toBe("#bfdbfe");
-  expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#353229");
-  expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#e4dac2");
+  expect(getToken(amberDark, "--goose-inline-code-bg")).toBe("#392b20");
+  expect(getToken(amberDark, "--goose-inline-code-fg")).toBe("#f4c99b");
   expect(getToken(roseDark, "--goose-inline-code-fg")).toBe("#fecdd3");
   expect(getToken(monoDark, "--goose-inline-code-fg")).toMatch(
     /^#f[a-f0-9]{5}$/i,

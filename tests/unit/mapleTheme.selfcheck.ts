@@ -36,7 +36,7 @@ const value = (source: string, name: string) => {
 const option = appearance.match(/\{\s*value: "amber",([\s\S]*?)\n  \},/);
 assert.ok(option, "Missing amber appearance option");
 assert.match(option[0], /value: "amber"/);
-assert.match(option[1], /label: "枫叶"/);
+assert.match(option[1], /label: "晨橙"/);
 assert.match(types, /"amber"/);
 assert.match(appearance, /className="relative h-5 w-5[^\"]*rounded-full/);
 assert.equal((appearance.match(/absolute inset-y-0 (?:left|right)-0 w-1\/2/g) ?? []).length, 2, "Keep the original two-half preview size");
@@ -49,13 +49,26 @@ const amberSurface = rule(css, ':root:not(.dark)[data-goose-accent="amber"]');
 const amberAccent = rule(css, ':root[data-goose-accent="amber"]');
 const amberDarkSurface = rule(css, ':root.dark[data-goose-accent="amber"]');
 const darkAccent = rule(css, ':root.dark[data-goose-accent="amber"]');
+// The saved key stays amber; runtime overrides must agree with both CSS palettes.
+const runtimeAmber = runtime.slice(runtime.indexOf("  amber: {"), runtime.indexOf("  coral: {"));
+for (const [mode, declarations] of [["light", amberAccent], ["dark", darkAccent]]) {
+  const block = runtimeAmber.match(new RegExp(`${mode}: \{([\\s\\S]*?)\n    \}`));
+  assert.ok(block, `Missing ${mode} runtime palette`);
+  for (const [, name, color] of block[1].matchAll(/"--([^"]+)": "([^"]+)"/g)) {
+    assert.equal(value(declarations, name), color, `${mode} CSS/runtime mismatch: ${name}`);
+  }
+}
+assert.equal(value(amberAccent, "goose-interactive-selected"), "#fffaf3");
+assert.equal(value(amberAccent, "goose-inline-code-bg"), "#fff0de");
+assert.equal(value(amberAccent, "goose-accent-focus"), "#ad4e15");
 const monoSurface = rule(css, ':root:not(.dark)[data-goose-accent="mono"]');
 const monoAccent = rule(css, ':root[data-goose-accent="mono"]');
-assert.equal(value(amberSurface, "goose-editor-surface"), "#ffffff");
-assert.match(value(amberSurface, "goose-sidebar-surface"), /^linear-gradient\(/);
-assert.match(value(amberSurface, "goose-ai-surface"), /^linear-gradient\(/);
+assert.equal(value(amberSurface, "goose-editor-surface"), "linear-gradient(180deg, #fbf7f0, #fbfaf5)");
+assert.equal(value(amberSurface, "goose-editor-bg"), "38.182 57.895% 96.275%", "Solid editor chrome must match the paper gradient start");
+assert.equal(value(amberSurface, "goose-sidebar-surface"), "linear-gradient(180deg, #f7e8d5, #faf4e8)");
+assert.equal(value(amberSurface, "goose-ai-surface"), "linear-gradient(180deg, #faf4e9, #fbfaf5)");
 assert.equal(value(amberSurface, "goose-secondary-surface"), "var(--goose-ai-surface)");
-assert.equal(value(amberSurface, "goose-input-surface"), "#feffff");
+assert.equal(value(amberSurface, "goose-input-surface"), "#ffffff");
 for (const property of ["goose-sidebar-surface", "goose-secondary-surface"]) {
   assert.equal(css.match(new RegExp(`--${property}:`, "g"))?.length, 2, `${property} must have only light/dark amber definitions`);
   assert.match(amberSurface, new RegExp(`--${property}:`));
@@ -96,7 +109,7 @@ const stops = (gradient: string) => {
 const backgrounds = [
   ...stops(value(amberSurface, "goose-sidebar-surface")),
   ...stops(value(amberSurface, "goose-ai-surface")),
-  toRgb("#ffffff"),
+  ...stops(value(amberSurface, "goose-editor-surface")),
   toRgb(value(amberSurface, "goose-input-surface")),
 ];
 for (const foreground of [value(amberSurface, "foreground"), value(amberSurface, "muted-foreground")].map(toRgb)) {
@@ -108,6 +121,12 @@ const lightRing = value(amberSurface, "ring") === "var(--primary)"
   ? toRgb(value(amberSurface, "primary"))
   : toRgb(value(amberSurface, "ring"));
 for (const background of backgrounds) assert.ok(contrast(lightRing, background) >= 3, "Light --ring contrast must be at least 3:1");
+
+for (const declarations of [amberAccent, darkAccent]) {
+  for (const state of ["selected", "hover"]) {
+    assert.ok(contrast(toRgb(value(declarations, `goose-interactive-${state}-fg`)), toRgb(value(declarations, `goose-interactive-${state}`))) >= 4.5, `${state} text contrast`);
+  }
+}
 
 const darkBackgrounds = [
   ...stops(value(amberDarkSurface, "goose-sidebar-surface")),
@@ -127,7 +146,7 @@ assert.ok(contrast(lightForeground, lightSurface) >= 4.5, "Light selected text c
 assert.ok(contrast(lightForeground, lightSurface) >= 3, "Light keyboard focus contrast must be at least 3:1");
 const darkForeground = toRgb(preview("darkForeground"));
 const darkSurface = preview("darkSurface").match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/);
-assert.ok(darkSurface, "Expected translucent maple dark preview surface");
+assert.ok(darkSurface, "Expected translucent orange dark preview surface");
 const darkBase = toRgb(value(darkAccent, "goose-interactive-selected"));
 const darkBackground = darkBase.map((channel, index) =>
   Number(darkSurface[index + 1]) * Number(darkSurface[4]) + channel * (1 - Number(darkSurface[4])),
@@ -137,4 +156,4 @@ assert.ok(contrast(darkForeground, darkBackground) >= 3, "Dark keyboard focus co
 
 assert.match(css, /\.goose-accent-option:focus-visible\s*\{[^}]*var\(--goose-accent-option-light-fg\)/);
 assert.match(css, /\.dark \.goose-accent-option:focus-visible\s*\{[^}]*var\(--goose-accent-option-dark-fg\)/);
-console.log("PASS maple label/key, fixed preview geometry, amber surface scope, no-residue cascade, and text/focus contrast (static; visual acceptance remains separate)");
+console.log("PASS orange label/key, fixed preview geometry, amber surface scope, no-residue cascade, and text/focus contrast (static; visual acceptance remains separate)");

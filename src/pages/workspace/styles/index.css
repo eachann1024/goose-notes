@@ -31,6 +31,7 @@
 .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.06);
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 3%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
   --workspace-sidebar-surface: var(--goose-sidebar-surface, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
   --workspace-main-surface: var(--goose-editor-surface);
   --workspace-stage-pad-top: 8px;
@@ -64,6 +65,7 @@
 .dark .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.12);
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 6%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
   --workspace-main-surface: var(--goose-editor-surface);
   --workspace-resize-line: linear-gradient(
     180deg,
@@ -84,7 +86,7 @@
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
 }
 
-/* 枫叶：正文留白，次级页面与浮层沿用参考图的浅暖渐变。 */
+/* 晨橙：正文使用暖纸色，次级页面略暖；输入框留白，布局不变。 */
 :root[data-goose-accent="amber"] :is(
   .workspace-page-empty,
   .workspace-folder-home,
@@ -136,6 +138,15 @@
   left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
 }
 
+/* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。
+ * 导航轨道右缘紧贴面板左缘，只保留面板的圆角外沿。 */
+.dark .workspace-shell .workspace-content-frame {
+  border-color: var(--workspace-top-edge);
+}
+.dark .workspace-shell .sidebar-rail-shell {
+  border-right: 0;
+}
+
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
    shell 改纵向布局，stage 占满剩余高度。仅 Electron 构建渲染该顶栏。
    标题输入左缘对齐主栏（stage 左垫 + 侧栏宽 + gap），且不小于红绿灯占位。 */
@@ -152,7 +163,7 @@
 }
 .workspace-shell[data-electron-chrome] .electron-titlebar {
   position: relative;
-  background: var(--goose-shell-surface);
+  background: transparent;
   padding-left: max(
     calc(var(--electron-traffic-inset, 78px) + 7rem + 8px),
     calc(
@@ -357,7 +368,7 @@ html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
 /* 外层包含标题、多标签和入口栏；文件列表与底部切换器共用第二层。 */
 .workspace-shell .sidebar-mode-rail {
   border-right: 0;
-  background: var(--goose-shell-surface);
+  background: transparent;
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > div {
   background: var(--workspace-sidebar-surface);
@@ -382,13 +393,17 @@ html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
   pointer-events: none;
 }
 
+.dark .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  background: var(--workspace-top-edge);
+}
+
 /* 侧栏收起时把手仍可能由 BlockNote 挂到 portal；用根属性藏掉，不让编辑器订侧栏 store。 */
 html[data-sidebar-collapsed] .bn-side-menu {
   display: none;
 }
 
 .workspace-shell .workspace-sidebar-pane {
-  background: var(--workspace-sidebar-surface);
+  background: transparent;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -403,6 +418,18 @@ html[data-sidebar-collapsed] .bn-side-menu {
     transform var(--workspace-sidebar-motion),
     width var(--workspace-sidebar-motion);
 }
+/* 顶栏、导航轨道与外侧留白透出同一张 shell 渐变；覆盖式侧栏仍需独立底色。 */
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] {
+  background: var(--goose-shell-surface);
+}
+
+/* 顶边必须不透底：同一条细线跨越深浅不同的三栏，避免正文看似高出一像素。 */
+.workspace-shell[data-electron-chrome] .workspace-content-frame {
+  border-top-color: var(--workspace-top-edge);
+  /* 只裁掉顶部阴影，保留侧边和底部共用的外沿。 */
+  clip-path: inset(0 -16px -16px);
+}
+
 .workspace-shell .workspace-sidebar-pane[data-sidebar-resizing] {
   transition: none;
 }

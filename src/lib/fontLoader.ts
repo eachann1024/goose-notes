@@ -1,16 +1,12 @@
 import type { CustomFonts } from "@/stores/useSettings";
 
+export const SYSTEM_FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
 export const DEFAULT_FONT_NAMES = {
-  default: "Songti SC",
+  default: SYSTEM_FONT_STACK,
   serif: "仓耳今楷",
   mono: "DM Mono",
-} as const;
-
-const HARMONYOS_SPLIT_CSS = {
-  primary:
-    "https://cdn.jsdelivr.net/npm/harmonyos-sans-webfont-splitted@1.2.1/dist/HarmonyOS_Sans_SC/Regular/Regular.css",
-  fallback:
-    "https://unpkg.com/harmonyos-sans-webfont-splitted@1.2.1/dist/HarmonyOS_Sans_SC/Regular/Regular.css",
 } as const;
 
 /** 本机安装时的常见 family / 文件名，先于远端。 */
@@ -21,8 +17,6 @@ const CANGER_JINKAI_LOCAL_NAMES = [
   "TsangerJinKai03-W04",
 ] as const;
 
-const EDITOR_DEFAULT_FALLBACKS = ["Songti SC", "Noto Serif CJK SC", "STSong"];
-
 const SERIF_LOCAL_FALLBACKS = ["Songti SC", "STSong", "SimSun", "Cambria"];
 
 /** 钉 commit 的仓耳今楷 woff2：国内镜像优先，再 jsDelivr / GitHub raw。不要拷进项目。 */
@@ -32,9 +26,8 @@ const CANGER_JINKAI_WOFF2_URLS = [
   "https://raw.githubusercontent.com/eachann1024/Resources/d6dc229cd882dc0983dc5ce7cf28fb85047a4a76/%E4%BB%93%E8%80%B3%E4%BB%8A%E6%A5%B703W04.woff2",
 ] as const;
 
-/** 鸿蒙走分包 CSS（unicode-range 按需拉 woff2）；仓耳今楷走 @font-face 远端 woff2。 */
+/** 仓耳今楷仅在用户选择衬线体时按需加载。 */
 export const REMOTE_FONT_SOURCES = {
-  "HarmonyOS Sans SC": HARMONYOS_SPLIT_CSS,
   仓耳今楷: CANGER_JINKAI_WOFF2_URLS,
 } as const;
 
@@ -42,7 +35,6 @@ const UI_MONO_FALLBACKS = [
   "ui-monospace",
   "Menlo",
   "Consolas",
-  "HarmonyOS Sans SC",
   "PingFang SC",
   "Hiragino Sans GB",
   "Microsoft YaHei",
@@ -52,7 +44,6 @@ const UI_MONO_FALLBACKS = [
 type PersistentWoff2Family = "仓耳今楷";
 
 const persistentFontLoads = new Map<string, Promise<boolean>>();
-let harmonyOSCssEnsured = false;
 
 const trimFontName = (font: string) =>
   font.trim().replace(/^["']+|["']+$/g, "");
@@ -77,18 +68,22 @@ const GENERIC_FAMILIES = new Set([
   "inherit",
   "initial",
   "unset",
-]);
+  "-apple-system",
+  "BlinkMacSystemFont",
+].map((family) => family.toLowerCase()));
 
 const formatFontFamily = (family: string) => {
   const trimmed = trimFontName(family);
   if (!trimmed) return null;
-  if (GENERIC_FAMILIES.has(trimmed)) return trimmed;
+  if (GENERIC_FAMILIES.has(trimmed.toLowerCase())) return trimmed;
   return `"${trimmed}"`;
 };
 
 /** 生成可写入 CSS font-family 的单项（泛型族不加引号）。 */
 export const toCssFontFamily = (family: string) =>
-  formatFontFamily(family) ?? family;
+  family.trim() === SYSTEM_FONT_STACK
+    ? SYSTEM_FONT_STACK
+    : (formatFontFamily(family) ?? family);
 
 export function normalizeLocalFontName(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -102,7 +97,7 @@ export function normalizeLocalFontName(value: unknown): string | null {
 export async function isLocalFontAvailable(value: string): Promise<boolean> {
   const name = normalizeLocalFontName(value);
   if (!name) return false;
-  if (GENERIC_FAMILIES.has(name)) return true;
+  if (GENERIC_FAMILIES.has(name.toLowerCase())) return true;
   try {
     await new FontFace("goose-local-font-probe", `local("${name}")`).load();
     return true;
@@ -129,7 +124,7 @@ const buildFontStack = (
 ) =>
   joinFonts(
     normalizeFontList([
-      ...(customList.length ? customList : [defaultFont]),
+      ...(customList.length ? customList : splitFontList(defaultFont)),
       ...baseFallbacks,
       ...platformFallbacks,
       generic,
@@ -161,46 +156,29 @@ const getPlatformFallbacks = () => {
 
 const joinFonts = (fonts: string[]) => fonts.filter(Boolean).join(", ");
 
-const injectStylesheet = (href: string, onError?: () => void) => {
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = href;
-  link.crossOrigin = "anonymous";
-  if (onError) link.onerror = onError;
-  document.head.appendChild(link);
-};
-
-/** 主 CDN 的 CSS 已由 fonts.css @import；这里探测失败时改挂 unpkg，不预拉 4MB 整包。 */
-const ensureHarmonyOSSplitCss = () => {
-  if (harmonyOSCssEnsured || typeof document === "undefined") return;
-  harmonyOSCssEnsured = true;
-
-  const { primary, fallback } = REMOTE_FONT_SOURCES["HarmonyOS Sans SC"];
-  injectStylesheet(primary, () => {
-    console.warn("[fontLoader] HarmonyOS Sans SC 主 CDN 失败，改用 unpkg");
-    injectStylesheet(fallback, () => {
-      console.warn(
-        "[fontLoader] HarmonyOS Sans SC 远程字体均失败，回退系统中文字体",
-      );
-    });
+const withTimeout = <T>(promise: Promise<T>, timeoutMs = 4000) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Font load timed out")), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
   });
 };
 
-/**
- * 应用启动时调用。鸿蒙交给 CSS unicode-range 按需分包；仓耳今楷走远端 @font-face。
- */
-export function preloadFonts() {
-  if (typeof document === "undefined") return;
-  ensureHarmonyOSSplitCss();
-  void ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
-}
-
-const isFontReady = (family: string) =>
-  typeof document.fonts.check === "function" &&
-  document.fonts.check(`1em "${family}"`);
+const hasLoadedFont = async (family: string) => {
+  try {
+    const faces = await withTimeout(
+      document.fonts.load(`400 1em ${toCssFontFamily(family)}`, "中文"),
+    );
+    return faces.some((face) => face.status === "loaded");
+  } catch {
+    return false;
+  }
+};
 
 const tryInstallLocalFont = async (family: PersistentWoff2Family) => {
-  if (isFontReady(family)) return true;
+  if (await hasLoadedFont(family)) return true;
 
   for (const localName of CANGER_JINKAI_LOCAL_NAMES) {
     try {
@@ -208,29 +186,29 @@ const tryInstallLocalFont = async (family: PersistentWoff2Family) => {
         style: "normal",
         weight: "400",
       });
-      await face.load();
+      await withTimeout(face.load());
       document.fonts.add(face);
       return true;
     } catch {
       // 本机没有这个名字，试下一个。
     }
   }
-  return isFontReady(family);
+  return hasLoadedFont(family);
 };
 
 const installRemoteFontFromUrls = async (family: PersistentWoff2Family) => {
   if (await tryInstallLocalFont(family)) return true;
 
   await waitForFonts([family]);
-  if (isFontReady(family)) return true;
+  if (await hasLoadedFont(family)) return true;
 
-  for (const url of CANGER_JINKAI_WOFF2_URLS) {
+  for (const url of REMOTE_FONT_SOURCES[family]) {
     try {
       const face = new FontFace(family, `url("${url}")`, {
         style: "normal",
         weight: "400",
       });
-      await face.load();
+      await withTimeout(face.load());
       document.fonts.add(face);
       return true;
     } catch (error) {
@@ -240,10 +218,7 @@ const installRemoteFontFromUrls = async (family: PersistentWoff2Family) => {
   return false;
 };
 
-/**
- * 打开 app 时触发仓耳今楷加载：本机 family 命中则不再拉网；
- * 否则走 fonts.css 的 @font-face，再按 URL 列表用 FontFace 补一次。
- */
+/** 用户选择衬线体时，本机字体优先；网络加载在后台且有超时。 */
 export function ensurePersistentRemoteFont(family: PersistentWoff2Family) {
   if (
     typeof document === "undefined" ||
@@ -270,18 +245,24 @@ export async function ensureEditorFontAvailable(
   fontFamily: "default" | "serif" | "mono" | undefined,
   customFonts: CustomFonts,
 ) {
-  if (fontFamily !== "serif") return;
-
-  const serifFamilies = splitFontList(customFonts.serif.font);
+  const category = fontFamily ?? "default";
+  const selectedFamilies = splitFontList(customFonts[category].font);
+  const selectsJinKai = selectedFamilies.some((family) =>
+    CANGER_JINKAI_LOCAL_NAMES.some(
+      (localName) => localName.toLowerCase() === family.toLowerCase(),
+    ),
+  );
   const usesBuiltInSerif =
-    serifFamilies.length === 0 ||
-    serifFamilies.includes(DEFAULT_FONT_NAMES.serif);
-  if (usesBuiltInSerif) {
+    category === "serif" &&
+    (selectedFamilies.length === 0 ||
+      selectedFamilies.includes(DEFAULT_FONT_NAMES.serif));
+
+  if (selectsJinKai || usesBuiltInSerif) {
     void ensurePersistentRemoteFont(DEFAULT_FONT_NAMES.serif);
     return;
   }
 
-  void waitForFonts(serifFamilies);
+  void waitForFonts(selectedFamilies);
 }
 
 export function applyFontVariables(
@@ -292,7 +273,6 @@ export function applyFontVariables(
   } = {},
 ) {
   if (typeof document === "undefined") return;
-  ensureHarmonyOSSplitCss();
   const fallbacks = getPlatformFallbacks();
   const root = document.documentElement;
   const uiFont = normalizeLocalFontName(fonts.uiFontFamily);
@@ -300,14 +280,14 @@ export function applyFontVariables(
   root.style.setProperty(
     "--font-ui",
     uiFont
-      ? `${toCssFontFamily(uiFont)}, -apple-system, BlinkMacSystemFont, sans-serif`
-      : "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif",
+      ? `${toCssFontFamily(uiFont)}, ${SYSTEM_FONT_STACK}`
+      : SYSTEM_FONT_STACK,
   );
   root.style.setProperty(
     "--font-sidebar",
     sidebarFont
-      ? `${toCssFontFamily(sidebarFont)}, -apple-system, BlinkMacSystemFont, sans-serif`
-      : "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
+      ? `${toCssFontFamily(sidebarFont)}, ${SYSTEM_FONT_STACK}`
+      : SYSTEM_FONT_STACK,
   );
   const customDefaultList = splitFontList(customFonts.default.font);
   const customSerifList = splitFontList(customFonts.serif.font);
@@ -318,9 +298,9 @@ export function applyFontVariables(
     buildFontStack(
       customDefaultList,
       DEFAULT_FONT_NAMES.default,
-      EDITOR_DEFAULT_FALLBACKS,
+      splitFontList(SYSTEM_FONT_STACK),
       [],
-      "serif",
+      "sans-serif",
     ),
   );
   root.style.setProperty(
@@ -356,7 +336,7 @@ export function getEditorFontFamilies(
     mono: customFonts.mono.font || DEFAULT_FONT_NAMES.mono,
   };
   const fallbackMap = {
-    default: EDITOR_DEFAULT_FALLBACKS,
+    default: splitFontList(SYSTEM_FONT_STACK),
     serif: ["仓耳今楷", ...SERIF_LOCAL_FALLBACKS],
     mono: UI_MONO_FALLBACKS,
   };
@@ -377,6 +357,10 @@ export async function waitForFonts(families: string[]) {
   if (!uniqueFamilies.length) return;
 
   await Promise.allSettled(
-    uniqueFamilies.map((family) => document.fonts.load(`1em "${family}"`)),
+    uniqueFamilies.map((family) =>
+      withTimeout(
+        document.fonts.load(`400 1em ${toCssFontFamily(family)}`, "中文"),
+      ),
+    ),
   );
 }
