@@ -202,6 +202,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     onOpenPage,
     getActivePageLocalFilePath,
     getActivePageLocalFolderRoot,
+    onOpenMarkdownPath,
     onOpenAttachment,
     getLatestPage,
   } = useEditorPageContext();
@@ -235,6 +236,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   getActivePageLocalFilePathRef.current = getActivePageLocalFilePath;
   const getActivePageLocalFolderRootRef = useRef(getActivePageLocalFolderRoot);
   getActivePageLocalFolderRootRef.current = getActivePageLocalFolderRoot;
+  const onOpenMarkdownPathRef = useRef(onOpenMarkdownPath);
+  onOpenMarkdownPathRef.current = onOpenMarkdownPath;
   const onOpenAttachmentRef = useRef(onOpenAttachment);
   onOpenAttachmentRef.current = onOpenAttachment;
   const pageRef = useRef(page);
@@ -311,14 +314,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         existsAsync: (path) => platformRef.current.fs.existsAsync(path),
         isFsAvailable: () => platformRef.current.fs.isAvailable(),
         openPath: (rawText) => {
-          const open = onOpenAttachmentRef.current;
-          if (!open) return;
-          const fileName = rawText.split(/[\\/]/).pop() || rawText;
-          void open(rawText, fileName).then((result) => {
-            if (!result.ok) {
-              toast.error("无法打开该路径", {
-                description: result.error,
-              });
+          const openMarkdown = onOpenMarkdownPathRef.current;
+          if (!openMarkdown) return;
+          void openMarkdown(rawText).then((opened) => {
+            if (!opened) {
+              toast.error("无法打开该 Markdown 笔记");
             }
           });
         },

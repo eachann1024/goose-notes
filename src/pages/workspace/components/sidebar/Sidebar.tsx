@@ -395,7 +395,7 @@ export function Sidebar({
               }}
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="sidebar-content-surface flex min-h-0 min-w-0 flex-1 flex-col">
             {inHistoryMode && (
               <div className="min-h-0 flex-1 overflow-hidden rounded-[inherit]">
                 <HistoryVersionList />

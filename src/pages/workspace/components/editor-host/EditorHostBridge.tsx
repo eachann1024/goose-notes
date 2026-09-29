@@ -37,6 +37,11 @@ import { editorPlatform } from "@/lib/editor-platform/resolve";
 import { HostAdapter } from "@/lib/host/adapter";
 import { fileStorage } from "@/lib/fileStorage";
 import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
+import {
+  isInsideRoot,
+  resolveCandidatePath,
+} from "@/components/editor/inline-code/localPathTarget";
+import { openAssociatedMarkdownFile } from "@/lib/openAssociatedMarkdown";
 import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
 import { resolvePageMentionNavigation } from "@/lib/pageMentionNavigation";
 import { toast } from "@/components/ui/sonner";
@@ -177,6 +182,20 @@ export function EditorHostBridge({
         return notebook?.source === "local-folder"
           ? (notebook.localPath ?? null)
           : null;
+      },
+      onOpenMarkdownPath: async (source) => {
+        const livePage = usePages.getState().pages[page.id] ?? page;
+        const notebook = useNotebooks.getState().notebooks[livePage.workspaceId];
+        const root = notebook?.source === "local-folder" ? notebook.localPath : null;
+        if (!root || !livePage.localFilePath) return false;
+        const target = resolveCandidatePath(source, livePage.localFilePath);
+        if (!target || !isInsideRoot(target, root)) return false;
+        try {
+          if (!(await editorPlatform.fs.existsAsync(target))) return false;
+          return await openAssociatedMarkdownFile(target);
+        } catch {
+          return false;
+        }
       },
       onOpenAttachment: async (source, fileName) => {
         const livePage = usePages.getState().pages[page.id] ?? page;

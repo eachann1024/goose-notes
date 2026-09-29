@@ -206,7 +206,37 @@ export function toggleHeadingCollapsed(
   const block = editor.getBlock(headingId);
   if (!block || block.type !== "heading") return;
   const collapsed = readHeadingCollapsed(block);
-  editor.updateBlock(block, {
-    props: { collapsed: !collapsed },
+  const hiddenIds = new Set<string>();
+  if (!collapsed) {
+    const collect = (blocks: SectionFoldBlock[]) => {
+      for (const heading of blocks) {
+        if (heading.id === headingId) {
+          const sectionIds = new Set(collectSectionBlockIds(blocks, headingId));
+          collectDescendantIds(
+            blocks.filter((item) => sectionIds.has(item.id)),
+            hiddenIds,
+          );
+          collectDescendantIds(heading.children, hiddenIds);
+          return;
+        }
+        if (heading.children?.length) collect(heading.children);
+      }
+    };
+    collect(editor.document);
+  }
+
+  editor.transact((tr) => {
+    // 大纲右键不会移动正文选区。收起前先将即将隐藏的选区移到父标题，
+    // 避免 DOM selection 留在 display:none 的子标题/正文内。
+    let selectionWillHide = false;
+    if (hiddenIds.size > 0) {
+      tr.doc.nodesBetween(tr.selection.from, tr.selection.to, (node) => {
+        if (hiddenIds.has(String(node.attrs.id))) selectionWillHide = true;
+      });
+    }
+    if (selectionWillHide) editor.setTextCursorPosition(headingId, "end");
+    editor.updateBlock(block, {
+      props: { collapsed: !collapsed },
+    });
   });
 }

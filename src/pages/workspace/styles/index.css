@@ -138,13 +138,9 @@
   left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
 }
 
-/* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。
- * 导航轨道右缘紧贴面板左缘，只保留面板的圆角外沿。 */
+/* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。 */
 .dark .workspace-shell .workspace-content-frame {
   border-color: var(--workspace-top-edge);
-}
-.dark .workspace-shell .sidebar-rail-shell {
-  border-right: 0;
 }
 
 /* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
@@ -365,19 +361,19 @@ html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
   gap: 0;
 }
 
-/* 外层包含标题、多标签和入口栏；文件列表与底部切换器共用第二层。 */
+/* 导航轨道透出 shell 底色；仅文件列表/历史内容面板使用侧栏表面。 */
 .workspace-shell .sidebar-mode-rail {
   border-right: 0;
   background: transparent;
 }
-.workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > div {
+.workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > .sidebar-content-surface {
   background: var(--workspace-sidebar-surface);
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
 .workspace-shell .workspace-stage .workspace-sidebar-pane .sidebar-size-container .sidebar-design {
   background: transparent;
 }
-.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] .sidebar-size-container > div > div {
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] .sidebar-size-container > div > .sidebar-content-surface {
   border-radius: var(--radius-lg);
 }
 .workspace-shell .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-main-sheet {

@@ -60,8 +60,9 @@ test.describe("toMarkdownTarget", () => {
     expect(toMarkdownTarget("./docs/api")).toBe("./docs/api.md");
   });
 
-  test("已有 .md 不重复追加", () => {
+  test("已有 .md 不重复追加，扩展名大小写不敏感", () => {
     expect(toMarkdownTarget("./beta.md")).toBe("./beta.md");
+    expect(toMarkdownTarget("./i18n.MD")).toBe("./i18n.MD");
   });
 
   test("隐藏文件按无扩展名补 .md", () => {
@@ -82,6 +83,12 @@ test.describe("resolveCandidatePath", () => {
     expect(resolveCandidatePath("../beta.md", "/root/n/note.md")).toBe(
       "/root/beta.md",
     );
+  });
+
+  test("嵌套相对路径按当前本地笔记目录解析", () => {
+    expect(
+      resolveCandidatePath("../docs/./i18n.MD", "/root/guide/current.md"),
+    ).toBe("/root/docs/i18n.MD");
   });
 
   test("弹栈越界返回 null", () => {

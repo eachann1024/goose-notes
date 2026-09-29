@@ -135,6 +135,8 @@ export interface EditorPageContext {
   getActivePageLocalFilePath: () => string | null;
   /** 本地文件夹笔记本根目录；非本地文件夹笔记本返回 null */
   getActivePageLocalFolderRoot: () => string | null;
+  /** 打开行内代码引用的本地 Markdown 笔记，宿主在应用内导航。 */
+  onOpenMarkdownPath?: (source: string) => Promise<boolean>;
   /** 宿主负责把持久化附件还原为真实文件并交给系统默认应用。 */
   onOpenAttachment?: (
     source: string,

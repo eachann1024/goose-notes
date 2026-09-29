@@ -7,7 +7,10 @@
   --page-paragraph-gap: 23px;
   --page-title-gap: 37px;
 }
-[data-page-layout="full"] { --page-layout-width: none; }
+[data-page-layout="full"] {
+  --page-layout-width: none;
+  --page-layout-top: 24px;
+}
 [data-page-layout] .page-layout-document {
   width: 100%;
   max-width: var(--page-layout-width);
@@ -29,6 +32,10 @@
 [data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="heading"]:not([data-is-toggleable="true"]):has(h1) {
   --page-heading-gap: 0px;
   margin-block: 0 var(--page-title-gap);
+}
+/* Only a heading in the first root block loses its leading prose gap. */
+[data-page-layout] .workspace-editor-surface .bn-editor > .bn-block-group > .bn-block-outer:first-child > .bn-block > [data-content-type="heading"]:not([data-is-toggleable="true"]) {
+  margin-top: 0;
 }
 [data-page-layout] .bn-editor :is(h1, [data-content-type="heading"]:has(h1)) { --level: calc(34px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 700; letter-spacing: -0.5px; }
 [data-page-layout] .bn-editor :is(h2, [data-content-type="heading"]:has(h2)) { --level: calc(21px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 600; letter-spacing: -0.25px; }
@@ -57,6 +64,7 @@
 }
 @container page-layout (max-width: 680px) {
   [data-page-layout] .page-layout-document { padding: 48px 32px 80px; }
+  [data-page-layout="full"] .page-layout-document { padding-top: var(--page-layout-top); }
 }
 @container page-layout (max-width: 400px) {
   [data-page-layout] .page-layout-document { padding-inline: 24px; }

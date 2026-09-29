@@ -19,7 +19,8 @@ import {
 } from "node:fs/promises";
 import { watch, type FSWatcher, type WatchEventType } from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import {
   addSessionAllowed,
@@ -70,6 +71,8 @@ import {
   toggleWindow,
   type CreateWorkspaceWindowOpts,
 } from "./windows";
+
+const execFileAsync = promisify(execFile);
 
 const watchers = new Map<string, FSWatcher>();
 const recentWrites = new Map<string, number>();
@@ -540,9 +543,10 @@ export function registerIpcHandlers(): void {
     if (process.platform === "darwin" && found.length) {
       try {
         const script = 'function run(paths) { ObjC.import("AppKit"); return JSON.stringify(paths.map(p => { try { const image = $.NSWorkspace.sharedWorkspace.iconForFile($(p)); const bitmap = $.NSBitmapImageRep.alloc.initWithData(image.TIFFRepresentation); const png = bitmap.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $({})); return ObjC.unwrap(png.base64EncodedStringWithOptions(0)); } catch (_) { return null; } })); }';
-        const encoded = JSON.parse(execFileSync("/usr/bin/osascript", ["-l", "JavaScript", "-e", script, ...found.map((item) => item.path)], {
+        const { stdout } = await execFileAsync("/usr/bin/osascript", ["-l", "JavaScript", "-e", script, ...found.map((item) => item.path)], {
           encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 15000,
-        })) as (string | null)[];
+        });
+        const encoded = JSON.parse(stdout) as (string | null)[];
         return found.map((item, index) => {
           const image = encoded[index] ? nativeImage.createFromBuffer(Buffer.from(encoded[index], "base64")) : null;
           return image && !image.isEmpty() ? { ...item, icon: image.resize({ width: 32, height: 32 }).toDataURL() } : item;

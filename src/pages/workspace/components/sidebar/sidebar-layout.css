@@ -112,8 +112,7 @@
   align-items: center;
   gap: 4px;
   padding: 8px 4px;
-  border-right: 1px solid hsl(var(--border));
-  background: var(--goose-shell-surface);
+  background: transparent;
 }
 .sidebar-mode-rail {
   display: flex;

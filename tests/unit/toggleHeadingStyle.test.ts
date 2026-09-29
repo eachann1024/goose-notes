@@ -241,6 +241,8 @@ test("侧栏把手不截获块拖放，已有 dragging 时不覆盖", () => {
 test("toggleHeadingCollapsed 切换 heading.props.collapsed", () => {
   const updates: unknown[] = [];
   const editor = {
+    document: [],
+    transact: (callback: (tr: unknown) => void) => callback({}),
     getBlock: (id: string) =>
       id === "h2"
         ? { id: "h2", type: "heading", props: { level: 2, collapsed: false } }
