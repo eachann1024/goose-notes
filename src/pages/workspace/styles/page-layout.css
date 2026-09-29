@@ -4,7 +4,7 @@
   --page-layout-width: 800px;
   --page-layout-gutter: 48px;
   --page-layout-top: 80px;
-  --page-paragraph-gap: 23px;
+  --page-paragraph-gap: 4px;
   --page-title-gap: 37px;
 }
 [data-page-layout="full"] {
