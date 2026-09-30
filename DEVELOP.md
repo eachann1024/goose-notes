@@ -47,4 +47,4 @@ bun run build:debug  # 保留调试信息
 
 ## 项目状态
 
-当前代码采用 GPL-3.0-only；第三方及历史许可例外见 THIRD-PARTY-NOTICES.txt。分发时提供匹配版本源码与构建脚本，步骤见 SOURCE-CODE.md。参阅 [LICENSE](LICENSE)、[CONTRIBUTING.md](CONTRIBUTING.md) 与 [SECURITY.md](SECURITY.md)。
+当前代码采用 MIT；第三方及历史许可例外见 THIRD-PARTY-NOTICES.txt。源码获取与构建步骤见 SOURCE-CODE.md。参阅 [LICENSE](LICENSE)、[CONTRIBUTING.md](CONTRIBUTING.md) 与 [SECURITY.md](SECURITY.md)。

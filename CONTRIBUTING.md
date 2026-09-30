@@ -1,6 +1,6 @@
 # Goose Note contribution guide
 
-Goose Note is licensed under GPL-3.0-only. Contributions must be compatible with that license and preserve third-party notices. Submit only work you own or are authorized to contribute, and identify imported code and its license. Contributing does not transfer your copyright. See [LICENSE](./LICENSE) and [THIRD-PARTY-NOTICES.txt](./THIRD-PARTY-NOTICES.txt).
+Goose Note is licensed under the MIT License. Contributions must be compatible with that license and preserve third-party notices. Submit only work you own or are authorized to contribute, and identify imported code and its license. Contributing does not transfer your copyright. See [LICENSE](./LICENSE) and [THIRD-PARTY-NOTICES.txt](./THIRD-PARTY-NOTICES.txt).
 
 ## Development setup
 
