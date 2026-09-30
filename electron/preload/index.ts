@@ -55,6 +55,7 @@ const assetMaintenance: AssetMaintenanceBridge = {
 
 const gitSync: GitSyncBridge = {
   getState: () => invoke("git-sync:state"),
+  checkFolder: (localPath) => invoke("git-sync:check-folder", localPath),
   save: (config) => invoke("git-sync:save", config),
   checkVisibility: (request) => invoke("git-sync:visibility", request),
   remove: (notebookId) => invoke("git-sync:remove", notebookId),
