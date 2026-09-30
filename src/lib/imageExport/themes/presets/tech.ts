@@ -4,8 +4,8 @@ export const TECH_THEMES: CardTheme[] = [
   // ── 1. Notion ────────────────────────────────────────────────
   {
     id: "notion",
-    name: "Notion 白",
-    nameEn: "Notion",
+    name: "极简白",
+    nameEn: "Minimal White",
     description: "极简专业，文档感",
     tags: ["极简", "文档"],
     mode: "light",
@@ -46,8 +46,8 @@ export const TECH_THEMES: CardTheme[] = [
   // ── 2. Obsidian ──────────────────────────────────────────────
   {
     id: "obsidian",
-    name: "Obsidian 夜",
-    nameEn: "Obsidian",
+    name: "深邃夜",
+    nameEn: "Deep Night",
     description: "深色模式，代码感",
     tags: ["深色", "技术"],
     mode: "dark",
