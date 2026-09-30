@@ -283,8 +283,8 @@ html.is-electron .electron-titlebar [data-page-title-field] {
     background-color 150ms ease;
 }
 .tab-rail-item:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 .tab-rail-item,
 .tab-rail-item span,
@@ -324,8 +324,8 @@ html.is-electron .electron-titlebar [data-page-title-field] {
   background: transparent;
 }
 .tab-rail-item:has([data-page-title-field]:focus) {
-  outline: 1px dashed var(--goose-accent-focus);
-  outline-offset: -1px;
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 .tab-rail-item:has([data-page-title-field]:focus) [aria-label="关闭标签页"] {
   display: none;
@@ -462,7 +462,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
   z-index: 1;
 }
 
-/* 历史页与侧栏控件共用方案 1；内部描边不改变行高/点击区域。 */
+/* 历史页与侧栏控件共享状态色；选中和展开不额外绘制轮廓。 */
 .workspace-shell .history-secondary-control:hover:not(:disabled),
 .workspace-shell .history-version-item[data-selected="false"]:hover,
 .workspace-shell .history-star-control:hover:not(:disabled),
@@ -486,8 +486,6 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .history-star-control:active:not(:disabled) {
   color: var(--goose-interactive-selected-fg);
   background-color: var(--goose-interactive-selected);
-  outline: 1px solid var(--goose-interactive-selected-border);
-  outline-offset: -1px;
 }
 
 .workspace-shell .history-secondary-control:focus-visible,
@@ -495,8 +493,8 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .sidebar-footer-control:focus-visible,
 .workspace-shell .history-star-control:focus-visible,
 .workspace-shell .history-version-item:focus-within {
-  outline: 2px solid var(--goose-interactive-selected-fg);
-  outline-offset: 2px;
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .workspace-shell .history-primary-control:disabled {

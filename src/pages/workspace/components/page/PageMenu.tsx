@@ -456,7 +456,7 @@ export function PageMenu() {
                     aria-pressed={normalizePageLayout(page.pageLayout ?? defaultLayout) === value}
                     onClick={() => updatePage(activePageId, { pageLayout: value })}
                     className={cn(
-                      "rounded-lg border px-2 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "rounded-lg border px-2 py-2 text-xs ",
                       normalizePageLayout(page.pageLayout ?? defaultLayout) === value
                         ? "border-[var(--goose-interactive-selected-border)] bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                         : "border-border hover:bg-[var(--goose-interactive-hover)]",
@@ -493,7 +493,7 @@ export function PageMenu() {
           <div
             role="button"
             tabIndex={0}
-            className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            className="group grid min-h-[32px] cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-[9px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] "
             onClick={() =>
               updatePage(activePageId, { isLocked: !page.isLocked })
             }

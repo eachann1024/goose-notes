@@ -110,8 +110,7 @@
 }
 
 .editor-split-sash:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+
   background: hsl(var(--muted-foreground) / 0.18);
 }
 

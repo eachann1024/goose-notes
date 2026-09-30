@@ -836,12 +836,15 @@
 .goose-accent-option[data-state="checked"] {
   background: var(--goose-accent-option-light-surface) !important;
   color: var(--goose-accent-option-light-fg) !important;
-  box-shadow: inset 0 0 0 1px var(--goose-accent-option-light-fg) !important;
 }
 
 .goose-accent-option:focus-visible {
   outline: none !important;
-  box-shadow: inset 0 0 0 2px var(--goose-accent-option-light-fg) !important;
+  background: var(--goose-accent-option-light-surface) !important;
+  color: var(--goose-accent-option-light-fg) !important;
+  /* checked 已使用同一底色，文字下划线单独标明键盘焦点。 */
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .dark .goose-accent-option[data-state="unchecked"] {
@@ -855,12 +858,9 @@
   color: var(--goose-accent-option-dark-fg) !important;
 }
 
-.dark .goose-accent-option[data-state="checked"] {
-  box-shadow: inset 0 0 0 1px var(--goose-accent-option-dark-fg) !important;
-}
-
 .dark .goose-accent-option:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--goose-accent-option-dark-fg) !important;
+  background: var(--goose-accent-option-dark-surface) !important;
+  color: var(--goose-accent-option-dark-fg) !important;
 }
 
 /* Shared surfaces fall back to the existing palette. Only the two selected light

@@ -8,7 +8,7 @@ import { Chip as HeroChip } from "@heroui/react";
  * Chip.Root 默认渲染 <span>，className/HTML span 属性照常透传。
  */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ",
   {
     variants: {
       variant: {

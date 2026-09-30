@@ -474,7 +474,7 @@ export function HistoryVersionList() {
                             closeNotebookAiIfFullscreen();
                             select(v.versionId);
                           }}
-                          className="history-version-row flex min-h-8 w-full min-w-0 cursor-pointer items-start py-1.5 pl-8 pr-8 text-left transition-colors duration-150 focus-visible:outline-none"
+                          className="history-version-row flex min-h-8 w-full min-w-0 cursor-pointer items-start py-1.5 pl-8 pr-8 text-left transition-colors duration-150 "
                         >
                           <span
                             className={cn(
@@ -540,7 +540,7 @@ export function HistoryVersionList() {
                           }}
                           className={cn(
                             "history-star-control group/star absolute right-0.5 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color] duration-150 hover:bg-[var(--goose-interactive-hover)] dark:hover:bg-[var(--goose-interactive-hover)] active:bg-[var(--goose-interactive-selected)]",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                            "",
                           )}
                         >
                           <LucideIcons.Star

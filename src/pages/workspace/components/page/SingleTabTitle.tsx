@@ -41,7 +41,7 @@ const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/;
 const TITLE_IDLE_CLASS =
   "inline-flex h-8 items-center rounded-[7px] border border-transparent bg-transparent px-2 text-sm font-semibold leading-8 text-foreground no-underline outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]";
 
-const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] focus:ring-2 focus:ring-primary/15 caret-[var(--goose-accent-focus)]`;
+const TITLE_INPUT_CLASS = `${TITLE_IDLE_CLASS} focus:border-primary/45 focus:bg-[hsl(var(--goose-editor-bg))] focus:text-[var(--goose-interactive-selected-fg)] caret-[var(--goose-accent-focus)]`;
 
 const TITLE_TAB_IDLE_CLASS =
   "inline-flex h-8 min-w-0 w-full flex-1 items-center truncate bg-transparent px-0 text-sm leading-8 text-inherit no-underline outline-none";

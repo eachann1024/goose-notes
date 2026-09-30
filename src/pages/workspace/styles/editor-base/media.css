@@ -34,11 +34,10 @@
   -webkit-user-select: none;
 }
 
-.goose-video-player:focus-visible {
-  box-shadow:
-    0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.4),
-    0 8px 22px rgba(15, 23, 42, 0.08);
+/* 播放器整体键盘焦点标在控制栏，保留视频本身与常态投影。 */
+.goose-video-player:focus-visible .goose-video-player__bar {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
 }
 
 .goose-video-player__video {
@@ -270,7 +269,6 @@
 .goose-video-player__btn:focus-visible {
   outline: none;
   background: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
 }
 
 .goose-video-player__icon-play {
@@ -398,8 +396,7 @@
 }
 
 .goose-image-lightbox .yarl__button:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+
   box-shadow: none;
 }
 

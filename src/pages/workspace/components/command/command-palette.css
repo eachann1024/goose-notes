@@ -30,7 +30,11 @@ html body .workspace-shell.goose-search-panel {
   color: var(--search-text);
   border: 0;
 }
-.goose-search-scope:focus-visible { outline: 2px solid var(--goose-accent-focus); }
+.goose-search-scope:focus-visible {
+  outline: none;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
 .goose-search-panel [cmdk-root],
 .goose-search-body,
 .goose-search-results-panel,

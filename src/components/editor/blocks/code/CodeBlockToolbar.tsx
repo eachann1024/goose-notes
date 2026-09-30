@@ -231,7 +231,7 @@ export function CodeBlockToolbar({
     "transition-colors duration-150",
     "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
     "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-    "focus-visible:ring-0 focus-visible:ring-offset-0",
+    "",
     "cursor-pointer rounded-md",
   );
   const chipActiveClass =

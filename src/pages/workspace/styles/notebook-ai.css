@@ -71,9 +71,8 @@
 }
 
 .notebook-ai-empty-suggestion:focus-visible {
- border-radius: 0.5rem;
- outline: 2px solid hsl(var(--ring));
- outline-offset: 2px;
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
 }
 
 .notebook-ai-conversation-title {
@@ -769,10 +768,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  color: var(--goose-interactive-hover-fg);
 }
 
-.notebook-ai-work-toggle:focus-visible {
- outline: 2px solid hsl(var(--ring));
- outline-offset: 2px;
-}
+
 
 .notebook-ai-work-toggle-label {
  min-width: 0;
@@ -955,10 +951,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  color: var(--goose-interactive-hover-fg);
 }
 
-.notebook-ai-letter-fold-toggle:focus-visible {
- outline: 2px solid hsl(var(--ring));
- outline-offset: 2px;
-}
+
 
 .notebook-ai-letter-chev {
  flex: 0 0 14px;

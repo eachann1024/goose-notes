@@ -624,7 +624,7 @@ function ThemePreviewCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col gap-2.5 text-left outline-none focus-visible:outline-none"
+      className="group flex flex-col gap-2.5 text-left outline-none "
     >
       <div
         style={cardStyle}

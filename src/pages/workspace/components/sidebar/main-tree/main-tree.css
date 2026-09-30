@@ -14,9 +14,11 @@
 
 .rct-main-tree [data-rct-item-interactive]:focus-visible,
 .rct-main-tree [data-rct-item-focus="true"]:focus-visible {
-  outline: 2px solid hsl(var(--ring)) !important;
-  outline-offset: -2px !important;
-  box-shadow: none !important;
+  outline: none !important;
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }
 
 /* 2) <li> / 行容器：rct 自带类可能带 border/bg，全部去掉，由内部 row 自己管理 */

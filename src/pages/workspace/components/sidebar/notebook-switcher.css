@@ -61,17 +61,20 @@
 }
 .goose-notebook-chevron { width: 12px; height: 12px; flex-shrink: 0; color: hsl(var(--muted-foreground)); stroke-width: 1.6; }
 .sidebar-notebook-trigger[data-state="open"]::before { opacity: 1; }
-.sidebar-notebook-trigger[data-state="open"] > .goose-notebook-monogram { transform: translateX(2px); }
-.sidebar-notebook-trigger[data-state="open"] > .goose-notebook-chevron { transform: translateX(-2px) rotate(180deg); }
+.sidebar-notebook-trigger[data-state="open"] > .goose-notebook-chevron { transform: rotate(180deg); }
 @media (hover: hover) and (pointer: fine) {
   .sidebar-notebook-trigger:hover::before { opacity: 1; }
-  .sidebar-notebook-trigger:hover > .goose-notebook-monogram { transform: translateX(2px); }
-  .sidebar-notebook-trigger:not([data-state="open"]):hover > .goose-notebook-chevron { transform: translateX(-2px); }
 }
 .sidebar-notebook-trigger:focus-visible,
 .goose-notebook-row:focus-visible {
-  outline: 1px solid var(--goose-interactive-selected-fg);
-  outline-offset: 2px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+.sidebar-notebook-trigger--rail::before {
+  transition: none;
+}
+.sidebar-notebook-trigger--rail:is(:hover, :focus-visible, [data-state="open"]) > .goose-notebook-monogram {
+  color: var(--goose-interactive-selected-fg);
 }
 .goose-notebook-menu-surface.goose-floating-surface {
   border: 1px solid hsl(var(--goose-menu-border));
@@ -88,5 +91,5 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar-notebook-trigger > .goose-notebook-monogram,
   .sidebar-notebook-trigger > .goose-notebook-chevron { transform: none !important; transition: none; }
-  .sidebar-notebook-trigger::before { transition: opacity 120ms ease; }
+  .sidebar-notebook-trigger:not(.sidebar-notebook-trigger--rail)::before { transition: opacity 120ms ease; }
 }

@@ -709,7 +709,7 @@ export function FormattingToolbarColorPicker({
               className={cn(
                 "goose-color-picker-swatch h-7 w-7 min-h-7 min-w-7 shrink-0 border border-transparent p-0 hover:border-border/80 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 isColorSwatchSelected(currentBgColor, item.color)
-                  ? "border-primary ring-1 ring-primary/25"
+                  ? "border-primary"
                   : "",
               )}
               onClick={() => {

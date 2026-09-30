@@ -46,7 +46,7 @@ const TabsTrigger = React.forwardRef<
     isDisabled={disabled}
     ref={ref}
     className={cn(
-      "goose-interactive inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "goose-interactive inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground ring-offset-background data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
   />
@@ -62,7 +62,7 @@ const TabsContent = React.forwardRef<
     id={value}
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-2 ring-offset-background ",
       className,
     )}
   />

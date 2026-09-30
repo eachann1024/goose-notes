@@ -66,7 +66,7 @@ export function FontSelector({
               selectFont(font.value);
             }}
             className={cn(
-              "flex-1 rounded-md shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+              "flex-1 rounded-md shadow-none ",
               compact ? "px-2 py-1.5" : "px-3 py-2",
               "flex flex-col items-center justify-center border-2 border-transparent",
               "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",

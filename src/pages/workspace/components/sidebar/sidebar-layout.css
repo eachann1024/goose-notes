@@ -160,8 +160,8 @@
   color: var(--goose-interactive-selected-fg);
 }
 .sidebar-mode-rail-button:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
 }
 .sidebar-rail-footer {
   display: flex;

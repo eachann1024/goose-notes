@@ -8,7 +8,7 @@ import { getGooseDesktop } from "@/lib/electron/runtime";
 import { cn } from "@/lib/utils";
 
 const btnClass =
-  "electron-win-chrome-btn inline-flex h-8 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-none";
+  "electron-win-chrome-btn inline-flex h-8 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] ";
 
 export function WinWindowControls() {
   const [maximized, setMaximized] = useState(false);

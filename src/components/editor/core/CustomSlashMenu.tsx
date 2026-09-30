@@ -309,7 +309,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       className={cn(
                         "relative flex h-auto w-full items-center justify-start text-left outline-none transition-colors whitespace-normal",
                         lite
-                          ? "min-h-[34px] rounded-lg px-2 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]"
+                          ? "min-h-[34px] rounded-lg px-2 py-1.5 shadow-none hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]"
                           : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_*]:text-[var(--goose-interactive-hover-fg)]",
                         index === selectedIndex
                           ? lite

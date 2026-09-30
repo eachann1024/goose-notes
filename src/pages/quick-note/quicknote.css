@@ -360,8 +360,8 @@ body,
 .quicknote-collect-icon-btn:focus-visible,
 .quicknote-collect-simulate-btn:focus-visible,
 .quicknote-collect-stop-text-btn:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .quicknote-collect-shelf {
@@ -594,8 +594,8 @@ body,
 .quicknote-root
   [data-goose-slash-lite="true"]
   [data-goose-slash-item]:focus-visible {
-  outline: 2px solid hsl(var(--ring)) !important;
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
 }
 
 .quicknote-root
@@ -702,10 +702,8 @@ body,
 }
 
 .quicknote-slot-btn:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-selected);
   color: var(--goose-interactive-selected-fg);
-  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -58,12 +58,10 @@ input[type="range"]::-moz-range-thumb {
 /* 焦点跟随滑块，不再给整行控件套大矩形。 */
 input[type="range"]:focus-visible { outline: none; }
 input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--range-ink);
-  outline-offset: 3px;
+  background: var(--range-ink);
 }
 input[type="range"]:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--range-ink);
-  outline-offset: 3px;
+  background: var(--range-ink);
 }
 input[type="range"]:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (forced-colors: active) {

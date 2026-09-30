@@ -46,11 +46,11 @@ export function showDeleteReceipt(
             } finally {
               undoing = false;
             }
-          }} className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md bg-[var(--goose-interactive-selected)] px-2.5 text-xs font-semibold text-[var(--goose-interactive-selected-fg)] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-ring">
+          }} className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md bg-[var(--goose-interactive-selected)] px-2.5 text-xs font-semibold text-[var(--goose-interactive-selected-fg)] hover:opacity-80 ">
             <RotateCcw className="size-4" aria-hidden="true" />撤回
           </button>
         )}
-        <button type="button" aria-label="关闭删除回执" onClick={() => toast.dismiss(id)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+        <button type="button" aria-label="关闭删除回执" onClick={() => toast.dismiss(id)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted ">
           <X className="size-4" aria-hidden="true" />
         </button>
       </section>

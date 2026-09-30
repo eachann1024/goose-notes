@@ -107,8 +107,7 @@
 }
 
 .setup-guide-heading h1:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  color: var(--goose-interactive-selected-fg);
 }
 
 .setup-guide-content {
@@ -164,8 +163,8 @@
 .setup-guide button:focus-visible,
 .setup-guide select:focus-visible,
 .setup-guide input:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .setup-guide-ai-settings .settings-groups > div {

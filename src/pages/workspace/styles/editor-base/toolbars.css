@@ -68,8 +68,8 @@
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-control[data-state="on"],
@@ -140,8 +140,8 @@
 }
 
 [data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 /* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
@@ -253,8 +253,8 @@
 }
 
 .goose-block-toolbar-control:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .goose-block-toolbar-control svg {
@@ -321,8 +321,8 @@
 }
 
 .goose-link-toolbar-control:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 .goose-link-toolbar-control svg {
@@ -360,8 +360,8 @@
 /* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
 [data-goose-image-toolbar]
   button:not(:disabled):not([aria-disabled="true"]):focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 1px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
 }
 
 /* 节点选中仍保留编辑器行为与工具栏，但不绘制 BlockNote / ProseMirror

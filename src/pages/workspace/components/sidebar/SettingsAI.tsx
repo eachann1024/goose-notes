@@ -849,7 +849,7 @@ export function SettingsAI({
         ref={modelSectionRef}
         id="ai-model-settings"
         tabIndex={-1}
-        className="scroll-mt-6 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="scroll-mt-6 rounded-[14px] outline-none "
       >
         <SettingsSectionCard
           className={isOnboarding ? "p-4" : undefined}
@@ -1365,7 +1365,7 @@ export function SettingsAI({
         {modelSection}
         {connectionTestSection}
         <details className="rounded-lg border border-border bg-background/50 p-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <summary className="cursor-pointer text-sm font-medium text-foreground ">
             高级选项
           </summary>
           <div className="pt-3">{contextSection}</div>
