@@ -6,7 +6,6 @@ import {
   type DraggingPosition,
   type TreeItem,
   type TreeItemIndex,
-  type TreeRef,
 } from "react-complex-tree";
 import type { Page } from "@/types";
 import { toast } from "@/components/ui/sonner";
@@ -39,16 +38,12 @@ import {
   openPageFromSidebar,
   shouldSuppressSidebarSelect,
 } from "@/lib/sidebarPageNavigation";
-import { isPageTitleAutoFocusProtected } from "@/lib/page-title-focus";
+import { useSidebarPageReveal } from "./useSidebarPageReveal";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { areSidebarPagesEqual } from "@/stores/pages/areSidebarPagesEqual";
 import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { formatShortcut } from "@/lib/utils";
 import { MAIN_TREE_INDENT } from "./mainTreeDragGeometry";
-import {
-  clearLocalFolderDropParent,
-  takeLocalFolderDropParent,
-} from "./mainTreeLocalDrop";
 import {
   LOCAL_FOLDER_ROOT_DIR_KEY,
   applyLocalFolderReorder,
@@ -62,7 +57,6 @@ import "./main-tree.css";
 interface SidebarMainTreeProps {
   activeNotebookId: string | null;
   selectedPageId?: string | null;
-  width: number;
   rowHeight: number;
   itemHeight: number;
   viewportHeight: number;
@@ -90,7 +84,6 @@ function MenuShortcut({ shortcut }: { shortcut: string }) {
 export function SidebarMainTree({
   activeNotebookId,
   selectedPageId,
-  width,
   viewportHeight,
   itemHeight,
 }: SidebarMainTreeProps) {
@@ -327,7 +320,6 @@ export function SidebarMainTree({
   const handleItemDragEnd = useCallback(() => {
     draggingItemIdRef.current = null;
     setDraggingItemId(null);
-    clearLocalFolderDropParent();
   }, []);
 
   const scopedPages = useMemo(() => {
@@ -375,14 +367,11 @@ export function SidebarMainTree({
     return false;
   };
 
-  const treeRef = useRef<TreeRef>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastClickModRef = useRef({ meta: false, ctrl: false });
   // react-complex-tree 的方向键默认只移动焦点，不会激活页面。
   // 仅记录从树内发起的上下导航，避免鼠标点击、自动定位和左右展开/折叠误触发切页。
   const verticalKeyboardNavigationRef = useRef(false);
-  // 记录上一次已为之展开/定位的激活页，避免每次 render 重复 focus 打断用户
-  const lastLocatedActiveIdRef = useRef<string | null>(null);
 
   const viewState = useMemo(() => {
     const highlightSelection =
@@ -429,72 +418,22 @@ export function SidebarMainTree({
     }
   }, [activeNotebookId, highlightedPageId, pendingTreeSelection]);
 
-  useEffect(() => {
-    if (!expandPageId || !activeNotebookId) return;
-    const page = pages[expandPageId];
-    if (!page) return;
-    if (page.trashedAt) {
-      setExpandPageId(null);
-      return;
-    }
-    if (page.workspaceId !== activeNotebookId) return;
+  const consumeRevealRequest = useCallback((pageId: string) => {
+    const store = usePages.getState();
+    if (store.expandPageId === pageId) store.setExpandPageId(null);
+  }, []);
 
-    const ancestorIds: string[] = [];
-    let current: Page | undefined = page;
-    while (current && current.parentId && pages[current.parentId]) {
-      ancestorIds.push(current.parentId);
-      current = pages[current.parentId];
-    }
-    if (ancestorIds.length > 0) {
-      const merged = Array.from(new Set([...expandedIds, ...ancestorIds]));
-      setExpanded(activeNotebookId, merged);
-    }
-    const timer = window.setTimeout(() => {
-      if (isPageTitleAutoFocusProtected(expandPageId)) return;
-      // 同步树的当前项/滚动即可；不要把编辑器、表格或输入框的 DOM 焦点
-      // 强行夺到 react-complex-tree row overlay。
-      treeRef.current?.focusItem(expandPageId, false);
-    }, 80);
-    setExpandPageId(null);
-    return () => window.clearTimeout(timer);
-  }, [
+  useSidebarPageReveal({
+    activeNotebookId,
+    highlightedPageId,
     expandPageId,
     pages,
-    activeNotebookId,
     expandedIds,
+    treeReady: hasPages && !shouldShowLocalSkeleton,
+    scrollContainerRef,
     setExpanded,
-    setExpandPageId,
-  ]);
-
-  // 切标签 / 激活页变化时：自动展开当前页的祖先链并滚动定位
-  // （选中高亮由 viewState.selectedItems 已处理；此处补「展开到可见 + 滚动」）
-  useEffect(() => {
-    if (!activePageId || !activeNotebookId) return;
-    // 同一激活页只定位一次，避免重复 focus 打断用户的手动滚动/折叠
-    if (lastLocatedActiveIdRef.current === activePageId) return;
-    const page = pages[activePageId];
-    if (!page || page.trashedAt) return;
-    if (page.workspaceId !== activeNotebookId) return;
-    lastLocatedActiveIdRef.current = activePageId;
-
-    const ancestorIds: string[] = [];
-    let current: Page | undefined = page;
-    while (current && current.parentId && pages[current.parentId]) {
-      ancestorIds.push(current.parentId);
-      current = pages[current.parentId];
-    }
-    if (ancestorIds.length > 0) {
-      const merged = Array.from(new Set([...expandedIds, ...ancestorIds]));
-      setExpanded(activeNotebookId, merged);
-    }
-    const timer = window.setTimeout(() => {
-      if (isPageTitleAutoFocusProtected(activePageId)) return;
-      // 80ms 内用户可能已点进正文/table/input；此时仍展开和选中即可。
-      // 第二参数 false 让 react-complex-tree 不抢回 DOM focus。
-      treeRef.current?.focusItem(activePageId, false);
-    }, 80);
-    return () => window.clearTimeout(timer);
-  }, [activePageId, activeNotebookId, pages, expandedIds, setExpanded]);
+    consumeRequest: consumeRevealRequest,
+  });
 
   const toggleLocalDirectory = useCallback(
     (pageId: string) => {
@@ -540,7 +479,7 @@ export function SidebarMainTree({
         <button
           type="button"
           onClick={retryLocalFolderLoad}
-          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-3 rounded-[8px] bg-[var(--goose-interactive-selected)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] "
         >
           重新加载
         </button>
@@ -610,20 +549,8 @@ export function SidebarMainTree({
 
     let newParentId: string | undefined;
     let insertIndex: number;
-    // 本地文件夹落点：captured 优先（悬停行推断出的目录），否则用 rct 给的目标
-    const capturedDir = isLocalFolder ? takeLocalFolderDropParent() : null;
-    if (isLocalFolder) {
-      const rawParent =
-        capturedDir !== null
-          ? capturedDir
-          : target.targetType === "item"
-            ? String(target.targetItem)
-            : target.targetType === "between-items"
-              ? String(target.parentItem)
-              : undefined;
-      newParentId = rawParent === "root" ? undefined : rawParent;
-      insertIndex = target.targetType === "between-items" ? target.childIndex : -1;
-    } else if (target.targetType === "between-items") {
+    // 父级与插入索引必须来自同一落点，不能再用悬停行的目录覆盖父级。
+    if (target.targetType === "between-items") {
       const pid = String(target.parentItem);
       newParentId = pid === "root" ? undefined : pid;
       insertIndex = target.childIndex;
@@ -747,9 +674,6 @@ export function SidebarMainTree({
     zone: MainTreeEdgeZone,
     item: TreeItem<Page>,
   ) => {
-    // 边缘落点属于根级：先清掉悬停行推断出的目录，
-    // 否则本地文件夹的 capturedDir 会盖掉根级首/末目标
-    clearLocalFolderDropParent();
     handleDrop([item], mainTreeEdgeDropTarget(zone, rootChildren.length));
   };
 
@@ -766,7 +690,7 @@ export function SidebarMainTree({
           <button
             type="button"
             onClick={retryLocalFolderLoad}
-            className="shrink-0 font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
+            className="shrink-0 font-medium underline underline-offset-2 "
           >
             重试
           </button>
@@ -776,10 +700,9 @@ export function SidebarMainTree({
         <ContextMenuTrigger asChild>
           <div
             ref={scrollContainerRef}
-            className="flex-1 min-h-0 overflow-auto"
+            className="flex-1 min-h-0 min-w-0 w-full overflow-auto"
             style={
               {
-                width,
                 height: viewportHeight || undefined,
                 "--main-tree-row-height": `${itemHeight}px`,
               } as CSSProperties
@@ -950,7 +873,6 @@ export function SidebarMainTree({
                 treeId="main"
                 rootItem="root"
                 treeLabel="页面"
-                ref={treeRef}
               />
             </ControlledTreeEnvironment>
           </div>

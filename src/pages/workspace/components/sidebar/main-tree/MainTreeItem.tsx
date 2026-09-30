@@ -34,14 +34,10 @@ import { setLocalFolderFileDropTarget } from "@/lib/local-folder-file-drop-targe
 import {
   MAIN_TREE_INDENT,
   MAIN_TREE_ROW_PADDING_LEFT,
-  shouldHideLocalFolderSortLine,
+  normalizeMainTreeDragOver,
 } from "./mainTreeDragGeometry";
 import { MainTreeRowDisclosure, MainTreeRowShell } from "./MainTreeRowShell";
-import {
-  captureLocalFolderDropParent,
-  peekLocalFolderDropParent,
-  snapDragBetweenLine,
-} from "./mainTreeLocalDrop";
+import { snapDragBetweenLine } from "./mainTreeLocalDrop";
 
 const INDENT = MAIN_TREE_INDENT;
 const ROW_PADDING_LEFT = MAIN_TREE_ROW_PADDING_LEFT;
@@ -494,6 +490,7 @@ export function renderItem({
           标题文字给 pointer-events-none 透传给底层 interactive；占位 arrow 已 pointer-events-none。 */}
       <div
         {...interactive}
+        data-main-tree-folder={item.isFolder ? "true" : "false"}
         onClick={handleRowClick}
         onPointerDown={handleRowPointerDown}
         onDragStart={handleDragStart}
@@ -601,8 +598,7 @@ export function renderTreeContainer({
       {...rest}
       className="rct-main-tree outline-none min-h-full"
       onDragOver={(event) => {
-        onDragOver?.(event);
-        captureLocalFolderDropParent(event, event.currentTarget);
+        onDragOver?.(normalizeMainTreeDragOver(event, event.currentTarget));
       }}
     >
       {children}
@@ -620,42 +616,11 @@ function MainTreeDragBetweenLine({
   lineProps,
 }: RenderDragBetweenLineArgs) {
   const lineRef = useRef<HTMLDivElement | null>(null);
-  const isLocalFolder = useNotebooks((state) => {
-    const notebookId = state.activeNotebookId;
-    return notebookId
-      ? state.notebooks[notebookId]?.source === "local-folder"
-      : false;
-  });
-  const parentItem =
-    draggingPosition.targetType === "between-items" ||
-    draggingPosition.targetType === "item"
-      ? String(draggingPosition.parentItem)
-      : undefined;
-  const capturedParent = peekLocalFolderDropParent();
-  const nestParent =
-    capturedParent === null ? parentItem : capturedParent;
-  // 只有「被拖条目当前所在目录 === 本次落进的目录」才是同目录内排序，
-  // 这时落线才表示真实插入位置（本地文件夹默认按名称排序）。
-  const draggedParentId = activeMainTreeDragId
-    ? usePages.getState().pages[activeMainTreeDragId]?.parentId
-    : undefined;
-  const hideSortLine =
-    isLocalFolder &&
-    shouldHideLocalFolderSortLine({
-      nestParent,
-      draggedParentId,
-      isBetweenItems: draggingPosition.targetType === "between-items",
-    });
-
   useLayoutEffect(() => {
     const lineEl = lineRef.current;
     if (!lineEl) return;
     snapDragBetweenLine(lineEl, draggingPosition.linearIndex ?? 0);
-  }, [draggingPosition.linearIndex, parentItem, hideSortLine]);
-
-  if (hideSortLine) {
-    return <div ref={lineRef} {...lineProps} className="hidden" />;
-  }
+  }, [draggingPosition]);
 
   const depth = draggingPosition.depth ?? 0;
   const style = (lineProps.style ?? {}) as CSSProperties;

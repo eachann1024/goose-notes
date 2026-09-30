@@ -1,3 +1,5 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
 export const SIDEBAR_MIN_WIDTH = 268;
 const SIDEBAR_DEFAULT_WIDTH = 288;
 export const SIDEBAR_MAX_WIDTH = 480;
@@ -41,13 +43,15 @@ interface UseSidebarResizeOptions {
   disableResize?: boolean;
   defaultWidth?: number;
   maxWidth?: number;
+  onWidthPreview: (width: number) => void;
 }
 
 export function useSidebarResize({
   disableResize = false,
   defaultWidth = SIDEBAR_DEFAULT_WIDTH,
   maxWidth = SIDEBAR_MAX_WIDTH,
-}: UseSidebarResizeOptions = {}) {
+  onWidthPreview,
+}: UseSidebarResizeOptions) {
   const [preferredWidth, setWidth] = useState(() => {
     try {
       return resolveSidebarWidth(localStorage.getItem("sidebar-width"), defaultWidth);
@@ -60,6 +64,14 @@ export function useSidebarResize({
   const width = clampSidebarResizeWidth(preferredWidth, maxWidth);
   const [isResizing, setIsResizing] = useState(false);
   const activeCleanupRef = useRef<(() => void) | null>(null);
+  const activeStopRef = useRef<(() => void) | null>(null);
+  const previewRef = useRef(onWidthPreview);
+
+  useLayoutEffect(() => {
+    previewRef.current = onWidthPreview;
+    // 窗口尺寸或侧栏模式在拖动中变化时，结束当前手势。
+    activeStopRef.current?.();
+  }, [disableResize, maxWidth, onWidthPreview]);
 
   useEffect(
     () => () => {
@@ -80,66 +92,75 @@ export function useSidebarResize({
     return () => clearTimeout(timer);
   }, [preferredWidth]);
 
-  const startResizing = (startX: number) => {
-    if (disableResize) return;
-    activeCleanupRef.current?.();
-    activeCleanupRef.current = null;
+  const startResizing = (startX: number, pointerId: number) => {
+    if (disableResize || activeCleanupRef.current) return;
     setIsResizing(true);
 
     const startWidth = width;
+    let pendingWidth = startWidth;
+    let frame: number | null = null;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
 
-    const updateWidth = (nextClientX: number) => {
-      const newWidth = startWidth + nextClientX - startX;
-      setWidth(clampSidebarResizeWidth(newWidth, maxWidth));
+    // 高频移动只写布局变量；整棵侧栏仅在手势开始和结束时更新 React。
+    const flushPreview = () => {
+      frame = null;
+      previewRef.current(pendingWidth);
     };
-
-    const onMouseMove = (event: MouseEvent) => {
-      updateWidth(event.clientX);
+    const updateWidth = (clientX: number) => {
+      pendingWidth = clampSidebarResizeWidth(startWidth + clientX - startX, maxWidth);
+      if (frame === null) frame = requestAnimationFrame(flushPreview);
     };
-
     const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerId === pointerId) updateWidth(event.clientX);
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
       updateWidth(event.clientX);
+      stopResizing();
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (event.pointerId === pointerId) stopResizing();
     };
 
     let active = true;
     const cleanup = () => {
       if (!active) return;
       active = false;
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", stopResizing);
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
       document.removeEventListener("pointermove", onPointerMove);
-      document.removeEventListener("pointerup", stopResizing);
-      document.removeEventListener("pointercancel", stopResizing);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerCancel);
       window.removeEventListener("blur", stopResizing);
-      document.body.style.cursor = "";
-      if (activeCleanupRef.current === cleanup) activeCleanupRef.current = null;
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      activeCleanupRef.current = null;
+      activeStopRef.current = null;
     };
     const stopResizing = () => {
+      if (!active) return;
       cleanup();
+      flushPreview();
+      setWidth(pendingWidth);
       setIsResizing(false);
     };
 
     activeCleanupRef.current = cleanup;
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", stopResizing);
+    activeStopRef.current = stopResizing;
     document.addEventListener("pointermove", onPointerMove);
-    document.addEventListener("pointerup", stopResizing);
-    document.addEventListener("pointercancel", stopResizing);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("blur", stopResizing);
     document.body.style.cursor = "col-resize";
-  };
-
-  const handleResizeMouseDown = (event: React.MouseEvent) => {
-    if (disableResize || event.button !== 0) return;
-    event.preventDefault();
-    startResizing(event.clientX);
+    document.body.style.userSelect = "none";
   };
 
   const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (disableResize || event.button !== 0) return;
+    if (disableResize || event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    startResizing(event.clientX);
+    startResizing(event.clientX, event.pointerId);
   };
 
   const handleResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -156,7 +177,6 @@ export function useSidebarResize({
     minWidth,
     maxWidth,
     isResizing,
-    handleResizeMouseDown,
     handleResizePointerDown,
     handleResizeKeyDown,
   };
