@@ -31,9 +31,7 @@
 
 https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
 
-[![Goose Note：笔记编辑与 AI 助手并排，原文和整理结果随时对照](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
-
-<p align="center"><sub>写下想法，慢慢理清。macOS 开发版实拍，点击查看原图。</sub></p>
+<p align="center"><sub>产品展示以视频为准。</sub></p>
 
 <br />
 
@@ -48,10 +46,6 @@ https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
 ## 让复杂的内容，也容易读
 
 文字、代码、公式和 Mermaid 图示写在一起。用清单推进下一步，用表格整理信息，再将笔记导出为 Markdown、HTML、PDF、Word 或图片。
-
-[![Goose Note：代码高亮、Mermaid 图示与页面菜单](docs/showcase/02-code-and-diagram-user.png)](docs/showcase/02-code-and-diagram-user.png)
-
-<sub>macOS 开发版实拍，内容为演示笔记。页面菜单提供字体、历史与导出入口。</sub>
 
 <br />
 
@@ -72,7 +66,7 @@ https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
 <details>
 <summary>从源码运行与平台说明</summary>
 
-采用 Electron、React、TypeScript 和 BlockNote。仓库提供 macOS、Windows 和 Linux 的开发与构建命令；上方截图来自 macOS 开发版，安装包可用性以实际提供的构建为准。
+采用 Electron、React、TypeScript 和 BlockNote。仓库提供 macOS、Windows 和 Linux 的开发与构建命令；安装包可用性以实际提供的构建为准。
 
 ```bash
 bun install --frozen-lockfile
