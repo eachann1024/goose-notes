@@ -8,6 +8,7 @@ interface Props {
   editorLineHeight: number;
   uiFontSize: UIFontSize;
   showDemoEnglish?: boolean;
+  editorOnly?: boolean;
 }
 
 function EditorSample({
@@ -16,6 +17,7 @@ function EditorSample({
   editorLineHeight,
   uiFontSize,
   showDemoEnglish = true,
+  editorOnly = false,
 }: Props) {
   const layout = useSettings((state) => state.defaultPageLayout);
   return (
@@ -24,7 +26,7 @@ function EditorSample({
       className="flex h-full w-full flex-col overflow-hidden text-foreground"
       style={{ background: "var(--goose-editor-surface)" }}
     >
-      <div
+      {!editorOnly && <div
         className="flex h-11 shrink-0 items-center gap-3 border-b border-border/70 px-4"
         style={{
           background: "var(--goose-shell-surface)",
@@ -36,9 +38,9 @@ function EditorSample({
         <span className="text-muted-foreground">/</span>
         <span>雨停后的星期三</span>
         <span className="ml-auto text-muted-foreground">•••</span>
-      </div>
+      </div>}
       <div className="flex min-h-0 flex-1">
-        <div
+        {!editorOnly && <div
           className="appearance-preview-sidebar w-44 shrink-0 border-r border-border/70 p-3"
           style={{
             background: "var(--goose-shell-surface)",
@@ -51,7 +53,7 @@ function EditorSample({
             ▤ 雨停后的星期三
           </p>
           <p className="mt-2 truncate px-2">▤ 项目计划</p>
-        </div>
+        </div>}
         <div className="page-layout-body flex min-w-0 flex-1">
           <div className="min-w-0 flex-1 overflow-y-auto">
             <div
@@ -128,7 +130,9 @@ export function AppearanceEditorPreview(props: Props) {
   return (
     <section
       aria-label="编辑器即时预览"
-      className="min-w-0 overflow-hidden rounded-lg border border-border/70 shadow-sm"
+      className={props.editorOnly
+        ? "min-w-0 overflow-hidden rounded-lg"
+        : "min-w-0 overflow-hidden rounded-lg border border-border/70 shadow-sm"}
     >
       <EditorSample {...props} />
     </section>

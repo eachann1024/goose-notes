@@ -103,8 +103,7 @@ export function SettingsScaffold({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70">
               <SettingsIcon className="h-4 w-4" aria-hidden="true" />
             </span>
-            <h2 className="text-base font-semibold">设置</h2>
-            <span className="text-xs text-muted-foreground">/ {tabs.find((tab) => tab.id === activeTab)?.label}</span>
+            <h2 className="text-base font-semibold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
             <button
               type="button"
               className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
