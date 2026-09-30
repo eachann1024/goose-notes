@@ -1717,3 +1717,6 @@ html[data-startup-settling] *::after {
   --goose-accent-focus: hsl(var(--muted-foreground));
 }
 svg.goose-icon { flex-shrink: 0; vertical-align: middle; }
+.goose-tree-disclosure::before { content: ""; position: absolute; width: 24px; height: 24px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.goose-tree-disclosure:focus-visible { outline: 2px solid var(--goose-interactive-selected-border); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .goose-tree-disclosure svg { transition: none; } }

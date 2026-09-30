@@ -53,7 +53,7 @@ export function MainTreeRowDisclosure({
       {...nativeProps}
       type="button"
       className={cn(
-        "main-tree-row-disclosure relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-colors duration-150 ease-out hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_svg]:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] (var(--ring))]",
+        "main-tree-row-disclosure goose-tree-disclosure relative z-10 ml-1.5 inline-flex w-5 h-5 shrink-0 items-center justify-center rounded transition-colors duration-150 ease-out hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_svg]:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] (var(--ring))]",
         revealOnRowHover &&
           "opacity-0 group-hover/main-row:opacity-100",
         className,
@@ -65,7 +65,7 @@ export function MainTreeRowDisclosure({
     >
       <ChevronRight
         className={cn(
-          "h-3.5 w-3.5 text-muted-foreground/80 transition-transform duration-150 ease-out",
+          "h-3 w-3 text-muted-foreground transition-transform duration-150 ease-out",
           expanded && "rotate-90",
         )}
       />
