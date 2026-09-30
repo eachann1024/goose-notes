@@ -80,6 +80,49 @@ describe("multi-block frozen targets", () => {
     expect(text(e, "parent")).toBe("new parent");
     expect(text(e, "last")).toBe("new last");
   });
+  test("body-wide text selection at block boundaries can preview, accept and undo", () => {
+    const e = create();
+    e._tiptapEditor.view.updateState(EditorState.create({ doc: e.prosemirrorState.doc, plugins: [...e.prosemirrorState.plugins, history()] }));
+    const first = position(e, "parent");
+    const last = position(e, "last");
+    // The editor's second Cmd+A selects the body at blockGroup boundaries.
+    e.transact((tr) => tr.setSelection(TextSelection.create(tr.doc, first.pos, last.pos + last.node.nodeSize)));
+    const before = e.prosemirrorState.doc;
+    const target = capturePrivateInlineTarget(e, "parent");
+    expect(target.sourceBlockIds).toEqual(["parent", "child", "sibling", "last"]);
+    expect(target.oldMarkdown).not.toContain("title");
+    const draft = preparePrivateInlineDraft(e, target, ["new parent", "new child", "new sibling", "new last"]);
+    expect(e.prosemirrorState.doc.eq(before)).toBe(true);
+    applyPrivateInlineDraft(e, target, draft);
+    expect(text(e, "parent")).toBe("new parent");
+    expect(text(e, "child")).toBe("new child");
+    expect(text(e, "last")).toBe("new last");
+    expect(undo(e.prosemirrorState, (tr) => e.prosemirrorView.dispatch(tr))).toBe(true);
+    expect(e.prosemirrorState.doc.eq(before)).toBe(true);
+  });
+  test("backward mixed text/block boundary range keeps partial text private", () => {
+    const e = create();
+    const first = position(e, "parent");
+    const last = position(e, "last");
+    e.transact((tr) => tr.setSelection(TextSelection.create(tr.doc, last.pos + last.node.nodeSize, first.from + 4)));
+    const target = capturePrivateInlineTarget(e, "parent");
+    expect(target.sourceBlockIds).toEqual(["parent", "child", "sibling", "last"]);
+    expect(target.parts[0].oldMarkdown.trim()).toBe("- PARENTtail");
+    applyPrivateInlineDraft(e, target, preparePrivateInlineDraft(e, target, ["A", "B", "C", "D"]));
+    expect(text(e, "parent")).toBe("leftA");
+  });
+  test("block boundary range containing a table still rejects without writing", () => {
+    const e = BlockNoteEditor.create({ initialContent: [
+      { id: "a", type: "paragraph", content: "before" },
+      { id: "t", type: "table", content: { type: "tableContent", rows: [{ cells: ["private table"] }] } },
+      { id: "b", type: "paragraph", content: "after" },
+    ] });
+    const first = position(e, "a"); const last = position(e, "b");
+    e.transact((tr) => tr.setSelection(TextSelection.create(tr.doc, first.pos, last.pos + last.node.nodeSize)));
+    const before = e.prosemirrorState.doc;
+    expect(() => capturePrivateInlineTarget(e, "a")).toThrow("表格或非文字块");
+    expect(e.prosemirrorState.doc.eq(before)).toBe(true);
+  });
   test("unrelated edit before target shifts offsets but does not invalidate acceptance", () => {
     const e = create();
     const target = cross(e);
