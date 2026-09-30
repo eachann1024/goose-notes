@@ -47,7 +47,12 @@
   letter-spacing: 0;
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-section-label[data-outline-header="true"] {
-  height: 40px;
+  height: auto;
+  min-height: 44px;
+  padding-block: 4px;
+}
+.sidebar-design .sidebar-section-label[data-outline-header="true"] .sidebar-heading-copy {
+  gap: 4px;
 }
 .sidebar-design .sidebar-heading-copy {
   display: flex;

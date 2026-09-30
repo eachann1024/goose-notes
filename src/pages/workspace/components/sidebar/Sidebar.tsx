@@ -511,7 +511,7 @@ export function Sidebar({
                     <SidebarSectionHeader
                       title={currentView === "search" ? "搜索" : headerTitle}
                       eyebrow={currentView === "outline" ? "文档大纲" : undefined}
-                      onCreate={currentView === "search" || electronNoVault ? undefined : handleCreatePage}
+                      onCreate={currentView === "pages" && !electronNoVault ? handleCreatePage : undefined}
                       createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                       onCollapseAll={
                         currentView === "pages" && activeNotebookId
