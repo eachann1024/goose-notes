@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
 import { type DialogProps } from "@/components/ui/dialog";

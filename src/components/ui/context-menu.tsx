@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import * as React from "react";
 import {
   autoUpdate,

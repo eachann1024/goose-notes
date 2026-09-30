@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import { useSettings } from "@/stores/useSettings";
 import {

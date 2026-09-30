@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { activateWorkspace } from "@/lib/settings-navigation";
 import type {
   CSSProperties,
