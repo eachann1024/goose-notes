@@ -132,9 +132,11 @@
   inset: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
   z-index: 3;
   border: 1px solid var(--workspace-divider);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.025), 0 4px 14px hsl(var(--foreground) / 0.035);
   transition: left var(--workspace-sidebar-motion);
 }
-.workspace-shell .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) {
+/* 顶栏和 stage 共用左侧留白，避免调整侧栏宽度后分隔线错位。 */
+.workspace-shell:has(> .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay])) .sidebar-mode-rail) {
   --workspace-stage-pad-left: 0px;
 }
 .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) > .workspace-content-frame {
@@ -211,7 +213,7 @@
 }
 
 /* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
-.electron-titlebar button:not(:hover):not([aria-pressed="true"]):not([data-state="open"]) > svg.lucide {
+.electron-titlebar button:not(:hover):not([aria-pressed="true"]):not([data-state="open"]) > :is(svg.goose-icon, svg.lucide) {
   color: hsl(var(--foreground));
 }
 
@@ -469,6 +471,12 @@ html[data-sidebar-collapsed] .bn-side-menu {
   overflow: hidden;
   position: relative;
   z-index: 1;
+}
+
+/* 隐藏编辑器的选区更新仍可能滚动祖先。设置使用主区门户，外层必须
+   禁止程序化滚动，避免整页被推离视口；滚动只交给 settings-scroll。 */
+.workspace-shell[data-settings] .workspace-main-sheet {
+  overflow: clip;
 }
 
 /* 历史页与侧栏控件共享状态色；选中和展开不额外绘制轮廓。 */
