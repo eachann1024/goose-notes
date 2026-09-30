@@ -1,7 +1,7 @@
 import type { LinkToolbarProps } from "@blocknote/react";
 import { useBlockNoteEditor } from "@blocknote/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEditorPlatform } from "@/components/editor/platform/context";
@@ -159,7 +159,7 @@ export function EditorLinkToolbar({
           onClick={startEditing}
           className="goose-link-toolbar-control"
         >
-          <LucideIcons.Pencil />
+          <GooseIcons.Pencil />
           编辑
         </button>
       ) : null}
@@ -179,7 +179,7 @@ export function EditorLinkToolbar({
         }}
         className="goose-link-toolbar-control"
       >
-        <LucideIcons.ExternalLink />
+        <GooseIcons.ExternalLink />
         打开
       </button>
       {editor.isEditable ? (
@@ -188,7 +188,7 @@ export function EditorLinkToolbar({
           onClick={handleDelete}
           className="goose-link-toolbar-control goose-link-toolbar-control-danger"
         >
-          <LucideIcons.Unlink />
+          <GooseIcons.Unlink />
           移除
         </button>
       ) : null}

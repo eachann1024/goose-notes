@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -325,7 +325,7 @@ export function EditorContextMenu({
               disabled={!canCopy}
               onSelect={handleCutSelection}
             >
-              <LucideIcons.Scissors className="mr-2 h-4 w-4" />
+              <GooseIcons.Scissors className="mr-2 h-4 w-4" />
               剪切
               <span className="ml-auto text-xs tracking-widest text-muted-foreground">
                 {formatShortcut("Mod+X")}
@@ -336,7 +336,7 @@ export function EditorContextMenu({
             disabled={!canCopy}
             onSelect={handleCopySelection}
           >
-            <LucideIcons.Copy className="mr-2 h-4 w-4" />
+            <GooseIcons.Copy className="mr-2 h-4 w-4" />
             拷贝
             <span className="ml-auto text-xs tracking-widest text-muted-foreground">
               {formatShortcut("Mod+C")}
@@ -344,7 +344,7 @@ export function EditorContextMenu({
           </ContextMenuItem>
           {editable && (
             <ContextMenuItem onSelect={handleContextPaste}>
-              <LucideIcons.Clipboard className="mr-2 h-4 w-4" />
+              <GooseIcons.Clipboard className="mr-2 h-4 w-4" />
               粘贴
               <span className="ml-auto text-xs tracking-widest text-muted-foreground">
                 {formatShortcut("Mod+V")}
@@ -358,7 +358,7 @@ export function EditorContextMenu({
                 setThemeSelectorOpen(true);
               }}
             >
-              <LucideIcons.Image className="mr-2 h-4 w-4" />
+              <GooseIcons.Image className="mr-2 h-4 w-4" />
               生成选中图片
             </ContextMenuItem>
           )}

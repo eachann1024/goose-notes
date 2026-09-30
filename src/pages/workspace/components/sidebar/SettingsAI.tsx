@@ -6,7 +6,7 @@ import {
   useState,
   type ComponentType,
 } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,12 +85,12 @@ const PROVIDER_ICONS: Record<
   AIProviderId,
   ComponentType<{ className?: string; strokeWidth?: number }>
 > = {
-  deepseek: LucideIcons.Sparkles,
-  glm: LucideIcons.Brain,
-  minimax: LucideIcons.AudioLines,
-  "custom-openai-responses": LucideIcons.Zap,
-  "custom-openai": LucideIcons.Boxes,
-  "custom-claude": LucideIcons.MessageSquare,
+  deepseek: GooseIcons.Sparkles,
+  glm: GooseIcons.Brain,
+  minimax: GooseIcons.AudioLines,
+  "custom-openai-responses": GooseIcons.Zap,
+  "custom-openai": GooseIcons.Boxes,
+  "custom-claude": GooseIcons.MessageSquare,
 };
 
 function ProviderIconTile({
@@ -100,7 +100,7 @@ function ProviderIconTile({
   providerId: AIProviderId;
   size?: "sm" | "md";
 }) {
-  const Icon = PROVIDER_ICONS[providerId] ?? LucideIcons.Server;
+  const Icon = PROVIDER_ICONS[providerId] ?? GooseIcons.Server;
   const isSm = size === "sm";
   return (
     <span
@@ -823,7 +823,7 @@ export function SettingsAI({
         >
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <LucideIcons.Sparkles className="h-4 w-4 text-current" />
+              <GooseIcons.Sparkles className="h-4 w-4 text-current" />
               <Label
                 htmlFor="ai-enabled"
                 className="cursor-pointer text-sm font-medium text-foreground"
@@ -855,7 +855,7 @@ export function SettingsAI({
           className={isOnboarding ? "p-4" : undefined}
           title={
             <span className="flex items-center gap-2">
-              <LucideIcons.Brain
+              <GooseIcons.Brain
                 className="h-4 w-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.75}
               />
@@ -893,9 +893,9 @@ export function SettingsAI({
               }}
             >
               {savingCustomConfig ? (
-                <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+                <GooseIcons.LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
-                <LucideIcons.RefreshCw className="h-4 w-4" />
+                <GooseIcons.RefreshCw className="h-4 w-4" />
               )}
               {savingCustomConfig ? "获取中…" : "重新获取模型"}
             </Button>
@@ -909,7 +909,7 @@ export function SettingsAI({
               )}
             >
               <div className="flex items-center gap-3">
-                <LucideIcons.Cpu
+                <GooseIcons.Cpu
                   className="h-4 w-4 shrink-0 text-muted-foreground"
                   strokeWidth={1.75}
                 />
@@ -939,7 +939,7 @@ export function SettingsAI({
                                 modelButtonReason ??
                                 "请选择模型"}
                             </span>
-                            <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                            <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -992,7 +992,7 @@ export function SettingsAI({
         className={isOnboarding ? "p-4" : undefined}
         title={
           <span className="flex items-center gap-2">
-            <LucideIcons.FolderCog
+            <GooseIcons.FolderCog
               className="h-4 w-4 shrink-0 text-muted-foreground"
               strokeWidth={1.75}
             />
@@ -1057,7 +1057,7 @@ export function SettingsAI({
         className={isOnboarding ? "p-4" : undefined}
         title={
           <span className="flex items-center gap-2">
-            <LucideIcons.Bot
+            <GooseIcons.Bot
               className="h-4 w-4 shrink-0 text-muted-foreground"
               strokeWidth={1.75}
             />
@@ -1097,7 +1097,7 @@ export function SettingsAI({
                       <ProviderIconTile providerId={providerId} size="sm" />
                       <span className="truncate">{selectedProvider.label}</span>
                     </span>
-                    <LucideIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                    <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[288px] p-1.5">
@@ -1122,7 +1122,7 @@ export function SettingsAI({
                             {option.description}
                           </div>
                         </div>
-                        <LucideIcons.Check
+                        <GooseIcons.Check
                           className={cn(
                             "h-4 w-4 shrink-0 text-foreground",
                             selected ? "opacity-100" : "opacity-0",
@@ -1140,7 +1140,7 @@ export function SettingsAI({
             {allowCustomBaseURL ? (
               <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
                 <div className="flex items-center gap-3">
-                  <LucideIcons.Globe
+                  <GooseIcons.Globe
                     className="h-4 w-4 shrink-0 text-muted-foreground"
                     strokeWidth={1.75}
                   />
@@ -1175,7 +1175,7 @@ export function SettingsAI({
 
             <div className={cn("space-y-3 p-4", SETTINGS_OPTION_ROW_CLASS)}>
               <div className="flex items-center gap-3">
-                <LucideIcons.KeyRound
+                <GooseIcons.KeyRound
                   className="h-4 w-4 shrink-0 text-muted-foreground"
                   strokeWidth={1.75}
                 />
@@ -1214,12 +1214,12 @@ export function SettingsAI({
                   aria-pressed={apiKeyVisible}
                 >
                   {apiKeyVisible ? (
-                    <LucideIcons.EyeOff
+                    <GooseIcons.EyeOff
                       className="h-4 w-4"
                       strokeWidth={1.75}
                     />
                   ) : (
-                    <LucideIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
+                    <GooseIcons.Eye className="h-4 w-4" strokeWidth={1.75} />
                   )}
                 </Button>
               </div>
@@ -1232,7 +1232,7 @@ export function SettingsAI({
               )}
             >
               <div className="flex items-center gap-3">
-                <LucideIcons.Download
+                <GooseIcons.Download
                   className="h-4 w-4 shrink-0 text-muted-foreground"
                   strokeWidth={1.75}
                 />
@@ -1263,7 +1263,7 @@ export function SettingsAI({
                           )}
                         >
                           {!savingCustomConfig && (
-                            <LucideIcons.Save className="h-4 w-4" />
+                            <GooseIcons.Save className="h-4 w-4" />
                           )}
                           {savingCustomConfig
                             ? "获取模型中…"
@@ -1312,9 +1312,9 @@ export function SettingsAI({
           onClick={() => void handleTestConnection()}
         >
           {testingConnection ? (
-            <LucideIcons.LoaderCircle className="h-4 w-4 animate-spin" />
+            <GooseIcons.LoaderCircle className="h-4 w-4 animate-spin" />
           ) : (
-            <LucideIcons.PlugZap className="h-4 w-4" />
+            <GooseIcons.PlugZap className="h-4 w-4" />
           )}
           {testingConnection ? "测试中…" : "测试连接"}
         </Button>

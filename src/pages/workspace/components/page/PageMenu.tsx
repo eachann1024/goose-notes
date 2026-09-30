@@ -193,9 +193,9 @@ function PageExportSubmenu({
           }}
           className="goose-interactive group grid min-h-[32px] w-full cursor-default grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-1.5 rounded-lg px-2 text-left text-xs"
         >
-          <LucideIcons.Download className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]" />
+          <GooseIcons.Export className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)] group-data-[state=open]:text-[var(--goose-interactive-selected-fg)]" />
           <span className="min-w-0 truncate">导出</span>
-          <LucideIcons.ChevronRight className="ml-auto h-4 w-4" />
+          <GooseIcons.ChevronRight className="ml-auto h-4 w-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -222,7 +222,7 @@ function PageExportSubmenu({
             className={itemClass}
             onClick={() => select(onExportMarkdown)}
           >
-            <LucideIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <GooseIcons.FileCode className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
             <span className="min-w-0 truncate">Markdown</span>
           </button>
           <button
@@ -231,7 +231,7 @@ function PageExportSubmenu({
             className={itemClass}
             onClick={() => select(onExportHtml)}
           >
-            <LucideIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <GooseIcons.FileType className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
             <span className="min-w-0 truncate">HTML</span>
           </button>
           <button
@@ -240,7 +240,7 @@ function PageExportSubmenu({
             className={itemClass}
             onClick={() => select(onExportWord)}
           >
-            <LucideIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <GooseIcons.File className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
             <span className="min-w-0 truncate">Word</span>
           </button>
           <button
@@ -249,7 +249,7 @@ function PageExportSubmenu({
             className={itemClass}
             onClick={() => select(onExportPdf)}
           >
-            <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+            <GooseIcons.FileText className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
             <span className="min-w-0 truncate">PDF</span>
           </button>
         </div>
@@ -416,7 +416,7 @@ export function PageMenu() {
             onPointerDownCapture={captureSelectedBlocks}
             className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           >
-            <LucideIcons.MoreHorizontal className="h-4 w-4" />
+            <GooseIcons.MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">更多操作</span>
           </Button>
         </PopoverTrigger>
@@ -504,7 +504,7 @@ export function PageMenu() {
               }
             }}
           >
-            <LucideIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]" />
+            <GooseIcons.Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]" />
             <span className="min-w-0 truncate">锁定页面</span>
             <Switch
               aria-label="锁定页面"
@@ -537,7 +537,7 @@ export function PageMenu() {
                 })();
               }}
             >
-              <LucideIcons.AppWindow className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+              <GooseIcons.AppWindow className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
               <span className="min-w-0 truncate">在新窗口打开</span>
             </PopoverAction>
           ) : null}
@@ -548,7 +548,7 @@ export function PageMenu() {
               className="group grid min-h-[32px] grid-cols-[18px_minmax(0,1fr)] gap-x-1.5 px-2 text-xs"
               onSelect={handleImport}
             >
-              <LucideIcons.Upload className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+              <GooseIcons.Upload className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
               <span className="min-w-0 truncate">导入</span>
             </PopoverAction>
           </div>
@@ -560,7 +560,7 @@ export function PageMenu() {
               setThemeSelectorOpen(true);
             }}
           >
-            <LucideIcons.Image className="h-3.5 w-3.5 text-muted-foreground" />
+            <GooseIcons.Image className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="page-menu-shimmer-text min-w-0 truncate font-medium text-foreground">
               {selectedBlocks.length > 0 ? "生成选中图片" : "生成图片"}
             </span>
@@ -595,7 +595,7 @@ export function PageMenu() {
                 }, 80);
               }}
             >
-              <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
+              <GooseIcons.History className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-interactive-selected-fg)]" />
               <span className="min-w-0 truncate">页面历史</span>
             </PopoverAction>
           </div>
@@ -605,9 +605,9 @@ export function PageMenu() {
             onClick={() => void deletePageWithUndo(activePageId)}
           >
             {isLocalItem ? (
-              <LucideIcons.FileX className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
+              <GooseIcons.FileX className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
             ) : (
-              <LucideIcons.Trash2 className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
+              <GooseIcons.Trash2 className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
             )}
             <span className="min-w-0 truncate">
               {isLocalItem ? "移到系统回收站" : "删除"}

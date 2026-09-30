@@ -123,7 +123,6 @@ declare global {
   const LOCAL_FOLDER_TERMINAL_CANDIDATES: typeof import('./lib/local-folder-open-apps').LOCAL_FOLDER_TERMINAL_CANDIDATES
   const LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS: typeof import('./lib/local-frontmatter').LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS
   const Label: typeof import('./components/ui/label').Label
-  const LucideIcons: typeof import('lucide-react')
   const MAX_FILE_ATTACHMENT_SIZE: typeof import('./lib/fileStorage').MAX_FILE_ATTACHMENT_SIZE
   const MAX_VIDEO_ATTACHMENT_SIZE: typeof import('./lib/videoStorage').MAX_VIDEO_ATTACHMENT_SIZE
   const MINIMAX_BASE_URL: typeof import('./lib/ai-provider/index').MINIMAX_BASE_URL
@@ -630,6 +629,7 @@ declare global {
   const resolveModModifier: typeof import('./lib/shortcut-platform').resolveModModifier
   const resolveNotebookLandingPageId: typeof import('./lib/notebookNavigation').resolveNotebookLandingPageId
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
+  const resolvePageIcon: typeof import('./lib/resolvePageIcon').resolvePageIcon
   const resolvePageMentionNavigation: typeof import('./lib/pageMentionNavigation').resolvePageMentionNavigation
   const resolvePasteAnchor: typeof import('./components/editor/hooks/useEditorPaste').resolvePasteAnchor
   const resolvePasteLines: typeof import('./components/editor/utils/multilinePaste').resolvePasteLines
@@ -932,6 +932,12 @@ declare global {
   export type { SelectableCardProps } from './components/ui/selectable-card'
   import('./components/ui/selectable-card')
   // @ts-ignore
+  export type { EditorFindState } from './components/editor/hooks/useEditorFind'
+  import('./components/editor/hooks/useEditorFind')
+  // @ts-ignore
+  export type { CachedPasteTarget } from './components/editor/hooks/useEditorPaste'
+  import('./components/editor/hooks/useEditorPaste')
+  // @ts-ignore
   export type { BlockNoteContent, LegacyPageContent, PageContent } from './components/editor/utils/blocknote-content/index'
   import('./components/editor/utils/blocknote-content/index')
   // @ts-ignore
@@ -964,10 +970,4 @@ declare global {
   // @ts-ignore
   export type { EditorFileUploadDeps } from './components/editor/utils/uploadEditorFile'
   import('./components/editor/utils/uploadEditorFile')
-  // @ts-ignore
-  export type { EditorFindState } from './components/editor/hooks/useEditorFind'
-  import('./components/editor/hooks/useEditorFind')
-  // @ts-ignore
-  export type { CachedPasteTarget } from './components/editor/hooks/useEditorPaste'
-  import('./components/editor/hooks/useEditorPaste')
 }

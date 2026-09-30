@@ -20,7 +20,7 @@ import {
   Sparkles,
   Table,
   Video,
-} from "lucide-react";
+} from "@/components/ui/icons";
 const SLASH_ICONS = {
   sparkles: <Sparkles size={18} />,
   heading1: <Heading1 size={18} />,

@@ -7,7 +7,7 @@ import {
   useId,
   useCallback,
 } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -368,7 +368,7 @@ export function CodeBlockToolbar({
                       onSystem: () => onSystemPreview?.(),
                     })}
                   >
-                    <LucideIcons.Maximize2 className="h-3.5 w-3.5" />
+                    <GooseIcons.Maximize2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{PREVIEW_ACTION_TOOLTIP}</TooltipContent>
@@ -385,7 +385,7 @@ export function CodeBlockToolbar({
                     disabled={!canPreview}
                     className={cn("h-7 w-7 p-0", chipClass)}
                   >
-                    <LucideIcons.Download className="h-3.5 w-3.5" />
+                    <GooseIcons.Download className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>下载图片</TooltipContent>
@@ -411,16 +411,16 @@ export function CodeBlockToolbar({
                     }
                   >
                     {copyingImage ? (
-                      <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <GooseIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : copied ? (
-                      <LucideIcons.Check
+                      <GooseIcons.Check
                         className={cn(
                           "h-3.5 w-3.5",
                           "text-[var(--goose-color-success)]",
                         )}
                       />
                     ) : (
-                      <LucideIcons.Copy className="h-3.5 w-3.5" />
+                      <GooseIcons.Copy className="h-3.5 w-3.5" />
                     )}
                   </Button>
                 </TooltipTrigger>
@@ -486,9 +486,9 @@ export function CodeBlockToolbar({
                   )}
                 >
                   {wrap ? (
-                    <LucideIcons.AlignJustify className={iconSize} />
+                    <GooseIcons.AlignJustify className={iconSize} />
                   ) : (
-                    <LucideIcons.WrapText className={iconSize} />
+                    <GooseIcons.WrapText className={iconSize} />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -507,11 +507,11 @@ export function CodeBlockToolbar({
                   className={cn("h-6 w-6 p-0", chipClass)}
                 >
                   {isLoading ? (
-                    <LucideIcons.Loader2
+                    <GooseIcons.Loader2
                       className={cn(iconSize, "animate-spin")}
                     />
                   ) : (
-                    <LucideIcons.Sparkles className={iconSize} />
+                    <GooseIcons.Sparkles className={iconSize} />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -529,14 +529,14 @@ export function CodeBlockToolbar({
                   className={cn("h-6 w-6 p-0", chipClass)}
                 >
                   {copied ? (
-                    <LucideIcons.Check
+                    <GooseIcons.Check
                       className={cn(
                         iconSize,
                         "text-[var(--goose-color-success)]",
                       )}
                     />
                   ) : (
-                    <LucideIcons.Copy className={iconSize} />
+                    <GooseIcons.Copy className={iconSize} />
                   )}
                 </Button>
               </TooltipTrigger>

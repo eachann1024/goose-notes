@@ -104,3 +104,6 @@ public/fonts/*.otf
 
 !/docs/showcase/goose-note-first-release.mp4
 
+
+# Trusted PR preview tooling uses its own pinned Node dependencies
+!/.github/ui-preview/package-lock.json

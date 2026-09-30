@@ -221,7 +221,7 @@ export function SidebarContextMenu({
               sections.push(
                 <ContextMenuGroup key="rename">
                   <ContextMenuItem onSelect={() => scheduleAfterMenuClose(() => setRenaming(true))}>
-                    <LucideIcons.Pencil className="h-4 w-4" />
+                    <GooseIcons.Pencil className="h-4 w-4" />
                     <span>重命名</span>
                     <MenuShortcut shortcut="F2" />
                   </ContextMenuItem>
@@ -241,7 +241,7 @@ export function SidebarContextMenu({
                         )
                       }
                     >
-                      <LucideIcons.FilePlus2 className="h-4 w-4" />
+                      <GooseIcons.FilePlus2 className="h-4 w-4" />
                       <span className="min-w-0 truncate">新建文件</span>
                       <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
                     </ContextMenuItem>
@@ -254,7 +254,7 @@ export function SidebarContextMenu({
                         )
                       }
                     >
-                      <LucideIcons.FolderPlus className="h-4 w-4" />
+                      <GooseIcons.FolderPlus className="h-4 w-4" />
                       <span>新建文件夹</span>
                     </ContextMenuItem>
                   ) : null}
@@ -276,7 +276,7 @@ export function SidebarContextMenu({
                       })
                     }
                   >
-                    <LucideIcons.ArrowDownAZ className="h-4 w-4" />
+                    <GooseIcons.ArrowDownAZ className="h-4 w-4" />
                     <span className="min-w-0 truncate">恢复名称排序</span>
                   </ContextMenuItem>
                 </ContextMenuGroup>,
@@ -296,7 +296,7 @@ export function SidebarContextMenu({
                       }}
                       disabled={isTrashed}
                     >
-                      <LucideIcons.PanelTopOpen className="h-4 w-4" />
+                      <GooseIcons.PanelTopOpen className="h-4 w-4" />
                       <span className="min-w-0 truncate">在新标签页打开</span>
                       <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                         {formatShortcut("Mod")}+点击
@@ -309,7 +309,7 @@ export function SidebarContextMenu({
                         void openLocalFolderPageInExternalApp(page)
                       }
                     >
-                      <LucideIcons.SquareArrowOutUpRight className="h-4 w-4" />
+                      <GooseIcons.SquareArrowOutUpRight className="h-4 w-4" />
                       <span className="min-w-0 truncate">
                         {getExternalAppLabel(localFolderExternalEditor)}
                       </span>
@@ -324,7 +324,7 @@ export function SidebarContextMenu({
                         void revealLocalFolderPageInFileManager(page)
                       }
                     >
-                      <LucideIcons.FolderOpen className="h-4 w-4" />
+                      <GooseIcons.FolderOpen className="h-4 w-4" />
                       <span className="min-w-0 truncate">
                         {getFileManagerLabel(
                           !!page.isFolder,
@@ -342,7 +342,7 @@ export function SidebarContextMenu({
                     <ContextMenuItem
                       onSelect={() => void openLocalFolderPageInTerminal(page)}
                     >
-                      <LucideIcons.Terminal className="h-4 w-4" />
+                      <GooseIcons.Terminal className="h-4 w-4" />
                       <span className="min-w-0 truncate">
                         {getTerminalLabel(localFolderTerminal)}
                       </span>
@@ -360,7 +360,7 @@ export function SidebarContextMenu({
                 <ContextMenuGroup key="organize" className="mt-2">
                   <ContextMenuLabel>整理</ContextMenuLabel>
                   <ContextMenuItem onSelect={handleDuplicatePage}>
-                    <LucideIcons.Copy className="h-4 w-4" />
+                    <GooseIcons.Copy className="h-4 w-4" />
                     <span>创建副本</span>
                   </ContextMenuItem>
                 </ContextMenuGroup>,
@@ -375,14 +375,14 @@ export function SidebarContextMenu({
                 >
                   {showMoveTop ? (
                     <ContextMenuItem onSelect={handleMoveToTopLevel}>
-                      <LucideIcons.ArrowUpToLine className="h-4 w-4" />
+                      <GooseIcons.ArrowUpToLine className="h-4 w-4" />
                       <span>移至顶层</span>
                     </ContextMenuItem>
                   ) : null}
                   {showMoveNotebook ? (
                     <ContextMenuSub>
                       <ContextMenuSubTrigger>
-                        <LucideIcons.FolderOutput className="h-4 w-4" />
+                        <GooseIcons.FolderOutput className="h-4 w-4" />
                         <span>移动到笔记本</span>
                       </ContextMenuSubTrigger>
                       <ContextMenuPortal>
@@ -414,7 +414,7 @@ export function SidebarContextMenu({
                         )
                       }
                     >
-                      <LucideIcons.FolderInput className="h-4 w-4" />
+                      <GooseIcons.FolderInput className="h-4 w-4" />
                       <span className="min-w-0 truncate">移动到…</span>
                       <MenuShortcut
                         shortcut={LOCAL_FOLDER_FILE_SHORTCUTS.moveItem}
@@ -431,7 +431,7 @@ export function SidebarContextMenu({
                   <ContextMenuItem
                     onSelect={() => void copyLocalFolderPagePath(page)}
                   >
-                    <LucideIcons.ClipboardCopy className="h-4 w-4" />
+                    <GooseIcons.ClipboardCopy className="h-4 w-4" />
                     <span className="min-w-0 truncate">
                       {page.isFolder ? "复制文件夹路径" : "复制文件路径"}
                     </span>
@@ -448,7 +448,7 @@ export function SidebarContextMenu({
                 {isTrashed ? (
                   <>
                     <ContextMenuItem onSelect={handleRestore}>
-                      <LucideIcons.RotateCcw className="h-4 w-4" />
+                      <GooseIcons.RotateCcw className="h-4 w-4" />
                       <span>
                         {isLocalFolder
                           ? page.isFolder
@@ -463,7 +463,7 @@ export function SidebarContextMenu({
                       }
                       className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
                     >
-                      <LucideIcons.Trash2 className="h-4 w-4" />
+                      <GooseIcons.Trash2 className="h-4 w-4" />
                       <span>永久删除</span>
                     </ContextMenuItem>
                   </>
@@ -473,9 +473,9 @@ export function SidebarContextMenu({
                     className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
                   >
                     {isLocalFolder ? (
-                      <LucideIcons.FileX className="h-4 w-4" />
+                      <GooseIcons.FileX className="h-4 w-4" />
                     ) : (
-                      <LucideIcons.Trash2 className="h-4 w-4" />
+                      <GooseIcons.Trash2 className="h-4 w-4" />
                     )}
                     <span className="min-w-0 truncate">
                       {isLocalFolder ? "移到系统回收站" : "删除"}

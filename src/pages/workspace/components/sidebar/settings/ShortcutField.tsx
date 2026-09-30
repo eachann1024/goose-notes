@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import * as LucideIcons from "lucide-react"
+import * as GooseIcons from "@/components/ui/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -107,7 +107,7 @@ export function ShortcutField({
     <div className={`space-y-2 p-4 ${SETTINGS_OPTION_ROW_CLASS}`}>
       <div>
         <div className="flex items-center gap-3">
-          <LucideIcons.Keyboard className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+          <GooseIcons.Keyboard className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
           <Label htmlFor={id} className="cursor-pointer">
             {title}
           </Label>

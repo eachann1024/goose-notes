@@ -399,7 +399,7 @@ export function renderItem({
       .closest("li")
       ?.querySelector(".main-tree-row");
     // 跳过折叠箭头，取页面图标本体
-    const iconSvg = rowEl?.querySelector("svg:not(.lucide-chevron-right)");
+    const iconSvg = rowEl?.querySelector(".main-tree-row-icon-slot svg");
     if (iconSvg) ghost.appendChild(iconSvg.cloneNode(true));
     const label = document.createElement("span");
     label.textContent = title || "无标题";

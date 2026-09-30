@@ -36,7 +36,7 @@ function CustomImageBlockContent({
         editor={editor}
         title="添加图片"
         hint="点击选择，或直接拖入编辑器"
-        icon={<LucideIcons.Image size={22} strokeWidth={1.75} />}
+        icon={<GooseIcons.Image size={22} strokeWidth={1.75} />}
       />
     );
   }

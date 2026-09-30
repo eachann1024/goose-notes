@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { isElectronRuntime } from "@/lib/electron/runtime";
@@ -136,7 +136,7 @@ function SetupGuideFlow() {
                 data-complete={complete || undefined}
               >
                 <span className="setup-guide-step-marker" aria-hidden="true">
-                  {complete ? <LucideIcons.Check size={14} /> : index + 1}
+                  {complete ? <GooseIcons.Check size={14} /> : index + 1}
                 </span>
                 <span>{item.label}</span>
               </li>

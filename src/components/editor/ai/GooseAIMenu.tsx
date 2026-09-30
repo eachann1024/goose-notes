@@ -1,5 +1,5 @@
 import { useExtension, useExtensionState } from "@blocknote/react";
-import { Square } from "lucide-react";
+import { Square } from "@/components/ui/icons";
 import { RiSparkling2Fill } from "react-icons/ri";
 import { SelectionActions } from "@/pages/workspace/components/notebook-ai/beautiful-ui/SelectionActions";
 import { GooseAIExtension } from "./GooseAIExtension";

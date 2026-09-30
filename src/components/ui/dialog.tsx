@@ -95,7 +95,7 @@ const DialogContent = React.forwardRef<HTMLElement, DialogContentProps>(
                 aria-label="关闭"
                 className="goose-interactive absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-sm border border-transparent bg-transparent text-muted-foreground opacity-70 transition-opacity hover:opacity-100 "
               >
-                <LucideIcons.X className="h-4 w-4" />
+                <GooseIcons.X className="h-4 w-4" />
               </DialogClose>
             )}
           </ModalDialog>

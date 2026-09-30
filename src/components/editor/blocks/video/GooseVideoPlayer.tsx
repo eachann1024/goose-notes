@@ -13,7 +13,7 @@ import {
   VideoOff,
   Volume2,
   VolumeX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/components/editor/utils/cn";
 
 function formatTime(seconds: number): string {

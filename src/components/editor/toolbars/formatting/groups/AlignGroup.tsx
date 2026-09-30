@@ -1,4 +1,4 @@
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
@@ -25,7 +25,7 @@ export function AlignGroup({
             aria-label="左对齐"
             className={ITEM_CLASS}
           >
-            <LucideIcons.AlignLeft className="h-[15px] w-[15px]" />
+            <GooseIcons.AlignLeft className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="左对齐" />
@@ -40,7 +40,7 @@ export function AlignGroup({
             aria-label="居中对齐"
             className={ITEM_CLASS}
           >
-            <LucideIcons.AlignCenter className="h-[15px] w-[15px]" />
+            <GooseIcons.AlignCenter className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="居中对齐" />
@@ -55,7 +55,7 @@ export function AlignGroup({
             aria-label="右对齐"
             className={ITEM_CLASS}
           >
-            <LucideIcons.AlignRight className="h-[15px] w-[15px]" />
+            <GooseIcons.AlignRight className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="右对齐" />

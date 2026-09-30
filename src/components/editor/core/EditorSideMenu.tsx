@@ -11,7 +11,7 @@ import {
   useExtension,
 } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
-import { Plus, GripVertical, ChevronRight } from "lucide-react";
+import { Plus, GripVertical, ChevronRight } from "@/components/ui/icons";
 import { cn } from "@/components/editor/utils/cn";
 import { ensureBlockMoveDragging } from "@/components/editor/core/ensureBlockMoveDragging";
 import {

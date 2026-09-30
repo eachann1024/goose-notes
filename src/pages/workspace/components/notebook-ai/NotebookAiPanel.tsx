@@ -30,7 +30,7 @@ import {
   History as HistoryIcon,
   MoreHorizontal,
   Check,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { RefObject } from "react";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { useNotebooks } from "@/stores/useNotebooks";

@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, Plus } from "lucide-react";
+import { ArrowUp, Plus } from "@/components/ui/icons";
 import { ComposerPrimitive } from "@assistant-ui/react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icons";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Editor, type EditorRef } from "@/components/editor/core/Editor";
 import { getPageTitle } from "@/components/editor/utils/page-title";

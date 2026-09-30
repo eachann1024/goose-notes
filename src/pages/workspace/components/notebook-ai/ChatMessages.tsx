@@ -23,7 +23,7 @@ import {
   ChevronRight,
   Copy,
   Image as ImageIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   ActionBarPrimitive,
   AttachmentPrimitive,

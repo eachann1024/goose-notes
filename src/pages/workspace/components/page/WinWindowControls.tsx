@@ -3,7 +3,7 @@
  * 放在 DesktopTitleBar 最右侧：最小化 / 最大化·还原 / 关闭。
  */
 import { useEffect, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { getGooseDesktop } from "@/lib/electron/runtime";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ export function WinWindowControls() {
         aria-label="最小化"
         onClick={() => void desktop?.minimizeWindow?.()}
       >
-        <LucideIcons.Minus className="h-3.5 w-3.5" strokeWidth={2} />
+        <GooseIcons.Minus className="h-3.5 w-3.5" strokeWidth={2} />
       </button>
       <button
         type="button"
@@ -57,9 +57,9 @@ export function WinWindowControls() {
         }}
       >
         {maximized ? (
-          <LucideIcons.Copy className="h-3 w-3 -scale-x-100" strokeWidth={2} />
+          <GooseIcons.Copy className="h-3 w-3 -scale-x-100" strokeWidth={2} />
         ) : (
-          <LucideIcons.Square className="h-3 w-3" strokeWidth={2} />
+          <GooseIcons.Square className="h-3 w-3" strokeWidth={2} />
         )}
       </button>
       <button
@@ -68,7 +68,7 @@ export function WinWindowControls() {
         aria-label="关闭"
         onClick={() => void desktop?.closeWindow?.()}
       >
-        <LucideIcons.X className="h-3.5 w-3.5" strokeWidth={2} />
+        <GooseIcons.X className="h-3.5 w-3.5" strokeWidth={2} />
       </button>
     </div>
   );

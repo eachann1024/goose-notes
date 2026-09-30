@@ -1,4 +1,4 @@
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";
 import { useBlockNoteEditor } from "@blocknote/react";
@@ -34,7 +34,7 @@ export function MarkGroup({
             aria-label="粗体"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Bold className="h-[15px] w-[15px]" />
+            <GooseIcons.Bold className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="粗体" shortcut="Mod+B" />
@@ -49,7 +49,7 @@ export function MarkGroup({
             aria-label="斜体"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Italic className="h-[15px] w-[15px]" />
+            <GooseIcons.Italic className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="斜体" shortcut="Mod+I" />
@@ -64,7 +64,7 @@ export function MarkGroup({
             aria-label="删除线"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Strikethrough className="h-[15px] w-[15px]" />
+            <GooseIcons.Strikethrough className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="删除线" shortcut="Mod+Shift+S" />

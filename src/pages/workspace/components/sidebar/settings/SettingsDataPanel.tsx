@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { Download, FileText, Globe, RotateCcw, Upload, Cloud, CloudOff, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
+import { Download, FileText, Globe, RotateCcw, Upload, Cloud, CloudOff, RefreshCw, ChevronRight, Trash2 } from "@/components/ui/icons";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";

@@ -7,7 +7,7 @@ import {
   type BlockNoteEditor,
 } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { GooseVideoPlayer } from "./GooseVideoPlayer";
 import { VideoToolbar } from "./VideoToolbar";
 import {
@@ -38,7 +38,7 @@ function VideoUrlInput({
 
   return (
     <div className="flex items-center gap-2 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-3 py-2">
-      <LucideIcons.Link className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <GooseIcons.Link className="h-4 w-4 shrink-0 text-muted-foreground" />
       <input
         type="text"
         value={url}
@@ -211,7 +211,7 @@ function VideoBlockContent({
         editor={editor}
         title="添加视频"
         hint="点击选择本地视频，将自动压缩为 MP4"
-        icon={<LucideIcons.Video size={22} strokeWidth={1.75} />}
+        icon={<GooseIcons.Video size={22} strokeWidth={1.75} />}
       />
     );
   }

@@ -5,7 +5,7 @@ import {
   Copy,
   Download,
   Maximize2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useEffect, type MouseEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {

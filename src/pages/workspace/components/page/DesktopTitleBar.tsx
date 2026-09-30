@@ -11,7 +11,7 @@
  * 历史模式改渲染 HistoryToolbar（仍全宽）。
  * 非 Electron 构建不渲染本组件，PageHeader 保持原样。
  */
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { WinWindowControls } from "./WinWindowControls";
 import type { Page } from "@/types";
 import { cn, formatShortcut } from "@/lib/utils";
@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "@/components/ui/icons";
 import { usePages } from "@/stores/usePages";
 import { useTabs } from "@/stores/useTabs";
 import { useFileNavHistory } from "@/stores/useFileNavHistory";
@@ -112,8 +112,8 @@ export function DesktopTitleBar({
     >
       <TooltipProvider delayDuration={600}>
         {[
-          { label: "后退", Icon: LucideIcons.ArrowLeft, disabled: !canGoBack, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goBackTabHistory(); } },
-          { label: "前进", Icon: LucideIcons.ArrowRight, disabled: !canGoForward, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goForwardTabHistory(); } },
+          { label: "后退", Icon: GooseIcons.ArrowLeft, disabled: !canGoBack, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goBackTabHistory(); } },
+          { label: "前进", Icon: GooseIcons.ArrowRight, disabled: !canGoForward, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goForwardTabHistory(); } },
         ].map(({ label, Icon, disabled, onClick }) => (
           <Tooltip key={label}>
             <TooltipTrigger asChild>
@@ -133,7 +133,7 @@ export function DesktopTitleBar({
               aria-label={sidebarCollapsed ? "展开侧栏" : "收起侧栏"}
               aria-pressed={sidebarCollapsed}
             >
-              <LucideIcons.PanelLeft className="h-4 w-4" />
+              <GooseIcons.PanelLeft className="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -260,7 +260,7 @@ export function DesktopTitleBar({
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
-                    <LucideIcons.RotateCcw className="h-4 w-4" />
+                    <GooseIcons.RotateCcw className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">恢复页面</TooltipContent>
@@ -276,7 +276,7 @@ export function DesktopTitleBar({
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)]"
                   >
-                    <LucideIcons.Trash2 className="h-4 w-4" />
+                    <GooseIcons.Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">永久删除</TooltipContent>

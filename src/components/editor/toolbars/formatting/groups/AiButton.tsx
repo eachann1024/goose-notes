@@ -1,4 +1,4 @@
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Button } from "@/components/editor/ui/button";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
@@ -20,7 +20,7 @@ export function AiButton({
           aria-label="AI 润色"
           className="goose-formatting-toolbar-control"
         >
-          <LucideIcons.Sparkles className="h-[15px] w-[15px]" />
+          <GooseIcons.Sparkles className="h-[15px] w-[15px]" />
         </Button>
       </TooltipTrigger>
       <ToolbarTooltip label="AI 润色" />

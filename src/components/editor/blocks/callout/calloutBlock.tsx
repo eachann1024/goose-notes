@@ -1,7 +1,6 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps, type BlockNoteEditor } from "@blocknote/core";
-import * as LucideIcons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { resolvePageIcon } from "@/lib/resolvePageIcon";
 import { cn } from "@/components/editor/utils/cn";
 import {
   DEFAULT_CALLOUT_ICON,
@@ -11,15 +10,10 @@ import {
 
 export { DEFAULT_CALLOUT_ICON, LUCIDE_ICON_TO_EMOJI, normalizeCalloutIcon };
 
-const LUCIDE_ICON_COMPONENTS = LucideIcons as unknown as Record<
-  string,
-  LucideIcon
->;
-
 /** 将 Lucide 名（新存）或 emoji（存量）统一渲染为 React 元素 */
 function renderCalloutIcon(iconStr: string, className?: string) {
   const resolved = normalizeCalloutIcon(iconStr);
-  const IconComp = LUCIDE_ICON_COMPONENTS[resolved];
+  const IconComp = resolvePageIcon(resolved);
   if (IconComp) {
     return (
       <IconComp className={cn("h-[1em] w-[1em] stroke-[1.75]", className)} />

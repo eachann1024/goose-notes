@@ -11,7 +11,7 @@ import { Decoration } from "prosemirror-view";
 import { Fragment } from "prosemirror-model";
 import { Plugin, TextSelection } from "prosemirror-state";
 import { common, createLowlight } from "lowlight";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -977,7 +977,7 @@ function CodeBlockComponent({
                   collapsed && "-rotate-90",
                 )}
               >
-                <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+                <GooseIcons.ChevronDown className="h-3.5 w-3.5" />
               </Button>
               <Input
                 ref={summaryInputRef}
@@ -1127,7 +1127,7 @@ function CodeBlockComponent({
                 "border-[var(--goose-callout-accent)] bg-[var(--goose-interactive-selected)] text-primary",
             )}
           >
-            <LucideIcons.HelpCircle className="h-3.5 w-3.5" />
+            <GooseIcons.HelpCircle className="h-3.5 w-3.5" />
           </Button>
           {showLatexHint && (
             <div className="absolute bottom-8 right-0 z-30 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border bg-background p-3 shadow-lg">
@@ -1138,7 +1138,7 @@ function CodeBlockComponent({
                   onClick={() => setShowLatexHint(false)}
                   className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 >
-                  <LucideIcons.X className="h-3.5 w-3.5" />
+                  <GooseIcons.X className="h-3.5 w-3.5" />
                 </button>
               </div>
               <div className="max-h-48 overflow-y-auto">

@@ -4,7 +4,7 @@
  * 重新选回默认模型时清除覆盖。
  */
 import { useMemo, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "@/components/ui/icons";
 import {
   Popover,
   PopoverContent,

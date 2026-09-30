@@ -1,6 +1,6 @@
 import { useCallback, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 import {
   MainTreeRowDisclosure,
   MainTreeRowShell,

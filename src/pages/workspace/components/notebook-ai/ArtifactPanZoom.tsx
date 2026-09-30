@@ -6,7 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { Minus, Plus, RotateCcw } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   Tooltip,

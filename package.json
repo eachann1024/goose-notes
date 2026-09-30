@@ -108,7 +108,8 @@
     "yaml": "^2.9.0",
     "yet-another-react-lightbox": "3.32.0",
     "zod": "^4.3.6",
-    "zustand": "5.0.14"
+    "zustand": "5.0.14",
+    "@phosphor-icons/react": "2.1.10"
   },
   "overrides": {
     "zod": "4.4.3",

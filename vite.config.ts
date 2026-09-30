@@ -243,7 +243,6 @@ export default defineConfig({
       imports: [
         "react",
         {
-          "lucide-react": [["*", "LucideIcons"]],
           clsx: ["clsx"],
         },
       ],
@@ -253,6 +252,7 @@ export default defineConfig({
         "src/stores",
         "src/lib",
         "src/components/ui",
+        "!src/components/ui/icons.tsx",
         // 编辑器抽取后，原 src/lib / src/hooks 下被全 app 依赖的纯工具/hooks
         // 迁入此处，仍需保持自动导入以维持既有的全局符号（行为不变）。
         // 排除 cn.ts：编辑器自带的 cn 仅供编辑器内部显式 import，

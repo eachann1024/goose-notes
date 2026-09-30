@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Download, FilePlus2, Image as ImageIcon, Loader2, Maximize2 } from "lucide-react";
+import { Copy, Download, FilePlus2, Image as ImageIcon, Loader2, Maximize2 } from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Minus, Plus, RotateCcw, X } from "lucide-react";
+import { Minus, Plus, RotateCcw, X } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/icon-button";
 import { MathView } from "@/components/editor/blocks/math/MathView";
 import {

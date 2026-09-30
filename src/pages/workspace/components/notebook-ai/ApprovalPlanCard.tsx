@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FilePlus2, FileText, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { FilePlus2, FileText, Loader2, Pencil, RotateCcw, Trash2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
   normalizeBatchPlanInput,

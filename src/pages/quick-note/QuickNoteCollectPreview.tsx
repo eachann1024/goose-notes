@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ClipboardPlus, Square } from "lucide-react";
+import { ClipboardPlus, Square } from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import {

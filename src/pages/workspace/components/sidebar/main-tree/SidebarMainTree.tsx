@@ -125,7 +125,7 @@ export function SidebarMainTree({
           })
         }
       >
-        <LucideIcons.ArrowDownAZ className="h-4 w-4" />
+        <GooseIcons.ArrowDownAZ className="h-4 w-4" />
         <span>恢复名称排序</span>
       </ContextMenuItem>
     </ContextMenuGroup>
@@ -518,7 +518,7 @@ export function SidebarMainTree({
                 scheduleAfterMenuClose(() => startCreateLocalFile(undefined))
               }
             >
-              <LucideIcons.FilePlus2 className="h-4 w-4" />
+              <GooseIcons.FilePlus2 className="h-4 w-4" />
               <span className="min-w-0 truncate">新建文件</span>
               <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
             </ContextMenuItem>
@@ -527,7 +527,7 @@ export function SidebarMainTree({
                 scheduleAfterMenuClose(() => startCreateLocalFolder(undefined))
               }
             >
-              <LucideIcons.FolderPlus className="h-4 w-4" />
+              <GooseIcons.FolderPlus className="h-4 w-4" />
               <span>新建文件夹</span>
             </ContextMenuItem>
           </ContextMenuGroup>
@@ -891,7 +891,7 @@ export function SidebarMainTree({
                   scheduleAfterMenuClose(() => startCreateLocalFile(undefined))
                 }
               >
-                <LucideIcons.FilePlus2 className="h-4 w-4" />
+                <GooseIcons.FilePlus2 className="h-4 w-4" />
                 <span className="min-w-0 truncate">新建文件</span>
                 <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
               </ContextMenuItem>
@@ -902,7 +902,7 @@ export function SidebarMainTree({
                   )
                 }
               >
-                <LucideIcons.FolderPlus className="h-4 w-4" />
+                <GooseIcons.FolderPlus className="h-4 w-4" />
                 <span>新建文件夹</span>
               </ContextMenuItem>
             </ContextMenuGroup>

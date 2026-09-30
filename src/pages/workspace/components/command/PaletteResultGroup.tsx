@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import { useLayoutEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icons";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { useNotebooks } from "@/stores/useNotebooks";

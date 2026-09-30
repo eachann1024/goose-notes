@@ -1,6 +1,6 @@
 import { type CSSProperties, type ComponentType } from "react";
 import { createPortal } from "react-dom";
-import { FoldVertical, Plus, WandSparkles } from "lucide-react";
+import { FoldVertical, Plus, WandSparkles } from "@/components/ui/icons";
 import {
   slashItemDescription,
   slashItemKey,

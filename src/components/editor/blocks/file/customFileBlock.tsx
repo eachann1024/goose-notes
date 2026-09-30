@@ -166,7 +166,7 @@ function CustomFileBlockContent({
         editor={editor}
         title="添加文件"
         hint="点击选择，或直接拖入编辑器"
-        icon={<LucideIcons.FileUp size={18} strokeWidth={1.75} />}
+        icon={<GooseIcons.FileUp size={18} strokeWidth={1.75} />}
       />
     );
   }
@@ -181,11 +181,11 @@ function CustomFileBlockContent({
             onClick={handleAddFile}
             title="更换文件"
           >
-            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+            <GooseIcons.FileText size={20} strokeWidth={1.75} />
           </button>
         ) : (
           <span className="goose-file-block-icon-btn">
-            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+            <GooseIcons.FileText size={20} strokeWidth={1.75} />
           </span>
         )}
         {renaming && editor.isEditable ? (
@@ -218,7 +218,7 @@ function CustomFileBlockContent({
             onClick={handleOpen}
             title="使用系统默认应用打开"
           >
-            <LucideIcons.ExternalLink size={16} strokeWidth={1.75} />
+            <GooseIcons.ExternalLink size={16} strokeWidth={1.75} />
           </button>
         )}
         {editor.isEditable ? (
@@ -228,7 +228,7 @@ function CustomFileBlockContent({
             onClick={handleRenameStart}
             title="重命名"
           >
-            <LucideIcons.Pencil size={16} strokeWidth={1.75} />
+            <GooseIcons.Pencil size={16} strokeWidth={1.75} />
           </button>
         ) : null}
         <button
@@ -237,7 +237,7 @@ function CustomFileBlockContent({
           onClick={handleDownload}
           title="下载"
         >
-          <LucideIcons.Download size={16} strokeWidth={1.75} />
+          <GooseIcons.Download size={16} strokeWidth={1.75} />
         </button>
         {editor.isEditable ? (
           <button
@@ -246,7 +246,7 @@ function CustomFileBlockContent({
             onClick={handleDelete}
             title="删除"
           >
-            <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
+            <GooseIcons.Trash2 size={16} strokeWidth={1.75} />
           </button>
         ) : null}
       </div>

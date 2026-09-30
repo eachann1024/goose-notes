@@ -7,7 +7,7 @@
  */
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { useEffect, useState } from "react";
 import type {
   CSSProperties,
@@ -380,7 +380,7 @@ export function SortablePageRow({
                     e.stopPropagation();
                   }}
                 >
-                  <LucideIcons.ChevronRight
+                  <GooseIcons.ChevronRight
                     aria-hidden="true"
                     className={cn(
                       "h-3.5 w-3.5 transition-transform duration-150 ease-out",
@@ -446,7 +446,7 @@ export function SortablePageRow({
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <LucideIcons.Plus className="h-3.5 w-3.5" />
+                <GooseIcons.Plus className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -487,7 +487,7 @@ export function TreeDragOverlay({
       <span className="min-w-0 flex-1 truncate font-medium leading-snug">
         {title}
       </span>
-      <LucideIcons.GripVertical className="sidebar-tree-drag-overlay-grip h-4 w-4 shrink-0" />
+      <GooseIcons.GripVertical className="sidebar-tree-drag-overlay-grip h-4 w-4 shrink-0" />
     </div>
   );
 }

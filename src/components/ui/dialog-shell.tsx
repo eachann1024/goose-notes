@@ -66,7 +66,7 @@ export function DialogShell({
             )}
             aria-label="关闭"
           >
-            <LucideIcons.X className="h-7 w-7" />
+            <GooseIcons.X className="h-7 w-7" />
           </DialogClose>
         )}
 

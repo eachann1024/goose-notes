@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { FeatureToastCard } from "@/components/ui/feature-toast-card";
 import { useSettings } from "@/stores/useSettings";
 import { toast } from "@/components/ui/sonner";
@@ -20,7 +20,7 @@ function createNoticeContent(handleClose: () => void) {
   const closeRef = { current: false };
   return (
     <FeatureToastCard
-      icon={<LucideIcons.Sparkles className="h-5 w-5" />}
+      icon={<GooseIcons.Sparkles className="h-5 w-5" />}
       title="✨ AI 写作助手已上线"
       actions={[
         {
