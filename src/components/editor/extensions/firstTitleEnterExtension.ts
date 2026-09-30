@@ -41,19 +41,12 @@ function insertEmptyParagraphAfter(
 }
 
 /**
- * 文档首块是「文档标题」（恒为 H1，见 ensureFirstTitleHeading / titleHeadingBlock）。
+ * 文档首块由 firstTitleGuard 保持为 H1。
  *
- * 项目原则：**标题一是特殊的存在，任何编辑器改造都不应影响它**——它恒为物理首块、
- * 恒为 H1，上方不可被前置任何块，自身也不可被推到下面。
- *
- * 本扩展处理「光标在 heading 上按 Enter」：
- *
- * 1. **标题一（物理首块）**：无论光标在开头 / 中间 / 末尾，都保证在标题**下方**
- *    产生可写的正文空行，绝不在标题上方拆块。
- *
- * 2. **非首块 heading**：光标在开头时，默认 splitBlock 会在前面拆出同类型空 heading。
- *    改为在它**前面插入空 paragraph**，光标仍留在原 heading。折叠标题的行首同样走这条，
- *    不能先插到 section 尾部，否则看起来像按了回车却没在标题前空出一行。
+ * 行首 Enter 在当前 heading 前插入空段落，光标留在原 heading，原内容下移。
+ * 对首块，守卫将新插入的空段落设为 H1；原 heading 的内容和属性保持不变。
+ * 首块行中 / 行尾 Enter 继续在下方拆出正文段落。
+ * 折叠正文标题的行首也优先处理，避免把空行插到章节末尾。
  */
 function applyHeadingEnter(
   editor: BlockNoteEditor<any, any, any>,
@@ -81,8 +74,8 @@ function applyHeadingEnter(
   const firstBlockId = editor.document[0]?.id;
   const isFirstTitle = headingBlock.id === firstBlockId;
 
-  // 正文标题行首：在前面插空段落。必须先于折叠节尾插入，否则行首回车会跑到章节末尾。
-  if (atStart && !isFirstTitle) {
+  // 非空标题行首：在前面插空段落，原内容下移；空标题仍走下方插入。
+  if (atStart && (!isFirstTitle || contentSize > 0)) {
     return insertEmptyParagraphBeforeHeading(editor, headingBlock);
   }
 
