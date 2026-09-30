@@ -25,6 +25,8 @@ import { createUToolsSlice, type UToolsSlice } from './slices/utoolsSlice'
 import { createShortcutsSlice, type ShortcutsSlice, DEFAULT_APP_SHORTCUTS } from './slices/shortcutsSlice'
 import { createSearchProvidersSlice, type SearchProvidersSlice } from './slices/searchProvidersSlice'
 import { createLocalFolderSlice, type LocalFolderSlice } from './slices/localFolderSlice'
+import { createWebdavSlice, type WebdavSlice } from './slices/webdavSlice'
+import { normalizeWatermarkConfig } from '@/lib/imageExport'
 
 export type SettingsState =
     AISlice &
@@ -32,7 +34,8 @@ export type SettingsState =
     UToolsSlice &
     ShortcutsSlice &
     SearchProvidersSlice &
-    LocalFolderSlice & {
+    LocalFolderSlice &
+    WebdavSlice & {
         _hasHydrated: boolean
     }
 
@@ -110,6 +113,7 @@ export const useSettings = create<SettingsState>()(
             ...createShortcutsSlice(set as Parameters<typeof createShortcutsSlice>[0]),
             ...createSearchProvidersSlice(set as Parameters<typeof createSearchProvidersSlice>[0]),
             ...createLocalFolderSlice(set as Parameters<typeof createLocalFolderSlice>[0]),
+            ...createWebdavSlice(set as Parameters<typeof createWebdavSlice>[0]),
             _hasHydrated: false,
         }),
         {
@@ -195,6 +199,25 @@ export const useSettings = create<SettingsState>()(
                 }
 
                 if (state) {
+                    if (typeof state.webdavUrl !== 'string') {
+                        useSettings.setState({ webdavUrl: 'https://example.com/dav/' })
+                    }
+                    if (typeof state.webdavUsername !== 'string') {
+                        useSettings.setState({ webdavUsername: '' })
+                    }
+                    if (typeof state.webdavPassword !== 'string') {
+                        useSettings.setState({ webdavPassword: '' })
+                    }
+                    if (typeof state.webdavRemoteDir !== 'string') {
+                        useSettings.setState({ webdavRemoteDir: 'goose-notes' })
+                    }
+                    const retention = state.webdavRetentionDays;
+                    if (typeof retention !== 'number' || !Number.isFinite(retention) || retention <= 0) {
+                        useSettings.setState({ webdavRetentionDays: 365 })
+                    }
+                    if (typeof state.webdavAutoBackupEnabled !== 'boolean') {
+                        useSettings.setState({ webdavAutoBackupEnabled: true })
+                    }
                     if (typeof state.showRecentInSearch !== 'boolean') {
                         useSettings.setState({ showRecentInSearch: true })
                     }
@@ -246,6 +269,11 @@ export const useSettings = create<SettingsState>()(
                     if (JSON.stringify(state.desktop) !== JSON.stringify(mergedDesktop)) {
                         useSettings.setState({ desktop: mergedDesktop })
                     }
+
+                    const mergedWatermark = normalizeWatermarkConfig(state.imageExportWatermark)
+                    if (JSON.stringify(state.imageExportWatermark) !== JSON.stringify(mergedWatermark)) {
+                        useSettings.setState({ imageExportWatermark: mergedWatermark })
+                    }
                 }
 
                 if (state) {
@@ -255,6 +283,15 @@ export const useSettings = create<SettingsState>()(
                             : ''
                     if (state.localFolderExternalEditor !== normalizedLocalFolderExternalEditor) {
                         useSettings.setState({ localFolderExternalEditor: normalizedLocalFolderExternalEditor })
+                    }
+                }
+                if (state) {
+                    const normalizedEnterKeyBehavior =
+                        state.enterKeyBehavior === 'create-block' || state.enterKeyBehavior === 'save-exit'
+                            ? state.enterKeyBehavior
+                            : 'create-block'
+                    if (state.enterKeyBehavior !== normalizedEnterKeyBehavior) {
+                        useSettings.setState({ enterKeyBehavior: normalizedEnterKeyBehavior })
                     }
                 }
 

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { useCreateBlockNote } from "@blocknote/react";
 import { AIExtension } from "@blocknote/xl-ai";
@@ -13,8 +21,15 @@ import {
   useEditorPageContext,
 } from "@/components/editor/platform/hostContext";
 import { useEditorPlatform } from "@/components/editor/platform/context";
-import { clonePageContent, getContentSignature, normalizePageContent, type BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import {
+  clonePageContent,
+  createEditorSafeContent,
+  getContentSignature,
+  normalizePageContent,
+  type BlockNoteContent,
+} from "@/components/editor/utils/blocknote-content";
 import { markUserInteraction } from "@/lib/editor-interaction-signal";
+import { normalizeExternalUrl } from "@/lib/openExternalUrl";
 import { usePages as usePagesStore } from "@/stores/usePages";
 
 /**
@@ -40,9 +55,12 @@ function getCachedContentSignature(content: unknown): string {
   }
   return getContentSignature(content);
 }
-import { getBlockNoteSlashMenuItems, filterSlashMenuItems } from "./blocknoteSlashItems";
+import {
+  getBlockNoteSlashMenuItems,
+  filterSlashMenuItems,
+} from "./blocknoteSlashItems";
 import { gooseSelectAllExtension } from "@/components/editor/extensions/selectAllExtension";
-import { gooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
+import { createGooseLinkKeyboardExtension } from "@/components/editor/extensions/linkKeyboardExtension";
 import { gooseTabBehaviorExtension } from "@/components/editor/extensions/tabBehaviorExtension";
 import { gooseCodeBlockKeyboardExtension } from "@/components/editor/extensions/codeBlockKeyboardExtension";
 import { gooseCodeBlockLinkStripExtension } from "@/components/editor/extensions/codeBlockLinkStripExtension";
@@ -50,6 +68,7 @@ import { gooseCalloutKeyboardExtension } from "@/components/editor/extensions/ca
 import { gooseFirstTitleEnterExtension } from "@/components/editor/extensions/firstTitleEnterExtension";
 import { gooseCollapsedToggleEnterExtension } from "@/components/editor/extensions/collapsedToggleEnterExtension";
 import { gooseToggleHeadingAutoCollectExtension } from "@/components/editor/extensions/toggleHeadingAutoCollectExtension";
+import { gooseEnterKeyBehaviorExtension } from "@/components/editor/extensions/gooseEnterKeyBehaviorExtension";
 import { gooseCrossBlockDeleteExtension } from "@/components/editor/extensions/crossBlockDeleteExtension";
 import { gooseEmptyBlockBackspaceExtension } from "@/components/editor/extensions/emptyBlockBackspaceExtension";
 import { createGooseFirstTitleGuardExtension } from "@/components/editor/inputrules/firstTitleGuard";
@@ -60,12 +79,28 @@ import { gooseHeadingMarkSuppressExtension } from "@/components/editor/extension
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseToggleHeadingInputRuleExtension } from "@/components/editor/inputrules/toggleHeadingInputRule";
-import { gooseInlineCodeMarkExtension } from "@/components/editor/extensions/inlineCodeMarkExtension";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
-import { EditorComposer, editorSchema, getSelectedCellPlainText, getSelectedPlainTextContext, isBottomEditorBlankClick, normalizeClipboardLineEndings, shouldPreferVisibleSelectionText, stripMarkdownHardBreaks } from "./EditorComposer";
+import { createGooseSlashMenuReconcileExtension } from "@/components/editor/extensions/gooseSlashMenuReconcileExtension";
+import { reconcileSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
+import {
+  EditorComposer,
+  editorSchema,
+  getSelectedCellPlainText,
+  getSelectedPlainTextContext,
+  isBottomEditorBlankClick,
+  normalizeClipboardLineEndings,
+  shouldPreferVisibleSelectionText,
+  stripMarkdownHardBreaks,
+} from "./EditorComposer";
 import { isLinkworthyText } from "@/components/editor/utils/clipboard";
 import { useEditorShortcuts } from "@/components/editor/hooks/useEditorShortcuts";
 import { useEditorPaste } from "@/components/editor/hooks/useEditorPaste";
+import { pasteClipboardFilesFromClipboard } from "@/components/editor/utils/pasteClipboardFilesFromClipboard";
+import {
+  clipboardHasPasteableImage,
+  resolveImageMimeForUpload,
+  shouldUploadViaImageStorage,
+} from "@/components/editor/utils/pasteClipboardImage";
 
 export interface EditorRef {
   editor: ReturnType<typeof useCreateBlockNote> | null;
@@ -85,14 +120,20 @@ interface EditorProps {
   showSideMenu?: boolean;
 }
 
-export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ editable = true, hiddenSlashItemTitles, showSideMenu = true }, ref) {
+export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
+  { editable = true, hiddenSlashItemTitles, showSideMenu = true },
+  ref,
+) {
+  const settings = useEditorSettings();
   const {
     theme,
     searchProviders,
     customActions,
     tableEvenColumnWidth,
     ai: aiSettings,
-  } = useEditorSettings();
+    enterKeyBehavior,
+    utools,
+  } = settings;
   const {
     page,
     isEditorFullWidth,
@@ -110,7 +151,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
   // 点击编辑器空白区域消闪：mousedown 时短暂抑制格式化工具栏（prosemirror 会先短暂
   // 出现非空选区再被 focusEditorEnd 塌缩），mouseup 时恢复。
-  const [suppressFormattingToolbar, setSuppressFormattingToolbar] = useState(false);
+  const [suppressFormattingToolbar, setSuppressFormattingToolbar] =
+    useState(false);
   const suppressFormattingToolbarRef = useRef(false);
 
   // 注入回调/数据的最新引用：供 useCreateBlockNote（deps=[]）的闭包与各 effect 读取，
@@ -127,12 +169,23 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
   // 同 aiSettingsRef 模式，避免闭包捕获旧 platform 引用。
   const platformRef = useRef(platform);
   platformRef.current = platform;
+  // utoolsRef 供 useCreateBlockNote 闭包（deps=[]）调用平台设置，避免闭包捕获旧配置
+  const utoolsRef = useRef(utools);
+  utoolsRef.current = utools;
+  // settingsRef 供 useCreateBlockNote 闭包（deps=[]）调用平台设置，避免闭包捕获旧配置
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  /** uploadFile 与同 tick 粘贴需 getBlock；每 render 同步 */
+  const editorInstanceRef = useRef<ReturnType<
+    typeof useCreateBlockNote
+  > | null>(null);
 
   // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
   // 内容保持磁盘解析原样，避免 normalize 引发的结构变化误触写盘。
   // 内部笔记本仍走完整 normalizePageContent，首块 H1 约束不受影响。
   // 小窗草稿页(id 恒为 __quicknote_draft__)同样豁免首块 H1 约束,从正文开始
-  const isLocalFolderPage = Boolean(page?.localFilePath) || page?.id === "__quicknote_draft__";
+  const isLocalFolderPage =
+    Boolean(page?.localFilePath) || page?.id === "__quicknote_draft__";
   const isLocalFolderPageRef = useRef(isLocalFolderPage);
   isLocalFolderPageRef.current = isLocalFolderPage;
   const normalizeContent = (c: unknown): BlockNoteContent =>
@@ -168,17 +221,28 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     onContentChangeRef.current(content, { silent: true });
   }, []);
 
-  const initialContentRef = useRef(normalizeContent(page?.content));
+  const initialContentRef = useRef(
+    createEditorSafeContent(normalizeContent(page?.content), editorSchema),
+  );
   // 初次 mount 时给 syncedContentSignatureRef 设置基线，
   // 否则切走时 flush 会把"只读打开"误判成编辑、刷新 updatedAt。
   if (syncedContentSignatureRef.current === null) {
-    syncedContentSignatureRef.current = getCachedContentSignature(initialContentRef.current);
+    syncedContentSignatureRef.current = getCachedContentSignature(
+      initialContentRef.current,
+    );
   }
+  // 同步 enterKeyBehavior 到 window.gooseEnterKeyBehavior 以便 keyboard extension 可以检测到变化
+  useEffect(() => {
+    interface GooseWindow extends Window {
+      gooseEnterKeyBehavior?: "create-block" | "save-exit";
+    }
+    const gooseWindow = window as unknown as GooseWindow;
+    gooseWindow.gooseEnterKeyBehavior = enterKeyBehavior;
+  }, [enterKeyBehavior]);
   const editor = useCreateBlockNote(
     {
       initialContent: initialContentRef.current as any,
       schema: editorSchema,
-      // 禁用内置 quote 块自带的 extension(key: quote-block-shortcuts)。它含两条输入规则:
       // `> ` → 引用、`<引号> ` → 引用,以及 Mod-Alt-q。这里把 `>` 让给折叠功能
       // (行首 `> ` → 折叠标题/折叠列表,见 toggleHeadingInputRule),引用改用 `| `/`｜ `
       // (见 quoteInputRule)。斜杠菜单仍可插入引用,不受影响。
@@ -187,14 +251,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       // 顺序先于自定义扩展、无法被 collapsedToggleEnterExtension 拦截。其全部行为
       // (空块降级 / 非空分裂 / Mod-Shift-6 转折叠列表)已在 collapsedToggleEnterExtension
       // 中按收起态感知重新实现。
-      disableExtensions: ["quote-block-shortcuts", "toggle-list-item-shortcuts"],
+      disableExtensions: [
+        "quote-block-shortcuts",
+        "toggle-list-item-shortcuts",
+      ],
       extensions: [
         createGooseFirstTitleGuardExtension(isLocalFolderPageRef),
         gooseSuppressMarkdownInSpecialBlocksExtension,
         gooseHeadingMarkSuppressExtension,
         gooseTabBehaviorExtension,
         gooseSelectAllExtension,
-        gooseLinkKeyboardExtension,
+        createGooseLinkKeyboardExtension(settingsRef),
         gooseCodeBlockKeyboardExtension,
         gooseCodeBlockLinkStripExtension,
         gooseCalloutKeyboardExtension,
@@ -203,12 +270,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         gooseToggleHeadingAutoCollectExtension(),
         gooseCrossBlockDeleteExtension,
         gooseEmptyBlockBackspaceExtension,
+        createGooseSlashMenuReconcileExtension(
+          isLocalFolderPageRef,
+          editorInstanceRef,
+        ),
+        gooseEnterKeyBehaviorExtension,
         gooseQuoteInputRuleExtension,
         gooseMarkdownInputRulesExtension,
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseToggleHeadingInputRuleExtension,
-        gooseInlineCodeMarkExtension,
         gooseFindInPageExtension,
         // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展：省去 @blocknote/xl-ai + @ai-sdk（~488K）解析。
         ...(__GOOSE_LITE__
@@ -241,11 +312,23 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
           class: "goose-blocknote-editor",
         },
       },
-      uploadFile: async (file) => {
-        if (file.type.startsWith("image/")) {
-          return platformRef.current.imageStorage.save(file, file.type);
+      uploadFile: async (file, blockId) => {
+        if (
+          shouldUploadViaImageStorage(file, blockId, (id) =>
+            editorInstanceRef.current?.getBlock(id),
+          )
+        ) {
+          const mime = resolveImageMimeForUpload(file);
+          return platformRef.current.imageStorage.save(file, mime);
         }
         return URL.createObjectURL(file);
+      },
+      pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
+        if (clipboardHasPasteableImage(event.clipboardData)) {
+          void pasteClipboardFilesFromClipboard(event, ed);
+          return true;
+        }
+        return defaultPasteHandler();
       },
       resolveFileUrl: async (url) => {
         return platformRef.current.imageStorage.resolveRefToUrl(
@@ -259,11 +342,21 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
             return false;
           }
           const target = event.target as HTMLElement | null;
-          const link = target?.closest<HTMLAnchorElement>('a[data-inline-content-type="link"]');
+          const link = target?.closest<HTMLAnchorElement>(
+            'a[data-inline-content-type="link"]',
+          );
           if (link) {
             const href = link.getAttribute("href");
             if (href) {
-              platformRef.current.shell.openUrl(href);
+              const normalizedHref = normalizeExternalUrl(href);
+              if (normalizedHref) {
+                const useInternalBrowser =
+                  utoolsRef.current?.openSearchInUtools ?? false;
+                platformRef.current.shell.openUrl(
+                  normalizedHref,
+                  useInternalBrowser,
+                );
+              }
             }
           }
           return true;
@@ -276,6 +369,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     },
     [],
   );
+  editorInstanceRef.current = editor;
 
   const debouncedUpdate = useMemo(() => {
     return createDebounce(
@@ -310,17 +404,35 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const nextContent = isLocalPage
       ? toEditorBlocks(p?.content)
       : normalizePageContent(p?.content);
-    const nextSig = getCachedContentSignature(nextContent);
+    const nextEditorContent = createEditorSafeContent(
+      nextContent,
+      editor.schema,
+    );
+    const nextSig = getCachedContentSignature(nextEditorContent);
 
     syncedContentSignatureRef.current = nextSig;
 
-    editor.replaceBlocks(editor.document, nextContent as any);
+    try {
+      editor.replaceBlocks(editor.document, nextEditorContent as any);
+    } catch (error) {
+      console.error(
+        "[goose-note] replace editor blocks failed during page switch",
+        {
+          pageId: p?.id,
+          error,
+        },
+      );
+      const fallbackContent = createEditorSafeContent(undefined, editor.schema);
+      editor.replaceBlocks(editor.document, fallbackContent as any);
+    }
 
     // replaceBlocks 后 appendTransaction（firstTitleGuard 等）可能已修改文档。
     // 用编辑器实际文档的签名更新基线，防止初始化触发的 onChange 误判为真实编辑。
     // 基线计算必须与 EditorComposer.onChange 完全一致（local 用 raw 文档，
     // 内部页面经 normalizePageContent），否则签名比较永不相等、打开即触发保存。
-    const postReplaceRaw = clonePageContent(editor.document as BlockNoteContent);
+    const postReplaceRaw = clonePageContent(
+      editor.document as BlockNoteContent,
+    );
     syncedContentSignatureRef.current = getCachedContentSignature(
       isLocalPage ? postReplaceRaw : normalizePageContent(postReplaceRaw),
     );
@@ -338,7 +450,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     // normalize 改写了结构才回写（silent 路径：只同步内存，不触发写盘/标脏）。
     // local 页面不回写：内容未经 normalize，store 保持磁盘解析原样
     // （空文件的编辑器兜底空段落只是呈现层，不应进 store）。
-    if (p && !isLocalPage && getCachedContentSignature(p.content) !== nextSig) {
+    const normalizedSig = getCachedContentSignature(nextContent);
+    if (
+      p &&
+      !isLocalPage &&
+      getCachedContentSignature(p.content) !== normalizedSig
+    ) {
       onContentChangeRef.current(nextContent, { silent: true });
     }
 
@@ -361,12 +478,19 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         // 砍项后清理冗余分隔线：折叠连续/首部 divider，再去尾部 divider。
         const collapsed: typeof items = [];
         for (const it of kept) {
-          if (isDivider(it) && (collapsed.length === 0 || isDivider(collapsed[collapsed.length - 1]))) {
+          if (
+            isDivider(it) &&
+            (collapsed.length === 0 ||
+              isDivider(collapsed[collapsed.length - 1]))
+          ) {
             continue;
           }
           collapsed.push(it);
         }
-        while (collapsed.length > 0 && isDivider(collapsed[collapsed.length - 1])) {
+        while (
+          collapsed.length > 0 &&
+          isDivider(collapsed[collapsed.length - 1])
+        ) {
           collapsed.pop();
         }
         items = collapsed;
@@ -376,7 +500,32 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     [editor, hiddenSlashItemTitles],
   );
 
-  const { handleEditorPasteCapture } = useEditorPaste({ editor, editable, shiftPressedRef });
+  const { handleEditorPasteCapture } = useEditorPaste({
+    editor,
+    editable,
+    shiftPressedRef,
+  });
+
+  // 冷加载时 BlockNoteView 尚未完全挂定，editor.focus() 会落到 view.dom，
+  // 但此时 contentEditable 还未稳定，焦点会「漏」到侧栏页面重命名输入框等
+  // 下一个可聚焦元素。guard：view 存在、dom 已连入文档且 doc 非空才聚焦；
+  // 否则用 rAF 延后到下一帧（挂载完成）再试，避免冷加载点编辑器丢焦点。
+  const focusEditorSafely = useCallback(() => {
+    const tryFocus = () => {
+      const view = editor.prosemirrorView;
+      const dom = view?.dom as HTMLElement | undefined;
+      if (view && dom && dom.isConnected && view.state.doc.content.size > 0) {
+        editor.focus();
+        return true;
+      }
+      return false;
+    };
+    if (!tryFocus()) {
+      requestAnimationFrame(() => {
+        tryFocus();
+      });
+    }
+  }, [editor]);
 
   const focusEditorEnd = useCallback(() => {
     const lastBlock = editor.document.at(-1);
@@ -399,8 +548,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         editor.setTextCursorPosition(lastBlock, "end");
       }
     }
-    editor.focus();
-  }, [editor]);
+    focusEditorSafely();
+  }, [editor, focusEditorSafely]);
 
   const handleEditorBlankMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -475,35 +624,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     const container = editorContainerRef.current;
     if (!container) return;
 
-    // cut 时序陷阱：ProseMirror 的 cut handler 在写入 clipboardData 后会同步
-    // dispatch deleteSelection，等事件冒泡到 container（我们的 patch handler）时
-    // DOM 选区已塌缩 / CellSelection 已删除——getSelectedPlainTextContext 与
-    // getSelectedCellPlainText 都拿不到内容，patch 直接 return，markdown 软换行
-    // 残留的反斜杠 "\" 清理不掉（copy 不删选区故无此问题，于是表现为「复制干净、
-    // 剪切带 \」）。故在 capture 阶段（PM handler 之前、选区尚在时）先快照选区
-    // 上下文，bubble 阶段的 patch handler 再消费快照。
-    let cellTextSnapshot: string | null = null;
-    let selectionSnapshot: ReturnType<typeof getSelectedPlainTextContext> = null;
-
-    const snapshotSelection = () => {
-      cellTextSnapshot = getSelectedCellPlainText(editor.prosemirrorState);
-      selectionSnapshot = getSelectedPlainTextContext(container);
-    };
-
     const patchClipboardPlainText = (event: ClipboardEvent) => {
       const clipboardData = event.clipboardData;
-      const cellText = cellTextSnapshot;
-      const selectionContext = selectionSnapshot;
-      cellTextSnapshot = null;
-      selectionSnapshot = null;
       if (!clipboardData) return;
 
-      // 表格单元格选区（CellSelection）原生 DOM 选区是塌缩的，下方
-      // getSelectedPlainTextContext 会拿不到内容而放弃，落回 prosemirror-tables
-      // 默认 copy：序列化为完整 <table> HTML（含表头），转 Markdown 后带上
-      // 「名称/Key/说明」整表结构。这里优先处理 CellSelection——只取选中单元格
-      // 的纯文本（单格即单格内容，多格按行/Tab 拼接），并清空 text/html，
-      // 避免内核再写整表 HTML。
+      const cellText = getSelectedCellPlainText(editor.prosemirrorState);
       if (cellText != null) {
         event.preventDefault();
         clipboardData.setData("text/plain", cellText);
@@ -511,9 +636,20 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         return;
       }
 
+      const clipboardText = normalizeClipboardLineEndings(
+        clipboardData.getData("text/plain"),
+      );
+      // cut 时 PM 已写入剪贴板后才删选区；不拿 DOM 可见字覆盖 plain/html，
+      // 否则行内 code 会被拆成两段（复制正常、剪切异常）。只清理 markdown 软换行反斜杠。
+      const cleaned = stripMarkdownHardBreaks(clipboardText);
+      if (cleaned !== clipboardText) {
+        clipboardData.setData("text/plain", cleaned);
+        return;
+      }
+
+      const selectionContext = getSelectedPlainTextContext(container);
       if (!selectionContext) return;
 
-      const clipboardText = normalizeClipboardLineEndings(clipboardData.getData("text/plain"));
       if (
         shouldPreferVisibleSelectionText(
           clipboardText,
@@ -522,90 +658,30 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         )
       ) {
         clipboardData.setData("text/plain", selectionContext.selectedText);
-        return;
-      }
-
-      // 富文本含链接/格式时 markdown 序列化与可见文本不相等，上面不会替换；
-      // 仍需移除 markdown 软换行（hardBreak → "\<换行>"）残留的反斜杠 "\"。
-      const cleaned = stripMarkdownHardBreaks(clipboardText);
-      if (cleaned !== clipboardText) {
-        clipboardData.setData("text/plain", cleaned);
       }
     };
 
-    container.addEventListener("copy", snapshotSelection, true);
-    container.addEventListener("cut", snapshotSelection, true);
     container.addEventListener("copy", patchClipboardPlainText);
     container.addEventListener("cut", patchClipboardPlainText);
 
     return () => {
-      container.removeEventListener("copy", snapshotSelection, true);
-      container.removeEventListener("cut", snapshotSelection, true);
       container.removeEventListener("copy", patchClipboardPlainText);
       container.removeEventListener("cut", patchClipboardPlainText);
     };
   }, []);
 
-  // 中文输入法（IME）斜杠菜单修复：BlockNote 0.51 的 suggestion 插件没有 composition
-  // 防护——用输入法上屏中文 query（如「、表格」）时，上屏那一刻的 replace transaction
-  // 命中插件内部的关闭判定，菜单被关掉、query 丢失（英文逐字符输入不经 composition 故正常）。
-  // 这里在 compositionend 后检测「当前块以触发符开头但菜单未显示」，程序化重新打开菜单
-  // 并恢复 query：把光标移到触发符之后 → openSuggestionMenu 钉住 queryStartPos →
-  // 光标移回上屏位置，query 即按 textBetween(触发符后, 光标) 自然算出。
   useEffect(() => {
     const container = editorContainerRef.current;
     if (!container) return;
-
-    const TRIGGERS = ["、", "/"] as const;
-
-    const rebuildSlashMenu = () => {
-      if (!editor.isEditable) return;
-      const sug = (editor.getExtension as any)("suggestionMenu") as
-        | { shown: () => boolean; openSuggestionMenu: (trigger: string) => void }
-        | undefined;
-      // 菜单已显示则无需重建（避免与正常输入路径重复触发）
-      if (!sug || sug.shown()) return;
-
-      const view = editor.prosemirrorView;
-      if (!view) return;
-      const { selection } = view.state;
-      if (!selection.empty) return;
-
-      const $from = selection.$from;
-      const parent = $from.parent;
-      // 仅在文本块内、非代码块、非表格单元格内重建（与正常 slash 菜单的 shouldOpen 一致）
-      if (!parent.isTextblock || parent.type.spec.code) return;
-      if (parent.type.isInGroup("tableContent")) return;
-
-      const trigger = TRIGGERS.find((t) => parent.textContent.startsWith(t));
-      if (!trigger) return; // 触发符必须在块开头
-
-      const blockStart = $from.start();
-      const caret = selection.from;
-      if (caret <= blockStart) return; // 光标必须落在触发符之后
-
-      // A：光标移到触发符之后，作为 query 起点
-      view.dispatch(
-        view.state.tr.setSelection(
-          TextSelection.create(view.state.doc, blockStart + trigger.length),
-        ),
+    const onCompositionEnd = () =>
+      queueMicrotask(() =>
+        reconcileSlashSuggestionMenu(editor, {
+          allowSlashMenuOnFirstBlock: isLocalFolderPageRef.current,
+        }),
       );
-      // B：打开菜单（queryStartPos 钉在当前光标）
-      sug.openSuggestionMenu(trigger);
-      // C：光标移回上屏后的位置，query 自然算出
-      view.dispatch(
-        view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)),
-      );
-    };
-
-    const handleCompositionEnd = () => {
-      // 等 ProseMirror 把 composition 落地进文档后再处理
-      requestAnimationFrame(rebuildSlashMenu);
-    };
-
-    container.addEventListener("compositionend", handleCompositionEnd);
+    container.addEventListener("compositionend", onCompositionEnd);
     return () =>
-      container.removeEventListener("compositionend", handleCompositionEnd);
+      container.removeEventListener("compositionend", onCompositionEnd);
   }, [editor]);
 
   const commitEditorContent = useCallback(
@@ -643,12 +719,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     };
 
     const handleFocusStart = () => {
-      editor.focus();
+      focusEditorSafely();
     };
 
     const handlePluginEnter = () => {
       window.setTimeout(() => {
-        editor.focus();
+        focusEditorSafely();
       }, 0);
     };
 
@@ -668,8 +744,27 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       const nextContent = isLocalPage
         ? toEditorBlocks(livePage.content)
         : normalizePageContent(livePage.content);
+      const nextEditorContent = createEditorSafeContent(
+        nextContent,
+        editor.schema,
+      );
       debouncedUpdate.cancel();
-      editor.replaceBlocks(editor.document, nextContent as any);
+      try {
+        editor.replaceBlocks(editor.document, nextEditorContent as any);
+      } catch (error) {
+        console.error(
+          "[goose-note] replace editor blocks failed during reload",
+          {
+            pageId: livePage.id,
+            error,
+          },
+        );
+        const fallbackContent = createEditorSafeContent(
+          undefined,
+          editor.schema,
+        );
+        editor.replaceBlocks(editor.document, fallbackContent as any);
+      }
       // 基线与 EditorComposer.onChange 的计算方式保持一致（见切页 effect 注释）
       const reloadedRaw = clonePageContent(editor.document as BlockNoteContent);
       syncedContentSignatureRef.current = getContentSignature(
@@ -689,7 +784,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
     return () => {
       window.removeEventListener("goose-note:flush-editor", handleFlush);
-      window.removeEventListener("goose-note:focus-editor-start", handleFocusStart);
+      window.removeEventListener(
+        "goose-note:focus-editor-start",
+        handleFocusStart,
+      );
       window.removeEventListener("goose-note:plugin-enter", handlePluginEnter);
       window.removeEventListener(
         "goose-note:reload-active-editor",
@@ -698,9 +796,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
     };
   }, [commitEditorContent, debouncedUpdate, editor]);
 
-  useImperativeHandle(ref, () => ({
-    editor,
-  }), [editor]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      editor,
+    }),
+    [editor],
+  );
 
   useEffect(() => {
     (window as any).__gooseNoteEditor = editor;
@@ -722,7 +824,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
         return;
       }
       if (theme === "system") {
-        setEffectiveTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        setEffectiveTheme(
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light",
+        );
         return;
       }
       setEffectiveTheme("light");
@@ -740,7 +846,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
 
   return (
     <EditorComposer
-      editor={editor} editable={editable} page={page}
+      editor={editor}
+      editable={editable}
+      page={page}
       editorContainerRef={editorContainerRef}
       handleEditorBlankMouseDown={handleEditorBlankMouseDown}
       handleEditorPasteCapture={handleEditorPasteCapture}
@@ -750,12 +858,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor({ edita
       debouncedUpdate={debouncedUpdate}
       userInteractedRef={userInteractedRef}
       silentContentSync={silentContentSync}
-      isEditorFullWidth={isEditorFullWidth} effectiveTheme={effectiveTheme}
+      isEditorFullWidth={isEditorFullWidth}
+      effectiveTheme={effectiveTheme}
       tableEvenColumnWidth={tableEvenColumnWidth}
-      searchProviders={searchProviders} customActions={customActions}
+      searchProviders={searchProviders}
+      customActions={customActions}
       showSideMenu={showSideMenu}
       suppressFormattingToolbar={suppressFormattingToolbar}
     />
   );
 });
-

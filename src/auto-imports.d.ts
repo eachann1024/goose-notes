@@ -157,6 +157,7 @@ declare global {
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const clearLocalPageMetadataCache: typeof import('./stores/pages/index').clearLocalPageMetadataCache
+  const clipboardHasPasteableImage: typeof import('./components/editor/utils/pasteClipboardImage').clipboardHasPasteableImage
   const clonePageContent: typeof import('./components/editor/utils/blocknote-content/index').clonePageContent
   const closeAllOverlays: typeof import('./lib/closeAllOverlays').closeAllOverlays
   const clsx: typeof import('clsx').clsx
@@ -170,6 +171,7 @@ declare global {
   const createAiChatOnlyTarget: typeof import('./lib/ai-write/index').createAiChatOnlyTarget
   const createContext: typeof import('react').createContext
   const createDebounce: typeof import('./components/editor/utils/debounce').createDebounce
+  const createEditorSafeContent: typeof import('./components/editor/utils/blocknote-content/index').createEditorSafeContent
   const createEmptyBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').createEmptyBlockNoteContent
   const createEmptyLocalPageContent: typeof import('./components/editor/utils/blocknote-content/index').createEmptyLocalPageContent
   const createRef: typeof import('react').createRef
@@ -177,7 +179,9 @@ declare global {
   const decodeUnsupportedMarkdownForDisk: typeof import('./lib/markdown-raw-guard').decodeUnsupportedMarkdownForDisk
   const deleteLocalMdSnapshot: typeof import('./lib/local-md-snapshot').deleteLocalMdSnapshot
   const deletePageWithUndo: typeof import('./lib/page-delete-actions').deletePageWithUndo
+  const deleteWebdavBackup: typeof import('./lib/webdavSync').deleteWebdavBackup
   const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
+  const downloadWebdavBackup: typeof import('./lib/webdavSync').downloadWebdavBackup
   const emptyBlock: typeof import('./components/editor/utils/blocknote-content/index').emptyBlock
   const encodeUnsupportedMarkdownForEditor: typeof import('./lib/markdown-raw-guard').encodeUnsupportedMarkdownForEditor
   const ensureFilenameAsTitle: typeof import('./lib/local-title-binding').ensureFilenameAsTitle
@@ -209,6 +213,7 @@ declare global {
   const formatShortcut: typeof import('./lib/utils').formatShortcut
   const forwardRef: typeof import('react').forwardRef
   const generateDocxBuffer: typeof import('./lib/docxExport/index').generateDocxBuffer
+  const generateExportZip: typeof import('./lib/export/index').generateExportZip
   const getAIAvailability: typeof import('./lib/ai-provider/index').getAIAvailability
   const getAIProviderMode: typeof import('./lib/ai-provider/index').getAIProviderMode
   const getAttachmentBadgeLabel: typeof import('./lib/fileStorage').getAttachmentBadgeLabel
@@ -231,10 +236,12 @@ declare global {
   const getPlatformKind: typeof import('./lib/utils').getPlatformKind
   const getPrimaryModifierKeyDisplay: typeof import('./lib/utils').getPrimaryModifierKeyDisplay
   const getPrimaryModifierKeyLabel: typeof import('./lib/utils').getPrimaryModifierKeyLabel
+  const getQuicknoteSlashMenuFloatingOptions: typeof import('./components/editor/utils/quicknoteSlashMenuFloating').getQuicknoteSlashMenuFloatingOptions
   const getRandomTip: typeof import('./lib/tips').getRandomTip
   const getSelectedCellPlainText: typeof import('./components/editor/utils/selection').getSelectedCellPlainText
   const getSelectedPlainTextContext: typeof import('./components/editor/utils/selection').getSelectedPlainTextContext
   const getStoredAIModelOptions: typeof import('./lib/ai-provider/index').getStoredAIModelOptions
+  const handleFileInsertion: typeof import('./components/editor/utils/handleClipboardFileInsertion').handleFileInsertion
   const hasStructuredBlocks: typeof import('./components/editor/utils/blocknote-content/index').hasStructuredBlocks
   const importFile: typeof import('./lib/export/index').importFile
   const importFromJSON: typeof import('./lib/export/index').importFromJSON
@@ -242,14 +249,17 @@ declare global {
   const importMarkdownFragment: typeof import('./lib/export/index').importMarkdownFragment
   const importNotebooksFromZip: typeof import('./lib/export/index').importNotebooksFromZip
   const inlineToTextRuns: typeof import('./lib/docxExport/docxStyles').inlineToTextRuns
+  const isBackupFileName: typeof import('./lib/webdavSync').isBackupFileName
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
   const isBottomEditorBlankClick: typeof import('./components/editor/utils/selection').isBottomEditorBlankClick
   const isDiskContentMatchingSnapshot: typeof import('./lib/local-md-snapshot').isDiskContentMatchingSnapshot
+  const isImageUploadFile: typeof import('./components/editor/utils/pasteClipboardImage').isImageUploadFile
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
   const isInteractiveEditorTarget: typeof import('./components/editor/utils/selection').isInteractiveEditorTarget
   const isLinkworthyText: typeof import('./components/editor/utils/clipboard').isLinkworthyText
   const isLocalMdUnchanged: typeof import('./lib/local-md-snapshot').isLocalMdUnchanged
   const isMacPlatform: typeof import('./lib/utils').isMacPlatform
+  const isPasteableClipboardImageFile: typeof import('./components/editor/utils/pasteClipboardImage').isPasteableClipboardImageFile
   const isPinyinQuery: typeof import('./lib/pinyin-search').isPinyinQuery
   const isToggleBlock: typeof import('./components/editor/utils/toggleNesting').isToggleBlock
   const isUToolsAiSupported: typeof import('./lib/utools-ai').isUToolsAiSupported
@@ -257,6 +267,7 @@ declare global {
   const isValidUrl: typeof import('./components/editor/utils/clipboard').isValidUrl
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
+  const listWebdavBackups: typeof import('./lib/webdavSync').listWebdavBackups
   const localFileTitleFromPath: typeof import('./lib/local-folder-scanner').localFileTitleFromPath
   const looksLikeBlockStructure: typeof import('./components/editor/utils/clipboard').looksLikeBlockStructure
   const looksLikeMarkdownFragment: typeof import('./components/editor/utils/clipboard').looksLikeMarkdownFragment
@@ -268,12 +279,15 @@ declare global {
   const migrateCodeStyleTo2026: typeof import('./lib/code-style-migration').migrateCodeStyleTo2026
   const migrateLocalPageIdMapEntry: typeof import('./lib/local-page-idmap').migrateLocalPageIdMapEntry
   const mimeToImageType: typeof import('./lib/docxExport/docxImages').mimeToImageType
+  const normalizeBaseUrl: typeof import('./lib/webdavSync').normalizeBaseUrl
   const normalizeBlockContent: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlockContent
   const normalizeBlocks: typeof import('./components/editor/utils/blocknote-content/index').normalizeBlocks
   const normalizeClipboardLineEndings: typeof import('./components/editor/utils/clipboard').normalizeClipboardLineEndings
   const normalizeExternalUrl: typeof import('./lib/openExternalUrl').normalizeExternalUrl
   const normalizeMarkdownPasteText: typeof import('./components/editor/utils/clipboard').normalizeMarkdownPasteText
   const normalizePageContent: typeof import('./components/editor/utils/blocknote-content/index').normalizePageContent
+  const normalizeRemoteDir: typeof import('./lib/webdavSync').normalizeRemoteDir
+  const normalizeWatermarkConfig: typeof import('./lib/imageExport/index').normalizeWatermarkConfig
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
@@ -284,6 +298,7 @@ declare global {
   const parseMarkdownLink: typeof import('./components/editor/utils/clipboard').parseMarkdownLink
   const parseMarkdownTableToHtml: typeof import('./lib/markdownTableParser').parseMarkdownTableToHtml
   const parseMarkdownToHtml: typeof import('./lib/markdownTableParser').parseMarkdownToHtml
+  const pasteClipboardFilesFromClipboard: typeof import('./components/editor/utils/pasteClipboardFilesFromClipboard').pasteClipboardFilesFromClipboard
   const permanentlyDeletePageWithCleanup: typeof import('./lib/page-delete-actions').permanentlyDeletePageWithCleanup
   const pinyinMatchIndices: typeof import('./lib/pinyin-search').pinyinMatchIndices
   const preloadFonts: typeof import('./lib/fontLoader').preloadFonts
@@ -292,12 +307,14 @@ declare global {
   const readDbStorageJSON: typeof import('./lib/storage').readDbStorageJSON
   const readLocalPageIdMap: typeof import('./lib/local-page-idmap').readLocalPageIdMap
   const readPersistentDismissState: typeof import('./lib/dismiss-state').readPersistentDismissState
+  const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
   const removeDbStorageItem: typeof import('./lib/storage').removeDbStorageItem
   const renderExportHtml: typeof import('./lib/export/index').renderExportHtml
   const resolveAiTargetFromSelection: typeof import('./lib/ai-write/index').resolveAiTargetFromSelection
   const resolveAiTargetIntent: typeof import('./lib/ai-write/index').resolveAiTargetIntent
   const resolveAiTargetReference: typeof import('./lib/ai-write/index').resolveAiTargetReference
   const resolveAiTargetSelection: typeof import('./lib/ai-write/index').resolveAiTargetSelection
+  const resolveImageMimeForUpload: typeof import('./components/editor/utils/pasteClipboardImage').resolveImageMimeForUpload
   const resolveImageToBuffer: typeof import('./lib/docxExport/docxImages').resolveImageToBuffer
   const resolveOrCreateStableId: typeof import('./lib/local-page-idmap').resolveOrCreateStableId
   const resolvedTargetToSelection: typeof import('./lib/ai-write/index').resolvedTargetToSelection
@@ -315,19 +332,24 @@ declare global {
   const selectSelectedId: typeof import('./stores/useSidebarView').selectSelectedId
   const setDbStorageItem: typeof import('./lib/storage').setDbStorageItem
   const setLocalMdSnapshot: typeof import('./lib/local-md-snapshot').setLocalMdSnapshot
+  const shouldOpenSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').shouldOpenSlashSuggestionMenu
   const shouldPreferVisibleSelectionText: typeof import('./components/editor/utils/clipboard').shouldPreferVisibleSelectionText
   const shouldSuppressSidebarSelect: typeof import('./lib/sidebarPageNavigation').shouldSuppressSidebarSelect
+  const shouldUploadViaImageStorage: typeof import('./components/editor/utils/pasteClipboardImage').shouldUploadViaImageStorage
   const simpleExtractText: typeof import('./components/editor/utils/blocknote-content/index').simpleExtractText
   const splitFilePath: typeof import('./lib/local-title-binding').splitFilePath
   const startTransition: typeof import('react').startTransition
   const stickyTargetToSelection: typeof import('./lib/ai-write/index').stickyTargetToSelection
   const stripMarkdownHardBreaks: typeof import('./components/editor/utils/clipboard').stripMarkdownHardBreaks
   const subscribeGlobalScrollActivity: typeof import('./hooks/useGlobalScrollActivity').subscribeGlobalScrollActivity
+  const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toRelativePath: typeof import('./lib/local-page-idmap').toRelativePath
   const toggleVariants: typeof import('./components/ui/toggle').toggleVariants
+  const triggerAutoWebdavBackup: typeof import('./lib/webdavSync').triggerAutoWebdavBackup
   const uToolsStorage: typeof import('./lib/storage').uToolsStorage
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
+  const uploadWebdavBackup: typeof import('./lib/webdavSync').uploadWebdavBackup
   const use: typeof import('react').use
   const useActionState: typeof import('react').useActionState
   const useAiSessions: typeof import('./stores/useAiSessions').useAiSessions
@@ -426,6 +448,9 @@ declare global {
   export type { UToolsAdapter, SublistItem, UserInfo } from './lib/utools'
   import('./lib/utools')
   // @ts-ignore
+  export type { WebdavBackupFile } from './lib/webdavSync'
+  import('./lib/webdavSync')
+  // @ts-ignore
   export type { BadgeProps } from './components/ui/badge'
   import('./components/ui/badge')
   // @ts-ignore
@@ -443,6 +468,9 @@ declare global {
   // @ts-ignore
   export type { BlockNoteContent, LegacyPageContent, PageContent } from './components/editor/utils/blocknote-content/index'
   import('./components/editor/utils/blocknote-content/index')
+  // @ts-ignore
+  export type { SlashMenuPagePolicy } from './components/editor/utils/slashMenuPolicy'
+  import('./components/editor/utils/slashMenuPolicy')
   // @ts-ignore
   export type { EditorFindState } from './components/editor/hooks/useEditorFind'
   import('./components/editor/hooks/useEditorFind')

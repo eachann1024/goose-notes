@@ -1,7 +1,7 @@
 import type { Theme, CodeStyle, CustomFonts, UIFontSize } from '../types'
 import { EDITOR_FONT_SIZE_MIN, EDITOR_FONT_SIZE_MAX, EDITOR_FONT_SIZE_DEFAULT, DEFAULT_UI_FONT_SIZE } from '../types'
 import type { WatermarkConfig, CardThemeId } from '@/lib/imageExport'
-import { DEFAULT_WATERMARK_CONFIG } from '@/lib/imageExport'
+import { DEFAULT_WATERMARK_CONFIG, normalizeWatermarkConfig } from '@/lib/imageExport'
 
 export type SidebarClickBehavior = 'preview' | 'replace-current'
 
@@ -24,6 +24,8 @@ export interface AppearanceSliceState {
     hideExpandArrows: boolean
     /** 侧栏单击打开方式：预览标签（VSCode 风格）或替换当前普通标签 */
     sidebarClickBehavior: SidebarClickBehavior
+    /** 回车键行为：'create-block' (创建新行) | 'save-exit' (保存并退出) */
+    enterKeyBehavior: 'create-block' | 'save-exit'
 }
 
 export interface AppearanceSliceActions {
@@ -44,10 +46,11 @@ export interface AppearanceSliceActions {
     setAiChatScale: (scale: number) => void
     increaseAiChatScale: () => void
     decreaseAiChatScale: () => void
-    setImageExportWatermark: (config: WatermarkConfig) => void
+    setImageExportWatermark: (config: Partial<WatermarkConfig>) => void
     setImageExportThemeId: (id: CardThemeId) => void
     setHideExpandArrows: (hidden: boolean) => void
     setSidebarClickBehavior: (behavior: SidebarClickBehavior) => void
+    setEnterKeyBehavior: (behavior: 'create-block' | 'save-exit') => void
 }
 
 export type AppearanceSlice = AppearanceSliceState & AppearanceSliceActions
@@ -70,6 +73,7 @@ export const APPEARANCE_INITIAL_STATE: AppearanceSliceState = {
     imageExportThemeId: 'notion',
     hideExpandArrows: false,
     sidebarClickBehavior: 'preview',
+    enterKeyBehavior: 'create-block',
 }
 
 type SetFn = (updater: Partial<AppearanceSlice> | ((state: AppearanceSlice) => Partial<AppearanceSlice>)) => void
@@ -141,9 +145,11 @@ export function createAppearanceSlice(set: SetFn, getApply: GetApplyFns): Appear
             set((state) => ({ aiChatScale: Math.min(1.5, Math.round((state.aiChatScale + 0.1) * 10) / 10) })),
         decreaseAiChatScale: () =>
             set((state) => ({ aiChatScale: Math.max(0.7, Math.round((state.aiChatScale - 0.1) * 10) / 10) })),
-        setImageExportWatermark: (imageExportWatermark) => set({ imageExportWatermark }),
+        setImageExportWatermark: (config) =>
+            set({ imageExportWatermark: normalizeWatermarkConfig(config) }),
         setImageExportThemeId: (imageExportThemeId) => set({ imageExportThemeId }),
         setHideExpandArrows: (hideExpandArrows) => set({ hideExpandArrows }),
         setSidebarClickBehavior: (sidebarClickBehavior) => set({ sidebarClickBehavior }),
+        setEnterKeyBehavior: (enterKeyBehavior) => set({ enterKeyBehavior }),
     }
 }
