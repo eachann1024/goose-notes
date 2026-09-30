@@ -23,12 +23,6 @@ import {
 } from "@/lib/local-folder-open-apps";
 import { getCachedAvailableOpenApps, shell } from "@/lib/electron-platform/shell";
 import { fs } from "@/lib/electron-platform/fs";
-import {
-  scanUnreferencedLocalAssets,
-  restoreMissingReferencedLocalAssets,
-  type UnreferencedLocalAsset,
-} from "@/lib/local-folder-asset-maintenance";
-import { DialogShell } from "@/components/ui/dialog-shell";
 import * as LucideIcons from "lucide-react";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -359,334 +353,6 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
   );
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) {
-    const mb = bytes / (1024 * 1024);
-    return `${mb >= 10 ? mb.toFixed(1) : mb.toFixed(2)} MB`;
-  }
-  const gb = bytes / (1024 * 1024 * 1024);
-  return `${gb.toFixed(2)} GB`;
-}
-
-type LocalAssetKind = "image" | "video" | "audio" | "file";
-
-function getLocalAssetKind(name: string): LocalAssetKind {
-  const ext = name.includes(".")
-    ? name.slice(name.lastIndexOf(".") + 1).toLowerCase()
-    : "";
-  if (
-    [
-      "png",
-      "jpg",
-      "jpeg",
-      "gif",
-      "webp",
-      "svg",
-      "bmp",
-      "avif",
-      "heic",
-      "ico",
-    ].includes(ext)
-  ) {
-    return "image";
-  }
-  if (["mp4", "mov", "webm", "mkv", "avi", "m4v"].includes(ext)) return "video";
-  if (["mp3", "wav", "aac", "flac", "m4a", "ogg"].includes(ext)) return "audio";
-  return "file";
-}
-
-function localAssetKindLabel(kind: LocalAssetKind): string {
-  if (kind === "image") return "图片";
-  if (kind === "video") return "视频";
-  if (kind === "audio") return "音频";
-  return "文件";
-}
-
-function LocalAssetKindIcon({ kind }: { kind: LocalAssetKind }) {
-  const className = "h-4 w-4";
-  if (kind === "image") return <LucideIcons.Image className={className} />;
-  if (kind === "video") return <LucideIcons.Film className={className} />;
-  if (kind === "audio") return <LucideIcons.Music className={className} />;
-  return <LucideIcons.File className={className} />;
-}
-
-function assetDirectoryLabel(relativePath: string): string {
-  const normalized = relativePath.replace(/\\/g, "/");
-  const index = normalized.lastIndexOf("/");
-  return index > 0 ? normalized.slice(0, index) : normalized;
-}
-
-interface LocalAssetMaintenanceDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  assets: UnreferencedLocalAsset[];
-  loading: boolean;
-  onDelete: (paths: string[]) => Promise<void>;
-}
-
-function LocalAssetMaintenanceDialog({
-  open,
-  onOpenChange,
-  assets,
-  loading,
-  onDelete,
-}: LocalAssetMaintenanceDialogProps) {
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
-  const [confirming, setConfirming] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      setSelectedPaths([]);
-      setConfirming(false);
-      setDeleting(false);
-      return;
-    }
-    setSelectedPaths([]);
-    setConfirming(false);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const assetPaths = new Set(assets.map((asset) => asset.path));
-    setSelectedPaths((current) =>
-      current.filter((path) => assetPaths.has(path)),
-    );
-  }, [assets, open]);
-
-  const selectedAssets = useMemo(
-    () => assets.filter((asset) => selectedPaths.includes(asset.path)),
-    [assets, selectedPaths],
-  );
-  const totalSize = useMemo(
-    () => assets.reduce((sum, asset) => sum + asset.size, 0),
-    [assets],
-  );
-  const selectedSize = useMemo(
-    () => selectedAssets.reduce((sum, asset) => sum + asset.size, 0),
-    [selectedAssets],
-  );
-  const allSelected =
-    assets.length > 0 && selectedPaths.length === assets.length;
-  const releaseSize = selectedPaths.length > 0 ? selectedSize : totalSize;
-
-  const toggle = (path: string) => {
-    setConfirming(false);
-    setSelectedPaths((current) =>
-      current.includes(path)
-        ? current.filter((item) => item !== path)
-        : [...current, path],
-    );
-  };
-
-  const toggleAll = () => {
-    setConfirming(false);
-    setSelectedPaths(allSelected ? [] : assets.map((asset) => asset.path));
-  };
-
-  const deleteSelected = async () => {
-    if (selectedPaths.length === 0) return;
-    setDeleting(true);
-    try {
-      await onDelete(selectedPaths);
-      setSelectedPaths([]);
-      setConfirming(false);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const revealAsset = (asset: UnreferencedLocalAsset) => {
-    void shell
-      .showItemInFolder(asset.path)
-      .then((shown) => shown || fs.revealItemInFolder(asset.path));
-  };
-
-  return (
-    <DialogShell
-      open={open}
-      onOpenChange={onOpenChange}
-      title="清理未引用静态资源"
-      description="将移入系统废纸篓，可从废纸篓找回。"
-      contentClassName="grid h-[min(80vh,52rem)] w-[min(96vw,56rem)] max-w-[56rem] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden !p-0 sm:rounded-[18px]"
-      bodyClassName="flex min-h-0 flex-col overflow-hidden px-0 py-0"
-      footer={
-        confirming ? (
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 text-sm text-[var(--goose-color-danger-focus)]">
-              将把 {selectedPaths.length} 个文件移入系统废纸篓，释放{" "}
-              {formatFileSize(selectedSize)}
-            </div>
-            <div className="flex shrink-0 items-center justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => setConfirming(false)}
-                disabled={deleting}
-              >
-                返回
-              </Button>
-              <Button
-                variant="destructive"
-                className="min-w-[8rem]"
-                onClick={() => void deleteSelected()}
-                disabled={deleting || selectedPaths.length === 0}
-              >
-                {deleting ? "删除中…" : "确认删除"}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex w-full items-center justify-end gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              关闭
-            </Button>
-            <Button
-              variant="destructive"
-              className="min-w-[8rem]"
-              disabled={selectedPaths.length === 0}
-              onClick={() => setConfirming(true)}
-            >
-              {selectedPaths.length > 0
-                ? `删除已选 · ${formatFileSize(selectedSize)}`
-                : "删除已选"}
-            </Button>
-          </div>
-        )
-      }
-    >
-      {loading ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-8 py-12 text-sm text-muted-foreground">
-          <LucideIcons.LoaderCircle className="h-5 w-5 animate-spin text-foreground" />
-          <div>正在扫描资源…</div>
-        </div>
-      ) : assets.length === 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-8 py-12 text-sm text-muted-foreground">
-          <LucideIcons.CheckCircle2 className="h-5 w-5 text-[var(--goose-color-success)]" />
-          <div>没有可清理资源</div>
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 pb-2 pt-1">
-          <div className="flex shrink-0 items-center justify-between gap-3">
-            <div className="min-w-0 text-sm text-muted-foreground">
-              <span className="font-medium tabular-nums text-foreground">
-                {assets.length}
-              </span>{" "}
-              个未引用文件 · 可释放{" "}
-              <span className="font-medium tabular-nums text-foreground">
-                {formatFileSize(releaseSize)}
-              </span>
-              {selectedPaths.length > 0 ? (
-                <span> · 已选 {selectedPaths.length}</span>
-              ) : null}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-8 shrink-0"
-              onClick={toggleAll}
-            >
-              {allSelected ? "取消全选" : "全选"}
-            </Button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-hidden rounded-[14px] border border-[var(--goose-block-subtle-border)] bg-background">
-            <div className="h-full max-h-none overflow-y-auto">
-              {assets.map((asset, index) => {
-                const selected = selectedPaths.includes(asset.path);
-                const kind = getLocalAssetKind(asset.name);
-                const directory = assetDirectoryLabel(asset.relativePath);
-                return (
-                  <div
-                    key={asset.path}
-                    className={cn(
-                      "group grid grid-cols-[auto_auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2.5 transition-colors",
-                      index > 0 &&
-                        "border-t border-[var(--goose-block-subtle-border)]",
-                      selected
-                        ? "bg-[var(--goose-interactive-selected)]"
-                        : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
-                      aria-pressed={selected}
-                      aria-label={
-                        selected
-                          ? `取消选择 ${asset.name}`
-                          : `选择 ${asset.name}`
-                      }
-                      onClick={() => toggle(asset.path)}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-4 w-4 items-center justify-center rounded-[5px] border",
-                          selected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background",
-                        )}
-                      >
-                        {selected ? (
-                          <LucideIcons.Check
-                            className="h-3 w-3"
-                            strokeWidth={3}
-                          />
-                        ) : null}
-                      </span>
-                    </button>
-
-                    <div
-                      className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-[10px]",
-                        selected
-                          ? "bg-[var(--goose-icon-chip-on-selected)] text-[var(--goose-interactive-selected-fg)]"
-                          : "bg-[var(--goose-block-subtle-bg)] text-muted-foreground",
-                      )}
-                    >
-                      <LocalAssetKindIcon kind={kind} />
-                    </div>
-
-                    <button
-                      type="button"
-                      className="min-w-0 text-left"
-                      onClick={() => toggle(asset.path)}
-                    >
-                      <div className="truncate text-sm font-medium text-foreground">
-                        {asset.name}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {localAssetKindLabel(kind)} · {directory}
-                      </div>
-                    </button>
-
-                    <div className="shrink-0 text-right text-sm tabular-nums text-muted-foreground">
-                      {formatFileSize(asset.size)}
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 rounded-[10px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
-                      aria-label={`在文件管理器显示 ${asset.name}`}
-                      onClick={() => revealAsset(asset)}
-                    >
-                      <LucideIcons.FolderSearch className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </DialogShell>
-  );
-}
-
 /** 桌面端专属：检测到旧内置（web-db）页面时，提供一次性导出为 .md 到当前仓库。 */
 function LegacyInternalPagesExportCard() {
   const [exporting, setExporting] = useState(false);
@@ -803,72 +469,11 @@ export function SettingsLocalFolder({
   >(() => getCachedAvailableOpenApps(LOCAL_FOLDER_TERMINAL_CANDIDATES) ?? []);
   const systemDefaultLabels = useMemo(() => getSystemDefaultLabels(), []);
   const hiddenFoldersRefreshNonceRef = useRef(0);
-  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
-  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
-  const [unreferencedAssets, setUnreferencedAssets] = useState<
-    UnreferencedLocalAsset[]
-  >([]);
-
-  const scanUnreferencedAssets = async () => {
-    const notebookState = useNotebooks.getState();
-    const activeNotebook = notebookState.activeNotebookId
-      ? notebookState.notebooks[notebookState.activeNotebookId]
-      : null;
-    if (
-      activeNotebook?.source !== "local-folder" ||
-      !activeNotebook.localPath ||
-      !window.gooseFs
-    ) {
-      toast.warning("请先切换到本地文件夹记事本");
-      return;
-    }
-
-    setMaintenanceOpen(true);
-    setMaintenanceLoading(true);
+  const openAssetMaintenance = async () => {
     try {
-      window.dispatchEvent(
-        new CustomEvent("goose-note:flush-editor", {
-          detail: { immediate: true },
-        }),
-      );
-      await usePages.getState().flushPendingLocalSaves();
-      const pages = Object.values(usePages.getState().pages).filter(
-        (page) => page.workspaceId === activeNotebook.id,
-      );
-      const scanOptions = {
-        basePath: activeNotebook.localPath,
-        pages,
-        gooseFs: window.gooseFs,
-      };
-      const recovered =
-        await restoreMissingReferencedLocalAssets(scanOptions);
-      if (recovered.restored.length > 0) {
-        toast.success(`已从废纸篓找回 ${recovered.restored.length} 个仍被引用的文件`);
-      }
-      if (recovered.missing.length > 0) {
-        toast.warning(
-          `仍有 ${recovered.missing.length} 个被引用文件缺失，请到系统废纸篓手动找回`,
-        );
-      }
-      setUnreferencedAssets(await scanUnreferencedLocalAssets(scanOptions));
-    } catch (error) {
-      console.error("[settings] 扫描未引用静态资源失败", error);
-      toast.error("扫描未引用静态资源失败");
-      setMaintenanceOpen(false);
-    } finally {
-      setMaintenanceLoading(false);
-    }
-  };
-
-  const deleteUnreferencedAssets = async (paths: string[]) => {
-    const results = await Promise.all(paths.map((path) => fs.deleteFile(path)));
-    const deletedPaths = new Set(paths.filter((_, index) => results[index]));
-    setUnreferencedAssets((assets) =>
-      assets.filter((asset) => !deletedPaths.has(asset.path)),
-    );
-    if (deletedPaths.size)
-      toast.success(`已删除 ${deletedPaths.size} 个未引用文件`);
-    if (deletedPaths.size !== paths.length) toast.error("部分文件删除失败");
+      if (!window.gooseDesktop?.assetMaintenance) throw new Error("仅桌面应用支持资源清理");
+      await window.gooseDesktop.assetMaintenance.open();
+    } catch (error) { toast.error("无法打开资源清理窗口", { description: String(error) }); }
   };
 
   const handleHiddenFoldersChange = (folders: string[]) => {
@@ -1052,33 +657,25 @@ export function SettingsLocalFolder({
                 className="h-4 w-4 text-muted-foreground"
                 strokeWidth={1.75}
               />
-              <Label>清理未引用静态资源</Label>
+              <Label>清理未引用图片与视频</Label>
             </div>
             <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              扫描页面同级 assets 目录及根 assets 兼容目录。会读取全部
-              Markdown（含隐藏目录中的笔记），避免把仍在使用的图片标成未引用。
+              按笔记本扫描，确认后移入废纸篓。
             </p>
           </div>
           <Button
             type="button"
             variant="secondary"
             className="shrink-0"
-            onClick={() => void scanUnreferencedAssets()}
+            onClick={() => void openAssetMaintenance()}
           >
-            扫描资源
+            打开资源清理
           </Button>
         </div>
       </SettingsSectionCard>
 
         </div>
       </div>
-      <LocalAssetMaintenanceDialog
-        open={maintenanceOpen}
-        onOpenChange={setMaintenanceOpen}
-        assets={unreferencedAssets}
-        loading={maintenanceLoading}
-        onDelete={deleteUnreferencedAssets}
-      />
     </div>
   );
 }

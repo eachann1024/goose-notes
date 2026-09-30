@@ -1141,6 +1141,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       }
     };
 
+    const handleAssetReferences = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        pages: { localFilePath: string; content: unknown }[];
+        failed: boolean;
+      }>).detail;
+      const localFilePath = pageRef.current?.localFilePath;
+      if (!localFilePath) return;
+      try {
+        detail.pages.push({ localFilePath, content: clonePageContent(editor.document as BlockNoteContent) });
+      } catch { detail.failed = true; }
+    };
+    window.addEventListener("goose-note:asset-references", handleAssetReferences);
     window.addEventListener("goose-note:flush-editor", handleFlush);
     window.addEventListener("goose-note:focus-editor-start", handleFocusStart);
     window.addEventListener("goose-note:focus-editor-body", handleFocusBody);
@@ -1151,6 +1163,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     );
 
     return () => {
+      window.removeEventListener("goose-note:asset-references", handleAssetReferences);
       window.removeEventListener("goose-note:flush-editor", handleFlush);
       window.removeEventListener(
         "goose-note:focus-editor-start",

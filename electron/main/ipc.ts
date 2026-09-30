@@ -1,4 +1,5 @@
 import { assertGitSyncWritable, isGitSyncPathLocked, waitForGitSyncRead } from "./gitSyncLock";
+import { registerAssetMaintenanceIpc } from "./assetMaintenance";
 import {
   app,
   BrowserWindow,
@@ -288,6 +289,7 @@ function isOpenUrlAllowed(url: string): boolean {
 }
 
 export function registerIpcHandlers(): void {
+  registerAssetMaintenanceIpc();
   hookWindowVisibilityForWatch();
   registerOpenMarkdownIpc();
   const undoRoot = path.join(app.getPath("userData"), "trash-undo");

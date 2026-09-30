@@ -28,6 +28,8 @@ import {
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
 const DEFAULT_QUICKNOTE = "Alt+N";
 
+protocol.registerSchemesAsPrivileged([{ scheme: "goose-asset", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
+
 app.setName("Goose Note");
 // 禁止触控板捏合缩放整页；键盘 Cmd/Ctrl+/- 由渲染进程改编辑器字号。
 app.commandLine.appendSwitch("disable-pinch");

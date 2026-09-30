@@ -69,6 +69,8 @@ declare global {
 
 
   interface GooseDesktop {
+    gitSync: import("./lib/git-sync-contract").GitSyncBridge;
+    assetMaintenance: import("./lib/asset-maintenance-contract").AssetMaintenanceBridge;
     selectDirectory: () => Promise<string | null>
     showOpenDialog: (opts: { filters?: {name:string;extensions:string[]}[]; multiple?: boolean }) => Promise<string[] | null>
     showSaveDialog: (opts: { defaultPath?: string; filters?: {name:string;extensions:string[]}[] }) => Promise<string | null>

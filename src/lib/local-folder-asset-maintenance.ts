@@ -1,11 +1,7 @@
+import MarkdownIt from "markdown-it";
 import type { JSONContent, Page } from "@/types";
-import { isInternalAssetRef } from "@/lib/internalAssetRef";
-import {
-  isLocalFilePath,
-  resolveToAbsolute,
-} from "@/lib/imageStorage/strategies/file-system";
-import { shouldIgnoreLocalRelativePath } from "@/lib/local-folder-scanner";
-import { getLocalMdSnapshot } from "@/lib/local-md-snapshot";
+import { isInternalAssetRef } from "./internalAssetRef";
+import { getLocalMdSnapshot } from "./local-md-snapshot";
 
 interface LocalFolderEntry {
   name: string;
@@ -27,10 +23,21 @@ export interface RestoreMissingLocalAssetsResult {
   missing: string[];
 }
 
+export interface AssetMaintenanceFs {
+  readDir: (path: string) => LocalFolderEntry[];
+  readDirAsync?: (path: string) => Promise<LocalFolderEntry[]>;
+  readFile: (path: string) => string | null;
+  readFileAsync?: (path: string) => Promise<string | null>;
+  exists: (path: string) => boolean;
+  existsAsync?: (path: string) => Promise<boolean>;
+  readFileBase64?: (path: string) => string | null;
+  restoreFromTrash?: (path: string) => Promise<boolean>;
+}
+
 interface ScanUnreferencedLocalAssetsOptions {
   basePath: string;
   pages: Pick<Page, "content" | "localFilePath" | "isFolder">[];
-  gooseFs: GooseFs;
+  gooseFs: AssetMaintenanceFs;
 }
 
 interface LocalAssetReferenceIndex {
@@ -38,6 +45,8 @@ interface LocalAssetReferenceIndex {
   pathKeys: Set<string>;
   names: Set<string>;
 }
+
+const markdownParser = new MarkdownIt({ html: true });
 
 const MARKDOWN_LINK_RE =
   /!?\[[^\]]*\]\(\s*(<[^>\n]+>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/g;
@@ -90,11 +99,11 @@ function isAssetPath(value: string): boolean {
 }
 
 function looksLikeLocalMedia(value: string): boolean {
-  return isAssetPath(value) || MEDIA_FILE_RE.test(value);
+  return isAssetPath(value) || getLocalAssetKind(value) !== null || MEDIA_FILE_RE.test(value);
 }
 
 export function cleanAssetDestination(raw: string): string {
-  let value = raw.trim();
+  let value = markdownParser.utils.unescapeAll(raw.trim());
   if (!value) return "";
   if (
     (value.startsWith("<") && value.endsWith(">")) ||
@@ -107,7 +116,7 @@ export function cleanAssetDestination(raw: string): string {
   if (/^file:/i.test(value)) {
     try {
       const fileUrl = new URL(value);
-      value = decodeURIComponent(fileUrl.pathname);
+      value = fileUrl.pathname;
       if (/^\/[A-Za-z]:\//.test(value)) value = value.slice(1);
     } catch {
       // keep original
@@ -141,7 +150,7 @@ function addReference(
 ) {
   const cleaned = cleanAssetDestination(value);
   if (shouldSkipRemoteOrInternal(cleaned)) return;
-  if (!isLocalFilePath(cleaned) && !looksLikeLocalMedia(cleaned)) return;
+  if (!looksLikeLocalMedia(cleaned)) return;
 
   const name = basename(cleaned);
   if (name) index.names.add(name.toLowerCase());
@@ -149,7 +158,7 @@ function addReference(
   const bases = [dirname(pagePath), normalizePath(basePath)].filter(Boolean);
   for (const base of bases) {
     const resolved = normalizePath(
-      isAbsolutePath(cleaned) ? cleaned : resolveToAbsolute(base, cleaned),
+      isAbsolutePath(cleaned) ? cleaned : `${base}/${cleaned}`,
     );
     if (looksLikeLocalMedia(resolved) || isAssetPath(resolved)) {
       index.paths.add(resolved);
@@ -175,7 +184,20 @@ export function extractAssetReferencesFromMarkdown(
 ): LocalAssetReferenceIndex {
   if (!markdown) return index;
 
+  const visitTokens = (tokens: ReturnType<MarkdownIt["parse"]>) => {
+    for (const token of tokens) {
+      for (const attr of ["src", "href"]) {
+        const destination = token.attrGet(attr);
+        if (destination) addReference(destination, pagePath, basePath, index);
+      }
+      if (token.children) visitTokens(token.children);
+    }
+  };
+  visitTokens(markdownParser.parse(markdown, {}));
   for (const match of markdown.matchAll(MARKDOWN_LINK_RE)) {
+    addReference(match[1] ?? "", pagePath, basePath, index);
+  }
+  for (const match of markdown.matchAll(/^ {0,3}\[[^\]\n]+\]:\s*(<[^>\n]+>|\S+)/gm)) {
     addReference(match[1] ?? "", pagePath, basePath, index);
   }
   for (const match of markdown.matchAll(HTML_SRC_RE)) {
@@ -237,77 +259,65 @@ function resolveLocalAssetPath(value: string, pagePath: string): string | null {
 }
 
 async function readDirectory(
-  gooseFs: GooseFs,
+  gooseFs: AssetMaintenanceFs,
   path: string,
 ): Promise<LocalFolderEntry[]> {
-  return (
-    (gooseFs.readDirAsync
-      ? await gooseFs.readDirAsync(path)
-      : gooseFs.readDir(path)) ?? []
-  );
+  const entries = gooseFs.readDirAsync
+    ? await gooseFs.readDirAsync(path)
+    : gooseFs.readDir(path);
+  if (!Array.isArray(entries)) throw new Error(`无法读取目录：${path}`);
+  return entries;
 }
 
-async function pathExists(gooseFs: GooseFs, path: string): Promise<boolean> {
+async function pathExists(gooseFs: AssetMaintenanceFs, path: string): Promise<boolean> {
   if (gooseFs.existsAsync) return Boolean(await gooseFs.existsAsync(path));
   return Boolean(gooseFs.exists(path));
 }
 
 async function readTextFile(
-  gooseFs: GooseFs,
+  gooseFs: AssetMaintenanceFs,
   filePath: string,
 ): Promise<string | null> {
-  const snapshot = getLocalMdSnapshot(filePath);
-  if (typeof snapshot === "string") return snapshot;
-  try {
-    if (gooseFs.readFileAsync) return (await gooseFs.readFileAsync(filePath)) ?? null;
-    return gooseFs.readFile(filePath);
-  } catch {
-    return null;
-  }
+  const text = gooseFs.readFileAsync
+    ? await gooseFs.readFileAsync(filePath)
+    : gooseFs.readFile(filePath);
+  if (typeof text !== "string") throw new Error(`无法读取 Markdown：${filePath}`);
+  return text;
 }
 
-async function collectAssetFiles(
-  gooseFs: GooseFs,
-  directory: string,
-): Promise<LocalFolderEntry[]> {
-  const entries = await readDirectory(gooseFs, directory);
-  const files: LocalFolderEntry[] = [];
-  for (const entry of entries) {
-    if (entry.isFile) files.push(entry);
-    if (entry.isDirectory)
-      files.push(...(await collectAssetFiles(gooseFs, entry.path)));
-  }
-  return files;
+export function getLocalAssetKind(name: string): "image" | "video" | null {
+  if (/\.(png|jpe?g|gif|webp|svg|bmp|ico|avif|heic|heif|tiff?)$/i.test(name)) return "image";
+  if (/\.(mp4|m4v|webm|mov|mkv|avi|mpeg|mpg)$/i.test(name)) return "video";
+  return null;
 }
 
-async function collectMarkdownFilePaths(
-  gooseFs: GooseFs,
-  directory: string,
-  basePath: string,
-): Promise<string[]> {
-  const files: string[] = [];
-  const walk = async (dir: string) => {
-    let entries: LocalFolderEntry[];
-    try {
-      entries = await readDirectory(gooseFs, dir);
-    } catch {
-      return;
-    }
+function isWithin(basePath: string, target: string): boolean {
+  return normalizePath(target).startsWith(`${normalizePath(basePath).replace(/\/$/, "")}/`);
+}
+
+// 包含隐藏目录以及 assets 中的 Markdown；不读取 JS/CSS 等其它文件内容。
+async function collectNotebookFiles(gooseFs: AssetMaintenanceFs, basePath: string) {
+  const markdown: string[] = [];
+  const assets: LocalFolderEntry[] = [];
+  const seen = new Set<string>();
+  const walk = async (directory: string) => {
+    if (seen.has(directory)) throw new Error(`目录循环：${directory}`);
+    seen.add(directory);
+    const entries = await readDirectory(gooseFs, directory);
     for (const entry of entries) {
-      const relative = relativePath(basePath, entry.path);
-      if (shouldIgnoreLocalRelativePath(relative, [])) continue;
-      if (entry.isDirectory) {
-        if (/^assets$/i.test(entry.name)) continue;
-        await walk(entry.path);
-        continue;
+      if (!isWithin(basePath, entry.path) || dirname(entry.path) !== normalizePath(directory)) {
+        throw new Error(`扫描路径超出笔记本：${entry.path}`);
       }
-      if (entry.isFile && /\.(md|markdown)$/i.test(entry.name)) {
-        files.push(entry.path);
+      if (entry.isDirectory) await walk(entry.path);
+      if (!entry.isFile) continue;
+      if (/\.(md|markdown)$/i.test(entry.name)) markdown.push(entry.path);
+      if (getLocalAssetKind(entry.name) && /(?:^|\/)assets\//i.test(relativePath(basePath, entry.path))) {
+        assets.push(entry);
       }
     }
   };
-  await walk(directory);
-  return files;
+  await walk(normalizePath(basePath));
+  return { markdown, assets };
 }
 
 function relativePath(basePath: string, targetPath: string): string {
@@ -316,7 +326,7 @@ function relativePath(basePath: string, targetPath: string): string {
   return target.startsWith(`${base}/`) ? target.slice(base.length + 1) : target;
 }
 
-function getFileSize(gooseFs: GooseFs, entry: LocalFolderEntry): number {
+function getFileSize(gooseFs: AssetMaintenanceFs, entry: LocalFolderEntry): number {
   if (typeof entry.size === "number") return entry.size;
   const base64 = gooseFs.readFileBase64?.(entry.path);
   if (!base64) return 0;
@@ -328,14 +338,14 @@ async function collectReferenceIndex({
   basePath,
   pages,
   gooseFs,
-}: ScanUnreferencedLocalAssetsOptions): Promise<LocalAssetReferenceIndex> {
+}: ScanUnreferencedLocalAssetsOptions, diskMarkdown?: string[]): Promise<LocalAssetReferenceIndex> {
   const normalizedBasePath = normalizePath(basePath);
   const index = createReferenceIndex();
   const seenMarkdown = new Set<string>();
 
   const ingestMarkdown = async (filePath: string, fallbackContent?: unknown) => {
-    if (!filePath) return;
-    const key = pathKey(filePath);
+    if (!filePath || !isWithin(normalizedBasePath, filePath)) return;
+    const key = normalizePath(filePath);
     if (!seenMarkdown.has(key)) {
       seenMarkdown.add(key);
       const markdown = await readTextFile(gooseFs, filePath);
@@ -361,15 +371,13 @@ async function collectReferenceIndex({
 
   for (const page of pages) {
     if (page.isFolder || !page.localFilePath) continue;
-    await ingestMarkdown(page.localFilePath, page.content as JSONContent);
+    if (!isWithin(normalizedBasePath, page.localFilePath)) continue;
+    collectReferencesFromJson(page.content as JSONContent, page.localFilePath, normalizedBasePath, index, new WeakSet());
+    const snapshot = getLocalMdSnapshot(page.localFilePath);
+    if (snapshot !== undefined) extractAssetReferencesFromMarkdown(snapshot, page.localFilePath, normalizedBasePath, index);
   }
 
-  const diskMarkdown = await collectMarkdownFilePaths(
-    gooseFs,
-    normalizedBasePath,
-    normalizedBasePath,
-  );
-  for (const filePath of diskMarkdown) {
+  for (const filePath of diskMarkdown ?? (await collectNotebookFiles(gooseFs, normalizedBasePath)).markdown) {
     await ingestMarkdown(filePath);
   }
 
@@ -382,30 +390,10 @@ export async function scanUnreferencedLocalAssets({
   gooseFs,
 }: ScanUnreferencedLocalAssetsOptions): Promise<UnreferencedLocalAsset[]> {
   const normalizedBasePath = normalizePath(basePath);
-  const index = await collectReferenceIndex({ basePath, pages, gooseFs });
-  const assetDirectories = new Set<string>([
-    normalizePath(`${normalizedBasePath}/assets`),
-  ]);
-
-  for (const page of pages) {
-    if (page.isFolder || !page.localFilePath) continue;
-    assetDirectories.add(
-      normalizePath(`${dirname(page.localFilePath)}/assets`),
-    );
-  }
-
-  const assets = await Promise.all(
-    [...assetDirectories].map(async (directory) => {
-      try {
-        return await collectAssetFiles(gooseFs, directory);
-      } catch {
-        return [];
-      }
-    }),
-  );
-
-  return assets
-    .flat()
+  if (!isAbsolutePath(basePath)) throw new Error("请选择本地文件夹笔记本");
+  const files = await collectNotebookFiles(gooseFs, normalizedBasePath);
+  const index = await collectReferenceIndex({ basePath, pages, gooseFs }, files.markdown);
+  return files.assets
     .map((entry) => ({ ...entry, path: normalizePath(entry.path) }))
     .filter((entry) => {
       if (index.pathKeys.has(pathKey(entry.path))) return false;

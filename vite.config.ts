@@ -380,6 +380,7 @@ export default defineConfig({
         ? { quicknote: path.resolve(__dirname, "quicknote.html") }
         : {
             index: path.resolve(__dirname, "index.html"),
+            assetMaintenance: path.resolve(__dirname, "asset-maintenance.html"),
             quicknote: path.resolve(__dirname, "quicknote.html"),
           },
       output: {

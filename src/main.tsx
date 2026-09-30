@@ -504,6 +504,12 @@ export const bootstrap = async (
         useNotebooks.setState({ activeNotebookId: firstNotebookId });
       }
     }
+    if (!lean) {
+      const { installAssetMaintenanceSnapshotResponder } = await import("./lib/asset-maintenance-snapshot");
+      installAssetMaintenanceSnapshotResponder();
+      const { installGitSyncResponder } = await import("./lib/git-sync-responder");
+      installGitSyncResponder();
+    }
     setupSaveGuards();
     const settings = useSettings.getState();
     applyFontVariables(settings.customFonts, settings);
