@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { useSettings } from "@/stores/useSettings";
 import {
   type CSSProperties,
@@ -52,6 +53,7 @@ type AccentOption = {
   lightForeground: string;
   darkSurface: string;
   darkForeground: string;
+  fullTheme?: string;
 };
 
 const accentOptions: AccentOption[] = [
@@ -97,13 +99,25 @@ const accentOptions: AccentOption[] = [
   },
   {
     value: "amber",
-    label: "晨橙",
-    previewLight: "#ed963e",
-    previewDark: "#edaa62",
-    lightSurface: "#fffaf3",
-    lightForeground: "#ad4e15",
-    darkSurface: "rgba(237, 170, 98, 0.16)",
-    darkForeground: "#f4c99b",
+    label: "浅秋",
+    previewLight: "#e9dcb8",
+    previewDark: "#c8b889",
+    lightSurface: "#e9dfc7",
+    lightForeground: "#544b38",
+    darkSurface: "#39352a",
+    darkForeground: "#eee9dc",
+    fullTheme: "浅奶油黄与暖白纸面，像秋日里的一点淡淡日光。",
+  },
+  {
+    value: "wheat",
+    label: "麦笺",
+    previewLight: "#d9d7bd",
+    previewDark: "#b8b99a",
+    lightSurface: "#e0ddc8",
+    lightForeground: "#4d553b",
+    darkSurface: "#33382a",
+    darkForeground: "#e9ebdf",
+    fullTheme: "灰麦黄与米白纸面，像铅笔画在一张安静的素描纸上。",
   },
   {
     value: "coral",
@@ -519,7 +533,7 @@ export function SettingsAppearance({
                 id="appearance-accent-color-label"
                 className="text-sm font-medium text-foreground"
               >
-                强调色
+                配色与主题
               </div>
             </div>
             <div
@@ -536,7 +550,7 @@ export function SettingsAppearance({
                   "--goose-accent-option-dark-fg": option.darkForeground,
                 };
 
-                return (
+                const optionButton = (
                   <button
                     key={option.value}
                     ref={(node) => {
@@ -570,8 +584,11 @@ export function SettingsAppearance({
                         style={{ backgroundColor: option.previewDark }}
                       />
                     </span>
-                    <span className="flex-1 whitespace-nowrap">
+                    <span className="flex flex-1 items-center gap-1 whitespace-nowrap">
                       {option.label}
+                      {option.fullTheme && (
+                        <GooseIcons.Pencil aria-hidden="true" className="h-3 w-3 shrink-0" />
+                      )}
                     </span>
                     <GooseIcons.Check
                       aria-hidden="true"
@@ -582,6 +599,17 @@ export function SettingsAppearance({
                     />
                   </button>
                 );
+                return option.fullTheme ? (
+                  <Tooltip key={option.value}>
+                    <TooltipTrigger asChild>{optionButton}</TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-64 whitespace-normal p-3 text-xs leading-relaxed">
+                      <p className="font-semibold">{option.label} · 完整主题</p>
+                      <p className="mt-1 text-muted-foreground">{option.fullTheme}</p>
+                      <p className="mt-2">更换：侧栏与纸面底色、菜单与 AI 面板、选中与文字高亮、功能图标的铅笔描边。支持浅色与深色。</p>
+                      <p className="mt-1 text-muted-foreground">保留现有布局、字体与图标大小，以及自选的页面图标。</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : optionButton;
               })}
             </div>
           </div>
