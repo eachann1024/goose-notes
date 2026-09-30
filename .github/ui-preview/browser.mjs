@@ -109,6 +109,7 @@ try {
       if (plan.ui_change) {
         context = await browser.newContext({ viewport:view,locale:'zh-CN',recordVideo:{dir:path.join(out,'raw'),size:view} });
         const page = await context.newPage();
+        const videoStart = Date.now(); let videoLead = null;
         // Browser previews must stay within the local PR app. No external services.
         await page.route('**/*', route => {
           const requestURL = new URL(route.request().url());
@@ -120,7 +121,9 @@ try {
         for (const scene of plan.scenes) {
           const captured = { title:scene.title, shots:[] }; m.scenes.push(captured);
           try {
-            await seed(page,scene.start); await annotate(page); await caption(page,scene.title);
+            await seed(page,scene.start);
+            if (videoLead === null) videoLead = Math.max(0, (Date.now() - videoStart) / 1000 - 0.25);
+            await annotate(page); await caption(page,scene.title);
             for (const step of scene.steps) {
               await caption(page,step.caption || scene.title);
               if (['click','hover','type'].includes(step.do)) {
@@ -155,7 +158,7 @@ try {
         }
         const raw=await page.video().path(); await context.close(); context=null;
         if(!m.leak && (plan.scenes.length>1 || plan.scenes.some(s=>s.steps.some(st=>['click','hover','type','press','scroll'].includes(st.do))))) {
-          execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',raw,'-c:v','libx264','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart','-an',path.join(out,'preview.mp4')]); m.video='preview.mp4';
+          execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-ss',String(videoLead || 0),'-i',raw,'-c:v','libx264','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart','-an',path.join(out,'preview.mp4')]); m.video='preview.mp4';
           const first=m.scenes.flatMap(s=>s.shots)[0]; if(first){await fs.copyFile(path.join(out,first.file),path.join(out,'poster.png'));m.poster='poster.png';}
         }
       }
