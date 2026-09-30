@@ -33,6 +33,6 @@ git show history/goose-note/v7:README.md
 
 ## GitHub 资料
 
-本次整合保留 Git 提交、分支、标签与已公布的 PR 提交引用。GitHub 的议题、PR 讨论、Release 安装包、Actions 记录和仓库设置属于独立的平台资料，没有自动迁移；两个旧仓库保留用于查询这些资料。
+本次整合保留 Git 提交、分支、标签与已公布的 PR 提交引用。2026-09-30，按仓库所有者要求，`eachann1024/goose-notion` 和 `eachann1024/goose-note` 已删除；全部原始 Git 历史仍保存在本仓库，另有本地 Git 镜像与 bundle 备份。GitHub 的议题、PR 讨论、Release 安装包、Actions 记录和仓库设置属于独立的平台资料，没有迁移到本仓库。
 
 `goose-notion` 原为私有仓库，其历史公开已获得仓库所有者确认。旧仓库历史经 Gitleaks 扫描未发现命中项。
