@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import type { Page } from "@/types";
 import type { NotebookAiLayoutMode } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { isFullscreenAiLayout } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";

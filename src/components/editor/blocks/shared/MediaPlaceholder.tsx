@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { useCallback, type ReactNode } from "react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
 import { cn } from "@/components/editor/utils/cn";

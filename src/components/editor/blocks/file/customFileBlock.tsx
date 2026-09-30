@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { useCallback, useState } from "react";
 import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";

@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import * as React from "react";
 import { Modal } from "@heroui/react";
 import { cn } from "@/lib/utils";

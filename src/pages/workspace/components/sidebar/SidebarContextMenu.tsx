@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { SidebarRenameContext } from "./SidebarInlineRename";
 import type { ReactNode } from "react";
 import type { Page } from "@/types";

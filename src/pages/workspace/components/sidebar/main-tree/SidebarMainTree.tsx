@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   ControlledTreeEnvironment,

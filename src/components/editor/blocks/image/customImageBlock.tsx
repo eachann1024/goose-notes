@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { createImageBlockConfig, imageParse } from "@blocknote/core";
 import {
   createReactBlockSpec,
