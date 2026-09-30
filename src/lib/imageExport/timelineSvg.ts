@@ -8,6 +8,7 @@ import {
   stripMermaidInitDirectives,
   type MermaidThemeMode,
 } from "./mermaidTheme";
+import { TEXT_COLORS } from "@/lib/textColors";
 
 export type TimelineItem = {
   section: string;
@@ -51,8 +52,8 @@ type Palette = {
 function palette(mode: MermaidThemeMode): Palette {
   if (mode === "dark") {
     return {
-      text: "#faf9f5",
-      muted: "#c2c0b6",
+      text: TEXT_COLORS.dark.primary,
+      muted: TEXT_COLORS.dark.secondary,
       card: "#3a3a38",
       border: "#4a4a47",
       axis: "#5c5b57",
@@ -60,8 +61,8 @@ function palette(mode: MermaidThemeMode): Palette {
     };
   }
   return {
-    text: "#141413",
-    muted: "#5c5b57",
+    text: TEXT_COLORS.light.primary,
+    muted: TEXT_COLORS.light.secondary,
     card: "#f7f6f2",
     border: "#e7e5e0",
     axis: "#d4d2ca",

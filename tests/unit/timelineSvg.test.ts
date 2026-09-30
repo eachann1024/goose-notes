@@ -51,6 +51,6 @@ test("浅色时间线是竖轴卡片，不是彩虹盒和黑线", () => {
 
 test("深色时间线使用浅色正文", () => {
   const svg = tryRenderMermaidTimeline(PI_TIMELINE, "dark");
-  expect(svg).toContain("#faf9f5");
+  expect(svg).toContain("#f1f4f8");
   expect(svg).not.toContain('stroke="black"');
 });

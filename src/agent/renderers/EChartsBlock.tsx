@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { TEXT_COLORS } from "@/lib/textColors";
 import type { EChartsOption } from "echarts";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
 import { DatavizToolbar } from "./DatavizToolbar";
@@ -98,9 +99,8 @@ export const EChartsBlock = React.memo(
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: isDark ? TM.dark.sc : TM.light.sc,
+              color: TEXT_COLORS[isDark ? "dark" : "light"].danger,
               fontSize: Math.max(13, Math.round(13 * editorScale)),
-              opacity: 0.7,
               textAlign: "center",
             }}
           >

@@ -99,9 +99,9 @@ export const { registry } = defineRegistry(jsonRenderCatalog, {
       const colorMap: Record<string, string> = {
         default: "text-foreground",
         muted: "text-muted-foreground",
-        primary: "text-primary",
+        primary: "text-link",
         secondary: "text-secondary-foreground",
-        destructive: "text-destructive",
+        destructive: "text-danger",
       };
       return (
         <span

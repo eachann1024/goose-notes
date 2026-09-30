@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 import type { EChartsOption, SeriesOption } from "echarts";
 import { echarts } from "./registerEcharts";
 import {
@@ -12,9 +13,9 @@ import {
 export const TM = {
   light: {
     bg: "#ffffff",
-    tc: "#141413",
-    sc: "#5c5b57",
-    muted: "#8a8880",
+    tc: TEXT_COLORS.light.primary,
+    sc: TEXT_COLORS.light.secondary,
+    muted: TEXT_COLORS.light.secondary,
     gl: "rgba(31,30,29,0.08)",
     glStrong: "rgba(31,30,29,0.14)",
     tooltipBg: "rgba(255,255,255,0.96)",
@@ -25,9 +26,9 @@ export const TM = {
   },
   dark: {
     bg: "#2E2E2D",
-    tc: "#faf9f5",
-    sc: "#c2c0b6",
-    muted: "#8a8880",
+    tc: TEXT_COLORS.dark.primary,
+    sc: TEXT_COLORS.dark.secondary,
+    muted: TEXT_COLORS.dark.secondary,
     gl: "rgba(222,220,209,0.08)",
     glStrong: "rgba(222,220,209,0.14)",
     tooltipBg: "rgba(46,46,45,0.96)",

@@ -1,3 +1,5 @@
+import { TEXT_COLORS, documentTextColors, textColorsOnSurface } from "@/lib/textColors";
+
 export const HOST_FONTS_CSS = `
 @font-face {
   font-family: "Anthropic Sans";
@@ -38,12 +40,12 @@ export const HTML_THEME = {
     bgInverse: "#141413",
     bgGhost: "rgba(255,255,255,0)",
     bgDisabled: "rgba(255,255,255,0.5)",
-    textPrimary: "#141413",
-    textSecondary: "#3d3d3a",
-    textTertiary: "#73726c",
-    textInverse: "#ffffff",
-    textGhost: "rgba(115,114,108,.5)",
-    textDisabled: "rgba(20,20,19,0.5)",
+    textPrimary: TEXT_COLORS.light.primary,
+    textSecondary: TEXT_COLORS.light.secondary,
+    textTertiary: TEXT_COLORS.light.secondary,
+    textInverse: TEXT_COLORS.light.onDark,
+    textGhost: TEXT_COLORS.light.secondary,
+    textDisabled: TEXT_COLORS.light.disabled,
     borderTertiary: "rgba(31,30,29,.15)",
     borderSecondary: "rgba(31,30,29,.3)",
     borderPrimary: "rgba(31,30,29,.4)",
@@ -62,13 +64,13 @@ export const HTML_THEME = {
     ringSuccess: "rgba(67,116,38,0.5)",
     ringWarning: "rgba(128,92,31,0.5)",
     bgInfo: "#d6e4f6",
-    textInfo: "#3266ad",
+    textInfo: TEXT_COLORS.light.info,
     bgSuccess: "#e9f1dc",
-    textSuccess: "#265b19",
+    textSuccess: TEXT_COLORS.light.success,
     bgWarning: "#f6eedf",
-    textWarning: "#5a4815",
+    textWarning: TEXT_COLORS.light.warning,
     bgDanger: "#f7ecec",
-    textDanger: "#7f2c28",
+    textDanger: TEXT_COLORS.light.danger,
     purple: "#eeedfe",
     teal: "#e1f5ee",
     coral: "#faece7",
@@ -87,24 +89,6 @@ export const HTML_THEME = {
     greenStroke: "#3b6d11",
     amberStroke: "#854f0b",
     redStroke: "#a32d2d",
-    purpleTextH: "#3c3489",
-    tealTextH: "#085041",
-    coralTextH: "#712b13",
-    pinkTextH: "#72243e",
-    blueTextH: "#0c447c",
-    grayTextH: "#444441",
-    greenTextH: "#27500a",
-    amberTextH: "#633806",
-    redTextH: "#791f1f",
-    purpleTextS: "#534ab7",
-    tealTextS: "#0f6e56",
-    coralTextS: "#993c1d",
-    pinkTextS: "#993556",
-    blueTextS: "#185fa5",
-    grayTextS: "#5f5e5a",
-    greenTextS: "#3b6d11",
-    amberTextS: "#854f0b",
-    redTextS: "#a32d2d",
   },
   dark: {
     colorScheme: "dark",
@@ -114,12 +98,12 @@ export const HTML_THEME = {
     bgInverse: "#faf9f5",
     bgGhost: "rgba(48,48,46,0)",
     bgDisabled: "rgba(48,48,46,0.5)",
-    textPrimary: "#faf9f5",
-    textSecondary: "#c2c0b6",
-    textTertiary: "#9c9a92",
-    textInverse: "#141413",
-    textGhost: "rgba(156,154,146,.5)",
-    textDisabled: "rgba(250,249,245,0.5)",
+    textPrimary: TEXT_COLORS.dark.primary,
+    textSecondary: TEXT_COLORS.dark.secondary,
+    textTertiary: TEXT_COLORS.dark.secondary,
+    textInverse: TEXT_COLORS.dark.onLight,
+    textGhost: TEXT_COLORS.dark.secondary,
+    textDisabled: TEXT_COLORS.dark.disabled,
     borderTertiary: "rgba(222,220,209,.15)",
     borderSecondary: "rgba(222,220,209,.3)",
     borderPrimary: "rgba(222,220,209,.4)",
@@ -138,13 +122,13 @@ export const HTML_THEME = {
     ringSuccess: "rgba(89,145,48,0.5)",
     ringWarning: "rgba(168,120,41,0.5)",
     bgInfo: "#253e5f",
-    textInfo: "#80aade",
+    textInfo: TEXT_COLORS.dark.info,
     bgSuccess: "#1b4614",
-    textSuccess: "#7ab948",
+    textSuccess: TEXT_COLORS.dark.success,
     bgWarning: "#483a0f",
-    textWarning: "#d1a041",
+    textWarning: TEXT_COLORS.dark.warning,
     bgDanger: "#602a28",
-    textDanger: "#ee8884",
+    textDanger: TEXT_COLORS.dark.danger,
     purple: "#6c5ff5",
     teal: "#009e79",
     coral: "#e0522e",
@@ -163,24 +147,6 @@ export const HTML_THEME = {
     greenStroke: "#97c459",
     amberStroke: "#ef9f27",
     redStroke: "#f09595",
-    purpleTextH: "#cecbf6",
-    tealTextH: "#9fe1cb",
-    coralTextH: "#f5c4b3",
-    pinkTextH: "#f4c0d1",
-    blueTextH: "#b5d4f4",
-    grayTextH: "#d3d1c7",
-    greenTextH: "#c0dd97",
-    amberTextH: "#fac775",
-    redTextH: "#f7c1c1",
-    purpleTextS: "#afa9ec",
-    tealTextS: "#5dcaa5",
-    coralTextS: "#f0997b",
-    pinkTextS: "#ed93b1",
-    blueTextS: "#85b7eb",
-    grayTextS: "#b4b2a9",
-    greenTextS: "#97c459",
-    amberTextS: "#ef9f27",
-    redTextS: "#f09595",
   },
 } as const;
 
@@ -191,8 +157,9 @@ export function buildDesignSystemCss(isDark: boolean) {
   const colorRampCss = ramps.map(name => {
     const fill = t[name];
     const stroke = t[`${name}Stroke` as keyof typeof t];
-    const textH = t[`${name}TextH` as keyof typeof t];
-    const textS = t[`${name}TextS` as keyof typeof t];
+    const { primary: textH, secondary: textS } = textColorsOnSurface(fill);
+    const colorNames = { teal: "green", coral: "orange", amber: "yellow" };
+    const standaloneText = documentTextColors(isDark ? "dark" : "light")[colorNames[name as keyof typeof colorNames] ?? name];
     return `
 g.c-${name} > rect, g.c-${name} > ellipse, g.c-${name} > circle, g.c-${name} > polygon,
 rect.c-${name}, ellipse.c-${name}, circle.c-${name}, polygon.c-${name} {
@@ -206,13 +173,13 @@ section.c-${name}, article.c-${name}, header.c-${name}, p.c-${name},
   background: ${fill};
   color: ${textH};
 }
-.text-${name} { color: ${stroke}; }`;
+.text-${name} { color: ${standaloneText}; }`;
   }).join("\n");
 
   const colorVarsCss = ramps.map(name => {
     const fill = t[name];
     const stroke = t[`${name}Stroke` as keyof typeof t];
-    const textH = t[`${name}TextH` as keyof typeof t];
+    const textH = textColorsOnSurface(fill).primary;
     return `  --c-${name}: ${fill};\n  --c-${name}-stroke: ${stroke};\n  --c-${name}-text: ${textH};`;
   }).join("\n");
 
@@ -721,7 +688,7 @@ tbody tr:last-child td { border-bottom: none; }
 .arr { stroke: var(--t); fill: none; stroke-width: 1.5; }
 .node { cursor: pointer; }
 .node:hover rect, .node:hover .box { filter: brightness(0.97); }
-.node:hover text { opacity: 0.8; }
+.node:hover text { opacity: 1; }
 ${colorRampCss}
 svg.classDiagram,
 svg.erDiagram {

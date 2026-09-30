@@ -21,7 +21,7 @@ test("深色主题用 neo-dark，并保持产品中性色", () => {
   const variables = getMermaidThemeVariables("dark");
   expect(config.theme).toBe("neo-dark");
   expect(config.look).toBe("neo");
-  expect(variables.primaryTextColor).toBe("#faf9f5");
+  expect(variables.primaryTextColor).toBe("#f1f4f8");
   expect(variables.clusterBkg).toBe("#262625");
 });
 
