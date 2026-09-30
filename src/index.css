@@ -157,9 +157,9 @@
 [data-theme="dark"] {
   --accent: 60 2.4% 16.1%;
   --border: 0 0% 24%;
-  --goose-menu-surface: 60 2.2% 19.5%;
+  --goose-menu-surface: 220 13% 14%;
   --goose-menu-hover: var(--goose-interactive-hover);
-  --goose-menu-border: 0 0% 28%;
+  --goose-menu-border: 215 16% 28%;
   --goose-menu-radius: 16px;
   --goose-menu-item-radius: 8px;
   --goose-menu-item-height: 30px;
@@ -215,11 +215,17 @@
   box-shadow: var(--goose-menu-shadow);
 }
 
-/* Radix initially focuses the menu surface, then transfers focus to the
- * highlighted item. Keep the surface shadow through that handoff: the global
- * focus reset removes box-shadow with !important, which otherwise makes an
- * empty menu look like it has a different background from the same menu while
- * an item is hovered. */
+/* HeroUI 的 .dropdown__popover 在 @layer 里用 bg-overlay。
+ * 深色只挂 .dark，:root 的 --overlay 仍是白色，layer 规则会盖掉上面的背景。
+ * 无 layer 才能压过它，把下拉底色锁回菜单表面。 */
+.dropdown__popover.goose-floating-surface,
+.dropdown__popover.goose-menu-surface {
+  background-color: hsl(var(--goose-menu-surface));
+  color: hsl(var(--popover-foreground));
+}
+
+/* 菜单从浮层外壳转移焦点到高亮项时，始终保留外壳真实投影。
+ * 控件焦点策略只清理 ring 变量，不清除浮层的 box-shadow。 */
 @layer properties {
   .goose-floating-surface,
   .goose-floating-surface:focus,

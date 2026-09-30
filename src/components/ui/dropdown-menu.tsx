@@ -202,17 +202,47 @@ function DropdownMenuRadioGroup({
     </Dropdown.Section>
   );
 }
+export function DropdownMenuIconSlot({
+  icon,
+  loading = false,
+}: {
+  icon?: React.ReactNode;
+  loading?: boolean;
+}) {
+  const [retained, setRetained] = React.useState(icon);
+  const [visible, setVisible] = React.useState(Boolean(icon) && !loading);
+  const shown = loading || !icon ? retained : icon;
+  if (!loading && icon && retained !== icon) setRetained(icon);
+  if ((loading || !icon) && visible) setVisible(false);
+  React.useEffect(() => {
+    if (!loading && icon) {
+      const frame = window.requestAnimationFrame(() => setVisible(true));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    const timer = window.setTimeout(() => setRetained(undefined), 160);
+    return () => window.clearTimeout(timer);
+  }, [icon, loading]);
+  if (!loading && !shown) return null;
+  return (
+    <span className="relative inline-flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+      {loading && <span className="absolute inset-0 animate-pulse rounded-sm bg-muted-foreground/25 motion-reduce:animate-none" />}
+      {shown && <span className={cn("inline-flex transition-opacity duration-150 ease-out motion-reduce:transition-none", visible ? "opacity-100" : "opacity-0")}>{shown}</span>}
+    </span>
+  );
+}
 function DropdownMenuRadioItem({
   value,
   children,
   className,
   hideIndicator = false,
+  icon,
+  iconLoading = false,
   ...props
-}: Omit<ItemProps, "value"> & { value: string; hideIndicator?: boolean }) {
+}: Omit<ItemProps, "value"> & { value: string; hideIndicator?: boolean; icon?: React.ReactNode; iconLoading?: boolean }) {
   return (
-    <DropdownMenuItem {...props} id={value} className={cn(hideIndicator ? "ps-2" : "ps-8", className)}>
-      {!hideIndicator && <Dropdown.ItemIndicator />}
-      {children}
+    <DropdownMenuItem {...props} id={value} className={cn("ps-2", className)} style={{ ...props.style, paddingInlineStart: "0.5rem" }}>
+      <span className="flex min-w-0 flex-1 items-center gap-2 [&>svg]:shrink-0"><DropdownMenuIconSlot icon={icon} loading={iconLoading} />{children}</span>
+      {!hideIndicator && <Dropdown.ItemIndicator className="ms-auto shrink-0" style={{ position: "static", transform: "none", translate: "none", color: "currentColor" }} />}
     </DropdownMenuItem>
   );
 }

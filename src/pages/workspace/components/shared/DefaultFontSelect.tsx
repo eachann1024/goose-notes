@@ -1,4 +1,14 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   getEditorFontFamilies,
   SYSTEM_FONT_STACK,
@@ -21,6 +31,13 @@ export function defaultFontValueForMode(mode: DefaultFontMode): string | null {
   if (mode === "mono") return "monospace";
   return null;
 }
+
+const fontModes: { value: DefaultFontMode; label: string }[] = [
+  { value: "system", label: "系统默认" },
+  { value: "serif", label: "系统衬线" },
+  { value: "mono", label: "系统等宽" },
+  { value: "custom", label: "自定义本机字体" },
+];
 
 const emptyFonts: CustomFonts = {
   default: { label: null, font: null },
@@ -59,41 +76,59 @@ export function DefaultFontSelect({
   return (
     <div className="default-font-select space-y-3">
       <div className="space-y-2">
-        <label htmlFor={id} className="text-sm font-medium">正文默认字体</label>
-        <select
-          id={id}
-          value={mode}
-          onChange={(event) => {
-            const nextMode = event.currentTarget.value as DefaultFontMode;
-            if (nextMode === "custom") {
-              if (inferredMode === "custom") {
+        <Label id={`${id}-label`} htmlFor={id}>正文默认字体</Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              id={id}
+              type="button"
+              variant="outline"
+              aria-labelledby={`${id}-label ${id}-value`}
+              className="w-full min-w-0 justify-between border-input px-3 font-normal text-foreground"
+            >
+              <span id={`${id}-value`} className="truncate">
+                {fontModes.find((option) => option.value === mode)?.label}
+              </span>
+              <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" aria-label="正文默认字体" className="min-w-[var(--trigger-width)]">
+            <DropdownMenuRadioGroup
+              value={mode}
+              onValueChange={(nextValue) => {
+                const nextMode = fontModes.find((option) => option.value === nextValue)?.value;
+                if (!nextMode) return;
+                if (nextMode === "custom") {
+                  if (inferredMode === "custom") {
+                    setModeOverride(null);
+                  } else {
+                    onChange(null);
+                    setModeOverride({ value: null, mode: "custom" });
+                  }
+                  return;
+                }
                 setModeOverride(null);
-              } else {
-                onChange(null);
-                setModeOverride({ value: null, mode: "custom" });
-              }
-              return;
-            }
-            setModeOverride(null);
-            onChange(defaultFontValueForMode(nextMode));
-          }}
-          className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
-        >
-          <option value="system">系统默认（与 Codex 一致）</option>
-          <option value="serif">系统衬线</option>
-          <option value="mono">系统等宽</option>
-          <option value="custom">自定义本机字体</option>
-        </select>
+                onChange(defaultFontValueForMode(nextMode));
+              }}
+            >
+              {fontModes.map((option) => (
+                <DropdownMenuRadioItem key={option.value} value={option.value}>
+                  {option.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {mode === "custom" && (
         <div className="space-y-2">
-          <label htmlFor={`${id}-custom`} className="text-sm font-medium">本机字体名称</label>
+          <Label htmlFor={`${id}-custom`}>本机字体名称</Label>
           <LocalFontInput
             id={`${id}-custom`}
             value={inferredMode === "custom" && value !== null ? value : ""}
             onChange={(font) => {
-              setModeOverride(null);
+              setModeOverride(font ? null : { value: null, mode: "custom" });
               onChange(font || null);
             }}
             placeholder="输入已安装的字体名称"

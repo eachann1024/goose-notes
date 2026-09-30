@@ -71,6 +71,7 @@ declare global {
   const DiskWriteError: typeof import('./lib/diskWriteError').DiskWriteError
   const DropdownMenu: typeof import('./components/ui/dropdown-menu').DropdownMenu
   const DropdownMenuContent: typeof import('./components/ui/dropdown-menu').DropdownMenuContent
+  const DropdownMenuIconSlot: typeof import('./components/ui/dropdown-menu').DropdownMenuIconSlot
   const DropdownMenuItem: typeof import('./components/ui/dropdown-menu').DropdownMenuItem
   const DropdownMenuRadioGroup: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioGroup
   const DropdownMenuRadioItem: typeof import('./components/ui/dropdown-menu').DropdownMenuRadioItem
