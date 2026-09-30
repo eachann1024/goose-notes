@@ -47,14 +47,16 @@ export function OutlinePanel({
   if (headings.length === 0) {
     return (
       <div className="w-full h-full flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-          <FileText className="h-8 w-8 text-muted-foreground/20 mb-2" />
-          <p className="text-xs text-muted-foreground/70">{emptyMessage}</p>
-          {emptyHint && (
-            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-              {emptyHint}
-            </p>
-          )}
+        <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+          <FileText className="h-6 w-6 shrink-0 text-muted-foreground/20" />
+          <div className="flex flex-col gap-1">
+            <p className="text-xs leading-5 text-muted-foreground/70">{emptyMessage}</p>
+            {emptyHint && (
+              <p className="text-[11px] leading-5 text-muted-foreground/60">
+                {emptyHint}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
