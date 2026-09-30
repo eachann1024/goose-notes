@@ -9,7 +9,7 @@
 ## 素材
 
 - [封面](cover.png)：品牌插画。
-- [产品视频](goose-note-first-release.mp4)：当前产品展示以此视频为准。
+- 产品视频：以 [README](../../README.md) 内嵌的 75 秒视频为准，仓库内不再保留视频副本。
 - [写作与 AI 截图](01-writing-ai.png)：历史素材，已过时，不再用于当前产品展示。
 - [代码与页面菜单截图](02-code-and-diagram-user.png)：历史素材，已过时，不再用于当前产品展示。
 - [详细产品介绍](../../README.md)。

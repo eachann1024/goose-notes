@@ -13,7 +13,6 @@
 <p align="center">
   <a href="https://github.com/eachann1024/goose-notes/releases/latest">下载安装包</a> ·
   <a href="#开始记录">开始记录</a> ·
-  <a href="docs/showcase/goose-note-first-release.mp4">产品视频</a> ·
   <a href="DEVELOP.md">开发文档</a> ·
   <a href="SECURITY.md">安全说明</a>
 </p>

@@ -78,7 +78,6 @@ scripts/*
 !scripts/generate-text-colors.mjs
 # stray verification screenshots in repo root
 /*.png
-!cover.png
 !series-features.png
 
 未命名/
@@ -102,8 +101,6 @@ public/fonts/*.otf
 !/.github/workflows/desktop-build.yml
 !scripts/build-ci-installers.mjs
 !scripts/publish-release.mjs
-
-!/docs/showcase/goose-note-first-release.mp4
 
 
 # Trusted PR preview tooling uses its own pinned Node dependencies
