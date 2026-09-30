@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeAccentColor } from "../../src/stores/settings/types";
 import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
+import { TEXT_COLORS } from "../../src/lib/textColors";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const css = read("../../src/styles/goose-accent-colors.css");
@@ -70,12 +71,15 @@ for (const [key, label] of [["amber", "浅秋"], ["wheat", "麦笺"]] as const) 
       ...stops(value(surface, "goose-ai-surface")),
     ];
     for (const name of ["foreground", "muted-foreground"]) {
+      const role = name === "foreground" ? "primary" : "secondary";
+      assert.equal(value(surface, name), `var(--goose-text-${role}-channels)`, `${key}/${dark}/${name}: shared text role`);
       for (const bg of backgrounds) {
-        assert.ok(contrast(toRgb(value(surface, name)), bg) >= 4.5, `${key}/${dark}/${name}: small-text contrast`);
+        assert.ok(contrast(toRgb(TEXT_COLORS[dark ? "dark" : "light"][role]), bg) >= 4.5, `${key}/${dark}/${name}: small-text contrast`);
       }
     }
     for (const state of ["selected", "hover"]) {
-      assert.ok(contrast(toRgb(runtime[`--goose-interactive-${state}-fg`]), toRgb(runtime[`--goose-interactive-${state}`])) >= 4.5, `${key}/${dark}/${state}: readable interaction text`);
+      assert.equal(runtime[`--goose-interactive-${state}-fg`], "var(--goose-text-primary)");
+      assert.ok(contrast(toRgb(TEXT_COLORS[dark ? "dark" : "light"].primary), toRgb(runtime[`--goose-interactive-${state}`])) >= 4.5, `${key}/${dark}/${state}: readable interaction text`);
     }
     for (const bg of backgrounds) {
       assert.ok(contrast(toRgb(value(accent, "goose-accent-focus")), bg) >= 3, `${key}/${dark}: visible focus`);

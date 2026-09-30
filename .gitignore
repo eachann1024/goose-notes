@@ -75,6 +75,7 @@ scripts/*
 !scripts/electron-dev.mjs
 !scripts/prepare-electron-pack.mjs
 !scripts/generate-license-notices.mjs
+!scripts/generate-text-colors.mjs
 # stray verification screenshots in repo root
 /*.png
 !cover.png

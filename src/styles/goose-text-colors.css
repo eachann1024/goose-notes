@@ -1,0 +1,78 @@
+@import "./goose-text-palette.css";
+
+/* Text roles use opaque colors. Disabled state must never fade explanatory text. */
+@layer base {
+  :where(input, textarea)::placeholder {
+    color: var(--goose-text-placeholder);
+    opacity: 1;
+  }
+}
+
+:is(
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="radio"],
+  [contenteditable],
+  .checkbox,
+  .radio,
+  .switch,
+  .tabs__tab,
+  .menu-item
+):is(:disabled, [disabled], [aria-disabled="true"], [data-disabled="true"]),
+.checkbox--disabled,
+.radio--disabled,
+.switch--disabled {
+  opacity: 1 !important;
+  color: var(--goose-text-disabled);
+  cursor: not-allowed;
+}
+
+/* HeroUI owns disabled opacity on the label, native controls own it on the input. */
+:is(.checkbox, .radio):is([data-disabled="true"], [aria-disabled="true"]),
+.checkbox--disabled,
+.radio--disabled {
+  --disabled-opacity: 1;
+}
+
+:is(.checkbox, .radio):is([data-disabled="true"], [aria-disabled="true"])
+  :is(.checkbox__control, .radio__control),
+:is(.checkbox--disabled, .radio--disabled)
+  :is(.checkbox__control, .radio__control) {
+  background-color: hsl(var(--muted));
+  border-color: var(--goose-text-disabled);
+  color: var(--goose-text-disabled);
+}
+
+/* Explicit status roles survive hover, selection and disabled parent inheritance. */
+.text-danger,
+[data-text-role="danger"] {
+  color: var(--goose-text-danger);
+}
+.text-warning,
+[data-text-role="warning"] {
+  color: var(--goose-text-warning);
+}
+.text-success,
+[data-text-role="success"] {
+  color: var(--goose-text-success);
+}
+
+.goose-interactive:is(.text-danger, [data-text-role="danger"]) {
+  --goose-interactive-hover-fg: var(--goose-text-danger);
+  --goose-interactive-selected-fg: var(--goose-text-danger);
+}
+.goose-interactive:is(.text-warning, [data-text-role="warning"]) {
+  --goose-interactive-hover-fg: var(--goose-text-warning);
+  --goose-interactive-selected-fg: var(--goose-text-warning);
+}
+.goose-interactive:is(.text-success, [data-text-role="success"]) {
+  --goose-interactive-hover-fg: var(--goose-text-success);
+  --goose-interactive-selected-fg: var(--goose-text-success);
+}

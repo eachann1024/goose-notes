@@ -1,7 +1,7 @@
 {
   "name": "goose-note-app",
   "private": true,
-  "version": "1.7.17",
+  "version": "1.7.18",
   "type": "module",
   "packageManager": "bun@1.3.14",
   "description": "A local-first, Notion-style Electron desktop note-taking app built on the BlockNote block editor with built-in AI.",
@@ -11,9 +11,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "node src/lib/vite-stubs/assert-present.mjs && vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs",
-    "build:debug": "GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/compile-electron.mjs && GOOSE_DEBUG=1 node scripts/prepare-electron-pack.mjs",
+    "dev": "node scripts/generate-text-colors.mjs && vite",
+    "build": "node scripts/generate-text-colors.mjs && node src/lib/vite-stubs/assert-present.mjs && vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs",
+    "build:debug": "node scripts/generate-text-colors.mjs && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/compile-electron.mjs && GOOSE_DEBUG=1 node scripts/prepare-electron-pack.mjs",
     "mac": "python3 build_mac.py",
     "mac:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
     "win": "bun run build:electron && node scripts/electron-build-win.mjs && node scripts/collect-desktop-artifacts.mjs",
@@ -30,7 +30,7 @@
     "test:e2e:ui": "E2E_AUTO_START=1 playwright test --ui",
     "test:e2e:report": "playwright show-report output/playwright/report",
     "test:e2e:codegen": "playwright codegen http://localhost:6001",
-    "build:electron": "GOOSE_BUILD_TARGET=electron vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs"
+    "build:electron": "node scripts/generate-text-colors.mjs && GOOSE_BUILD_TARGET=electron vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.81",

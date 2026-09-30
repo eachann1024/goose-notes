@@ -57,10 +57,14 @@ test("应用强调色写入 data-goose-accent 与关键 runtime token", () => {
   try {
     applyAccentColor("amber");
     expect(attributes.get("data-goose-accent")).toBe("amber");
-    expect(properties.get("--goose-inline-code-bg")).toBe("#4a3b24");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#fde68a");
-    expect(properties.get("--goose-inline-code-border-hover")).toBe("#f59e0b");
-    expect(properties.get("--goose-interactive-selected-fg")).toBe("#fbbf24");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#39352a");
+    expect(properties.get("--goose-inline-code-fg")).toBe(
+      "var(--goose-text-info)",
+    );
+    expect(properties.get("--goose-inline-code-border-hover")).toBe("#928365");
+    expect(properties.get("--goose-interactive-selected-fg")).toBe(
+      "var(--goose-text-primary)",
+    );
   } finally {
     if (previousDocument === undefined) {
       delete (globalThis as { document?: Document }).document;
@@ -102,9 +106,11 @@ test("应用强调色在浅色模式写入对应 light runtime token", () => {
 
   try {
     applyAccentColor("amber");
-    expect(properties.get("--goose-inline-code-bg")).toBe("#f5e8cb");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#93702c");
-    expect(properties.get("--goose-interactive-hover")).toBe("#ebdfc6");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#efe6cf");
+    expect(properties.get("--goose-inline-code-fg")).toBe(
+      "var(--goose-text-info)",
+    );
+    expect(properties.get("--goose-interactive-hover")).toBe("#e9dfc7");
     expect(properties.get("--goose-icon-chip-on-selected")).toBe(
       properties.get("--goose-interactive-selected"),
     );
@@ -157,13 +163,17 @@ test("主题 class 变化后 re-sync 会按 dark/light 重写 inline-code token"
 
   try {
     applyAccentColor("amber");
-    expect(properties.get("--goose-inline-code-bg")).toBe("#f5e8cb");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#93702c");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#efe6cf");
+    expect(properties.get("--goose-inline-code-fg")).toBe(
+      "var(--goose-text-info)",
+    );
 
     classList.add("dark");
     syncAccentColorCssVars();
-    expect(properties.get("--goose-inline-code-bg")).toBe("#4a3b24");
-    expect(properties.get("--goose-inline-code-fg")).toBe("#fde68a");
+    expect(properties.get("--goose-inline-code-bg")).toBe("#39352a");
+    expect(properties.get("--goose-inline-code-fg")).toBe(
+      "var(--goose-text-info)",
+    );
   } finally {
     if (previousDocument === undefined) {
       delete (globalThis as { document?: Document }).document;

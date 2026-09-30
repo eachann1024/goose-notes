@@ -174,6 +174,7 @@ declare global {
   const SuccessToastIcon: typeof import('./components/ui/sonner').SuccessToastIcon
   const Suspense: typeof import('react').Suspense
   const Switch: typeof import('./components/ui/switch').Switch
+  const TEXT_COLORS: typeof import('./lib/textColors').TEXT_COLORS
   const THINKING_PLACEHOLDER_MIN_MS: typeof import('./components/ui/ai-motion').THINKING_PLACEHOLDER_MIN_MS
   const TITLE_HEADING_LEVEL: typeof import('./components/editor/utils/blocknote-content/index').TITLE_HEADING_LEVEL
   const TOOLTIP_DELAY_MS: typeof import('./components/ui/tooltip-delay').TOOLTIP_DELAY_MS
@@ -300,6 +301,7 @@ declare global {
   const deleteWebdavBackup: typeof import('./lib/webdavSync').deleteWebdavBackup
   const describeDiskWriteError: typeof import('./lib/diskWriteError').describeDiskWriteError
   const detectBlockScopeHeuristic: typeof import('./lib/ai-block-scope').detectBlockScopeHeuristic
+  const documentTextColors: typeof import('./lib/textColors').documentTextColors
   const downloadWebdavBackup: typeof import('./lib/webdavSync').downloadWebdavBackup
   const editorSplitPersistKey: typeof import('./stores/useEditorSplit').editorSplitPersistKey
   const effectiveSingleTabMode: typeof import('./lib/tabMode').effectiveSingleTabMode
@@ -699,6 +701,8 @@ declare global {
   const subscribePageTitleFocus: typeof import('./lib/page-title-focus').subscribePageTitleFocus
   const syncAccentColorCssVars: typeof import('./lib/accentColor').syncAccentColorCssVars
   const testWebdavConnection: typeof import('./lib/webdavSync').testWebdavConnection
+  const textColorVariables: typeof import('./lib/textColors').textColorVariables
+  const textColorsOnSurface: typeof import('./lib/textColors').textColorsOnSurface
   const titleHeadingBlock: typeof import('./components/editor/utils/blocknote-content/index').titleHeadingBlock
   const toCssFontFamily: typeof import('./lib/fontLoader').toCssFontFamily
   const toDiskWriteError: typeof import('./lib/diskWriteError').toDiskWriteError
@@ -892,6 +896,9 @@ declare global {
   // @ts-ignore
   export type { SidebarCollapsePage } from './lib/sidebarListCollapse'
   import('./lib/sidebarListCollapse')
+  // @ts-ignore
+  export type { TextColorTheme } from './lib/textColors'
+  import('./lib/textColors')
   // @ts-ignore
   export type { PlatformKind } from './lib/utils'
   import('./lib/utils')
