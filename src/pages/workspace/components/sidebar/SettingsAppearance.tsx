@@ -50,9 +50,7 @@ type AccentOption = {
   previewLight: string;
   previewDark: string;
   lightSurface: string;
-  lightForeground: string;
   darkSurface: string;
-  darkForeground: string;
   fullTheme?: string;
 };
 
@@ -63,9 +61,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#756b42",
     previewDark: "#f5f5f5",
     lightSurface: "#eeebde",
-    lightForeground: "#6b623d",
     darkSurface: "rgba(255, 255, 255, 0.16)",
-    darkForeground: "#f5f5f5",
   },
   {
     value: "iris",
@@ -73,9 +69,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#6366f1",
     previewDark: "#a5b4fc",
     lightSurface: "#e0e7ff",
-    lightForeground: "#4f46e5",
     darkSurface: "rgba(99, 102, 241, 0.2)",
-    darkForeground: "#a5b4fc",
   },
   {
     value: "ocean",
@@ -83,9 +77,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#3b82f6",
     previewDark: "#93c5fd",
     lightSurface: "#dbeafe",
-    lightForeground: "#2563eb",
     darkSurface: "rgba(59, 130, 246, 0.2)",
-    darkForeground: "#93c5fd",
   },
   {
     value: "pine",
@@ -93,9 +85,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#15803d",
     previewDark: "#86efac",
     lightSurface: "#dcfce7",
-    lightForeground: "#15803d",
     darkSurface: "rgba(34, 197, 94, 0.2)",
-    darkForeground: "#86efac",
   },
   {
     value: "amber",
@@ -103,9 +93,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#e9dcb8",
     previewDark: "#c8b889",
     lightSurface: "#e9dfc7",
-    lightForeground: "#544b38",
     darkSurface: "#39352a",
-    darkForeground: "#eee9dc",
     fullTheme: "浅奶油黄与暖白纸面，像秋日里的一点淡淡日光。",
   },
   {
@@ -114,9 +102,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#d9d7bd",
     previewDark: "#b8b99a",
     lightSurface: "#e0ddc8",
-    lightForeground: "#4d553b",
     darkSurface: "#33382a",
-    darkForeground: "#e9ebdf",
     fullTheme: "灰麦黄与米白纸面，像铅笔画在一张安静的素描纸上。",
   },
   {
@@ -125,9 +111,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#c2410c",
     previewDark: "#fdba74",
     lightSurface: "#ffedd5",
-    lightForeground: "#c2410c",
     darkSurface: "rgba(249, 115, 22, 0.2)",
-    darkForeground: "#fdba74",
   },
   {
     value: "rose",
@@ -135,9 +119,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#be123c",
     previewDark: "#fda4af",
     lightSurface: "#ffe4e6",
-    lightForeground: "#be123c",
     darkSurface: "rgba(244, 63, 94, 0.2)",
-    darkForeground: "#fda4af",
   },
   {
     value: "grape",
@@ -145,9 +127,7 @@ const accentOptions: AccentOption[] = [
     previewLight: "#7e22ce",
     previewDark: "#d8b4fe",
     lightSurface: "#f3e8ff",
-    lightForeground: "#7e22ce",
     darkSurface: "rgba(168, 85, 247, 0.2)",
-    darkForeground: "#d8b4fe",
   },
 ];
 
@@ -546,9 +526,9 @@ export function SettingsAppearance({
                 const selected = accentColor === option.value;
                 const style: AccentOptionStyle = {
                   "--goose-accent-option-light-surface": option.lightSurface,
-                  "--goose-accent-option-light-fg": option.lightForeground,
+                  "--goose-accent-option-light-fg": "var(--goose-text-primary)",
                   "--goose-accent-option-dark-surface": option.darkSurface,
-                  "--goose-accent-option-dark-fg": option.darkForeground,
+                  "--goose-accent-option-dark-fg": "var(--goose-text-primary)",
                 };
 
                 const optionButton = (

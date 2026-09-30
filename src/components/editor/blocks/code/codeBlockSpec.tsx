@@ -15,6 +15,7 @@ import * as GooseIcons from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { TEXT_COLORS } from "@/lib/textColors";
 import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
@@ -770,7 +771,7 @@ function CodeBlockComponent({
         "top:0",
         "z-index:-1",
         "padding:16px 24px",
-        `color:${isDarkTheme(theme) ? "#e5e7eb" : "#111827"}`,
+        `color:${TEXT_COLORS[isDarkTheme(theme) ? "dark" : "light"].primary}`,
         "background:transparent",
         "font-size:18px",
         "line-height:1.4",

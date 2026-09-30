@@ -6,6 +6,7 @@ import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
 import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { documentTextColors } from "@/lib/textColors";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
   restoreTextSelectionRange,
@@ -146,25 +147,19 @@ const HIGHLIGHT_COLORS = [
 
 /**
  * 颜色名 → CSS 颜色值。
- * 常规笔记本通过语义令牌与编辑区的明暗主题保持一致；速记小窗仍沿用原预览，
- * 避免跨越 quicknote.css 的独立样式边界。
+ * 文字预览在笔记本和速记中共用全局色表；背景预览保留各入口现有色带。
  */
 const previewColor = (token: string, fallback: string) =>
   typeof __GOOSE_LITE__ !== "undefined" && __GOOSE_LITE__
     ? fallback
     : `var(${token}, ${fallback})`;
 
-const COLOR_PREVIEW: Record<string, string> = {
-  gray: previewColor("--goose-editor-highlight-gray-text", "#9b9a97"),
-  brown: previewColor("--goose-editor-highlight-brown-text", "#64473a"),
-  red: previewColor("--goose-editor-highlight-red-text", "#e03e3e"),
-  orange: previewColor("--goose-editor-highlight-orange-text", "#d9730d"),
-  yellow: previewColor("--goose-editor-highlight-yellow-text", "#dfab01"),
-  green: previewColor("--goose-editor-highlight-green-text", "#4d6461"),
-  blue: previewColor("--goose-editor-highlight-blue-text", "#0b6e99"),
-  purple: previewColor("--goose-editor-highlight-purple-text", "#6940a5"),
-  pink: previewColor("--goose-editor-highlight-pink-text", "#ad1a72"),
-};
+const COLOR_PREVIEW: Record<string, string> = Object.fromEntries(
+  Object.entries(documentTextColors("light")).map(([name, fallback]) => [
+    name,
+    `var(--goose-editor-highlight-${name}-text, ${fallback})`,
+  ]),
+);
 
 const BG_PREVIEW: Record<string, string> = {
   gray: previewColor("--goose-editor-highlight-gray-bg", "#ebeced"),
