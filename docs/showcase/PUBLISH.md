@@ -9,8 +9,9 @@
 ## 素材
 
 - [封面](cover.png)：品牌插画。
-- [写作与 AI 截图](01-writing-ai.png)：作者提供的 3054×1982 原图。
-- [代码与页面菜单截图](02-code-and-diagram-user.png)：作者提供的 2922×1850 原图。
+- [产品视频](goose-note-first-release.mp4)：当前产品展示以此视频为准。
+- [写作与 AI 截图](01-writing-ai.png)：历史素材，已过时，不再用于当前产品展示。
+- [代码与页面菜单截图](02-code-and-diagram-user.png)：历史素材，已过时，不再用于当前产品展示。
 - [详细产品介绍](../../README.md)。
 
 ## 短介绍
