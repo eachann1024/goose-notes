@@ -3,21 +3,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../utils/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-sm font-medium ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-sm font-medium ring-offset-background transition-colors disabled:pointer-events-none disabled:text-disabled [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-[0_6px_14px_rgba(15,23,42,0.12)] hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]",
+          "goose-interactive goose-interactive-primary shadow-[0_6px_14px_rgba(15,23,42,0.12)]",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "goose-interactive goose-interactive-danger",
         outline:
           "border border-transparent bg-background hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
         secondary:
           "bg-secondary text-secondary-foreground shadow-[inset_0_0_0_1px_hsl(var(--input)/0.55)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
         ghost:
           "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-link underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",

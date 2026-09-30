@@ -29,7 +29,7 @@ export function showDeleteReceipt(
         className="flex w-full items-center gap-3 text-foreground"
       >
         {failed ? (
-          <CircleAlert className="size-5 shrink-0 text-destructive" aria-hidden="true" />
+          <CircleAlert className="size-5 shrink-0 text-danger" aria-hidden="true" />
         ) : (
           <SuccessToastIcon />
         )}
@@ -46,7 +46,7 @@ export function showDeleteReceipt(
             } finally {
               undoing = false;
             }
-          }} className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md bg-[var(--goose-interactive-selected)] px-2.5 text-xs font-semibold text-[var(--goose-interactive-selected-fg)] hover:opacity-80 ">
+          }} className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md bg-[var(--goose-interactive-selected)] px-2.5 text-xs font-semibold text-[var(--goose-interactive-selected-fg)]  ">
             <RotateCcw className="size-4" aria-hidden="true" />撤回
           </button>
         )}

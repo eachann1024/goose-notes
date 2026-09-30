@@ -2,14 +2,14 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const iconButtonVariants = cva(
-  "goose-interactive inline-flex shrink-0 items-center justify-center rounded-md border border-transparent transition-colors ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  "goose-interactive inline-flex shrink-0 items-center justify-center rounded-md border border-transparent transition-colors ring-offset-background disabled:pointer-events-none disabled:text-disabled",
   {
     variants: {
       tone: {
         default:
-          "text-foreground/90",
+          "text-foreground",
         muted:
-          "text-muted-foreground/70 dark:text-muted-foreground/55",
+          "text-muted-foreground dark:text-muted-foreground",
         danger:
           "goose-interactive-danger",
         handle:

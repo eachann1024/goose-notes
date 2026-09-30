@@ -255,7 +255,7 @@ export function ImageExportThemeSelector({
                     <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
                       {group === "light" ? "浅色" : "深色"}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">
+                    <span className="text-[10px] text-muted-foreground">
                       {themes.length}
                     </span>
                     <span className="ml-1 flex-1 h-px bg-border/70" />
@@ -369,7 +369,7 @@ function GenerationOptionsPanel({
             key={row.key}
             className={cn(
               "flex items-center gap-2",
-              row.disabled && "opacity-50",
+              row.disabled && "text-disabled",
             )}
           >
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -401,7 +401,7 @@ function GenerationOptionsPanel({
             <span
               className={cn(
                 "text-xs",
-                row.indent ? "text-muted-foreground" : "text-foreground/80",
+                row.indent ? "text-muted-foreground" : "text-foreground",
               )}
             >
               {row.label}
@@ -500,7 +500,7 @@ function LivePreviewPane({
         <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
           图片导出预览
         </span>
-        <span className="text-[10px] text-muted-foreground/80 truncate">
+        <span className="text-[10px] text-muted-foreground truncate">
           {theme.name}
         </span>
       </div>
@@ -661,11 +661,11 @@ function ThemePreviewCard({
       </div>
       <div className="flex items-baseline gap-2 px-0.5">
         <span
-          className={`text-[12px] font-medium leading-tight ${selected ? "text-foreground" : "text-foreground/85"}`}
+          className={`text-[12px] font-medium leading-tight ${selected ? "text-foreground" : "text-foreground"}`}
         >
           {theme.name}
         </span>
-        <span className="text-[10px] text-muted-foreground/80 leading-tight tracking-wide">
+        <span className="text-[10px] text-muted-foreground leading-tight tracking-wide">
           {theme.nameEn}
         </span>
       </div>
