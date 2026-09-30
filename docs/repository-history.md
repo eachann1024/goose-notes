@@ -10,11 +10,17 @@
 | goose-notion | 525 | `history/goose-notion/master`、`history/goose-notion/base-ui`、`history/goose-notion/editor-extraction` | `history/goose-notion/pull/1/head` 至 `history/goose-notion/pull/7/head`（标签） |
 | goose-note | 6 | `history/goose-note/main` | `history/goose-note/v6`、`history/goose-note/v7` |
 
-共 1,227 个原始提交，全部接入 `main` 的祖先提交图。原始提交对象未重写，SHA、作者、提交者、时间和当时的文件内容均保留；新增合并提交负责连接各条历史。
+共 1,227 个原始提交，整合时全部接入当时 `main` 的祖先提交图。该完整主线现保存在 `history/main-before-contributor-scope-20260930`；原始提交对象未重写，SHA、作者、提交者、时间和当时的文件内容均保留。
+
+## 当前主线与历史归档
+
+当前主线使用独立的提交链，包含历史基线导入、两条协作者的真实修复提交重放，以及已发布源码快照同步。导入与同步提交记录的是迁移操作，不将归档中的原始工作重新署名。重放提交保留原作者、作者时间和完整补丁，并以 `Original-Commit` 标明原提交。
+
+历史归档分支保留迁移前的完整开发过程。当前主线不再将其作为祖先；旧标签、旧 PR 提交入口和原始 SHA 继续指向原有历史。除本历史说明外，迁移后的文件快照与迁移前的 `ac241bb92abdec9916464d1107e98f0850fe2760` 完全一致。
 
 ## 当前应用与旧版源码
 
-三个仓库原先没有共同 Git 祖先。整合使用保留当前文件树的历史合并；`goose-notes` 当前应用代码继续作为主线，旧版功能没有在本次整合中重新移植。旧分支和标签保留完整的旧版源码，可直接在 GitHub 分支选择器中查看。
+三个仓库原先没有共同 Git 祖先。当时的整合使用保留当前文件树的历史合并；`goose-notes` 当前应用代码继续作为主线，旧版功能没有在该次整合中重新移植。旧分支和标签保留完整的旧版源码，可直接在 GitHub 分支选择器中查看。
 
 整合前的当前代码基准：`1a13c8d226fbd6e5599a2f962be44fac4fa9d4b2`。新增历史索引文档之外，整合没有改变应用文件。
 
