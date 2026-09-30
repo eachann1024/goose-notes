@@ -1,11 +1,11 @@
-/* BlockNote xl-ai AI 菜单样式覆盖：把 Mantine 默认外观对齐项目设计系统。
+/* AI 菜单样式覆盖：把 Mantine 默认外观对齐项目设计系统。
    目标：选中文字 → 点 AI 图标后弹出的 input + 命令列表。
-   覆盖原 CSS：@blocknote/xl-ai/style.css 与 @blocknote/mantine/style.css。
+   覆盖 @blocknote/mantine/style.css 的默认外观。
    注意：Electron 旧内核对 hsl(var(--xxx)/alpha) 支持差，本文件只用 rgba/hex。 */
 
 /* ---------- Popover 卡片（input + items 共用容器） ---------- */
 .bn-combobox {
-  /* xl-ai 默认 width:100% 会跟着块锚点被撑满整行。
+  /* 组件默认 width:100% 会跟着块锚点被撑满整行。
      浮层外壳由 Floating UI 定宽；内部 combobox 吃满外壳，
      避免「块宽 100% + 菜单居中」把输入框甩到标题正下方。 */
   box-sizing: border-box;
@@ -50,7 +50,7 @@
     0 2px 8px rgba(0, 0, 0, 0.32);
 }
 
-/* 移除 xl-ai/mantine 给 input 和 items 各自加的卡片背景，让它们融入外层卡片 */
+/* 移除 mantine 给 input 和 items 各自加的卡片背景，让它们融入外层卡片 */
 .bn-mantine .bn-combobox-input,
 .bn-mantine .bn-combobox-items:not(:empty) {
   background-color: transparent !important;
@@ -652,7 +652,7 @@
 
 /* ---------- Items 列表 ---------- */
 .bn-mantine .bn-combobox-items:not(:empty) {
-  /* xl-ai 默认 max-width: 50% 会让列表挤到一边，去掉 */
+  /* 默认 max-width: 50% 会让列表挤到一边，去掉 */
   max-width: none !important;
   width: 100% !important;
   margin-top: 4px !important;
@@ -961,7 +961,7 @@
   border-radius: 14px;
 }
 
-/* xl-ai 的 modification highlight：与项目 selection 高亮风格保持一致（弱化默认色） */
+/* 修改高亮：与项目 selection 高亮风格保持一致（弱化默认色） */
 ins,
 [data-type="modification"] {
   color: inherit;

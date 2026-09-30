@@ -1,6 +1,6 @@
 /**
  * 行内 AI：将选区/光标块序列化为 markdown，并把模型返回的 markdown 写回对应块。
- * 与面板 agent 的 markdown 局部改写对齐，避免走 xl-ai 单块 update 无法扩列表的限制。
+ * 与面板 agent 的 markdown 局部改写对齐，避免单块 update 无法扩列表的限制。
  */
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";

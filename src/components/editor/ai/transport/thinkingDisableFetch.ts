@@ -95,7 +95,7 @@ export function isToolChoiceThinkingError(err: unknown): boolean {
 }
 
 /**
- * 行内 AI 依赖 tool call（xl-ai 默认 toolChoice:"required"）。
+ * 行内 AI 依赖 tool call（自有改写请求需要 tool call，toolChoice 为 required）。
  * DeepSeek Thinking 等模型在 thinking 开启时会拒绝 tool_choice=required。
  * 在 fetch 层强制关闭 thinking/reasoning，比 providerOptions 更可靠。
  *
