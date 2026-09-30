@@ -1,3 +1,4 @@
+import { waitForGitSyncWrites } from "@/lib/git-sync-write-barrier";
 import { toast } from "@/components/ui/sonner";
 import type { JSONContent } from "@/types";
 import { normalizePageContent } from "@/components/editor/utils/blocknote-content";
@@ -239,6 +240,8 @@ export const saveLocalPageContentAction = async (
 ): Promise<boolean> => {
   if (typeof window === "undefined" || !window.gooseFs) return false;
   const gooseFs = window.gooseFs;
+  const syncPath = get().getLocalFilePath(pageId);
+  if (syncPath) await waitForGitSyncWrites(syncPath);
 
   // 与文件重命名共用页面级串行锁；取得锁后再读取路径。
   const releaseFileOperation = await acquireLocalPageFileOperation(pageId);

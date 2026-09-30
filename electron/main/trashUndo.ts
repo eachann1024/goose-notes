@@ -1,3 +1,4 @@
+import { assertGitSyncWritable } from "./gitSyncLock";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { copyFile, cp, lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
@@ -37,6 +38,7 @@ export async function undoTrash(token: string): Promise<string> {
   const item = pending.get(token);
   if (!item) throw new Error("撤回已过期，请从系统回收站恢复");
   const { original, backup, timer } = item;
+  assertGitSyncWritable(original);
   clearTimeout(timer);
   // Keep the backup if restoration fails, so a conflict can be resolved and retried.
   try {

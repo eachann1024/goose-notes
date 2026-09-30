@@ -1,4 +1,5 @@
-import { app, Menu } from "electron";
+import { registerGitSyncIpc, startGitSync, stopGitSync } from "./gitSync";
+import { app, Menu, protocol } from "electron";
 import { loadVaultRoots } from "./allowlist";
 import { registerHotkeys, unregisterAllHotkeys } from "./hotkeys";
 import { closeAllWatchers, registerIpcHandlers } from "./ipc";
@@ -84,6 +85,7 @@ function startApp(): void {
   });
 
   registerIpcHandlers();
+  registerGitSyncIpc();
 
   function installMenu(): void {
     // Windows/Linux：不挂应用菜单，避免按 Alt 弹出 File/Edit/View/Window。
@@ -162,6 +164,7 @@ function startApp(): void {
       search: "",
     });
     startAutomaticUpdates();
+    startGitSync();
     if (pendingFocus) {
       pendingFocus = false;
       focusExistingWorkspace();
@@ -185,5 +188,6 @@ function startApp(): void {
     markQuitting();
     unregisterAllHotkeys();
     closeAllWatchers();
+    stopGitSync();
   });
 }

@@ -1,3 +1,4 @@
+import { assertGitSyncWritable, isGitSyncPathLocked, waitForGitSyncRead } from "./gitSyncLock";
 import {
   app,
   BrowserWindow,
@@ -110,6 +111,7 @@ function markRecentWrite(p: string): void {
 }
 
 async function withSelfWriteMark(paths: string[], op: () => Promise<void>): Promise<void> {
+  for (const p of paths) assertGitSyncWritable(p);
   for (const p of paths) markRecentWrite(p);
   try {
     await op();
@@ -164,6 +166,7 @@ function overflowPendingHidden(root: string): void {
 }
 
 function dispatchWatchEvents(events: PendingWatch[]): void {
+  events = events.filter((event) => !isGitSyncPathLocked(event.path));
   if (events.length === 0) return;
   if (!hasVisibleWindow()) {
     for (const event of events) {
@@ -341,6 +344,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsReadText", async (_event, p: string) => {
     const target = assertAllowed(p);
+    await waitForGitSyncRead(target);
     return readFile(target, "utf8");
   });
 
@@ -352,6 +356,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsRead", async (_event, p: string) => {
     const target = assertAllowed(p);
+    await waitForGitSyncRead(target);
     const buf = await readFile(target);
     return new Uint8Array(buf);
   });
@@ -364,6 +369,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsReadDir", async (_event, p: string) => {
     const target = assertAllowed(p);
+    await waitForGitSyncRead(target);
     const entries = await readdir(target, { withFileTypes: true });
     return entries.map((entry) => ({
       name: entry.name,
@@ -399,6 +405,7 @@ export function registerIpcHandlers(): void {
     } catch {
       return false;
     }
+    await waitForGitSyncRead(target);
     try {
       await stat(target);
       return true;
@@ -421,6 +428,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:fsStat", async (_event, p: string) => {
     const target = assertAllowed(p);
+    await waitForGitSyncRead(target);
     const info = await stat(target);
     return {
       size: info.size,
@@ -460,6 +468,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("desktop:restoreFromTrash", async (_event, p: string) => {
     const dest = assertAllowed(p);
+    assertGitSyncWritable(dest);
     ensureParentDir(dest);
     return restoreFileFromTrash(dest);
   });
