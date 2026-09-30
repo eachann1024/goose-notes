@@ -41,7 +41,7 @@ import {
   getFormattingSelectionMode,
   isFormattingToolbarOpen,
 } from "@/components/editor/toolbars/formatting/helpers";
-import { AIExtension } from "@blocknote/xl-ai";
+import { GooseAIExtension } from "@/components/editor/ai/GooseAIExtension";
 import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
 import { GooseAIMenuController } from "@/components/editor/ai/GooseAIMenuController";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
@@ -276,7 +276,7 @@ export function EditorComposer({
     event.preventDefault();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
-    const ai = editor.getExtension(AIExtension);
+    const ai = editor.getExtension(GooseAIExtension);
     if (ai && block?.id) {
       ai.openAIMenuAtBlock(block.id);
     }
@@ -402,7 +402,7 @@ export function EditorComposer({
     on: "selection",
     selector: ({ editor }) => shouldRenderFormattingToolbar(editor),
   });
-  const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
+  const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active && s.owner === editor);
   const resetFormattingToolbarAi = useFormattingToolbarAi((s) => s.reset);
   const [holdFormattingToolbar, setHoldFormattingToolbar] = useState(false);
   const holdFormattingToolbarRef = useRef(false);
@@ -410,9 +410,9 @@ export function EditorComposer({
   useEffect(() => {
     if (!editable) {
       setLinkPopoverOpen(false);
-      resetFormattingToolbarAi();
+      resetFormattingToolbarAi(editor);
     }
-  }, [editable, resetFormattingToolbarAi]);
+  }, [editable, editor, resetFormattingToolbarAi]);
 
   const formattingToolbarOpen = isFormattingToolbarOpen({
     editable,

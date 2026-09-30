@@ -60,10 +60,9 @@ test("行内 AI 样式随菜单控制器加载，不再只挂在主窗入口", (
     "utf8",
   );
   const indexEntry = readFileSync("src/index-entry.tsx", "utf8");
-  expect(controller).toContain('@blocknote/xl-ai/style.css');
-  expect(controller).toContain(
-    "@/pages/workspace/styles/editor-ai-menu.css",
-  );
+  expect(controller).not.toContain("@blocknote/xl-ai");
+  expect(controller).toContain("GooseAIExtension");
+  expect(controller).toContain("@/pages/workspace/styles/editor-ai-menu.css");
   expect(indexEntry).not.toContain("@blocknote/xl-ai/style.css");
 });
 

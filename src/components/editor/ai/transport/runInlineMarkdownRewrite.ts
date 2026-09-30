@@ -1,5 +1,5 @@
 /**
- * 行内 AI：对选区/光标块做 agent 对齐的 markdown 改写（非 xl-ai tool stream）。
+ * 行内 AI：对精确选区/光标块做 Markdown 改写，返回草稿供用户确认。
  * 走与面板相同的 runAITextStream（SSE），边思考边把最新一句盖进输入槽。
  */
 import type { AISettingsLike, AIStreamUpdate } from "@/lib/ai-provider/types";

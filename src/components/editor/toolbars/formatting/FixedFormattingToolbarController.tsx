@@ -1,5 +1,6 @@
 import { type FC, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   useBlockNoteEditor,
@@ -21,6 +22,7 @@ export function FixedFormattingToolbarController({
   open,
 }: FixedFormattingToolbarControllerProps) {
   const editor = useBlockNoteEditor();
+  const inlineAiActive = useFormattingToolbarAi((state) => state.active && state.owner === editor);
   const formattingToolbar = useExtension(FormattingToolbarExtension, {
     editor,
   });
@@ -29,14 +31,16 @@ export function FixedFormattingToolbarController({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (isWorkspaceSettingsOpen()) return;
+      if (inlineAiActive) return;
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || event.repeat) return;
       if (!open && !hovered) return;
       formattingToolbar.store.setState(false);
       editor.focus();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [editor, formattingToolbar.store, open, hovered]);
+  }, [editor, formattingToolbar.store, open, hovered, inlineAiActive]);
 
   useEffect(() => {
     const vk = (
@@ -78,7 +82,7 @@ export function FixedFormattingToolbarController({
     };
   }, []);
 
-  const visible = open || hovered;
+  const visible = !inlineAiActive && (open || hovered);
   if (!visible || typeof document === "undefined") return null;
 
   return createPortal(

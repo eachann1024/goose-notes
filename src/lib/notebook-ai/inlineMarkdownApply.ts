@@ -62,7 +62,7 @@ function cloneValue<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function serializeBlocksToMarkdown(
+export function serializeBlocksToMarkdown(
   editor: InlineMarkdownEditor,
   blocks: unknown[],
 ): string {
@@ -83,7 +83,7 @@ function serializeBlocksToMarkdown(
   return jsonContentToMarkdown(blocks as BlockNoteContent);
 }
 
-function parseMarkdownToBlocks(
+export function parseMarkdownToBlocks(
   editor: InlineMarkdownEditor,
   markdown: string,
 ): unknown[] {

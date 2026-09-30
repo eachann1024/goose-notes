@@ -1,172 +1,195 @@
-import {
-  aiDocumentFormats,
-  type DocumentStateBuilder,
-  type StreamToolsProvider,
-} from "@blocknote/xl-ai";
+import { Fragment, type Node as ProseMirrorNode } from "prosemirror-model";
+import { TextSelection, type Selection } from "prosemirror-state";
 
-const defaultDocumentStateBuilder =
-  aiDocumentFormats.html.defaultDocumentStateBuilder;
-const defaultStreamToolsProvider =
-  aiDocumentFormats.html.getStreamToolsProvider({});
-/** 选区模式：允许 update + add（扩写列表），禁止 delete。 */
-const selectionUpdateAddToolsProvider =
-  aiDocumentFormats.html.getStreamToolsProvider({
-    defaultStreamTools: { add: true, update: true, delete: false },
+export interface InlineSelectionPart {
+  blockId: string;
+  node: ProseMirrorNode;
+  ancestors: string[];
+  from: number;
+  to: number;
+  offsetFrom: number;
+  offsetTo: number;
+}
+
+/** Node selections select their explicit containers, never implicit descendants. */
+export function captureInlineSelectionParts(
+  doc: ProseMirrorNode,
+  selection: Selection,
+): InlineSelectionPart[] {
+  const { from, to } = selection;
+  const textSelection = selection instanceof TextSelection;
+  const parts: InlineSelectionPart[] = [];
+  const unsupported = () => new Error("选区含表格或非文字块，请只选择正文文字后重试。");
+  if (textSelection && [selection.$from, selection.$to].some((pos) =>
+    !pos.parent.isTextblock || pos.depth < 2 || pos.node(-1).type.name !== "blockContainer",
+  )) throw unsupported();
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (node.type.name !== "blockContainer") return true;
+    const content = node.firstChild;
+    const start = pos + 2;
+    const end = start + (content?.content.size ?? 0);
+    const wholeNode = !textSelection && pos >= from && pos + node.nodeSize <= to;
+    const wholeContent = !textSelection && pos + 1 === from && pos + 1 + (content?.nodeSize ?? 0) === to;
+    const intersects = textSelection && (from < end && to > start || from === to && from === start);
+    if (!content?.isTextblock) {
+      if (wholeNode || (pos < to && pos + node.nodeSize > from)) throw unsupported();
+      return false;
+    }
+    if (wholeNode || wholeContent || intersects) {
+      const offsetFrom = textSelection ? Math.max(0, from - start) : 0;
+      const offsetTo = textSelection ? Math.min(content.content.size, to - start) : content.content.size;
+      const resolved = doc.resolve(pos);
+      const ancestors: string[] = [];
+      for (let depth = 0; depth <= resolved.depth; depth++) {
+        if (resolved.node(depth).type.name === "blockContainer") ancestors.push(String(resolved.node(depth).attrs.id));
+      }
+      if (!node.attrs.id || parts.some((part) => part.blockId === node.attrs.id)) throw unsupported();
+      parts.push({ blockId: String(node.attrs.id), node, ancestors, from: start + offsetFrom, to: start + offsetTo, offsetFrom, offsetTo });
+      if (!textSelection) return false;
+    }
+    return true;
   });
-// update/add 工具 validate 签名不同，守卫层用宽松类型包装后原样返回
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SelectionScopedTool = any;
+  if (!parts.length) throw unsupported();
+  return parts;
+}
 
-/**
- * 选区 AI 只发送裁剪后的 selectedBlocks，不再附带整篇笔记作为上下文。
- * 无选区入口保持 xl-ai 默认 documentState，仍可理解和编辑整篇文档。
- */
-export function createPrivateSelectionDocumentStateBuilder(
-  baseBuilder: DocumentStateBuilder<any>,
-): DocumentStateBuilder<any> {
-  return async (request) => {
-    // xl-ai 默认用 getSelectionCutBlocks(true)，会把端点扩到完整单词。
-    // 隐私模式重新按原始 PM range 裁剪，避免多发送用户没有选中的相邻字符。
-    const exactRequest = request.selectedBlocks
-      ? {
-          ...request,
-          selectedBlocks: request.editor.getSelectionCutBlocks(false).blocks,
-        }
-      : request;
-    const documentState = await baseBuilder(exactRequest);
-    if (!documentState.selection) return documentState;
+export interface InlineSelectionSnapshot {
+  document: ProseMirrorNode;
+  from: number;
+  to: number;
+  replaceFrom: number;
+  replaceTo: number;
+  sourceNodes: ProseMirrorNode[];
+  selectedNodes: ProseMirrorNode[];
+  prefix: Fragment;
+  suffix: Fragment;
+}
 
-    return {
-      ...documentState,
-      blocks: [],
-    };
+/** Freeze character boundaries before the menu takes focus; never expand to words. */
+export function captureInlineSelection(
+  doc: ProseMirrorNode,
+  from: number,
+  to: number,
+): InlineSelectionSnapshot {
+  const start = doc.resolve(from);
+  const end = doc.resolve(to);
+  if (
+    !start.parent.isTextblock ||
+    !end.parent.isTextblock ||
+    start.depth < 2 ||
+    end.depth !== start.depth ||
+    start.node(-1).type.name !== "blockContainer" ||
+    end.node(-1).type.name !== "blockContainer" ||
+    start.before(start.depth - 1) > end.before(end.depth - 1) ||
+    start.start(start.depth - 2) !== end.start(end.depth - 2)
+  ) {
+    throw new Error(
+      "请在同一层级的正文块中选择文字后重试；表格或跨层级选区暂不支持行内改写。",
+    );
+  }
+  const replaceFrom = start.before(start.depth - 1);
+  const replaceTo = end.after(end.depth - 1);
+  const sourceNodes: ProseMirrorNode[] = [];
+  const selectedNodes: ProseMirrorNode[] = [];
+  const group = start.node(start.depth - 2);
+  let pos = start.start(start.depth - 2);
+  group.forEach((node) => {
+    if (pos >= replaceFrom && pos < replaceTo) {
+      const content = node.firstChild;
+      if (node.type.name !== "blockContainer" || !content?.isTextblock) {
+        throw new Error("选区含非文字块，请缩小范围后重试。");
+      }
+      sourceNodes.push(node);
+      const selected = content.copy(
+        content.content.cut(
+          Math.max(0, from - pos - 2),
+          Math.min(content.content.size, to - pos - 2),
+        ),
+      );
+      const children = [selected];
+      if (pos + node.nodeSize < replaceTo) {
+        for (let i = 1; i < node.childCount; i++) children.push(node.child(i));
+      }
+      selectedNodes.push(node.copy(Fragment.fromArray(children)));
+    }
+    pos += node.nodeSize;
+  });
+  return {
+    document: doc,
+    from,
+    to,
+    replaceFrom,
+    replaceTo,
+    sourceNodes,
+    selectedNodes,
+    prefix: start.parent.content.cut(0, start.parentOffset),
+    suffix: end.parent.content.cut(end.parentOffset),
   };
 }
 
-export const goosePrivateSelectionDocumentStateBuilder =
-  createPrivateSelectionDocumentStateBuilder(defaultDocumentStateBuilder);
-
-function collectBlockIds(
-  blocks: Array<{ id: string; children?: unknown[] }>,
-  ids = new Set<string>(),
-) {
-  for (const block of blocks) {
-    ids.add(block.id);
-    if (Array.isArray(block.children)) {
-      collectBlockIds(
-        block.children as Array<{ id: string; children?: unknown[] }>,
-        ids,
+/** Build a replacement off-document, retaining untouched text, marks and descendants. */
+export function composeInlineReplacement(
+  target: InlineSelectionSnapshot,
+  generated: ProseMirrorNode[],
+): Fragment {
+  if (!generated.length) throw new Error("AI 未返回可写入的内容。");
+  const first = target.sourceNodes[0];
+  const last = target.sourceNodes.at(-1)!;
+  const firstContent = first.firstChild!;
+  const lastContent = last.firstChild!;
+  const trailingChildren: ProseMirrorNode[] = [];
+  for (let i = 1; i < last.childCount; i++)
+    trailingChildren.push(last.child(i));
+  const single =
+    generated.length === 1 && generated[0].childCount === 1
+      ? generated[0].firstChild
+      : null;
+  // Ordinary rewrites stay inline (including existing heading/list formatting).
+  if (
+    single?.isTextblock &&
+    (single.type.name === "paragraph" || single.type === firstContent.type)
+  ) {
+    const content = firstContent.copy(
+      target.prefix.append(single.content).append(target.suffix),
+    );
+    return Fragment.from(
+      first.copy(Fragment.fromArray([content, ...trailingChildren])),
+    );
+  }
+  const result: ProseMirrorNode[] = [];
+  if (target.prefix.size)
+    result.push(first.copy(Fragment.from(firstContent.copy(target.prefix))));
+  result.push(...generated);
+  if (target.suffix.size) {
+    // A split within one source block must not duplicate its id.
+    const attrs =
+      first === last && target.prefix.size
+        ? { ...last.attrs, id: null }
+        : last.attrs;
+    result.push(
+      last.type.create(
+        attrs,
+        Fragment.fromArray([
+          lastContent.copy(target.suffix),
+          ...trailingChildren,
+        ]),
+      ),
+    );
+  } else if (trailingChildren.length) {
+    const tail = result[result.length - 1];
+    // Keep the old descendants as a separate boundary block if generated output has its own children.
+    if (tail.childCount > 1) {
+      result.push(
+        last.type.create({ ...last.attrs, id: null }, [
+          lastContent.copy(Fragment.empty),
+          ...trailingChildren,
+        ]),
+      );
+    } else {
+      result[result.length - 1] = tail.copy(
+        tail.content.append(Fragment.fromArray(trailingChildren)),
       );
     }
   }
-  return ids;
+  return Fragment.fromArray(result);
 }
-
-/** xl-ai 工具里的块 id 常带 `$` 后缀，与编辑器真实 id 对齐。 */
-function stripIdSuffix(id: string): string {
-  return id.endsWith("$") ? id.slice(0, -1) : id;
-}
-
-function idInSelectedSet(
-  id: string | undefined,
-  selectedBlockIds: ReadonlySet<string>,
-): boolean {
-  if (!id) return false;
-  if (selectedBlockIds.has(id)) return true;
-  const bare = stripIdSuffix(id);
-  if (selectedBlockIds.has(bare)) return true;
-  if (selectedBlockIds.has(`${bare}$`)) return true;
-  return false;
-}
-
-function guardUpdateTool(
-  tool: SelectionScopedTool,
-  selectedBlockIds: ReadonlySet<string>,
-): SelectionScopedTool {
-  return {
-    ...tool,
-    validate(operation: unknown) {
-      const result = tool.validate(operation);
-      if (!result.ok) return result;
-
-      const id = (result.value as { id?: string }).id;
-      if (!idInSelectedSet(id, selectedBlockIds)) {
-        return {
-          ok: false,
-          error: "AI 只能修改当前文字选区内的块。",
-        };
-      }
-      return result;
-    },
-  };
-}
-
-/**
- * add 的 referenceId 必须落在选中块内（含末块），以便在选区后扩写列表；
- * 不允许以未选中块为锚点插入。
- */
-function guardAddTool(
-  tool: SelectionScopedTool,
-  selectedBlockIds: ReadonlySet<string>,
-): SelectionScopedTool {
-  return {
-    ...tool,
-    validate(operation: unknown) {
-      const result = tool.validate(operation);
-      if (!result.ok) return result;
-
-      const referenceId = (result.value as { referenceId?: string })
-        .referenceId;
-      if (!idInSelectedSet(referenceId, selectedBlockIds)) {
-        return {
-          ok: false,
-          error: "AI 只能在当前选区范围内插入新块。",
-        };
-      }
-      return result;
-    },
-  };
-}
-
-/**
- * 选区模式暴露 update + add，并用选区位置与块 ID 双重限制写入范围：
- * - xl-ai 的 updateSelection 会把端点块更新裁剪到精确字符范围；
- * - ID guard 阻止模型用未选块 ID 绕过范围限制；
- * - add 仅允许以选中块为 reference，便于在选区后扩写列表项；
- * - delete 不暴露，避免删除选区外整块。
- */
-export const gooseSelectionScopedStreamToolsProvider: StreamToolsProvider<
-  any,
-  any
-> = {
-  getStreamTools(editor, selectionInfo, onBlockUpdate) {
-    if (!selectionInfo) {
-      return defaultStreamToolsProvider.getStreamTools(
-        editor,
-        selectionInfo,
-        onBlockUpdate,
-      ) as any;
-    }
-
-    const exactSelection = editor.getSelectionCutBlocks(false);
-    const selectedBlockIds = collectBlockIds(exactSelection.blocks);
-    const tools = selectionUpdateAddToolsProvider.getStreamTools(
-      editor,
-      {
-        from: exactSelection._meta.startPos,
-        to: exactSelection._meta.endPos,
-      },
-      onBlockUpdate,
-    );
-
-    return tools.map((tool) => {
-      if (tool.name === "update") {
-        return guardUpdateTool(tool, selectedBlockIds);
-      }
-      if (tool.name === "add") {
-        return guardAddTool(tool, selectedBlockIds);
-      }
-      return tool;
-    }) as any;
-  },
-};

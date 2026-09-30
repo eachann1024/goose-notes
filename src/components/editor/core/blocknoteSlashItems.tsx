@@ -1,6 +1,6 @@
 import type { BlockNoteEditor } from "@blocknote/core";
 import { FilePanelExtension } from "@blocknote/core/extensions";
-import { AIExtension } from "@blocknote/xl-ai";
+import { GooseAIExtension } from "@/components/editor/ai/GooseAIExtension";
 import { createRoot, type Root } from "react-dom/client";
 import {
   CheckSquare,
@@ -245,7 +245,7 @@ export function getBlockNoteSlashMenuItems(
           });
         }
 
-        const ai = editor.getExtension(AIExtension);
+        const ai = editor.getExtension(GooseAIExtension);
         const blockId = editor.getTextCursorPosition().block.id;
         if (ai && blockId) {
           ai.openAIMenuAtBlock(blockId);

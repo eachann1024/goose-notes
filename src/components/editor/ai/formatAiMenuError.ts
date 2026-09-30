@@ -1,6 +1,5 @@
 /**
- * 行内 AI 菜单错误文案。xl-ai 流式 update 在块 id 失效时会抛
- * `Tool execution failed: block not found`。
+ * 行内 AI 菜单错误文案。目标失效时保留原文并提示重新选择。
  */
 export function isMissingTargetBlockError(error: unknown): boolean {
   const message = toErrorText(error).toLowerCase();
@@ -17,7 +16,7 @@ export function formatAiMenuError(error: unknown): string {
   if (!message) return "";
 
   if (isMissingTargetBlockError(message)) {
-    return "替换中断：目标块已变化，已恢复原文。请再试一次";
+    return "目标块已变化，原文未修改。请重新选择后再试";
   }
   if (/tool_choice|Thinking mode/i.test(message)) {
     return "当前模型的思考模式不支持强制工具调用，请换非思考模型或关闭思考后再试";

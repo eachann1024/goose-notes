@@ -1,17 +1,16 @@
-import { BlockNoteEditor } from "@blocknote/core";
+import { BlockNoteEditor, blockToNode } from "@blocknote/core";
 import { TextSelection, type EditorState } from "@tiptap/pm/state";
 import { expect, test } from "playwright/test";
 import {
-  createPrivateSelectionDocumentStateBuilder,
-  gooseSelectionScopedStreamToolsProvider,
+  captureInlineSelection,
+  composeInlineReplacement,
 } from "../../src/components/editor/ai/selectionPrivacy";
 
 function contentRanges(editor: { prosemirrorState: EditorState }) {
   const ranges = new Map<string, { from: number; to: number }>();
   editor.prosemirrorState.doc.descendants((node, pos) => {
-    if (node.type.name !== "blockContainer" || !node.firstChild?.isTextblock) {
+    if (node.type.name !== "blockContainer" || !node.firstChild?.isTextblock)
       return true;
-    }
     const from = pos + 2;
     ranges.set(String(node.attrs.id), {
       from,
@@ -26,11 +25,7 @@ function createSelectionEditor() {
   const editor = BlockNoteEditor.create({
     initialContent: [
       { id: "before", type: "paragraph", content: "PRIVATE BEFORE" },
-      {
-        id: "first",
-        type: "paragraph",
-        content: "PRIVATELEFTSELECT-ONE tail",
-      },
+      { id: "first", type: "paragraph", content: "PRIVATELEFTSELECT-ONE tail" },
       {
         id: "second",
         type: "paragraph",
@@ -40,135 +35,134 @@ function createSelectionEditor() {
     ],
   });
   const ranges = contentRanges(editor);
-  const first = ranges.get("first")!;
-  const second = ranges.get("second")!;
-  const from = first.from + "PRIVATELEFT".length;
-  const to = second.to - "PRIVATERIGHT".length;
-
-  editor.transact((tr) => {
-    tr.setSelection(TextSelection.create(tr.doc, from, to));
-  });
-
+  const from = ranges.get("first")!.from + "PRIVATELEFT".length;
+  const to = ranges.get("second")!.to - "PRIVATERIGHT".length;
+  editor.transact((tr) =>
+    tr.setSelection(TextSelection.create(tr.doc, from, to)),
+  );
   return { editor, from, to };
 }
 
-test("选区 documentState 只包含跨段精确选中文字", async () => {
-  const { editor } = createSelectionEditor();
-  const exactSelectedBlocks = editor.getSelectionCutBlocks(false).blocks;
-  const expandedSelectedBlocks = editor.getSelectionCutBlocks(true).blocks;
-  const selectedJSON = JSON.stringify(exactSelectedBlocks);
-
-  expect(selectedJSON).toContain("SELECT-ONE tail");
-  expect(selectedJSON).toContain("head SELECT-TWO");
-  expect(selectedJSON).not.toContain("PRIVATELEFT");
-  expect(selectedJSON).not.toContain("PRIVATERIGHT");
-  // 证明端点确实位于单词中间，xl-ai 默认 expandToWords 会扩大选区。
-  expect(JSON.stringify(expandedSelectedBlocks)).toContain("PRIVATELEFT");
-  expect(JSON.stringify(expandedSelectedBlocks)).toContain("PRIVATERIGHT");
-
-  const privateBuilder = createPrivateSelectionDocumentStateBuilder(
-    async (request) => ({
-      selection: true as const,
-      selectedBlocks: (request.selectedBlocks ?? []).map((block) => ({
-        id: block.id,
-        block,
-      })),
-      blocks: editor.document.map((block) => ({ block })),
-      isEmptyDocument: false,
-    }),
+test("公共 snapshot 只裁出跨段精确字符，不扩到词边界", () => {
+  const { editor, from, to } = createSelectionEditor();
+  const snapshot = captureInlineSelection(
+    editor.prosemirrorState.doc,
+    from,
+    to,
   );
-  const documentState = await privateBuilder({
-    editor,
-    // 模拟 xl-ai 传入已经扩词的 selectedBlocks；项目 builder 必须重新精确裁剪。
-    selectedBlocks: expandedSelectedBlocks,
-    streamTools: [],
-    onStart: () => undefined,
-  });
-  const serialized = JSON.stringify(documentState);
-
-  expect(documentState.selection).toBe(true);
-  if (!documentState.selection) throw new Error("expected selection state");
-  expect(documentState.blocks).toEqual([]);
+  const serialized = JSON.stringify(
+    snapshot.selectedNodes.map((node) => node.toJSON()),
+  );
   expect(serialized).toContain("SELECT-ONE tail");
   expect(serialized).toContain("head SELECT-TWO");
-  expect(serialized).not.toContain("PRIVATE BEFORE");
-  expect(serialized).not.toContain("PRIVATE AFTER");
-  expect(serialized).not.toContain("PRIVATELEFT");
-  expect(serialized).not.toContain("PRIVATERIGHT");
+  for (const outside of [
+    "PRIVATE BEFORE",
+    "PRIVATE AFTER",
+    "PRIVATELEFT",
+    "PRIVATERIGHT",
+  ]) {
+    expect(serialized).not.toContain(outside);
+  }
+  expect(snapshot.from).toBe(from);
+  expect(snapshot.to).toBe(to);
 });
 
-test("无选区 documentState 保持完整文档上下文", async () => {
-  const fullDocumentState = {
-    selection: false as const,
-    blocks: [{ id: "before$", block: "PRIVATE BEFORE", cursor: true }],
-    isEmptyDocument: false,
-  };
-  const privateBuilder = createPrivateSelectionDocumentStateBuilder(
-    async () => fullDocumentState,
-  );
+test("光标块 snapshot 不包含其他块或当前块的子块", () => {
   const editor = BlockNoteEditor.create({
-    initialContent: [{ id: "before", type: "paragraph", content: "before" }],
+    initialContent: [
+      {
+        id: "current",
+        type: "paragraph",
+        content: "current",
+        children: [
+          { id: "child", type: "paragraph", content: "PRIVATE CHILD" },
+        ],
+      },
+      { id: "after", type: "paragraph", content: "PRIVATE AFTER" },
+    ],
   });
-
-  await expect(
-    privateBuilder({
-      editor,
-      streamTools: [],
-      onStart: () => undefined,
-    }),
-  ).resolves.toEqual(fullDocumentState);
+  const range = contentRanges(editor).get("current")!;
+  const snapshot = captureInlineSelection(
+    editor.prosemirrorState.doc,
+    range.from,
+    range.to,
+  );
+  expect(snapshot.selectedNodes.map((node) => node.textContent)).toEqual([
+    "current",
+  ]);
+  expect(snapshot.selectedNodes[0].childCount).toBe(1);
 });
 
-test("选区工具允许 update+add 选中块，拒绝区外 id；无选区保持完整工具集", () => {
+test("准备草稿不写入，接受时只替换字符范围且保留前后块", () => {
   const { editor, from, to } = createSelectionEditor();
-  const selectionTools = gooseSelectionScopedStreamToolsProvider.getStreamTools(
-    editor,
-    { from, to },
-  );
-
-  expect(selectionTools.map((tool) => tool.name)).toEqual(["update", "add"]);
-
-  const update = selectionTools.find((tool) => tool.name === "update")!;
-  expect(
-    update.validate({
-      type: "update",
-      id: "first$",
-      block: "<p>replacement</p>",
-    }).ok,
-  ).toBe(true);
-  expect(
-    update.validate({
-      type: "update",
-      id: "before$",
-      block: "<p>leak</p>",
-    }).ok,
-  ).toBe(false);
-
-  const add = selectionTools.find((tool) => tool.name === "add")!;
-  expect(
-    add.validate({
-      type: "add",
-      referenceId: "second$",
-      position: "after",
-      blocks: ["<p>extra item</p>"],
-    }).ok,
-  ).toBe(true);
-  expect(
-    add.validate({
-      type: "add",
-      referenceId: "before$",
-      position: "after",
-      blocks: ["<p>leak</p>"],
-    }).ok,
-  ).toBe(false);
-
-  const documentTools = gooseSelectionScopedStreamToolsProvider.getStreamTools(
-    editor,
-    undefined,
-  );
-  expect(documentTools.map((tool) => tool.name)).toEqual([
-    "update",
-    "add",
-    "delete",
+  const before = editor.prosemirrorState.doc;
+  const snapshot = captureInlineSelection(before, from, to);
+  const draft = composeInlineReplacement(snapshot, [
+    blockToNode(
+      { type: "paragraph", content: "replacement" },
+      editor.prosemirrorState.schema,
+    ),
   ]);
+  expect(editor.prosemirrorState.doc.eq(before)).toBe(true);
+  editor.transact((tr) =>
+    tr.replaceWith(snapshot.replaceFrom, snapshot.replaceTo, draft),
+  );
+  expect(editor.document.map((block) => block.id)).toEqual([
+    "before",
+    "first",
+    "after",
+  ]);
+  expect(editor.prosemirrorState.doc.textContent).toBe(
+    "PRIVATE BEFOREPRIVATELEFTreplacementPRIVATERIGHTPRIVATE AFTER",
+  );
+  expect(
+    editor.prosemirrorState.doc.firstChild!.firstChild!.eq(
+      before.firstChild!.firstChild!,
+    ),
+  ).toBe(true);
+  expect(
+    editor.prosemirrorState.doc.firstChild!.lastChild!.eq(
+      before.firstChild!.lastChild!,
+    ),
+  ).toBe(true);
+});
+
+test("结构草稿支持多列表块，同时保留选区外两端文字", () => {
+  const { editor, from, to } = createSelectionEditor();
+  const snapshot = captureInlineSelection(
+    editor.prosemirrorState.doc,
+    from,
+    to,
+  );
+  const generated = ["one", "two"].map((content) =>
+    blockToNode(
+      { type: "bulletListItem", content },
+      editor.prosemirrorState.schema,
+    ),
+  );
+  const draft = composeInlineReplacement(snapshot, generated);
+  editor.transact((tr) =>
+    tr.replaceWith(snapshot.replaceFrom, snapshot.replaceTo, draft),
+  );
+  expect(editor.document.map((block) => block.type)).toEqual([
+    "paragraph",
+    "paragraph",
+    "bulletListItem",
+    "bulletListItem",
+    "paragraph",
+    "paragraph",
+  ]);
+  expect(editor.document[1].content).toEqual([
+    { type: "text", text: "PRIVATELEFT", styles: {} },
+  ]);
+  expect(editor.document[4].content).toEqual([
+    { type: "text", text: "PRIVATERIGHT", styles: {} },
+  ]);
+});
+
+test("非正文端点明确报错而不是扩大到整块", () => {
+  const { editor } = createSelectionEditor();
+  expect(() =>
+    captureInlineSelection(editor.prosemirrorState.doc, 1, 2),
+  ).toThrow(/表格或跨层级/);
 });

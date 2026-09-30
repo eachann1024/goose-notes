@@ -10,13 +10,7 @@ import {
 } from "react";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { useCreateBlockNote } from "@blocknote/react";
-import { AIExtension } from "@blocknote/xl-ai";
-import {
-  goosePrivateSelectionDocumentStateBuilder,
-  gooseSelectionScopedStreamToolsProvider,
-} from "@/components/editor/ai/selectionPrivacy";
-import { zh as aiZh } from "@blocknote/xl-ai/locales";
-import { createGooseAITransport } from "@/components/editor/ai/transport/blocknoteAITransport";
+import { GooseAIExtension } from "@/components/editor/ai/GooseAIExtension";
 import { zh } from "@blocknote/core/locales";
 import "@blocknote/react/style.css";
 import { createDebounce } from "@/components/editor/utils/debounce";
@@ -244,6 +238,16 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   pageRef.current = page;
   const contentModeRef = useRef(contentMode);
   contentModeRef.current = contentMode;
+  const inlineAiScopeRef = useRef(() => ({ pageId: "", editable: false, protectFirstTitle: true }));
+  inlineAiScopeRef.current = () => {
+    const latest = getLatestPage ? getLatestPage(page.id) : page;
+    return {
+      pageId: page.id,
+      editable: Boolean(latest && editable && !latest.isLocked && !latest.trashedAt &&
+        !(latest.localFilePath && latest.localReadState === "error")),
+      protectFirstTitle: contentMode === "normalized",
+    };
+  };
   // platformRef 供 useCreateBlockNote 闭包（deps=[]）调用平台能力，
   // 同 aiSettingsRef 模式，避免闭包捕获旧 platform 引用。
   const platformRef = useRef(platform);
@@ -405,25 +409,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         ...(!__GOOSE_EDITOR_AI__
           ? []
           : [
-              AIExtension({
-                transport: createGooseAITransport({
-                  getSettings: () => aiSettingsRef.current,
-                  getModelId: () => {
-                    const ai = aiSettingsRef.current;
-                    const ws = ai.workspaceSelectedModelId?.trim();
-                    const wsOk =
-                      !!ws && ai.customModelOptions.some((o) => o.id === ws);
-                    return (
-                      (wsOk ? ws : null) ||
-                      ai.selectedModelId?.trim() ||
-                      ai.customModelOptions[0]?.id ||
-                      ""
-                    );
-                  },
-                  getCustomFetch: () => platformRef.current.ai.customFetch,
-                }),
-                documentStateBuilder: goosePrivateSelectionDocumentStateBuilder,
-                streamToolsProvider: gooseSelectionScopedStreamToolsProvider,
+              GooseAIExtension({
+                getSettings: () => aiSettingsRef.current,
+                getScope: () => inlineAiScopeRef.current(),
               }),
             ]),
       ],
@@ -437,10 +425,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
             __GOOSE_LITE__ || isQuickNoteEditorPage(page)
               ? ""
               : "输入 / 、或随时 @ 提及笔记...",
+          quote: "引用",
           toggleListItem: "",
         },
-        // 小窗无 AI，aiZh 在 lite 下是空壳，不并入字典。
-        ...(__GOOSE_EDITOR_AI__ ? { ai: aiZh } : {}),
       },
       domAttributes: {
         editor: {
@@ -526,6 +513,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     [],
   );
   editorInstanceRef.current = editor;
+  useLayoutEffect(() => {
+    if (!__GOOSE_EDITOR_AI__) return;
+    const inlineAi = editor.getExtension(GooseAIExtension);
+    // Cleanup runs before any page replacement; a detached session keeps generating in memory.
+    return () => inlineAi?.detachPage();
+  }, [editor, activePageId]);
+
 
   // BlockNoteView 的 editable 会在 prop 变化时重挂 ProseMirror。
   // 实例上的 isEditable 也要立刻同步，锁定当帧就不能输入。
@@ -561,6 +555,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
   const prevPageIdRef = useRef<string | null>(activePageId);
   useLayoutEffect(() => {
+    if (__GOOSE_EDITOR_AI__) editor.getExtension(GooseAIExtension)?.detachPage();
     if (activePageId === prevPageIdRef.current) {
       if (activePageId) {
         const view = editor.prosemirrorView;
@@ -657,6 +652,17 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
     // 切页后 BlockNote 的异步 props 补全（折叠块/视频等）不应被算作用户编辑。
     userInteractedRef.current = false;
   }, [activePageId, debouncedUpdate, editor]);
+
+  // Bind only after the preceding layout effect has installed this page's document/history.
+  useLayoutEffect(() => {
+    if (__GOOSE_EDITOR_AI__) editor.getExtension(GooseAIExtension)?.attachPage(page.id);
+  }, [editor, activePageId, page.id, editable, page.isLocked, page.trashedAt, page.localReadState]);
+
+  useLayoutEffect(() => {
+    if (editor._tiptapEditor.isDestroyed) return;
+    editor.prosemirrorView.dom.dataset.searchPageId = activePageId ?? "";
+    window.dispatchEvent(new CustomEvent("goose-note:search-editor-ready"));
+  }, [activePageId, editor]);
 
   useLayoutEffect(() => () => {
     const pageId = prevPageIdRef.current;

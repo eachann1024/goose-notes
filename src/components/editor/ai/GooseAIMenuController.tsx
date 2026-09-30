@@ -8,8 +8,9 @@ import {
   type FloatingUIOptions,
 } from "@blocknote/react";
 import { autoUpdate, flip, offset, shift, size } from "@floating-ui/react";
-import { AIExtension, AIMenu, type AIMenuProps } from "@blocknote/xl-ai";
-import { TextSelection } from "prosemirror-state";
+import { GooseAIExtension } from "./GooseAIExtension";
+import { GooseAIMenu } from "./GooseAIMenu";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
 import {
   AI_MENU_VIEWPORT_PAD_PX,
   computeAiMenuFloatingWidth,
@@ -21,11 +22,11 @@ import {
   getEditorUiScale,
   getScaledEditorUiPx,
 } from "@/components/editor/utils/editorContextUi";
-import "@blocknote/xl-ai/style.css";
 import "@/pages/workspace/styles/editor-ai-menu.css";
+import "./inlinePreview.css";
 
 type GooseAIMenuControllerProps = {
-  aiMenu?: FC<AIMenuProps>;
+  aiMenu?: FC;
 };
 
 type BnColorScheme = "light" | "dark";
@@ -47,23 +48,24 @@ function resolveBnColorScheme(
 }
 
 /**
- * xl-ai 默认把菜单锚到整块并把浮层撑成块宽。格式栏入口需要锚到原文字选区，
+ * 格式栏入口锚到原文字选区，
  * 其它入口（空段落、斜杠菜单）则继续沿用块锚点。
  */
 export function GooseAIMenuController({
-  aiMenu: Component = AIMenu,
+  aiMenu: Component = GooseAIMenu,
 }: GooseAIMenuControllerProps) {
   const editor = useBlockNoteEditor();
-  const ai = useExtension(AIExtension);
-  const aiMenuState = useExtensionState(AIExtension, {
+  const { page } = useEditorPageContext();
+  const ai = useExtension(GooseAIExtension);
+  const aiMenuState = useExtensionState(GooseAIExtension, {
     editor,
     selector: (state) => state.aiMenuState,
   });
-  const selection = useFormattingToolbarAi((state) => state.selection);
+  const selection = aiMenuState === "closed" ? undefined : ai.getSelectionAnchor();
   const resetFormattingToolbarAi = useFormattingToolbarAi(
     (state) => state.reset,
   );
-  const openedFromSelectionRef = useRef(false);
+  const wasOpenRef = useRef(false);
   const [colorScheme, setColorScheme] = useState<BnColorScheme>(() =>
     resolveBnColorScheme(editor.domElement),
   );
@@ -105,56 +107,17 @@ export function GooseAIMenuController({
   }, [editor.domElement, open]);
 
   useEffect(() => {
-    if (open && selection) {
-      openedFromSelectionRef.current = true;
-      return;
+    if (wasOpenRef.current && !open) {
+      try { setFakeSelection(editor, null); } catch { /* Editor may be detached. */ }
+      resetFormattingToolbarAi(editor);
     }
-    if (open || !openedFromSelectionRef.current) return;
+    wasOpenRef.current = open;
+  }, [editor, open, resetFormattingToolbarAi]);
 
-    openedFromSelectionRef.current = false;
-    try {
-      setFakeSelection(editor, null);
-    } catch {
-      /* 编辑器可能正随页面切换卸载。 */
-    }
-    resetFormattingToolbarAi();
-
-    // xl-ai 关闭时会把焦点还给编辑器；下一帧恢复原范围，避免快捷键撤销
-    // 落到页面而不是 ProseMirror。该事务不进入 undo history。
-    if (selection) {
-      requestAnimationFrame(() => {
-        try {
-          const view = editor.prosemirrorView;
-          if (!view) return;
-          const docSize = view.state.doc.content.size;
-          const from = Math.min(selection.from, docSize);
-          const to = Math.min(selection.to, docSize);
-          if (from !== to) {
-            const tr = view.state.tr.setSelection(
-              TextSelection.create(view.state.doc, from, to),
-            );
-            tr.setMeta("addToHistory", false);
-            view.dispatch(tr);
-          }
-          view.focus();
-        } catch {
-          /* 关闭期间文档或页面可能已经切换。 */
-        }
-      });
-    }
-  }, [editor, open, resetFormattingToolbarAi, selection]);
-
-  useEffect(
-    () => () => {
-      try {
-        setFakeSelection(editor, null);
-      } catch {
-        /* ignore */
-      }
-      resetFormattingToolbarAi();
-    },
-    [editor, resetFormattingToolbarAi],
-  );
+  useEffect(() => () => {
+    try { setFakeSelection(editor, null); } catch { /* Editor may be detached. */ }
+    resetFormattingToolbarAi(editor);
+  }, [editor, page.id, resetFormattingToolbarAi]);
 
   const floatingUIOptions = useMemo<FloatingUIOptions>(() => {
     const pad = AI_MENU_VIEWPORT_PAD_PX;
@@ -196,14 +159,7 @@ export function GooseAIMenuController({
         middleware: sharedMiddleware,
         onOpenChange: (nextOpen) => {
           if (nextOpen || aiMenuState === "closed") return;
-          if (aiMenuState.status === "user-input") {
-            ai.closeAIMenu();
-          } else if (
-            aiMenuState.status === "user-reviewing" ||
-            aiMenuState.status === "error"
-          ) {
-            ai.rejectChanges();
-          }
+          ai.closeAIMenu();
         },
         whileElementsMounted(reference, floating, update) {
           return autoUpdate(reference, floating, update, {
@@ -214,18 +170,7 @@ export function GooseAIMenuController({
       useDismissProps: {
         enabled:
           aiMenuState === "closed" || aiMenuState.status === "user-input",
-        outsidePress: (event) => {
-          if (event.target instanceof Element) {
-            const blockElement = event.target.closest(".bn-block");
-            if (
-              blockElement &&
-              blockElement.getAttribute("data-id") === blockId
-            ) {
-              ai.closeAIMenu();
-            }
-          }
-          return true;
-        },
+        outsidePress: false,
       },
       elementProps: {
         className: "bn-root bn-mantine goose-ai-menu-floating",
@@ -234,10 +179,12 @@ export function GooseAIMenuController({
       },
       focusManagerProps: {
         disabled: false,
+        modal: false,
+        returnFocus: false,
         getInsideElements: () => (editor.domElement ? [editor.domElement] : []),
       },
     };
-  }, [ai, aiMenuState, blockId, colorScheme, editor.domElement, open]);
+  }, [ai, aiMenuState, colorScheme, editor.domElement, open]);
 
   // GenericPopover 的外层负责 viewport 定位；缩放只放在内层 surface，
   // 避免 CSS zoom 同时放大 Floating UI 计算出的 fixed 坐标。
