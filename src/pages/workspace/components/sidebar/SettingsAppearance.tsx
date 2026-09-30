@@ -440,6 +440,7 @@ export function SettingsAppearance({
     >
       {showPreview && (
         <AppearanceEditorPreview
+          editorOnly
           sidebarFontSize={sidebarFontSize}
           editorFontSize={editorFontSize}
           editorLineHeight={editorLineHeight}
