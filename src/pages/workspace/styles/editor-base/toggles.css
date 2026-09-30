@@ -61,7 +61,7 @@
 
 /* 侧栏折叠按钮：默认 muted；hover/active/data-fold-hot 用高特异 + !important 压 portal 层叠 */
 .bn-side-menu button.goose-heading-fold-btn {
-  color: hsl(var(--muted-foreground) / 0.55);
+  color: hsl(var(--muted-foreground));
   background-color: transparent;
   transition:
     background-color 0.15s ease-out,

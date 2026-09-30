@@ -4,84 +4,84 @@
 
 :root {
   --code-bg: hsl(var(--background));
-  --code-fg: hsl(var(--foreground) / 0.95);
+  --code-fg: var(--goose-text-primary);
   --code-border: hsl(var(--border) / 0.4);
-  --code-line-number: hsl(var(--muted-foreground) / 0.72);
+  --code-line-number: var(--goose-text-secondary);
   --code-active-line-bg: rgba(15, 23, 42, 0.045);
   --code-toolbar-chip-bg: hsl(var(--muted) / 0.92);
   --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.95);
   --code-toolbar-chip-active-bg: hsl(var(--accent) / 0.86);
-  --code-toolbar-chip-fg: hsl(var(--foreground) / 0.9);
-  --code-toolbar-chip-active-fg: hsl(var(--foreground));
-  --code-token-comment: #6a737d;
-  --code-token-keyword: #d73a49;
-  --code-token-string: #032f62;
-  --code-token-number: #005cc5;
-  --code-token-function: #6f42c1;
-  --code-token-type: #e36209;
-  --code-token-operator: #d73a49;
-  --code-token-variable: #24292f;
+  --code-toolbar-chip-fg: var(--goose-text-secondary);
+  --code-toolbar-chip-active-fg: var(--goose-text-primary);
+  --code-token-comment: var(--goose-text-secondary);
+  --code-token-keyword: var(--goose-editor-highlight-red-text);
+  --code-token-string: var(--goose-editor-highlight-blue-text);
+  --code-token-number: var(--goose-editor-highlight-blue-text);
+  --code-token-function: var(--goose-editor-highlight-purple-text);
+  --code-token-type: var(--goose-editor-highlight-orange-text);
+  --code-token-operator: var(--goose-editor-highlight-red-text);
+  --code-token-variable: var(--goose-text-primary);
 }
 
 .dark {
   --code-bg: hsl(var(--background) / 0.94);
   --code-border: hsl(var(--border) / 0.4);
-  --code-line-number: hsl(var(--muted-foreground) / 0.78);
+  --code-line-number: var(--goose-text-secondary);
   --code-active-line-bg: rgba(255, 255, 255, 0.06);
   --code-toolbar-chip-bg: hsl(var(--muted) / 0.72);
   --code-toolbar-chip-hover-bg: hsl(var(--accent) / 0.92);
   --code-toolbar-chip-active-bg: hsl(var(--accent) / 0.85);
-  --code-toolbar-chip-fg: hsl(var(--foreground) / 0.92);
-  --code-toolbar-chip-active-fg: hsl(var(--foreground));
-  --code-token-comment: #8b949e;
-  --code-token-keyword: #ff7b72;
-  --code-token-string: #a5d6ff;
-  --code-token-number: #79c0ff;
-  --code-token-function: #d2a8ff;
-  --code-token-type: #ffa657;
-  --code-token-operator: #ff7b72;
-  --code-token-variable: #c9d1d9;
+  --code-toolbar-chip-fg: var(--goose-text-secondary);
+  --code-toolbar-chip-active-fg: var(--goose-text-primary);
+  --code-token-comment: var(--goose-text-secondary);
+  --code-token-keyword: var(--goose-editor-highlight-red-text);
+  --code-token-string: var(--goose-editor-highlight-blue-text);
+  --code-token-number: var(--goose-editor-highlight-blue-text);
+  --code-token-function: var(--goose-editor-highlight-purple-text);
+  --code-token-type: var(--goose-editor-highlight-orange-text);
+  --code-token-operator: var(--goose-editor-highlight-red-text);
+  --code-token-variable: var(--goose-text-primary);
 }
 
 /* GitHub light/dark are selected with the application appearance. */
 :root[data-code-theme="github-light"] {
   --code-bg: #ffffff;
-  --code-fg: #24292f;
+  --code-fg: var(--goose-text-primary);
   --code-border: #d0d7de;
-  --code-line-number: #6e7781;
+  --code-line-number: var(--goose-text-secondary);
   --code-toolbar-chip-bg: rgba(246, 248, 250, 0.92);
   --code-toolbar-chip-hover-bg: rgba(208, 215, 222, 0.58);
   --code-toolbar-chip-active-bg: rgba(208, 215, 222, 0.72);
-  --code-toolbar-chip-fg: #57606a;
-  --code-toolbar-chip-active-fg: #24292f;
-  --code-token-comment: #6a737d;
-  --code-token-keyword: #d73a49;
-  --code-token-string: #032f62;
-  --code-token-number: #005cc5;
-  --code-token-function: #6f42c1;
-  --code-token-type: #e36209;
-  --code-token-operator: #d73a49;
-  --code-token-variable: #24292f;
+  --code-toolbar-chip-fg: var(--goose-text-secondary);
+  --code-toolbar-chip-active-fg: var(--goose-text-primary);
+  --code-token-comment: var(--goose-text-secondary);
+  --code-token-keyword: var(--goose-editor-highlight-red-text);
+  --code-token-string: var(--goose-editor-highlight-blue-text);
+  --code-token-number: var(--goose-editor-highlight-blue-text);
+  --code-token-function: var(--goose-editor-highlight-purple-text);
+  --code-token-type: var(--goose-editor-highlight-orange-text);
+  --code-token-operator: var(--goose-editor-highlight-red-text);
+  --code-token-variable: var(--goose-text-primary);
 }
 
 :root[data-code-theme="github-dark"] {
   --code-bg: #0d1117;
-  --code-fg: #c9d1d9;
+  --code-fg: var(--goose-text-primary);
   --code-border: #30363d;
-  --code-line-number: #484f58;
+  --code-line-number: var(--goose-text-secondary);
   --code-toolbar-chip-bg: rgba(22, 27, 34, 0.92);
   --code-toolbar-chip-hover-bg: rgba(48, 54, 61, 0.82);
   --code-toolbar-chip-active-bg: rgba(56, 139, 253, 0.18);
-  --code-toolbar-chip-fg: #8b949e;
-  --code-toolbar-chip-active-fg: #c9d1d9;
-  --code-token-comment: #8b949e;
-  --code-token-keyword: #ff7b72;
-  --code-token-string: #a5d6ff;
-  --code-token-number: #79c0ff;
-  --code-token-function: #d2a8ff;
-  --code-token-type: #ffa657;
-  --code-token-operator: #ff7b72;
-  --code-token-variable: #c9d1d9;
+  --code-toolbar-chip-fg: var(--goose-text-secondary);
+  --code-toolbar-chip-active-fg: var(--goose-text-primary);
+  --code-token-comment: var(--goose-text-secondary);
+  --code-token-keyword: var(--goose-editor-highlight-red-text);
+  --code-token-string: var(--goose-editor-highlight-blue-text);
+  --code-token-number: var(--goose-editor-highlight-blue-text);
+  --code-token-function: var(--goose-editor-highlight-purple-text);
+  --code-token-type: var(--goose-editor-highlight-orange-text);
+  --code-token-operator: var(--goose-editor-highlight-red-text);
+  --code-token-variable: var(--goose-text-primary);
 }
 
 .goose-code-block-node .hljs-comment,

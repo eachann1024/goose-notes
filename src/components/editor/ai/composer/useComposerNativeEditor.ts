@@ -259,6 +259,6 @@ export function useComposerEditor(options: {
     el.tabIndex = disabled ? -1 : 0;
     el.setAttribute("aria-disabled", disabled ? "true" : "false");
     el.classList.toggle("cursor-not-allowed", Boolean(disabled));
-    el.classList.toggle("opacity-60", Boolean(disabled));
+    el.classList.toggle("text-disabled", Boolean(disabled));
   }, [disabled, editorRef]);
 }

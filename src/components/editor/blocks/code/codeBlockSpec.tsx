@@ -1023,10 +1023,10 @@ function CodeBlockComponent({
                 }}
                 className={cn(
                   "h-6 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-xs shadow-none",
-                  "placeholder:text-muted-foreground/50",
+                  "placeholder:text-placeholder",
                   "",
-                  !isEditingSummary && !summary && "opacity-50",
-                  !isEditingSummary && summary && "opacity-70",
+                  !isEditingSummary && !summary && "text-muted-foreground",
+                  !isEditingSummary && summary && "text-muted-foreground",
                 )}
               />
             </>
@@ -1124,7 +1124,7 @@ function CodeBlockComponent({
               "h-6 w-6 p-0 rounded-md",
               "border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)]",
               showLatexHint &&
-                "border-[var(--goose-callout-accent)] bg-[var(--goose-interactive-selected)] text-primary",
+                "border-[var(--goose-callout-accent)] bg-[var(--goose-interactive-selected)] text-link",
             )}
           >
             <GooseIcons.HelpCircle className="h-3.5 w-3.5" />

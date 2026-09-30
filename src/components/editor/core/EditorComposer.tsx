@@ -758,12 +758,12 @@ export function EditorComposer({
               }}
               placeholder="https://..."
               autoFocus
-              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground "
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-placeholder "
             />
             <button
               type="button"
               onClick={handleLinkPopoverSubmit}
-              className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]"
+              className="goose-interactive goose-interactive-primary flex h-8 items-center rounded-md px-2.5 text-xs font-medium"
             >
               确认
             </button>

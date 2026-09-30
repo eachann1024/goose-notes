@@ -81,7 +81,7 @@ export function GooseAIMenu() {
         </p>
       )}
       {state.status === "error" && (
-        <p role="alert" className="p-3 text-sm text-destructive">
+        <p role="alert" className="p-3 text-sm text-danger">
           {formatAiMenuError(state.error) || "改写失败，内容未修改。"}
         </p>
       )}

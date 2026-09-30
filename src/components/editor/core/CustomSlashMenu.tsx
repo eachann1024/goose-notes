@@ -357,7 +357,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                             "truncate font-medium",
                             lite ? "text-[11px]" : "text-[12px]",
                             item.disabled
-                              ? "text-muted-foreground/55"
+                              ? "text-muted-foreground"
                               : index === selectedIndex
                                 ? lite
                                   ? "text-[hsl(var(--foreground))]"
@@ -382,7 +382,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       {item.badge && (
                         <Kbd
                           shortcut={item.badge}
-                          className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none"
+                          className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] text-muted-foreground shadow-none"
                         />
                       )}
                     </button>

@@ -51,7 +51,7 @@ function VideoUrlInput({
         }}
         onBlur={submit}
         placeholder="粘贴视频链接..."
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-placeholder"
         autoFocus
       />
     </div>

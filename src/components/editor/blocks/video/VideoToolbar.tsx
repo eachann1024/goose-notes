@@ -167,7 +167,7 @@ export function VideoToolbar({
               label="删除视频"
               tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
               onClick={onDelete}
-              className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+              className="hover:bg-destructive/10 hover:text-danger focus-visible:bg-destructive/10 focus-visible:text-danger"
             >
               <Trash2 className="h-[15px] w-[15px]" />
             </VideoToolButton>

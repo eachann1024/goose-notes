@@ -26,7 +26,7 @@ type FindInPageBarProps = {
 };
 
 const iconBtnClass =
-  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-50";
+  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled";
 
 export function FindInPageBar({
   editor,
@@ -183,7 +183,7 @@ export function FindInPageBar({
               }}
               placeholder="页内查找"
               aria-label="页内查找"
-              className="min-w-0 w-44 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="min-w-0 w-44 flex-1 bg-transparent text-sm outline-none placeholder:text-placeholder"
             />
             <span className="w-14 shrink-0 text-center text-xs tabular-nums text-muted-foreground">
               {currentDisplay}/{total}
@@ -260,7 +260,7 @@ export function FindInPageBar({
                 }}
                 placeholder="替换"
                 aria-label="替换为"
-                className="min-w-0 w-44 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="min-w-0 w-44 flex-1 bg-transparent text-sm outline-none placeholder:text-placeholder"
               />
               <button
                 type="button"

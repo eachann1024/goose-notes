@@ -946,7 +946,7 @@ export const AiComposerInput = forwardRef<
           <div
             ref={placeholderRef}
             className={cn(
-              "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground opacity-70",
+              "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground",
               variant === "panel"
                 ? "top-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] leading-6"
                 : "top-0 pr-8 text-[12px] leading-[20px]",

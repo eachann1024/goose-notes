@@ -167,7 +167,7 @@
 .goose-code-toolbar-actions .goose-code-lang-trigger {
   border-color: transparent !important;
   background: transparent !important;
-  color: hsl(var(--muted-foreground) / 0.7) !important;
+  color: hsl(var(--muted-foreground)) !important;
   box-shadow: none !important;
 }
 
@@ -211,7 +211,7 @@
 }
 
 .goose-code-toolbar-actions button:disabled {
-  opacity: 0.4;
+  opacity: 1; color: var(--goose-text-disabled);
 }
 
 .goose-code-toolbar-left input {
@@ -221,7 +221,7 @@
 }
 
 .goose-code-toolbar-left input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.45) !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 .goose-code-toolbar-left input:focus {
