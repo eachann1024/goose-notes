@@ -46,7 +46,7 @@ if (!(Array.prototype as any).toReversed) {
 }
 
 // Iterator Helpers (ES2025) polyfill — Electron 旧内核 (< Chrome 122) 缺 Iterator.prototype.*。
-// @blocknote/xl-ai 直接用了 Map.prototype.values().filter()，缺失时会抛
+// 旧浏览器可能缺少 Map.prototype.values().filter()，缺失时会抛
 // `s.values(...).filter is not a function`，导致 AI 调用在错误处理路径二次崩溃。
 {
   const IterProto = Object.getPrototypeOf(

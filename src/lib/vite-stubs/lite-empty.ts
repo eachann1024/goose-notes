@@ -2,7 +2,7 @@
  * 速记小窗（plugin B / dist-quicknote）精简构建专用空壳模块。
  *
  * vite.config.ts 在 GOOSE_BUILD_TARGET=quicknote 的构建里，把
- * katex / mermaid / prettier / @react-pdf/renderer / @blocknote/xl-pdf-exporter /
+ * katex / mermaid / prettier / @react-pdf/renderer /
  * echarts 这些「文档级重型依赖」alias 到本模块，确保它们不被打进小窗包
  * （整体省下约 9MB 未压缩体积）。
  *
@@ -39,8 +39,14 @@ export const Font = {
   register: noop,
   registerHyphenationCallback: noop,
 };
+export const Document = stub;
+export const Page = stub;
+export const Text = stub;
+export const View = stub;
+export const Link = stub;
+export const Image = stub;
 
-// AI 具名导出兜底（小窗砍掉 AI：@blocknote/xl-ai + @ai-sdk/* alias 到本模块）。
+// AI 具名导出兜底（小窗砍掉 AI：@ai-sdk/* alias 到本模块）。
 // ESM 具名 import 要求被 import 的符号存在，否则链接报错；这些全是 stub，
 // 因小窗里 AI 用法已被 __GOOSE_LITE__ 门控为死代码，运行时不会真正调用。
 export const AIExtension = stub;
@@ -58,11 +64,11 @@ export const useAIDictionary = () => ({
 });
 export const ClientSideTransport = stub;
 export const aiDocumentFormats = stub;
-// 行内 AI 自定义 transport 从 xl-ai 解构的辅助（小窗死代码，仅满足链接）
+// 行内 AI 自定义 transport 旧适配器辅助（小窗死代码，仅满足链接）
 export const getProviderOverrides = stub;
 export const injectDocumentStateMessages = stub;
 export const toolDefinitionsToToolSet = stub;
-export const zh = stub; // @blocknote/xl-ai/locales 的 zh
+export const zh = stub; // 旧 AI 字典
 export const createOpenAI = stub;
 export const createOpenAICompatible = stub;
 export const createAnthropic = stub;

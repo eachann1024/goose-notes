@@ -1,5 +1,5 @@
 /**
- * 把 @blocknote/xl-pdf-exporter 动态 import 的 Inter_18pt / GeistMono
+ * 把 旧 PDF 导出器 动态 import 的 Inter_18pt / GeistMono
  * 字体 chunk alias 到本模块，避免约 1.8MB TTF 打进 dist。
  *
  * 动态 import 必须能成功（default 导出 data URL）。拉丁字形改由

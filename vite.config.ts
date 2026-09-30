@@ -26,7 +26,7 @@ const liteEmptyModule = path.resolve(__dirname, "./src/lib/vite-stubs/lite-empty
 // pi-ai provider-env 静态 require("node:fs")（仅 Bun sandbox 回退，浏览器不可达）；
 // alias 掉以免 Vite 外部化并打警告。
 const nodeFsStubModule = path.resolve(__dirname, "./src/lib/vite-stubs/node-fs-stub.ts");
-// 挡住 xl-pdf-exporter 动态 import 的 Inter_18pt / GeistMono TTF chunk（~1.8MB）。
+// 挡住 旧 PDF 导出的 Inter_18pt / GeistMono TTF chunk（~1.8MB）。
 const pdfFontEmptyModule = path.resolve(__dirname, "./src/lib/vite-stubs/pdf-font-empty.ts");
 if (!existsSync(liteEmptyModule) || !existsSync(nodeFsStubModule) || !existsSync(pdfFontEmptyModule)) {
   throw new Error(
@@ -40,12 +40,8 @@ const liteStubAliases: { find: RegExp; replacement: string }[] = isQuicknoteBuil
       { find: /^mermaid$/, replacement: liteEmptyModule },
       { find: /^echarts$/, replacement: liteEmptyModule },
       { find: /^@react-pdf\/renderer$/, replacement: liteEmptyModule },
-      { find: /^@blocknote\/xl-pdf-exporter$/, replacement: liteEmptyModule },
       { find: /^prettier\/standalone$/, replacement: liteEmptyModule },
       { find: /^prettier\/plugins\/.+$/, replacement: liteEmptyModule },
-      // AI（小窗砍掉「向 AI 提问」）：精确匹配包名，不碰 `@blocknote/xl-ai/style.css`（CSS 保留）。
-      { find: /^@blocknote\/xl-ai$/, replacement: liteEmptyModule },
-      { find: /^@blocknote\/xl-ai\/locales$/, replacement: liteEmptyModule },
       { find: /^@ai-sdk\/openai$/, replacement: liteEmptyModule },
       { find: /^@ai-sdk\/openai-compatible$/, replacement: liteEmptyModule },
       { find: /^@ai-sdk\/anthropic$/, replacement: liteEmptyModule },
@@ -109,17 +105,17 @@ const codeSplittingGroups: ChunkGroup[] = [
     priority: 39,
   },
   // 文档导出：docx / pdf / zip。entriesAware 让其按实际使用入口拆分，
-  // 用户只导出 Word 时不会被迫下载 react-pdf / xl-pdf-exporter 的体积。
+  // 用户只导出 Word 时不会被迫下载 react-pdf 的体积。
   {
     name: "vendor-export",
-    test: /[\\/]node_modules[\\/](docx|jszip|@react-pdf[\\/]renderer|@blocknote[\\/]xl-pdf-exporter)[\\/]/,
+    test: /[\\/]node_modules[\\/](docx|jszip|@react-pdf[\\/]renderer)[\\/]/,
     priority: 38,
     entriesAware: true,
   },
   // AI SDK — 较大，单独隔离方便缓存
   {
     name: "vendor-ai",
-    test: /[\\/]node_modules[\\/](ai|@ai-sdk[\\/][^\\/]+|@blocknote[\\/]xl-ai)[\\/]/,
+    test: /[\\/]node_modules[\\/](ai|@ai-sdk[\\/][^\\/]+)[\\/]/,
     priority: 30,
   },
   // Mermaid（源码里 MermaidView 用 `await import("mermaid")` 懒加载）。
@@ -310,11 +306,10 @@ export default defineConfig({
   resolve: {
     dedupe: [
       // React 单实例：dev 预构建 + 任何冷发现的非预构建模块都解析到同一份 react/react-dom，
-      // 否则 @blocknote/xl-ai → @ai-sdk/react 的 Chat/useChat 会拿到第二份 React，
       // hooks dispatcher 为 null → useMemo 读 null → 整页白屏（Invalid hook call）。
       "react",
       "react-dom",
-      // BlockNote 内核/视图层也强制单实例，保证编辑器与 xl-ai 共享同一 core/react 运行时。
+      // BlockNote 内核/视图层也强制单实例，保证编辑器组件共享同一 core/react 运行时。
       "@blocknote/core",
       "@blocknote/react",
       "@blocknote/mantine",
@@ -343,7 +338,7 @@ export default defineConfig({
   },
   // dev 依赖预构建（esbuild）。显式 include 整条 BlockNote + AI SDK 链，
   // 让它们与主体在同一次预构建里共享同一份 react，杜绝"第二份 React 实例"导致的
-  // useMemo/useState dispatcher 为 null 白屏。@ai-sdk/react 是 xl-ai 的 peer，
+  // useMemo/useState dispatcher 为 null 白屏。@ai-sdk/react 共享 React，
   // 不在 src 直接 import，必须显式列出，否则可能被冷发现成非预构建模块而引入第二份 React。
   optimizeDeps: {
     include: [
@@ -354,8 +349,6 @@ export default defineConfig({
       "@blocknote/core",
       "@blocknote/react",
       "@blocknote/mantine",
-      "@blocknote/xl-ai",
-      "@blocknote/xl-pdf-exporter",
       "@ai-sdk/react",
       "@ai-sdk/openai",
       "@ai-sdk/anthropic",
