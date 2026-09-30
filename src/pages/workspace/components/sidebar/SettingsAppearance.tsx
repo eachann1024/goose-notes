@@ -187,7 +187,7 @@ function FontSizeStepper({
           disabled={value <= min}
           onClick={onDecrease}
         >
-          <LucideIcons.Minus className="h-3.5 w-3.5" />
+          <GooseIcons.Minus className="h-3.5 w-3.5" />
         </Button>
         <span
           className="min-w-8 text-center text-xs tabular-nums text-foreground"
@@ -203,7 +203,7 @@ function FontSizeStepper({
           disabled={value >= max}
           onClick={onIncrease}
         >
-          <LucideIcons.Plus className="h-3.5 w-3.5" />
+          <GooseIcons.Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>
@@ -350,7 +350,7 @@ export function SettingsAppearance({
       label="侧栏字体大小"
       description="只影响左侧栏的页面树、分区标题和笔记本名称。"
       icon={
-        <LucideIcons.PanelLeft
+        <GooseIcons.PanelLeft
           className="h-4 w-4 shrink-0 text-muted-foreground"
           strokeWidth={1.75}
         />
@@ -384,7 +384,7 @@ export function SettingsAppearance({
     >
       <div>
         <div className="flex items-center gap-3">
-          <LucideIcons.AppWindow
+          <GooseIcons.AppWindow
             className="h-4 w-4 shrink-0 text-muted-foreground"
             strokeWidth={1.75}
           />
@@ -437,7 +437,7 @@ export function SettingsAppearance({
           <SettingsSectionCard title="主题" className="border border-border/60">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <LucideIcons.SunMoon
+              <GooseIcons.SunMoon
                 className="h-4 w-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.75}
               />
@@ -460,7 +460,7 @@ export function SettingsAppearance({
                       )}
                       onClick={() => setTheme("system")}
                     >
-                      <LucideIcons.Laptop className="h-4 w-4" />
+                      <GooseIcons.Laptop className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">跟随系统</TooltipContent>
@@ -480,7 +480,7 @@ export function SettingsAppearance({
                       )}
                       onClick={() => setTheme("light")}
                     >
-                      <LucideIcons.Sun className="h-4 w-4" />
+                      <GooseIcons.Sun className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">浅色模式</TooltipContent>
@@ -500,7 +500,7 @@ export function SettingsAppearance({
                       )}
                       onClick={() => setTheme("dark")}
                     >
-                      <LucideIcons.Moon className="h-4 w-4" />
+                      <GooseIcons.Moon className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">深色模式</TooltipContent>
@@ -511,7 +511,7 @@ export function SettingsAppearance({
 
           <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
             <div className="mb-3 flex items-start gap-3">
-              <LucideIcons.Palette
+              <GooseIcons.Palette
                 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.75}
               />
@@ -573,7 +573,7 @@ export function SettingsAppearance({
                     <span className="flex-1 whitespace-nowrap">
                       {option.label}
                     </span>
-                    <LucideIcons.Check
+                    <GooseIcons.Check
                       aria-hidden="true"
                       className={cn(
                         "h-3.5 w-3.5 shrink-0",
@@ -680,7 +680,7 @@ function EditorLayoutSettings() {
             <span className="flex w-full items-center justify-between text-sm font-medium">
               {label}
               {layout === value && (
-                <LucideIcons.Check className="h-4 w-4" aria-hidden="true" />
+                <GooseIcons.Check className="h-4 w-4" aria-hidden="true" />
               )}
             </span>
             <span className="text-xs text-muted-foreground">{description}</span>

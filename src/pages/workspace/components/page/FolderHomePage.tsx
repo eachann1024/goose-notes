@@ -18,7 +18,7 @@ import {
   FileText,
   Folder,
   Loader2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { usePages } from "@/stores/usePages";

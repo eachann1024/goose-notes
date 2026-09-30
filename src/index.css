@@ -1600,7 +1600,7 @@ button.ai-icon-button {
   }
 }
 
-/* Lucide 图标全局描边统一为 1.75（贴近 Notion 视觉） */
+/* Legacy custom icons keep their original stroke. Phosphor uses regular weight paths. */
 svg.lucide {
   stroke-width: 1.75;
 }
@@ -1712,3 +1712,4 @@ html[data-startup-settling] *::after {
   --ring: var(--muted-foreground);
   --goose-accent-focus: hsl(var(--muted-foreground));
 }
+svg.goose-icon { flex-shrink: 0; vertical-align: middle; }

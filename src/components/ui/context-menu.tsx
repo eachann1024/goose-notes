@@ -453,7 +453,7 @@ const ContextMenuSubTrigger = React.forwardRef<
         className={cn(itemClass, inset && "pl-8", className)}
       >
         {children}
-        <LucideIcons.ChevronRight className="ml-auto h-4 w-4" />
+        <GooseIcons.ChevronRight className="ml-auto h-4 w-4" />
       </button>
     );
   },

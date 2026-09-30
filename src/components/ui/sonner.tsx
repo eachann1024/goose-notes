@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Toaster as Sonner, toast as sonnerToast } from "sonner";
 import type { ExternalToast } from "sonner";
-import { CircleCheck, X } from "lucide-react";
+import { CircleCheck, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;

@@ -1,4 +1,5 @@
-import { AlertTriangle, Save } from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
+import { AlertTriangle, Save } from "@/components/ui/icons";
 import { Switch } from "@/components/ui/switch";
 
 interface NotebookEditDialogProps {
@@ -189,9 +190,9 @@ export function NotebookEditDialog({
                   className="text-muted-foreground hover:text-[var(--goose-color-danger-focus)] hover:bg-[var(--goose-color-danger-subtle-bg)] w-full"
                 >
                   {isLocalFolder ? (
-                    <LucideIcons.FolderX className="mr-2 h-4 w-4" />
+                    <GooseIcons.FolderX className="mr-2 h-4 w-4" />
                   ) : (
-                    <LucideIcons.Trash2 className="mr-2 h-4 w-4" />
+                    <GooseIcons.Trash2 className="mr-2 h-4 w-4" />
                   )}
                   {isLocalFolder ? "移除此记事本" : "删除此记事本"}
                 </Button>

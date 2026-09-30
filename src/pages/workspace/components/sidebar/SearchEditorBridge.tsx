@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, X } from "@/components/ui/icons";
 import type { EditorRef } from "@/components/editor/core/Editor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePages } from "@/stores/usePages";

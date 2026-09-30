@@ -46,8 +46,8 @@ import { usePersistentDismissState } from "@/hooks/usePersistentDismissState";
 import { HostAdapter } from "@/lib/host/adapter";
 import type { ExportOptions } from "@/lib/export";
 import { localStorageAdapter as dataStorage } from "@/lib/storage";
-import * as LucideIcons from "lucide-react";
-import { ExternalLink } from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
+import { ExternalLink } from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 
 interface SettingsDialogProps {
@@ -60,13 +60,13 @@ interface SettingsDialogProps {
 }
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
-  { id: "appearance", label: "外观主题", icon: LucideIcons.Laptop },
-  { id: "general", label: "通用设置", icon: LucideIcons.Settings },
-  { id: "shortcuts", label: "快捷键", icon: LucideIcons.Keyboard },
-  { id: "local-folder", label: "本地文件夹", icon: LucideIcons.FolderOpen },
-  { id: "git-sync", label: "Git 同步", icon: LucideIcons.GitBranch },
-  { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
-  { id: "data", label: "数据管理", icon: LucideIcons.Database },
+  { id: "appearance", label: "外观主题", icon: GooseIcons.Laptop },
+  { id: "general", label: "通用设置", icon: GooseIcons.Settings },
+  { id: "shortcuts", label: "快捷键", icon: GooseIcons.Keyboard },
+  { id: "local-folder", label: "本地文件夹", icon: GooseIcons.FolderOpen },
+  { id: "git-sync", label: "Git 同步", icon: GooseIcons.GitBranch },
+  { id: "ai", label: "AI 助手", icon: GooseIcons.Sparkles },
+  { id: "data", label: "数据管理", icon: GooseIcons.Database },
 ];
 
 // 设置侧栏鹅应用：图标使用各应用随包提供的 logo.png
@@ -654,7 +654,7 @@ export function SettingsDialog({
                 className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label="关闭鹅的全家桶"
               >
-                <LucideIcons.X className="h-3 w-3" />
+                <GooseIcons.X className="h-3 w-3" />
               </button>
               <p className="mb-2 pr-4 text-xs font-medium text-muted-foreground">
                 鹅的全家桶
@@ -799,7 +799,7 @@ export function SettingsDialog({
         <div className="relative mx-auto w-full max-w-md py-6">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-[var(--goose-color-danger-subtle-bg)]">
-              <LucideIcons.AlertTriangle className="w-7 h-7 text-destructive" />
+              <GooseIcons.AlertTriangle className="w-7 h-7 text-destructive" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               确认重置所有数据？

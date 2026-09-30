@@ -5,7 +5,7 @@ import {
   Download,
   RefreshCw,
   Trash2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { MouseEventHandler, ReactNode } from "react";
 import { useCallback, useEffect } from "react";
 import { flip, offset, shift, size, useFloating } from "@floating-ui/react";

@@ -3,7 +3,7 @@ import type { NotebookAiLayoutMode } from "@/pages/workspace/components/notebook
 import { isFullscreenAiLayout } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { useAiHeaderActions, useAiHeaderTitle } from "@/pages/workspace/components/notebook-ai/aiHeaderSlot";
 import { ConversationTitle } from "@/pages/workspace/components/notebook-ai/ConversationTitle";
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "@/components/ui/icons";
 import { useAiStatus } from "@/stores/useAiStatus";
 import { useSidebarView } from "@/stores/useSidebarView";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
@@ -119,7 +119,7 @@ export function PageHeader({
                   onClick={toggleSidebarCollapsed}
                   aria-label="展开侧栏"
                 >
-                  <LucideIcons.PanelLeftOpen className="h-4 w-4" />
+                  <GooseIcons.PanelLeftOpen className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -218,7 +218,7 @@ export function PageHeader({
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
-                    <LucideIcons.RotateCcw className="h-4 w-4" />
+                    <GooseIcons.RotateCcw className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">恢复页面</TooltipContent>
@@ -234,7 +234,7 @@ export function PageHeader({
                     size="icon"
                     className="h-8 w-8 rounded-[8px] bg-[var(--goose-interactive-selected)] text-[hsl(var(--foreground))] transition-colors hover:bg-[var(--goose-color-danger-subtle-bg)] hover:text-[var(--goose-color-danger)]"
                   >
-                    <LucideIcons.Trash2 className="h-4 w-4" />
+                    <GooseIcons.Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">永久删除</TooltipContent>

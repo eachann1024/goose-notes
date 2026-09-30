@@ -417,7 +417,7 @@ export function Sidebar({
                       aria-pressed={!settingsOpen && currentView === "pages"}
                       onClick={() => switchSidebarView("pages")}
                     >
-                      <LucideIcons.FolderOpen aria-hidden="true" className="h-4 w-4" />
+                      <GooseIcons.FolderOpen aria-hidden="true" className="h-4 w-4" />
                       <span className="sidebar-mode-rail-label">本地</span>
                     </button>
                   </TooltipTrigger>
@@ -437,7 +437,7 @@ export function Sidebar({
                       aria-pressed={!settingsOpen && currentView === "outline"}
                       onClick={() => switchSidebarView("outline")}
                     >
-                      <LucideIcons.ListTree aria-hidden="true" className="h-4 w-4" />
+                      <GooseIcons.ListTree aria-hidden="true" className="h-4 w-4" />
                       <span className="sidebar-mode-rail-label">大纲</span>
                     </button>
                   </TooltipTrigger>
@@ -457,7 +457,7 @@ export function Sidebar({
                       aria-pressed={!settingsOpen && currentView === "search"}
                       onClick={handleOpenSearch}
                     >
-                      <LucideIcons.Search aria-hidden="true" className="h-4 w-4" />
+                      <GooseIcons.Search aria-hidden="true" className="h-4 w-4" />
                       <span className="sidebar-mode-rail-label">搜索</span>
                     </button>
                   </TooltipTrigger>

@@ -292,10 +292,10 @@ export function ImageExportThemeSelector({
               className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-[var(--goose-interactive-selected-fg)] transition-colors"
             >
               <span className="flex items-center gap-1.5">
-                <LucideIcons.Settings className="h-3 w-3" />
+                <GooseIcons.Settings className="h-3 w-3" />
                 生成选项
               </span>
-              <LucideIcons.ChevronDown
+              <GooseIcons.ChevronDown
                 className={`h-3.5 w-3.5 transition-transform duration-200 ${configOpen ? "rotate-180" : ""}`}
               />
             </button>
@@ -315,7 +315,7 @@ export function ImageExportThemeSelector({
             取消
           </Button>
           <Button size="sm" onClick={handleConfirm} className="h-8 text-xs">
-            <LucideIcons.Image className="mr-1.5 h-3.5 w-3.5" />
+            <GooseIcons.Image className="mr-1.5 h-3.5 w-3.5" />
             生成图片
           </Button>
         </DialogFooter>
@@ -360,7 +360,7 @@ function GenerationOptionsPanel({
         className="flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0 rounded-lg border bg-muted/20 px-3 py-2"
       >
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <LucideIcons.Settings className="h-3 w-3" />
+          <GooseIcons.Settings className="h-3 w-3" />
           生成选项
         </span>
         {rows.map((row) => (
@@ -651,7 +651,7 @@ function ThemePreviewCard({
         )}
         {selected && (
           <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-[0_2px_6px_rgba(15,23,42,0.18)]">
-            <LucideIcons.Check
+            <GooseIcons.Check
               className="h-3 w-3 text-primary-foreground"
               strokeWidth={3}
             />

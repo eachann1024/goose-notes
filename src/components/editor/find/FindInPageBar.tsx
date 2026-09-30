@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { cn } from "@/components/editor/utils/cn";
 import { formatShortcut } from "@/lib/utils";
 import type { BlockNoteEditor } from "@blocknote/core";
@@ -160,14 +160,14 @@ export function FindInPageBar({
           onClick={handleToggleReplace}
         >
           {replaceOpen ? (
-            <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+            <GooseIcons.ChevronDown className="h-3.5 w-3.5" />
           ) : (
-            <LucideIcons.ChevronRight className="h-3.5 w-3.5" />
+            <GooseIcons.ChevronRight className="h-3.5 w-3.5" />
           )}
         </button>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-1">
-            <LucideIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <GooseIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
               value={query}
@@ -210,7 +210,7 @@ export function FindInPageBar({
               disabled={total === 0}
               onClick={() => handleStep(-1)}
             >
-              <LucideIcons.ChevronUp className="h-3.5 w-3.5" />
+              <GooseIcons.ChevronUp className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -220,7 +220,7 @@ export function FindInPageBar({
               disabled={total === 0}
               onClick={() => handleStep(1)}
             >
-              <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+              <GooseIcons.ChevronDown className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -229,7 +229,7 @@ export function FindInPageBar({
               className={iconBtnClass}
               onClick={onClose}
             >
-              <LucideIcons.X className="h-3.5 w-3.5" />
+              <GooseIcons.X className="h-3.5 w-3.5" />
             </button>
           </div>
           {replaceOpen ? (
@@ -237,7 +237,7 @@ export function FindInPageBar({
               id="goose-find-replace-row"
               className="flex min-w-0 items-center gap-1"
             >
-              <LucideIcons.Replace className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <GooseIcons.Replace className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <input
                 ref={replaceInputRef}
                 value={replacement}
@@ -270,7 +270,7 @@ export function FindInPageBar({
                 disabled={!canReplace}
                 onClick={handleReplace}
               >
-                <LucideIcons.Replace className="h-3.5 w-3.5" />
+                <GooseIcons.Replace className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
@@ -280,7 +280,7 @@ export function FindInPageBar({
                 disabled={!canReplace}
                 onClick={handleReplaceAll}
               >
-                <LucideIcons.ReplaceAll className="h-3.5 w-3.5" />
+                <GooseIcons.ReplaceAll className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : null}

@@ -1,7 +1,7 @@
 import { memo, type ComponentProps } from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 
 function MdInput({
   node,

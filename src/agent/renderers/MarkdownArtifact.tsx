@@ -1,6 +1,6 @@
 import React, { useMemo, type ReactNode } from "react";
 import MarkdownIt from "markdown-it";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "@/components/ui/icons";
 import { Suspense } from "react";
 const EChartsBlock = React.lazy(() =>
   import("./EChartsBlock").then((m) => ({ default: m.EChartsBlock })),

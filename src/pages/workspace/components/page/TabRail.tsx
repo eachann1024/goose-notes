@@ -230,7 +230,7 @@ function SortableTabItem({
           )}
         >
           {tab.pinned && (
-            <LucideIcons.Pin
+            <GooseIcons.Pin
               aria-label="已固定"
               className="h-3 w-3 shrink-0 text-primary"
             />
@@ -275,7 +275,7 @@ function SortableTabItem({
                   }}
                   aria-label="关闭标签页"
                 >
-                  <LucideIcons.X className="h-3.5 w-3.5" />
+                  <GooseIcons.X className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -699,7 +699,7 @@ export function TabRail({
                   onClick={onOpenSearch}
                   aria-label="新标签页"
                 >
-                  <LucideIcons.Plus className="h-4 w-4" />
+                  <GooseIcons.Plus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -715,7 +715,7 @@ export function TabRail({
                   className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
                   aria-label="全部标签页"
                 >
-                  <LucideIcons.ChevronDown
+                  <GooseIcons.ChevronDown
                     className="h-3.5 w-3.5"
                     strokeWidth={1.75}
                   />
@@ -765,7 +765,7 @@ export function TabRail({
                       }}
                     >
                       {tab.pinned && (
-                        <LucideIcons.Pin
+                        <GooseIcons.Pin
                           className="h-3 w-3 shrink-0 text-primary"
                           strokeWidth={1.75}
                         />
@@ -779,7 +779,7 @@ export function TabRail({
                         {title}
                       </span>
                       {isActive && (
-                        <LucideIcons.Check
+                        <GooseIcons.Check
                           className="h-3.5 w-3.5 shrink-0 text-foreground/60"
                           strokeWidth={1.75}
                         />

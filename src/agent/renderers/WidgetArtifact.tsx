@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Info } from "lucide-react";
+import { Info } from "@/components/ui/icons";
 import type { AgentArtifact, MarkdownNoteArtifact } from "@/agent/core/types";
 import { DatavizSegmentList } from "./MarkdownArtifact";
 import { md } from "./MarkdownArtifact";

@@ -1,6 +1,6 @@
 import { activateWorkspace } from "@/lib/settings-navigation";
 import { isImeKeyboardEvent } from "@/hooks/useImeInput";
-import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
+import { Search, Plus, Sparkles, FolderOpen, type GooseIcon } from "@/components/ui/icons";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import {
@@ -284,7 +284,7 @@ export function PageEmptyState() {
       title: string;
       description: string;
       onClick: () => void | Promise<void>;
-      icon: LucideIcon;
+      icon: GooseIcon;
       variant?: "default" | "ai";
     }> = [];
 

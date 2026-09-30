@@ -1,0 +1,6 @@
+{
+  "name": "goose-pr-ui-preview",
+  "private": true,
+  "type": "module",
+  "dependencies": { "playwright": "1.60.0" }
+}

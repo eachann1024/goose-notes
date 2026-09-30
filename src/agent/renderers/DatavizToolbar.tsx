@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Copy, Download, Loader2, Maximize2 } from "lucide-react";
+import { Copy, Download, Loader2, Maximize2 } from "@/components/ui/icons";
 import { toPng } from "html-to-image";
 import { toast } from "@/components/ui/sonner";
 import { FullscreenPreview } from "@/components/preview/FullscreenPreview";

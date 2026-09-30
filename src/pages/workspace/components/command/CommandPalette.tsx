@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import { Command } from "cmdk";
-import { Search, Columns2, Rows2, Maximize2, X, ChevronDown } from "lucide-react";
+import { Search, Columns2, Rows2, Maximize2, X, ChevronDown } from "@/components/ui/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,

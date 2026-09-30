@@ -1,6 +1,7 @@
+import { resolvePageIcon } from "@/lib/resolvePageIcon";
 export const renderNotebookIcon = (iconStr: string, className?: string) => {
-  if (iconStr && !iconStr.match(/\p{Emoji}/u) && (LucideIcons as any)[iconStr]) {
-    const IconComp = (LucideIcons as any)[iconStr];
+  const IconComp = resolvePageIcon(iconStr);
+  if (IconComp) {
     return <IconComp className={cn("h-4 w-4 stroke-[1.6]", className)} />;
   }
   return (

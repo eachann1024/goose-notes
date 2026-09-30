@@ -136,7 +136,7 @@ function SortableNotebookItem({
                   }}
                   aria-label="移除本地文件夹"
                 >
-                  <LucideIcons.FolderX className="h-3.5 w-3.5" />
+                  <GooseIcons.FolderX className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">移除本地文件夹</TooltipContent>
@@ -155,13 +155,13 @@ function SortableNotebookItem({
                   onEdit(notebook.id);
                 }}
               >
-                <LucideIcons.Settings className="h-3.5 w-3.5" />
+                <GooseIcons.Settings className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">编辑记事本</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        {isActive && <LucideIcons.Check className="h-4 w-4" />}
+        {isActive && <GooseIcons.Check className="h-4 w-4" />}
       </div>
     </div>
   );
@@ -380,7 +380,7 @@ export function NotebookSwitcher({
                 >
                   {activeNotebookLabel}
                 </span>
-                <LucideIcons.ChevronDown className="goose-notebook-chevron" aria-hidden="true" />
+                <GooseIcons.ChevronDown className="goose-notebook-chevron" aria-hidden="true" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -458,7 +458,7 @@ export function NotebookSwitcher({
               className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
               onClick={handleOpenLocalFolder}
             >
-              <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+              <GooseIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
               打开文件夹
             </PopoverAction>
           ) : (
@@ -467,14 +467,14 @@ export function NotebookSwitcher({
                 className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={handleCreate}
               >
-                <LucideIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                <GooseIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
                 新建记事本
               </PopoverAction>
               <PopoverAction
                 className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"
                 onClick={handleOpenLocalFolder}
               >
-                <LucideIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                <GooseIcons.FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
                 打开文件夹
               </PopoverAction>
             </div>
@@ -488,7 +488,7 @@ export function NotebookSwitcher({
                 aria-label="切换外观"
                 onClick={toggleDarkMode}
               >
-                <LucideIcons.Sun className="h-4 w-4" />
+                <GooseIcons.Sun className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -499,7 +499,7 @@ export function NotebookSwitcher({
                   onOpenSettings?.();
                 }}
               >
-                <LucideIcons.Settings className="h-4 w-4" />
+                <GooseIcons.Settings className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -510,7 +510,7 @@ export function NotebookSwitcher({
                 toggleSidebarCollapsed();
               }}
             >
-              <LucideIcons.PanelLeft className="h-4 w-4 text-muted-foreground" />
+              <GooseIcons.PanelLeft className="h-4 w-4 text-muted-foreground" />
               收起侧栏
             </PopoverAction>
           )}

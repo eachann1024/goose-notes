@@ -39,7 +39,7 @@ export function SidebarSectionHeader({
                   aria-label="收起全部页面"
                   onClick={onCollapseAll}
                 >
-                  <LucideIcons.ListCollapse className="h-3.5 w-3.5" />
+                  <GooseIcons.ListCollapse className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">收起全部页面</TooltipContent>
@@ -55,7 +55,7 @@ export function SidebarSectionHeader({
                   aria-label={createTitle}
                   onClick={onCreate}
                 >
-                  <LucideIcons.Plus className="h-4 w-4" />
+                  <GooseIcons.Plus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import * as LucideIcons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
+import type { GooseIcon } from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { cn } from "@/lib/utils";
@@ -389,7 +389,7 @@ export function HistoryVersionList() {
     <div className="flex-1 min-h-0 flex flex-col" aria-label="页面历史">
       <div className="shrink-0 px-3 pt-3 pb-2">
         <div className="flex items-center gap-1.5">
-          <LucideIcons.History className="h-3.5 w-3.5 text-[var(--goose-interactive-selected-fg)]" />
+          <GooseIcons.History className="h-3.5 w-3.5 text-[var(--goose-interactive-selected-fg)]" />
           <span className="text-[12px] font-medium text-foreground">
             页面历史
           </span>
@@ -543,7 +543,8 @@ export function HistoryVersionList() {
                             "",
                           )}
                         >
-                          <LucideIcons.Star
+                          <GooseIcons.Star
+                            fill={v.isMilestone ? "currentColor" : undefined}
                             className={cn(
                               "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
                               v.isMilestone &&
@@ -584,7 +585,7 @@ export function HistoryToolbar() {
         className="history-secondary-control h-8 px-3 text-xs gap-1.5 text-foreground shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
         onClick={exit}
       >
-        <LucideIcons.ArrowLeft className="h-3.5 w-3.5" />
+        <GooseIcons.ArrowLeft className="h-3.5 w-3.5" />
         返回
       </Button>
 
@@ -611,7 +612,7 @@ export function HistoryToolbar() {
         >
           {isRestoring || selectedStatus === "loading" ? (
             <>
-              <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              <GooseIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               {isRestoring ? "正在还原" : "正在读取"}
             </>
           ) : (
@@ -630,7 +631,7 @@ function HistoryReaderState({
   spinning = false,
   action,
 }: {
-  icon: LucideIcon;
+  icon: GooseIcon;
   title: string;
   description?: string;
   spinning?: boolean;
@@ -675,7 +676,7 @@ export function HistoryReader() {
   if (selectedStatus === "loading") {
     return (
       <HistoryReaderState
-        icon={LucideIcons.LoaderCircle}
+        icon={GooseIcons.LoaderCircle}
         title="正在读取历史版本"
         description="稍等片刻，正在准备只读预览。"
         spinning
@@ -686,7 +687,7 @@ export function HistoryReader() {
   if (isEmpty) {
     return (
       <HistoryReaderState
-        icon={indexError ? LucideIcons.FileWarning : LucideIcons.History}
+        icon={indexError ? GooseIcons.FileWarning : GooseIcons.History}
         title={indexError ? "历史列表无法读取" : "暂无历史版本"}
         description={
           indexError ??
@@ -699,7 +700,7 @@ export function HistoryReader() {
   if (selectedStatus === "missing") {
     return (
       <HistoryReaderState
-        icon={LucideIcons.FileQuestion}
+        icon={GooseIcons.FileQuestion}
         title="此历史版本不可读取"
         description="版本文件为空或无法读取。若仓库在云盘上，请先恢复云盘登录后再打开历史。"
       />
@@ -709,7 +710,7 @@ export function HistoryReader() {
   if (selectedStatus === "error") {
     return (
       <HistoryReaderState
-        icon={LucideIcons.FileWarning}
+        icon={GooseIcons.FileWarning}
         title="此历史版本格式异常"
         description="这条记录可能来自旧版格式或包含脏数据，已跳过渲染以避免白屏。"
       />
@@ -719,7 +720,7 @@ export function HistoryReader() {
   if (!(selectedContent && selectedVersionId)) {
     return (
       <HistoryReaderState
-        icon={LucideIcons.MousePointerClick}
+        icon={GooseIcons.MousePointerClick}
         title="选择一个历史版本"
         description="从左侧列表选择时间点后，这里会显示只读预览。"
       />
@@ -731,7 +732,7 @@ export function HistoryReader() {
       resetKey={selectedVersionId}
       fallback={(_, reset) => (
         <HistoryReaderState
-          icon={LucideIcons.FileWarning}
+          icon={GooseIcons.FileWarning}
           title="此历史版本渲染失败"
           description="已阻止历史视图白屏。可以重试，或切换左侧其他历史版本。"
           action={
@@ -742,7 +743,7 @@ export function HistoryReader() {
               className="history-secondary-control mt-1 h-8 gap-1.5 rounded-[10px] text-xs shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
               onClick={reset}
             >
-              <LucideIcons.RotateCcw className="h-3.5 w-3.5" />
+              <GooseIcons.RotateCcw className="h-3.5 w-3.5" />
               重试
             </Button>
           }

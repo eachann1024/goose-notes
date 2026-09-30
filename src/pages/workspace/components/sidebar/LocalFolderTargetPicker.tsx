@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import {
   CommandDialog,
   CommandEmpty,
@@ -144,7 +144,7 @@ export function LocalFolderTargetPicker() {
               value={`${item.label} ${item.pathLabel}`}
               onSelect={() => void handleSelect(item.folderId)}
             >
-              <LucideIcons.Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <GooseIcons.Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm">{item.label}</div>
                 <div className="truncate text-xs text-muted-foreground">

@@ -13,7 +13,7 @@ import {
   History as HistoryIcon,
   MessageSquareText,
   Trash2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { TOOLTIP_DELAY_MS } from "@/components/ui/tooltip-delay";
 import {

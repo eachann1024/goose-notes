@@ -1,6 +1,6 @@
 import { type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { cn } from "@/components/editor/utils/cn";
 import type { AiReferenceSuggestionItem } from "@/components/editor/ai/composer/referenceLookup";
 import { useCenteredActiveItemScroll } from "@/components/editor/hooks/useCenteredActiveItemScroll";
@@ -137,9 +137,9 @@ export function ComposerSuggestionsList({
                 >
                   <span className="flex h-[18px] w-3.5 shrink-0 items-center justify-center">
                     {item.isFolder ? (
-                      <LucideIcons.Folder className="h-3.5 w-3.5 text-muted-foreground" />
+                      <GooseIcons.Folder className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                      <LucideIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <GooseIcons.FileText className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </span>
                   <div className="flex min-w-0 flex-1 flex-col justify-start gap-0.5">

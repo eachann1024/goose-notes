@@ -1,5 +1,5 @@
 import type { HTMLAttributes, MouseEvent, PointerEvent } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import "./main-tree.css";
 

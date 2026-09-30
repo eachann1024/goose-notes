@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";
 import { Button } from "@/components/editor/ui/button";
@@ -68,7 +68,7 @@ export function LinkButton({
             aria-label="移除链接"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Link className="h-[15px] w-[15px]" />
+            <GooseIcons.Link className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="移除链接" />
@@ -87,7 +87,7 @@ export function LinkButton({
               aria-label="添加链接"
               className={ITEM_CLASS}
             >
-              <LucideIcons.Link className="h-[15px] w-[15px]" />
+              <GooseIcons.Link className="h-[15px] w-[15px]" />
             </Toggle>
           </PopoverTrigger>
         </TooltipTrigger>

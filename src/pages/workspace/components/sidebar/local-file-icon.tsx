@@ -1,5 +1,5 @@
-import * as LucideIcons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
+import { resolvePageIcon } from "@/lib/resolvePageIcon";
 import type { Page } from "@/types";
 import type { LocalFolderLoadStatus } from "@/stores/useNotebooks";
 
@@ -111,12 +111,11 @@ export function LocalFileIcon({
   hasChildren,
   isExpanded,
 }: LocalFileIconProps) {
-  const iconComponentMap = LucideIcons as unknown as Record<string, LucideIcon>;
-  const SelectedIcon = iconName ? iconComponentMap[iconName] : null;
+  const SelectedIcon = resolvePageIcon(iconName);
 
   if (page.localReadState === "error") {
     return (
-      <LucideIcons.CircleX
+      <GooseIcons.CircleX
         size={16}
         className={cn("h-4 w-4 text-destructive/90", className)}
         aria-label={page.localReadError || "Markdown 文件读取失败"}
@@ -127,7 +126,7 @@ export function LocalFileIcon({
   // 本地仓库：目录默认用文件夹图标（开合状态跟箭头走），右键菜单换过的图标优先。
   if (isLocalFolder && page.isFolder) {
     const Icon =
-      SelectedIcon ?? (isExpanded ? LucideIcons.FolderOpen : LucideIcons.Folder);
+      SelectedIcon ?? (isExpanded ? GooseIcons.FolderOpen : GooseIcons.Folder);
     return (
       <Icon
         size={16}
@@ -151,9 +150,9 @@ export function LocalFileIcon({
     );
   }
 
-  const DefaultPageIcon = pageHasVisibleContent(page)
-    ? LucideIcons.FileText
-    : LucideIcons.File;
+  const DefaultPageIcon = isLocalFolder
+    ? GooseIcons.FileMd
+    : pageHasVisibleContent(page) ? GooseIcons.FileText : GooseIcons.File;
 
   if (isLocalFolder) {
     return (
@@ -169,8 +168,9 @@ export function LocalFileIcon({
 
   // 内置笔记本：有子页面且未自定义图标时，用"有内容的文件夹"标识可展开
   if (hasChildren) {
+    const FolderStateIcon = isExpanded ? GooseIcons.FolderOpen : GooseIcons.Folder;
     return (
-      <LucideIcons.FolderOpen
+      <FolderStateIcon
         size={16}
         className={cn(
           "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
@@ -183,7 +183,7 @@ export function LocalFileIcon({
   // 已设置 iconName 但 lucide 中不存在该 key（升级/改名导致）：
   // fallback 到默认图标，避免把英文字符串直接渲染到侧栏。
   if (page.isFolder) {
-    const FolderIcon = hasChildren ? LucideIcons.FolderOpen : LucideIcons.Folder;
+    const FolderIcon = isExpanded ? GooseIcons.FolderOpen : GooseIcons.Folder;
     return (
       <FolderIcon
         size={16}

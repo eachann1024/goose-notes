@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { CircleAlert, FilePlus2, X, Pencil } from "lucide-react";
+import { CircleAlert, FilePlus2, X, Pencil } from "@/components/ui/icons";
 import {
   useQuickNote,
   buildQuickNoteDraftPage,

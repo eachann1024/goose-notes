@@ -1,7 +1,7 @@
 import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { BlockNoteEditor } from "@blocknote/core";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Button } from "@/components/editor/ui/button";
 import { Portal } from "@/components/editor/ui/portal";
 import { cn } from "@/components/editor/utils/cn";
@@ -766,7 +766,7 @@ export function FormattingToolbarColorPicker({
         }}
       >
         <span className="relative inline-flex size-4 items-center justify-center">
-          <LucideIcons.Palette
+          <GooseIcons.Palette
             aria-hidden="true"
             className="size-4"
             style={lastTextPreview ? { color: lastTextPreview } : undefined}

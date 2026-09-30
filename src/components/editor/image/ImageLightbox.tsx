@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Zoom } from "yet-another-react-lightbox/plugins";
-import { Copy, Download, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Copy, Download, X, ZoomIn, ZoomOut } from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { blobToBase64 } from "@/lib/imageStorage/utils";

@@ -1,4 +1,4 @@
-import { CircleAlert, RotateCcw, X } from "lucide-react";
+import { CircleAlert, RotateCcw, X } from "@/components/ui/icons";
 import { SuccessToastIcon, toast } from "./sonner";
 
 type ReceiptItem = { title: string; deleted: boolean };

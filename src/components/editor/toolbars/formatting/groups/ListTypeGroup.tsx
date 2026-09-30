@@ -1,4 +1,4 @@
-import { CheckSquare, List, ListOrdered } from "lucide-react";
+import { CheckSquare, List, ListOrdered } from "@/components/ui/icons";
 import { useBlockNoteEditor, useEditorState } from "@blocknote/react";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";

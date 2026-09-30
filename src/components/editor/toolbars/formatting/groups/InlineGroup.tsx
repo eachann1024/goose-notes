@@ -1,4 +1,4 @@
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger } from "@/components/editor/ui/tooltip";
 import { Toggle } from "@/components/editor/ui/toggle";
 import { useBlockNoteEditor } from "@blocknote/react";
@@ -32,7 +32,7 @@ export function InlineGroup({
             aria-label="下划线"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Underline className="h-[15px] w-[15px]" />
+            <GooseIcons.Underline className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="下划线" shortcut="Mod+U" />
@@ -47,7 +47,7 @@ export function InlineGroup({
             aria-label="行内代码"
             className={ITEM_CLASS}
           >
-            <LucideIcons.Code className="h-[15px] w-[15px]" />
+            <GooseIcons.Code className="h-[15px] w-[15px]" />
           </Toggle>
         </TooltipTrigger>
         <ToolbarTooltip label="行内代码" shortcut="Mod+E" />

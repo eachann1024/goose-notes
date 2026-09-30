@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { GooseIcon } from "@/components/ui/icons";
 
 export type SettingsTab =
   | "appearance"
@@ -12,5 +12,5 @@ export type SettingsTab =
 export interface SettingsTabConfig {
   id: SettingsTab;
   label: string;
-  icon: LucideIcon;
+  icon: GooseIcon;
 }

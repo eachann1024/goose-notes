@@ -23,7 +23,7 @@ import {
 } from "@/lib/local-folder-open-apps";
 import { getCachedAvailableOpenApps, shell } from "@/lib/electron-platform/shell";
 import { fs } from "@/lib/electron-platform/fs";
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -200,7 +200,7 @@ function OpenAppField({
                 {appIcon(selectedIcon)}
                 <span id={`${id}-value`} className="truncate">{selectedLabel}</span>
               </span>
-              <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <GooseIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
@@ -291,7 +291,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
       <SettingsSectionCard className="overflow-hidden !p-0" contentClassName="!space-y-0">
         <div className={`flex items-center gap-4 p-5 ${SETTINGS_OPTION_ROW_CLASS} !rounded-none`}>
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]">
-            <LucideIcons.EyeOff className="h-5 w-5" strokeWidth={1.75} />
+            <GooseIcons.EyeOff className="h-5 w-5" strokeWidth={1.75} />
           </span>
           <div>
             <h5 className="font-semibold">隐藏文件夹</h5>
@@ -314,7 +314,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
             const isDefaultFolder = DEFAULT_HIDDEN_FOLDERS.includes(folder);
             return (
               <div key={folder} className="flex min-h-12 items-center gap-3 border-b border-border/70 py-2 last:border-0">
-                <LucideIcons.FolderClosed className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                <GooseIcons.FolderClosed className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="min-w-0 flex-1 break-all text-sm font-medium">{folder}</span>
                 {isDefaultFolder ? (
                   <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">默认隐藏 · 固定</span>
@@ -325,7 +325,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] "
                     aria-label={`移除 ${folder}`}
                   >
-                    <LucideIcons.X className="h-4 w-4" />
+                    <GooseIcons.X className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -334,7 +334,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
         </div>
         <details className="group border-t border-border/70">
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-primary hover:bg-[var(--goose-interactive-hover)] [&::-webkit-details-marker]:hidden">
-            <LucideIcons.Plus className="h-4 w-4" /> 添加文件夹
+            <GooseIcons.Plus className="h-4 w-4" /> 添加文件夹
           </summary>
           <form
             className="space-y-2 px-5 pb-5"
@@ -614,7 +614,7 @@ export function SettingsLocalFolder({
             id="local-folder-file-manager"
             title="文件管理器"
             description="右键打开或显示本地文件时使用。"
-            icon={LucideIcons.FolderOpen}
+            icon={GooseIcons.FolderOpen}
             value={localFolderFileManager}
             onChange={setLocalFolderFileManager}
             defaultLabel={systemDefaultLabels.fileManager}
@@ -626,7 +626,7 @@ export function SettingsLocalFolder({
             id="local-folder-editor"
             title="编辑器"
             description="右键用外部应用打开文件或文件夹时使用。"
-            icon={LucideIcons.SquarePen}
+            icon={GooseIcons.SquarePen}
             value={localFolderExternalEditor}
             onChange={setLocalFolderExternalEditor}
             defaultLabel="系统默认"
@@ -637,7 +637,7 @@ export function SettingsLocalFolder({
             id="local-folder-terminal"
             title="终端"
             description="右键在终端中打开目录时使用。"
-            icon={LucideIcons.Terminal}
+            icon={GooseIcons.Terminal}
             value={localFolderTerminal}
             onChange={setLocalFolderTerminal}
             defaultLabel={systemDefaultLabels.terminal}
@@ -661,7 +661,7 @@ export function SettingsLocalFolder({
         >
           <div>
             <div className="flex items-center gap-3">
-              <LucideIcons.Trash2
+              <GooseIcons.Trash2
                 className="h-4 w-4 text-muted-foreground"
                 strokeWidth={1.75}
               />

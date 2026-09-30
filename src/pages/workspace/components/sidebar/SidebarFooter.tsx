@@ -1,4 +1,4 @@
-import * as LucideIcons from "lucide-react";
+import * as GooseIcons from "@/components/ui/icons";
 import { useEffect, useState } from "react";
 import { getGooseDesktop } from "@/lib/electron/runtime";
 import { checkAppUpdate, openReleasePage } from "@/lib/electron/appUpdate";
@@ -55,7 +55,7 @@ export function SidebarFooter({
                 title={`更新 ${readyVersion} 已下载，点击重启安装`}
                 onClick={() => void getGooseDesktop()?.installReadyUpdate()}
               >
-                <LucideIcons.RotateCw className="h-4 w-4" />
+                <GooseIcons.RotateCw className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
@@ -72,7 +72,7 @@ export function SidebarFooter({
                 title={`发现新版本 ${availableVersion}，打开更新说明`}
                 onClick={() => openReleasePage()}
               >
-                <LucideIcons.Download className="h-4 w-4" />
+                <GooseIcons.Download className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
@@ -91,7 +91,7 @@ export function SidebarFooter({
               aria-pressed={isSettingsOpen}
               onClick={onOpenSettings}
             >
-              <LucideIcons.Settings className="h-4 w-4" />
+              <GooseIcons.Settings className="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">设置</TooltipContent>

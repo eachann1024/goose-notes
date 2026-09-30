@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ChevronDown, Film, Image as ImageIcon, ScanSearch, Trash2 } from "lucide-react";
+import { ChevronDown, Film, Image as ImageIcon, ScanSearch, Trash2 } from "@/components/ui/icons";
 import { Checkbox } from "@heroui/react";
 import { Button } from "@/components/ui/button";
 import {

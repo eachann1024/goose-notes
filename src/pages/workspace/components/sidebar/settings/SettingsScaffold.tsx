@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { Settings as SettingsIcon, X } from "lucide-react";
+import { Settings as SettingsIcon, X } from "@/components/ui/icons";
 import type { SettingsTab, SettingsTabConfig } from "./types";
 import { cn } from "@/lib/utils";
 import "./settings-layout.css";

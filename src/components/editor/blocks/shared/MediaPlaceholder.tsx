@@ -70,7 +70,7 @@ export function MediaPlaceholder({
 export function MediaLoadingPreview({ label = "上传中…" }: { label?: string }) {
   return (
     <div className="goose-media-loading" role="status" aria-live="polite">
-      <LucideIcons.Loader2
+      <GooseIcons.Loader2
         className="goose-media-loading__spinner"
         size={18}
         strokeWidth={1.75}
