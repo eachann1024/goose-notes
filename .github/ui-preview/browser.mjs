@@ -50,7 +50,7 @@ async function annotate(page) {
     const cursor = document.createElement('div'); cursor.id = 'goose-preview-pointer';
     cursor.style.cssText = 'position:fixed;left:-40px;top:-40px;width:14px;height:14px;background:#ea5828;border:2px solid white;border-radius:50%;box-shadow:0 1px 5px #0008;z-index:2147483647;pointer-events:none';
     const caption = document.createElement('div'); caption.id = 'goose-preview-caption';
-    caption.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;color:white;background:#202420e8;border-radius:9px;font:16px/1.5 system-ui;z-index:2147483647;pointer-events:none;max-width:80%'; caption.hidden = true;
+    caption.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 20px;color:white;background:#202420e8;border-radius:9px;font:16px/1.5 system-ui;z-index:2147483647;pointer-events:none;max-width:80%'; caption.hidden = true;
     document.body.append(cursor, caption);
     document.addEventListener('mousemove', e => {
       cursor.style.left = `${e.clientX-8}px`; cursor.style.top = `${e.clientY-8}px`;
