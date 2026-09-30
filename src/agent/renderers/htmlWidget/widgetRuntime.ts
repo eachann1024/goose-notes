@@ -1,6 +1,6 @@
 // widget 运行时代码字符串：注入到 iframe 内部的 JS 脚本
 
-const UTOOLS_WEBVIEW_BOTTOM_RESERVE = 72;
+const ELECTRON_WEBVIEW_BOTTOM_RESERVE = 72;
 
 /** 自动调整 iframe 高度的运行时脚本（注入到 iframe 内） */
 export const RESIZE_SCRIPT = `<script>
@@ -211,7 +211,7 @@ export const RESIZE_SCRIPT = `<script>
       container ? container.scrollHeight : 0,
       childrenBottom,
       nestedScrollBottom
-    )) + ${UTOOLS_WEBVIEW_BOTTOM_RESERVE};
+    )) + ${ELECTRON_WEBVIEW_BOTTOM_RESERVE};
   }
 
   function expandVerticalOverflowContainers() {

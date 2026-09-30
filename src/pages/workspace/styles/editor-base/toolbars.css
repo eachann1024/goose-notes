@@ -1,0 +1,387 @@
+/* 格式工具栏、块工具栏、选中节点去描边、极简工作区隐藏首个 H1。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --editor-ui-scale / --goose-interactive-selected / --goose-icon-chip-on-selected / --goose-color-danger / --popover / --border / --ring。
+ */
+
+/* 共享格式工具栏
+   浮动外壳、固定底栏和按钮状态各自只在这里定义一次。浮动外壳不使用外投影：
+   Electron 旧内核会把「圆角元素 + 外投影 + 浮动层裁切」栅格化成直角灰块。
+   以清晰边框建立层级，避免用遮片修补渲染伪影。 */
+[data-formatting-toolbar] {
+  min-width: 0;
+  max-width: 100%;
+  color: hsl(var(--popover-foreground));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"] {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(10px * var(--editor-ui-scale, 1));
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+}
+
+.goose-formatting-toolbar-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.goose-formatting-toolbar-row::-webkit-scrollbar {
+  display: none;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-control[data-state="on"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"],
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-state="on"]:hover,
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[aria-pressed="true"]:hover {
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 颜色按钮的图标显示最近一次文档颜色；容器状态仍由共享 token 控制。 */
+[data-formatting-toolbar]
+  .goose-formatting-toolbar-control[data-goose-preserve-icon-color="true"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* 块工具栏统一用语义化 pressed 状态接入产品强调色。
+   图片、视频以及后续新增块控件无需再各自维护激活色。 */
+.goose-block-toolbar-control[aria-pressed="true"],
+.goose-block-toolbar-control[aria-pressed="true"]:hover,
+.goose-block-toolbar-control[aria-pressed="true"]:focus-visible {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-formatting-toolbar-separator {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 1px;
+  margin: 0 2px;
+  background: hsl(var(--border));
+  opacity: 0.8;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 24px;
+  min-height: 24px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+[data-formatting-toolbar] .goose-formatting-toolbar-add-to-chat:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+/* 选区模式由 [data-selection-mode] / .goose-formatting-toolbar--cell|--multi 挂载，供后续轻量样式区分 */
+
+/* 常规笔记本的选区浮层默认更轻巧；Cmd+- 仍在这个基准上继续缩放。
+   速记小窗使用底部停靠栏，命中区保持原尺寸。 */
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-row {
+  gap: calc(1px * var(--editor-ui-scale, 1));
+  padding: calc(3px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control {
+  width: calc(26px * var(--editor-ui-scale, 1));
+  min-width: calc(26px * var(--editor-ui-scale, 1));
+  height: calc(26px * var(--editor-ui-scale, 1));
+  flex-basis: calc(26px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-control
+  svg {
+  width: calc(14px * var(--editor-ui-scale, 1));
+  height: calc(14px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-separator {
+  height: calc(16px * var(--editor-ui-scale, 1));
+  margin: 0 calc(1px * var(--editor-ui-scale, 1));
+}
+
+[data-formatting-toolbar][data-goose-floating-toolbar="true"]
+  .goose-formatting-toolbar-add-to-chat {
+  height: calc(26px * var(--editor-ui-scale, 1));
+  min-height: 24px;
+  padding: 0 calc(8px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+  gap: calc(6px * var(--editor-ui-scale, 1));
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-row {
+  gap: 2px;
+  padding: 4px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  border-radius: 7px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-control svg {
+  width: 15px;
+  height: 15px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-separator {
+  height: 18px;
+  margin: 0 2px;
+}
+
+.goose-formatting-toolbar-dock .goose-formatting-toolbar-add-to-chat {
+  height: 28px;
+  min-height: 28px;
+  border-radius: 7px;
+}
+
+/* 图片、视频等块级浮层共用同一密度；外层 goose-editor-context-ui 负责等比缩放。 */
+.goose-block-toolbar-surface {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--popover));
+  box-shadow: none;
+}
+
+.goose-block-toolbar-control {
+  display: inline-flex;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.goose-block-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+.goose-block-toolbar-control:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-block-toolbar-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+.goose-block-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  margin: 0 1px;
+  background: hsl(var(--border));
+  opacity: 0.8;
+}
+
+/* 链接悬浮工具栏：与选区浮动格式工具栏同一套密度，随 --editor-ui-scale 缩放。 */
+[data-goose-link-toolbar] {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: calc(1px * var(--editor-ui-scale, 1));
+  padding: calc(3px * var(--editor-ui-scale, 1));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(10px * var(--editor-ui-scale, 1));
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  box-shadow: none;
+}
+
+[data-goose-link-toolbar][data-goose-link-toolbar-editing] {
+  gap: calc(6px * var(--editor-ui-scale, 1));
+  padding: calc(8px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-control {
+  display: inline-flex;
+  height: calc(26px * var(--editor-ui-scale, 1));
+  align-items: center;
+  justify-content: center;
+  gap: calc(4px * var(--editor-ui-scale, 1));
+  border: 0;
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  background: transparent;
+  padding: 0 calc(8px * var(--editor-ui-scale, 1));
+  color: hsl(var(--foreground));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.goose-link-toolbar-control:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+.goose-link-toolbar-control:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-link-toolbar-control svg {
+  width: calc(14px * var(--editor-ui-scale, 1));
+  height: calc(14px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-control-danger {
+  color: var(--goose-color-danger);
+}
+
+.goose-link-toolbar-control-danger:hover {
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
+}
+
+.goose-link-toolbar-input {
+  height: calc(28px * var(--editor-ui-scale, 1));
+  border-radius: calc(6px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+.goose-link-toolbar-form-button {
+  height: calc(28px * var(--editor-ui-scale, 1));
+  padding-inline: calc(8px * var(--editor-ui-scale, 1));
+  font-size: calc(12px * var(--editor-ui-scale, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-link-toolbar-control {
+    transition: none;
+  }
+}
+
+/* 图片按钮原组件只画 focus 背景；补静态轮廓保证键盘焦点清晰，不引入图标动效。 */
+[data-goose-image-toolbar]
+  button:not(:disabled):not([aria-disabled="true"]):focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+/* 节点选中仍保留编辑器行为与工具栏，但不绘制 BlockNote / ProseMirror
+   默认的蓝色外框。该共享样式同时覆盖主窗与速记小窗。 */
+.bn-editor .ProseMirror-selectednode,
+.bn-editor .bn-block-content.ProseMirror-selectednode > *,
+.bn-editor .ProseMirror-selectednode > .bn-block-content > * {
+  outline: none !important;
+}
+
+/* 极简工作区把内部笔记的首个 H1 提到顶栏编辑，正文从标题下方直接开始。
+   本地文件正文没有标题块，不能隐藏它的首段。
+   注意：EditorContextMenu 内还有一层 workspace-editor-surface，没有 data-local-file-page；
+   若按内层 surface 判断，会把本地空页唯一段落也 display:none，主区看起来全黑。
+   因此以 main 上的 data-local-file-page 为准。 */
+.workspace-main-sheet[data-single-tab-mode="true"]:not(
+    [data-local-file-page="true"]
+  )
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer:first-child {
+  display: none;
+}

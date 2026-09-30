@@ -13,7 +13,7 @@ Please include:
 
 - A description of the vulnerability and its potential impact
 - Steps to reproduce
-- Any relevant environment details (OS, uTools version or browser)
+- Any relevant environment details (OS, Electron version or browser)
 
 We will acknowledge your report as soon as possible and keep you informed about
 the fix. Please give us reasonable time to address the issue before any public

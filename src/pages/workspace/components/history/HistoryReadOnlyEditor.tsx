@@ -1,21 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreateBlockNote, BlockNoteViewRaw as BlockNoteView } from "@blocknote/react";
 import { zh } from "@blocknote/core/locales";
+import * as LucideIcons from "lucide-react";
 import "@blocknote/react/style.css";
 import { useSettings } from "@/stores/useSettings";
-import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
 import {
+  createEditorSafeContent,
   normalizePageContent,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
 import { editorSchema } from "@/components/editor/core/EditorComposer";
 import { cn } from "@/lib/utils";
+import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import type { Page } from "@/types";
 
 interface HistoryReadOnlyEditorProps {
   content: BlockNoteContent;
   /** 当前版本标识；变化时用 replaceBlocks 换内容，而非重建实例 */
   versionKey: string;
+  sourcePage?: Page;
 }
 
 /**
@@ -25,44 +29,27 @@ interface HistoryReadOnlyEditorProps {
  *  - 不复用 Editor.tsx：那是写态编辑器，绑死 usePages.activePageId、有 debouncedUpdate / file drop / shortcuts，
  *    在历史模式下这些副作用全是噪音。这里只要一个干净的只读渲染。
  *  - 切版本时用 editor.replaceBlocks 原地换内容，而非靠外层 key 重建实例。
- *    重建 BlockNote/ProseMirror 实例开销极大，uTools 旧内核下连续回看多个版本会卡死主线程；
+ *    重建 BlockNote/ProseMirror 实例开销极大，Electron 旧内核下连续回看多个版本会卡死主线程；
  *    复用同一实例只换 blocks 把开销降到一次解析。
  *  - 不挂 SideMenu / FormattingToolbar / SlashMenu：只读不需要任何编辑控件。
  */
 export function HistoryReadOnlyEditor({
   content,
   versionKey,
+  sourcePage,
 }: HistoryReadOnlyEditorProps) {
-  const { globalEditorFullWidth, theme } = useSettings();
+  const { theme } = useSettings();
   const { activePageId } = usePages();
-  const { notebooks } = useNotebooks();
-  const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
-  const activeNotebook = activePage ? notebooks[activePage.workspaceId] : undefined;
-  const isEditorFullWidth = Boolean(
-    activeNotebook?.editorFullWidth ?? globalEditorFullWidth,
+  const activePage = sourcePage ?? (activePageId ? usePages.getState().pages[activePageId] : null);
+  const sourcePageRef = useRef(sourcePage);
+  sourcePageRef.current = sourcePage;
+  const effectiveTheme = useResolvedTheme(theme);
+  const [renderError, setRenderError] = useState(false);
+
+  const normalized = useMemo(
+    () => createEditorSafeContent(normalizePageContent(content as any), editorSchema),
+    [content],
   );
-  const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const resolve = () => {
-      if (theme === "dark") return setEffectiveTheme("dark");
-      if (theme === "system") {
-        return setEffectiveTheme(
-          window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-        );
-      }
-      setEffectiveTheme("light");
-    };
-    resolve();
-    if (theme === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = () => resolve();
-      mq.addEventListener("change", handler);
-      return () => mq.removeEventListener("change", handler);
-    }
-  }, [theme]);
-
-  const normalized = useMemo(() => normalizePageContent(content), [content]);
 
   const editor = useCreateBlockNote({
     initialContent: normalized as any,
@@ -71,6 +58,7 @@ export function HistoryReadOnlyEditor({
     domAttributes: {
       editor: {
         class: "goose-blocknote-editor",
+        spellcheck: "false",
       },
     },
     // 与 Editor.tsx 共享同一解析实现和 ObjectURL 缓存，避免历史视图重复泄漏
@@ -78,7 +66,7 @@ export function HistoryReadOnlyEditor({
       const { resolveImageRefToUrl } = await import("@/lib/imageStorage/resolveUrl");
       const { usePages } = await import("@/stores/usePages");
       const activePageId = usePages.getState().activePageId;
-      const activePage = activePageId ? usePages.getState().pages[activePageId] : null;
+      const activePage = sourcePageRef.current ?? (activePageId ? usePages.getState().pages[activePageId] : null);
       return resolveImageRefToUrl(url, activePage?.localFilePath ?? null);
     },
   });
@@ -95,16 +83,45 @@ export function HistoryReadOnlyEditor({
   const renderedContentRef = useRef(normalized);
   useEffect(() => {
     if (renderedContentRef.current === normalized) return; // 首次渲染由 initialContent 承担
-    renderedContentRef.current = normalized;
-    editor.replaceBlocks(editor.document, normalized as any);
-  }, [editor, normalized]);
+    let cancelled = false;
+    // BlockNote 的 React 节点会同步刷新；移出 React effect，避免 flushSync 重入。
+    queueMicrotask(() => {
+      if (cancelled) return;
+      renderedContentRef.current = normalized;
+      setRenderError(false);
+      try {
+        editor.replaceBlocks(editor.document, normalized as any);
+      } catch (error) {
+        console.error("[history] replace read-only blocks failed", { versionKey, error });
+        setRenderError(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [editor, normalized, versionKey]);
 
-  // 与主 Editor 在 WorkspaceLayout 内的包裹一致；父级 page-scroll-container 全宽为 px-14、窄栏为 px-8
+  if (renderError) {
+    return (
+      <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
+          <LucideIcons.FileWarning className="h-5 w-5" strokeWidth={1.75} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">{sourcePage ? "此笔记无法预览" : "此历史版本无法显示"}</p>
+          <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
+            内容可能来自旧版格式或包含无法解析的数据。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 与主 Editor 在 WorkspaceLayout 内的全宽包裹一致。
   return (
     <div
+      data-font-family={activePage?.fontFamily ?? "default"}
       className={cn(
-        "mt-1 pt-1 pb-12",
-        isEditorFullWidth ? "max-w-full" : "w-full max-w-4xl mx-auto",
+        "workspace-editor-surface mt-1 flex min-h-0 w-full flex-1 flex-col pt-1 pb-12",
+        "max-w-full",
       )}
     >
       <BlockNoteView

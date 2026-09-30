@@ -27,7 +27,7 @@ export function FeatureToastCard({
 }: FeatureToastCardProps) {
   return (
     <div className={cn("flex max-w-[360px] gap-3", className)}>
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-primary/10 text-primary">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--goose-interactive-hover-border)] bg-[var(--goose-interactive-hover)] text-[var(--goose-interactive-hover-fg)]">
         {icon}
       </div>
       <div className="min-w-0 flex-1">

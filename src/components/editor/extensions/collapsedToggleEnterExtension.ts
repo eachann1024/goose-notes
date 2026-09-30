@@ -1,36 +1,10 @@
 import { createExtension } from "@blocknote/core";
 
 /**
- * 折叠块 Enter 行为修正 + toggleListItem 内置快捷键的收起态感知重实现。
+ * 折叠列表 Enter 行为修正 + toggleListItem 内置快捷键的收起态感知重实现（兼容漏网旧数据）。
  *
- * 问题：折叠块（toggleListItem / isToggleable heading）**收起**时，光标在标题行按 Enter，
- * 分裂会把整棵 children 子树转移给分裂出的新块——收起的内容被挤出原折叠块、
- * 挂到新块下面，再点折叠箭头也收不回来（用户实测）。
- *
- * toggleListItem 的内置扩展 `toggle-list-item-shortcuts` 的 Enter handler（dist 里的 Zn）
- * 对非空 toggleListItem 无条件接管 keepType 分裂（不感知收起态），且块 spec 扩展注册顺序
- * 先于 options.extensions，自定义扩展拦不到。故在 Editor.tsx 里把它整个 disable，
- * 其全部行为在本扩展按收起态感知重实现：
- *
- * - 空 toggleListItem 回车 → 原地降级 paragraph（复刻内置）。
- * - **收起 + 有 children** 的 toggleListItem 行中/行尾回车 → 光标后文本切给下方新建的
- *   **同级空折叠列表**，children 留在原块（Notion 手感，本扩展的核心修复）。
- * - **收起 + 有 children** 的 isToggleable heading 行中/行尾回车 → 下方新建**段落**，
- *   children 留在原块。
- * - **展开 + 有 children** 的折叠块（两种）行中/行尾回车 → 光标后内容作为**第一个
- *   child** 插进折叠块内部（行尾则是空段落），children 不被分裂转移（Notion 手感）。
- * - 折叠块 children 内的**空块**回车且后面还有兄弟块 → 在其后新增一行（默认的
- *   空块提升会把后续兄弟整体挂到提出的空段落下、掏空折叠块）；已是最后一个
- *   child 则放行默认提升（逃出折叠块）。
- * - 无 children 的非空 toggleListItem 回车 → keepType 分裂（复刻内置 Xn：
- *   tr.split 深度 2，children 跟分裂后块）。不能 return false 走默认——默认 splitBlock
- *   分裂出的是 paragraph（实测），手感退化。
- * - 行首（parentOffset === 0）回车 → 同样走 keepType 分裂：上方拆出空 toggle 行，
- *   原内容与 children 完好留在下方（与原内置行为一致，收起态也安全）。
- * - Mod-Shift-6 → 当前 inline 块转 toggleListItem（复刻内置）。
- *
- * 收起态判断：BlockNote 0.51 的 ToggleWrapper 把展开态存在 localStorage（toggle-<id>）
- * 并同步到 DOM 的 .bn-toggle-wrapper[data-show-children]。读 DOM 与 UI 实际状态一致。
+ * toggleListItem 的内置扩展 `toggle-list-item-shortcuts` 对非空块无条件分裂，
+ * 已在 Editor.tsx disable；行为在本扩展按收起态重实现。
  */
 
 export type ToggleBlock = {
@@ -41,11 +15,7 @@ export type ToggleBlock = {
 };
 
 export function isToggleBlock(block: ToggleBlock): boolean {
-  return (
-    block.type === "toggleListItem" ||
-    (block.type === "heading" &&
-      (block.props as { isToggleable?: boolean })?.isToggleable === true)
-  );
+  return block.type === "toggleListItem";
 }
 
 /** 读 DOM 折叠态（BlockNote 把展开态同步到 .bn-toggle-wrapper[data-show-children]）。 */
@@ -180,10 +150,7 @@ export const gooseCollapsedToggleEnterExtension = createExtension({
           block.content as InlineItem[],
           $from.parentOffset,
         );
-        const newBlock =
-          block.type === "toggleListItem"
-            ? { type: "toggleListItem" as const, content: after }
-            : { type: "paragraph" as const, content: after };
+        const newBlock = { type: "toggleListItem" as const, content: after };
         editor.transact(() => {
           if (after.length > 0) {
             editor.updateBlock(block, { content: before as any });
@@ -237,16 +204,6 @@ export const gooseCollapsedToggleEnterExtension = createExtension({
           { type: $pos.parent.type, attrs: {} },
         ]);
       });
-      return true;
-    },
-    // 复刻被禁用扩展的 Mod-Shift-6：当前 inline 块转折叠列表。
-    "Mod-Shift-6": ({ editor }) => {
-      const { block } = editor.getTextCursorPosition();
-      const spec = (editor.schema.blockSchema as Record<string, { content?: string }>)[
-        block.type
-      ];
-      if (spec?.content !== "inline") return false;
-      editor.updateBlock(block, { type: "toggleListItem", props: {} });
       return true;
     },
   },

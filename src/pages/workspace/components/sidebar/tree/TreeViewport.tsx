@@ -1,7 +1,15 @@
-import { DndContext, type CollisionDetection } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  DragOverlay,
+  type CollisionDetection,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import type { CSSProperties, ComponentProps, RefObject } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import type { VisibleTreeItem } from "../tree-dnd";
@@ -14,8 +22,14 @@ import {
   EdgeDropZone,
   PlaceholderRow,
   SortablePageRow,
+  TreeDragOverlay,
 } from "./TreeRow";
+import { useSettings } from "@/stores/useSettings";
 import { TREE_INDENT } from "./useTreeDnd";
+
+// 与 TreeRow / MainTreeItem 保持一致：蓝点落在图标左缘，而非展开箭头区
+const ROW_PADDING_LEFT = 6;
+const ARROW_SLOT = 6 + 20; // ml-1.5 + w-5（TreeRow 无 gap-0.5）
 
 type DndContextProps = ComponentProps<typeof DndContext>;
 
@@ -45,6 +59,7 @@ interface TreeViewportProps {
   viewportHeight: number;
   width: number;
   onToggleOpen: (id: string) => void;
+  showExpandControls?: boolean;
 }
 
 export function TreeViewport({
@@ -73,26 +88,35 @@ export function TreeViewport({
   viewportHeight,
   width,
   onToggleOpen,
+  showExpandControls = true,
 }: TreeViewportProps) {
-  const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> = fitContent
-    ? renderItems.map((item, index) => ({
-        item,
-        size: rowHeight,
-        start: index * rowHeight,
-      }))
-    : virtualItems.flatMap((virtualRow) => {
-        const item = renderItems[virtualRow.index];
-        if (!item) return [];
-        return [
-          {
-            item,
-            size: virtualRow.size,
-            start: virtualRow.start,
-          },
-        ];
-      });
+  const rows: Array<{ item: VisibleTreeItem; size: number; start: number }> =
+    fitContent
+      ? renderItems.map((item, index) => ({
+          item,
+          size: rowHeight,
+          start: index * rowHeight,
+        }))
+      : virtualItems.flatMap((virtualRow) => {
+          const item = renderItems[virtualRow.index];
+          if (!item) return [];
+          return [
+            {
+              item,
+              size: virtualRow.size,
+              start: virtualRow.start,
+            },
+          ];
+        });
 
-  const flatItemIds = renderItems.flatMap((item) => ("isPlaceholder" in item ? [] : [item.id]));
+  const flatItemIds = renderItems.flatMap((item) =>
+    "isPlaceholder" in item ? [] : [item.id],
+  );
+  const activeItem = activeId
+    ? renderItems.find(
+        (item) => !("isPlaceholder" in item) && item.id === activeId,
+      )
+    : undefined;
 
   return (
     <div
@@ -111,12 +135,15 @@ export function TreeViewport({
         onDragCancel={handleDragCancel}
         autoScroll={false}
       >
-        <SortableContext items={flatItemIds} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={flatItemIds}
+          strategy={verticalListSortingStrategy}
+        >
           <div
             ref={scrollRef}
             className={cn(
               "overflow-x-hidden",
-              fitContent ? "overflow-y-visible" : "h-full overflow-y-auto"
+              fitContent ? "overflow-y-visible" : "h-full overflow-y-auto",
             )}
             style={
               fitContent
@@ -158,11 +185,17 @@ export function TreeViewport({
                   );
                 }
 
-                const isDropTarget = dropIntent?.overId === item.id && activeId !== item.id;
-                const isNestDropTarget = isDropTarget && dropIntent?.kind === "nest";
-                const showDropLine = isDropTarget && dropIntent?.kind !== "nest";
-                const dropLinePosition = dropIntent?.kind === "after" ? "bottom" : "top";
-                const dropLineLeft = item.depth * TREE_INDENT + 16;
+                const isDropTarget =
+                  dropIntent?.overId === item.id && activeId !== item.id;
+                const isNestDropTarget =
+                  isDropTarget && dropIntent?.kind === "nest";
+                const showDropLine =
+                  isDropTarget && dropIntent?.kind !== "nest";
+                const dropLinePosition =
+                  dropIntent?.kind === "after" ? "bottom" : "top";
+                const dropLineLeft =
+                  item.depth * TREE_INDENT +
+                  ROW_PADDING_LEFT;
                 const dragEnabled = draggablePageIdSet
                   ? draggablePageIdSet.has(item.id)
                   : true;
@@ -186,6 +219,7 @@ export function TreeViewport({
                     dropLinePosition={dropLinePosition}
                     dropLineLeft={dropLineLeft}
                     onToggleOpen={onToggleOpen}
+                    showExpandControls={showExpandControls}
                     showAddChildButton={showAddChildButton}
                     dragEnabled={dragEnabled}
                     titleText={titleText}
@@ -198,6 +232,20 @@ export function TreeViewport({
             </div>
           </div>
         </SortableContext>
+        {typeof document !== "undefined" &&
+          createPortal(
+            <DragOverlay dropAnimation={null} zIndex={80}>
+              {activeItem && !("isPlaceholder" in activeItem) ? (
+                <TreeDragOverlay
+                  item={activeItem}
+                  width={width}
+                  isLocalNotebook={isLocalNotebook}
+                  showExpandControls={showExpandControls}
+                />
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )}
       </DndContext>
     </div>
   );

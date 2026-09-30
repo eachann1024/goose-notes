@@ -1,4 +1,5 @@
 import type { PartialBlock } from "@blocknote/core";
+import { normalizeParsedImageProps } from "@/components/editor/blocks/image/imageCaption";
 import type { BlockNoteContent } from "./emptyContent";
 import {
   TITLE_HEADING_LEVEL,
@@ -24,6 +25,7 @@ export const VALID_BLOCK_TYPES = new Set([
   "link",
   "embed",
   "toggleListItem",
+  "divider",
 ]);
 
 export const LEGACY_BLOCK_TYPES = new Set([
@@ -40,33 +42,127 @@ export const LEGACY_BLOCK_TYPES = new Set([
   "horizontalRule",
 ]);
 
-const INLINE_CONTENT_TYPES = new Set(["text", "link"]);
+const INLINE_CONTENT_TYPES = new Set(["text", "link", "pageMention"]);
+
+/** 写在 props 里、用户能看见也会拿来搜的字段。url / language / title 不进索引。 */
+const SEARCHABLE_PROP_KEYS = ["caption", "name", "summary", "alt"] as const;
+
+/** 粘贴/空块占位文件名，搜 image、webp、mp4 会误伤一堆笔记 */
+const GENERIC_MEDIA_NAMES = new Set([
+  "image.webp",
+  "image.png",
+  "image.jpg",
+  "image.jpeg",
+  "image.gif",
+  "image.bmp",
+  "image.svg",
+  "image.avif",
+  "video.mp4",
+  "video.webm",
+  "video.mov",
+  "audio.mp3",
+  "audio.m4a",
+  "audio.wav",
+  "download",
+]);
+
+function isStorageOrDataRef(value: string): boolean {
+  return /^(?:att:|att-file:|att-video:|blob:|data:)/i.test(value);
+}
+
+function isNoisePropValue(value: string, key: string): boolean {
+  if (isStorageOrDataRef(value) || /^https?:\/\//i.test(value)) return true;
+  if (key === "name" && GENERIC_MEDIA_NAMES.has(value.toLowerCase())) return true;
+  return false;
+}
+
+function extractBlockPropText(block: any): string {
+  if (!block || typeof block !== "object" || Array.isArray(block)) return "";
+  const source = block.props ?? block.attrs;
+  if (!source || typeof source !== "object") return "";
+  const seen = new Set<string>();
+  const parts: string[] = [];
+  for (const key of SEARCHABLE_PROP_KEYS) {
+    const value = source[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed) || isNoisePropValue(trimmed, key)) continue;
+    seen.add(trimmed);
+    parts.push(trimmed);
+  }
+  return parts.join(" ");
+}
+
+function getBlockLanguage(block: any): string {
+  const language = block?.props?.language ?? block?.attrs?.language;
+  return typeof language === "string" ? language.trim().toLowerCase() : "";
+}
+
+/** 去掉 goose-* 页面设置和 --- 定界，保留用户自己写的 YAML（如 name / description） */
+function stripGooseFrontmatterNoise(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === "---") return false;
+      return !/^goose-[A-Za-z0-9_-]+\s*:/i.test(trimmed);
+    })
+    .join("\n")
+    .trim();
+}
+
+function extractInlinePiece(inline: any): string {
+  if (inline == null) return "";
+  if (typeof inline === "string") return inline;
+  if (typeof inline !== "object") return "";
+  if (inline.type === "hardBreak") return "\n";
+  if (inline.type === "link") {
+    return simpleExtractText(inline.content ?? "");
+  }
+  if (inline.type === "pageMention") {
+    const title =
+      typeof inline.props?.title === "string" ? inline.props.title.trim() : "";
+    return title ? (title.startsWith("@") ? title : `@${title}`) : "";
+  }
+  if (inline.type === "paragraph" || inline.type === "tableCell") {
+    return simpleExtractText(inline);
+  }
+  if (typeof inline.text === "string") return inline.text;
+  if (inline.content != null) return simpleExtractText(inline);
+  return "";
+}
+
+function extractBlockContentText(block: any): string {
+  let contentText = "";
+  if (typeof block.content === "string") contentText = block.content;
+  else if (Array.isArray(block.content)) {
+    contentText = block.content.map(extractInlinePiece).join("");
+  } else if (block.content?.rows) {
+    const rows = block.content.rows as any[];
+    contentText = rows
+      .flatMap((row) => (row.cells ?? []).map((cell: any) => simpleExtractText(cell)))
+      .join(" ");
+  } else if (typeof block.text === "string") {
+    contentText = block.text;
+  }
+  if (getBlockLanguage(block) === "yaml-frontmatter") {
+    return stripGooseFrontmatterNoise(contentText);
+  }
+  return contentText;
+}
 
 export function simpleExtractText(block: any): string {
-  if (!block || typeof block !== "object") return "";
-  if (typeof block.content === "string") return block.content;
-  if (Array.isArray(block.content)) {
-    return block.content
-      .map((inline: any) => {
-        if (typeof inline === "string") return inline;
-        if (inline?.type === "link" && Array.isArray(inline.content)) {
-          return inline.content.map((c: any) => c?.text ?? "").join("");
-        }
-        return inline?.text ?? "";
-      })
-      .join("");
+  if (block == null) return "";
+  if (typeof block === "string") return block;
+  if (Array.isArray(block)) {
+    return block.map(extractInlinePiece).join("");
   }
-  if (block.content?.rows) {
-    const rows = block.content.rows as any[];
-    return rows
-      .flatMap((row) =>
-        (row.cells ?? []).map((cell: any) =>
-          typeof cell === "string" ? cell : simpleExtractText(cell),
-        ),
-      )
-      .join(" ");
-  }
-  return "";
+  if (typeof block !== "object") return "";
+  const contentText = extractBlockContentText(block);
+  const propText = extractBlockPropText(block);
+  if (!contentText) return propText;
+  if (!propText) return contentText;
+  return `${contentText} ${propText}`;
 }
 
 function isStructuredBlockLike(node: unknown): boolean {
@@ -178,9 +274,42 @@ function repairDetachedListMarkers(blocks: PartialBlock[]): PartialBlock[] {
 }
 
 export function normalizeBlocks(blocks: any[] | undefined): PartialBlock[] {
-  return repairDetachedListMarkers(
-    (blocks ?? []).flatMap((block) => normalizeBlock(block)),
+  return normalizeRedundantNumberedListStarts(
+    repairDetachedListMarkers(
+      (blocks ?? []).flatMap((block) => normalizeBlock(block)),
+    ),
   );
+}
+
+/**
+ * BlockNote 只在一段连续有序列表的首项读取 `props.start`。后续项上的 start
+ * 平时虽然不影响显示，但当前面的列表项被删除、它变成首项后就会突然生效，造成
+ * 「删掉 1. 后仍显示 2.」的错觉。
+ *
+ * 因此只移除同一 sibling run 内后续项的冗余 start；被非列表块隔开的新 run、
+ * 以及每个嵌套 blockGroup 的首项仍保留显式起始序号。
+ */
+function normalizeRedundantNumberedListStarts(
+  blocks: PartialBlock[],
+): PartialBlock[] {
+  let previousWasNumbered = false;
+
+  return blocks.map((block) => {
+    const isNumbered = block.type === "numberedListItem";
+    const hasRedundantStart =
+      isNumbered &&
+      previousWasNumbered &&
+      (block.props as Record<string, unknown> | undefined)?.start != null;
+
+    previousWasNumbered = isNumbered;
+    if (!hasRedundantStart) return block;
+
+    const { start: _start, ...props } = block.props as Record<string, unknown>;
+    return {
+      ...block,
+      ...(Object.keys(props).length > 0 ? { props } : { props: undefined }),
+    } as PartialBlock;
+  });
 }
 
 function normalizeQuoteBlock(block: any): PartialBlock[] {
@@ -220,6 +349,9 @@ function normalizeBlock(block: any): PartialBlock[] {
   if (!block || typeof block !== "object") return [];
 
   const type = block.type;
+  if (type === "horizontalRule") {
+    return [{ type: "divider" } as PartialBlock];
+  }
   if (type === "quote" || type === "blockquote") {
     const flattened = normalizeQuoteBlock(block);
     // 引用块不允许有 children，剥离并展平
@@ -246,28 +378,17 @@ function normalizeBlock(block: any): PartialBlock[] {
 
   const children = normalizeBlocks(block.children);
 
-  // 可折叠标题（isToggleable）的 children 是折叠内容本体，必须保留；
-  // 下面的「heading 带 children 拍平」只针对旧数据里的普通标题。
-  const isToggleableHeading =
-    type === "heading" &&
-    Boolean(block.props?.isToggleable ?? block.attrs?.isToggleable);
-
-  if (children.length > 0 && type === "heading" && !isToggleableHeading) {
-    if (!hasInlineText(block.content)) {
-      return children;
-    }
-    const headingBlock: PartialBlock = { type };
-    if (block.props || block.attrs) headingBlock.props = block.props ?? block.attrs;
-    if (block.content !== undefined) headingBlock.content = block.content;
-    return [headingBlock, ...children];
-  }
-
-  if (children.length > 0 && !isToggleableHeading && isEmptyWrapperBlock(type, block)) {
+  // 所有 heading 都保留 children；物理首块拍平由 ensureFirstTitleHeading 负责。
+  if (children.length > 0 && isEmptyWrapperBlock(type, block)) {
     return children;
   }
 
   const sanitized: PartialBlock = { type };
-  if (block.props || block.attrs) sanitized.props = block.props ?? block.attrs;
+  if (block.props || block.attrs) {
+    const rawProps = (block.props ?? block.attrs) as Record<string, unknown>;
+    sanitized.props =
+      type === "image" ? normalizeParsedImageProps(rawProps) : rawProps;
+  }
   if (block.content !== undefined) {
     sanitized.content = type === "codeBlock" ? simpleExtractText(block) : block.content;
   }
@@ -300,6 +421,7 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
       props: {
         ...firstBlock.props,
         level: TITLE_HEADING_LEVEL,
+        collapsed: false,
       },
     } as PartialBlock;
 
@@ -323,9 +445,10 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
         props: {
           ...firstBlock.props,
           level: TITLE_HEADING_LEVEL,
+          collapsed: false,
         },
         content,
-      } as PartialBlock,
+      } as unknown as PartialBlock,
       ...nestedChildren,
       ...restBlocks,
     ];
@@ -338,4 +461,74 @@ export function ensureFirstTitleHeading(content: BlockNoteContent): BlockNoteCon
 export function normalizeBlockContent(content: unknown): BlockNoteContent {
   if (!Array.isArray(content)) return [];
   return normalizeBlocks(content);
+}
+
+function normalizeHeadingProps(props: unknown): Record<string, unknown> {
+  const next = {
+    ...(typeof props === "object" && props ? (props as Record<string, unknown>) : {}),
+  };
+  delete next.isToggleable;
+  if (next.collapsed == null) next.collapsed = false;
+  return next;
+}
+
+function normalizeSectionFoldBlock(block: PartialBlock): PartialBlock[] {
+  let working = block;
+  if (working.type === "toggleListItem") {
+    working = {
+      type: "bulletListItem",
+      props: working.props,
+      content: working.content,
+      ...((working as { children?: PartialBlock[] }).children?.length
+        ? { children: (working as { children?: PartialBlock[] }).children }
+        : {}),
+    } as PartialBlock;
+  }
+
+  if (working.type === "heading") {
+    const nestedChildren = Array.isArray((working as { children?: PartialBlock[] }).children)
+      ? ((working as { children?: PartialBlock[] }).children as PartialBlock[])
+      : [];
+    const { children: _ignored, ...headingOnly } = working as PartialBlock & {
+      children?: PartialBlock[];
+    };
+    const flat: PartialBlock[] = [
+      {
+        ...headingOnly,
+        props: normalizeHeadingProps(headingOnly.props),
+      } as PartialBlock,
+    ];
+    if (nestedChildren.length > 0) {
+      flat.push(...normalizeHeadingSectionFold(normalizeBlocks(nestedChildren)));
+    }
+    return flat;
+  }
+
+  const children = (working as { children?: PartialBlock[] }).children;
+  if (Array.isArray(children) && children.length > 0) {
+    return [
+      {
+        ...working,
+        children: normalizeHeadingSectionFold(children),
+      } as PartialBlock,
+    ];
+  }
+  return [working];
+}
+
+/**
+ * 标题区块折叠数据规范：拍平 heading children 为后续兄弟；toggleListItem → bulletListItem；
+ * 所有 heading isToggleable 清除；collapsed 缺省 false。
+ */
+export function normalizeHeadingSectionFold(
+  blocks: PartialBlock[],
+): PartialBlock[] {
+  return blocks.flatMap((block) => normalizeSectionFoldBlock(block));
+}
+
+/** @deprecated 使用 normalizeHeadingSectionFold */
+export function normalizeHeadingToggleableFlags(
+  blocks: PartialBlock[],
+): PartialBlock[] {
+  return normalizeHeadingSectionFold(blocks);
 }

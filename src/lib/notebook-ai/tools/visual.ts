@@ -1,6 +1,25 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+export const showDiagramInputSchema = z.object({
+  title: z.string().optional().describe("图形标题（可选）"),
+  language: z.literal("mermaid").describe("图形 DSL 类型，固定为 mermaid"),
+  source: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Mermaid DSL 源码，不要包含 ```mermaid 代码围栏"),
+});
+
+export const showSvgInputSchema = z.object({
+  title: z.string().optional().describe("图片标题（可选）"),
+  svg: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("完整 SVG 标记，从 <svg> 开始，到 </svg> 结束"),
+});
+
 /**
  * showTable — 在对话中渲染表格卡片。
  * execute 原样返回 input，UI 层根据 output-available 状态渲染 TableCard。
@@ -43,5 +62,27 @@ export const showChart = tool({
       )
       .describe("数据系列，饼图时 data 长度应与 categories 一致"),
   }),
+  execute: async (input) => input,
+});
+
+/**
+ * showDiagram — 在对话中渲染 Mermaid 图形卡片。
+ * 用于流程图、时序图、结构/关系/架构图等可由 Mermaid DSL 表达的图形。
+ */
+export const showDiagram = tool({
+  description:
+    "在对话里显示一个 Mermaid 图形卡片，用于流程图、时序图、状态机、时间线。source 只写 Mermaid DSL，不要包裹代码围栏。",
+  inputSchema: showDiagramInputSchema,
+  execute: async (input) => input,
+});
+
+/**
+ * showSvg — 在对话中渲染一张图片。
+ * 用于海报、介绍图、信息图、示意图，以及用户要求画一张图时。
+ */
+export const showSvg = tool({
+  description:
+    "在对话里显示一张图片。用于海报、信息图、示意图、图标，以及用户要画一张图时。必须调用本工具，不要把源码写进正文或代码块。svg 必须是完整 <svg>...</svg>，不要包含脚本、事件属性、foreignObject、外链图片或外链资源。",
+  inputSchema: showSvgInputSchema,
   execute: async (input) => input,
 });

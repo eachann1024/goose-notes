@@ -1,0 +1,46 @@
+/* 格式工具栏底栏停靠，以及设置/AI 任务面下的编辑器浮层收起。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 body 上的 data-goose-settings-open / data-goose-ai-fullscreen / data-goose-ai-panel-active。
+ */
+
+/* 格式工具栏：固定底部居中，不跟随选区浮动 */
+.goose-formatting-toolbar-dock {
+  pointer-events: none;
+}
+
+/* 设置 / AI 全屏是独立任务面。打开后统一收起编辑器上下文浮层，避免这些高层级
+   portal 穿透到覆盖面（聊天气泡、设置）之上；保留自身菜单、提示与 toast。 */
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-formatting-toolbar],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-formatting-toolbar-dock],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-image-toolbar],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-video-toolbar],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-find-in-page],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-code-floating-toolbar,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .goose-ai-menu-floating,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-side-menu,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-link-toolbar,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-goose-link-toolbar],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-panel,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-suggestion-menu,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-grid-suggestion-menu,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-table-handle,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-table-cell-handle,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) .bn-table-handle-menu,
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-streamdown="table-fullscreen"],
+body:is([data-goose-settings-open], [data-goose-ai-fullscreen]) [data-streamdown="link-safety-modal"] {
+  display: none !important;
+}
+
+/* AI 面板已卸载：收起仍挂在 body 的 Streamdown / 选区浮层，避免残留到别的界面 */
+body:not([data-goose-ai-panel-active]) [data-streamdown="code-block-actions"],
+body:not([data-goose-ai-panel-active]) [data-streamdown="mermaid-block-actions"],
+body:not([data-goose-ai-panel-active]) [data-streamdown="table-fullscreen"],
+body:not([data-goose-ai-panel-active]) [data-streamdown="link-safety-modal"] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-formatting-toolbar-dock {
+    transition: none;
+  }
+}

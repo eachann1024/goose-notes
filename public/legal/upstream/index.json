@@ -1,0 +1,350 @@
+[
+  {
+    "name": "@aws-sdk/credential-provider-http",
+    "version": "3.972.67",
+    "repository": "https://github.com/aws/aws-sdk-js-v3.git",
+    "file": "aws-sdk-credential-provider-http-3.972.67.txt",
+    "source": "https://github.com/aws/aws-sdk-js-v3/blob/main/LICENSE",
+    "upstreamLicenseBlob": "0322cba2eac898acb5c8577a20657e7a74af55a4",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "@ai-sdk/provider-utils",
+    "version": "4.0.40",
+    "repository": "https://github.com/vercel/ai",
+    "file": "ai-sdk-provider-utils-4.0.40.txt",
+    "source": "https://github.com/vercel/ai/blob/main/LICENSE",
+    "upstreamLicenseBlob": "6c16c29f41168411dbf6e3ba3a063ce789c27334",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "@aws-sdk/nested-clients",
+    "version": "3.997.39",
+    "repository": "https://github.com/aws/aws-sdk-js-v3.git",
+    "file": "aws-sdk-nested-clients-3.997.39.txt",
+    "source": "https://github.com/aws/aws-sdk-js-v3/blob/main/LICENSE",
+    "upstreamLicenseBlob": "0322cba2eac898acb5c8577a20657e7a74af55a4",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "@aws-sdk/credential-provider-login",
+    "version": "3.972.72",
+    "repository": "https://github.com/aws/aws-sdk-js-v3.git",
+    "file": "aws-sdk-credential-provider-login-3.972.72.txt",
+    "source": "https://github.com/aws/aws-sdk-js-v3/blob/main/LICENSE",
+    "upstreamLicenseBlob": "0322cba2eac898acb5c8577a20657e7a74af55a4",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "@earendil-works/pi-agent-core",
+    "version": "0.83.0",
+    "repository": "git+https://github.com/earendil-works/pi.git",
+    "file": "earendil-works-pi-agent-core-0.83.0.txt",
+    "source": "https://raw.githubusercontent.com/earendil-works/pi/845d6ff1f6643aba440341cce877ce1c43ebbc39/LICENSE"
+  },
+  {
+    "name": "@earendil-works/pi-ai",
+    "version": "0.83.0",
+    "repository": "git+https://github.com/earendil-works/pi.git",
+    "file": "earendil-works-pi-ai-0.83.0.txt",
+    "source": "https://raw.githubusercontent.com/earendil-works/pi/845d6ff1f6643aba440341cce877ce1c43ebbc39/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-context",
+    "version": "1.1.2",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-context-1.1.2.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-compose-refs",
+    "version": "1.1.2",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-compose-refs-1.1.2.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/number",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-number-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-direction",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-direction-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-id",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-id-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@nodable/entities",
+    "version": "2.2.0",
+    "repository": "git+https://github.com/nodable/val-parsers.git",
+    "file": "nodable-entities-2.2.0.txt",
+    "source": "https://raw.githubusercontent.com/nodable/val-parsers/1a2c08a483b5b6428f1b3d01974875c97f3b3953/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-previous",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-previous-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-escape-keydown",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-escape-keydown-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-size",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-size-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-layout-effect",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-layout-effect-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-rect",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-rect-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/react-use-callback-ref",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-react-use-callback-ref-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@radix-ui/rect",
+    "version": "1.1.1",
+    "repository": "git+https://github.com/radix-ui/primitives.git",
+    "file": "radix-ui-rect-1.1.1.txt",
+    "source": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+  },
+  {
+    "name": "@react-pdf/image",
+    "version": "3.1.0",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-image-3.1.0.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/fa06da6b7bf764ea274503745c0fe34cd216a912/LICENSE"
+  },
+  {
+    "name": "@react-pdf/primitives",
+    "version": "4.3.0",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-primitives-4.3.0.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/fa06da6b7bf764ea274503745c0fe34cd216a912/LICENSE"
+  },
+  {
+    "name": "@react-pdf/layout",
+    "version": "4.6.1",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-layout-4.6.1.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/font",
+    "version": "4.0.8",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-font-4.0.8.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/fns",
+    "version": "3.1.3",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-fns-3.1.3.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/a8301b239f750ee2a74e851522daadc3718b30e3/LICENSE"
+  },
+  {
+    "name": "@react-pdf/svg",
+    "version": "1.1.0",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-svg-1.1.0.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/fa06da6b7bf764ea274503745c0fe34cd216a912/LICENSE"
+  },
+  {
+    "name": "@react-pdf/render",
+    "version": "4.5.1",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-render-4.5.1.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/renderer",
+    "version": "4.5.1",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-renderer-4.5.1.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/stylesheet",
+    "version": "6.2.1",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-stylesheet-6.2.1.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/reconciler",
+    "version": "2.0.0",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-reconciler-2.0.0.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/52e97fd0052f4e634d8b39143154e0a09ff98cba/LICENSE"
+  },
+  {
+    "name": "@react-pdf/textkit",
+    "version": "6.3.0",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-textkit-6.3.0.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "@react-pdf/types",
+    "version": "2.11.1",
+    "repository": "https://github.com/diegomura/react-pdf.git",
+    "file": "react-pdf-types-2.11.1.txt",
+    "source": "https://raw.githubusercontent.com/diegomura/react-pdf/f069bca5bdcb3d31dc233b15302ac4a196681f8e/LICENSE"
+  },
+  {
+    "name": "abs-svg-path",
+    "version": "0.1.1",
+    "repository": "git://github.com/jkroso/abs-svg-path.git",
+    "file": "abs-svg-path-0.1.1.txt",
+    "source": "https://github.com/jkroso/abs-svg-path/blob/master/License",
+    "upstreamLicenseBlob": "c9b77ebb4de12e2451ac7c67b43cf1ddceaf7739",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "client-only",
+    "version": "0.0.1",
+    "repository": "https://reactjs.org/",
+    "error": "No verified repository and gitHead"
+  },
+  {
+    "name": "data-uri-to-buffer",
+    "version": "4.0.1",
+    "repository": "git://github.com/TooTallNate/node-data-uri-to-buffer.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "brotli",
+    "version": "1.3.3",
+    "repository": "https://github.com/devongovett/brotli.js.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "byte-length",
+    "version": "1.0.2",
+    "repository": "https://github.com/DylanPiercey/byte-length",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "hsl-to-hex",
+    "version": "1.0.0",
+    "repository": "git+ssh://git@github.com/davidmarkclements/hsl-to-hex.git",
+    "error": "No verified repository and gitHead"
+  },
+  {
+    "name": "input-otp",
+    "version": "1.4.2",
+    "repository": "git+https://github.com/guilhermerodz/input-otp.git",
+    "file": "input-otp-1.4.2.txt",
+    "source": "https://raw.githubusercontent.com/guilhermerodz/input-otp/81ccdb48c010d800b24942aa231909f0c971b1ca/LICENSE"
+  },
+  {
+    "name": "hash.js",
+    "version": "1.1.7",
+    "repository": "git@github.com:indutny/hash.js",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "hsl-to-rgb-for-reals",
+    "version": "1.1.1",
+    "repository": "https://github.com/davidmarkclements/hsl_rgb_converter/",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "fontkit",
+    "version": "2.0.4",
+    "repository": "git://github.com/foliojs/fontkit.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "dfa",
+    "version": "1.2.0",
+    "repository": "git+ssh://git@github.com/devongovett/dfa.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "media-engine",
+    "version": "1.0.3",
+    "repository": "",
+    "error": "No verified repository and gitHead"
+  },
+  {
+    "name": "rehype-katex",
+    "version": "7.0.1",
+    "repository": "https://github.com/remarkjs/remark-math/tree/main/packages/rehype-katex",
+    "file": "rehype-katex-7.0.1.txt",
+    "source": "https://raw.githubusercontent.com/remarkjs/remark-math/88a9497e1ede93b958237c85edbf5651faeca7af/license"
+  },
+  {
+    "name": "remark-math",
+    "version": "6.0.0",
+    "repository": "https://github.com/remarkjs/remark-math/tree/main/packages/remark-math",
+    "file": "remark-math-6.0.0.txt",
+    "source": "https://raw.githubusercontent.com/remarkjs/remark-math/d5d0660b150810a535bbb07eac6cc96a4510aa24/license"
+  },
+  {
+    "name": "react-remove-scroll-bar",
+    "version": "2.3.8",
+    "repository": "https://github.com/theKashey/react-remove-scroll-bar",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "use-composed-ref",
+    "version": "1.4.0",
+    "repository": "git+https://github.com/Andarist/use-composed-ref.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "isarray",
+    "version": "1.0.0",
+    "repository": "git://github.com/juliangruber/isarray.git",
+    "error": "No license file at published gitHead"
+  },
+  {
+    "name": "yoga-layout",
+    "version": "3.2.1",
+    "repository": "git@github.com:facebook/yoga.git",
+    "file": "yoga-layout-3.2.1.txt",
+    "source": "https://github.com/react/yoga/blob/main/LICENSE",
+    "upstreamLicenseBlob": "b96dcb0480a0b0be0727976e5202a1e7b23edc3f",
+    "verification": "Current upstream license; package metadata agrees on SPDX. Exact published-version notice still to verify before release."
+  },
+  {
+    "name": "xml-naming",
+    "version": "0.1.0",
+    "repository": "https://github.com/NaturalIntelligence/xml-naming",
+    "error": "No verified repository and gitHead"
+  }
+]

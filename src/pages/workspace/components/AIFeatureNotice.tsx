@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import * as LucideIcons from "lucide-react";
 import { FeatureToastCard } from "@/components/ui/feature-toast-card";
 import { useSettings } from "@/stores/useSettings";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const NOTICE_ID = "ai-writing-assistant";
 const NOTICE_TOAST_ID = "ai-feature-notice";
@@ -33,13 +33,13 @@ function createNoticeContent(handleClose: () => void) {
           onPointerDown: (e) => { e.preventDefault(); closeRef.current = true; handleClose(); },
           onClick: () => { if (closeRef.current) { closeRef.current = false; return; } handleClose(); },
           variant: "ghost",
-          className: "text-muted-foreground hover:text-foreground",
+          className: "text-muted-foreground hover:text-[var(--goose-interactive-hover-fg)]",
         },
       ]}
     >
-      <p>· 输入框内按空格 → 唤起 AI</p>
+      <p>· 空白段落按空格 → 唤起行内 AI</p>
       <p>· 选中文字 → 一键润色改写</p>
-      <p>支持 uTools AI 或自定义接入，前往设置配置。</p>
+      <p>支持 DeepSeek、GLM、MiniMax 等供应商一键接入，前往设置填写 API Key 即可。</p>
     </FeatureToastCard>
   );
 }

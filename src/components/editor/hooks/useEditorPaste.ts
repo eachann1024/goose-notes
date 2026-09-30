@@ -1,22 +1,248 @@
 import { useCallback, type MutableRefObject } from "react";
 import { Fragment, Slice } from "@tiptap/pm/model";
+import { CellSelection } from "prosemirror-tables";
 import { useCreateBlockNote } from "@blocknote/react";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { importMarkdownFragment } from "@/lib/export/markdown/parse";
+import { restoreBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
 import {
+  htmlHasNonDefaultGooseBlockAttrs,
   isValidUrl,
   looksLikeBlockStructure,
+  looksLikeMermaidDiagram,
   looksLikeMarkdownFragment,
   normalizeMarkdownPasteText,
   parseMarkdownLink,
 } from "../utils/clipboard";
+import {
+  inspectPasteContainer,
+  htmlHasRichPasteContent,
+  htmlLooksLikeBlockNoteClipboard,
+  planMultilinePaste,
+  resolvePasteLines,
+  shouldPreferPlainMultilinePaste,
+  shouldSplitMultilinePaste,
+} from "../utils/multilinePaste";
+import {
+  buildSoftWrapPasteInline,
+  htmlHasInlineFormatting,
+  insertSoftWrappedInline,
+  insertSoftWrappedLines,
+} from "../utils/softWrapPaste";
 import { clipboardHasPasteableImage } from "../utils/pasteClipboardImage";
+import {
+  focusPastedBlock,
+  isEmptyInlineBlock,
+  pasteBlocksAtCursor,
+} from "../utils/pasteAtCursor";
+import {
+  GOOSE_BLOCKNOTE_BLOCK_COPY_MIME,
+  normalizeBlockNoteClipboardHtml,
+} from "../extensions/copyCurrentBlockExtension";
+import { selectionIsInsideFirstTitleBlock } from "../toolbars/formatting/helpers";
+import { normalizeParsedImageProps } from "../blocks/image/imageCaption";
 
 type Editor = ReturnType<typeof useCreateBlockNote>;
+
+export type CachedPasteTarget = {
+  id: string;
+  type?: string;
+  content?: unknown;
+};
+
+/** HTML 含非默认 Goose 块级属性或自定义 MIME 时走块级粘贴，行内 strong/span 不算。 */
+export function shouldPasteHtmlAsBlocks(
+  htmlText: string,
+  hasGooseBlockCopyMime = false,
+): boolean {
+  if (hasGooseBlockCopyMime) return true;
+  return htmlHasNonDefaultGooseBlockAttrs(htmlText);
+}
+
+export function shouldPasteClipboardAsBlocks(
+  clipboard: DataTransfer,
+  htmlText: string,
+): boolean {
+  // `blocknote/html` 是无损内部格式，交回 BlockNote 的默认 paste handler。
+  // 此处不能把它和旧 Goose MIME 一样转为普通 HTML，否则列表 children / 媒体 props
+  // 会经有损解析链路折返。
+  if (clipboard.getData("blocknote/html")) return false;
+  if (clipboard.getData(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) return true;
+  return shouldPasteHtmlAsBlocks(htmlText);
+}
+
+/** plain 含 Goose 块属性标记或 style 颜色 span 时优先 importMarkdownFragment。 */
+export function plainHasGooseMarkdownMarkers(plain: string): boolean {
+  return (
+    /goose-note:block-props|data-goose-note-block-props/i.test(plain) ||
+    /<span[^>]*style\s*=/i.test(plain)
+  );
+}
+
+export function cachePasteTarget(editor: Editor): CachedPasteTarget | null {
+  try {
+    const block = editor.getTextCursorPosition().block;
+    return { id: block.id, type: block.type, content: block.content };
+  } catch {
+    return null;
+  }
+}
+
+export function resolvePasteAnchor(
+  editor: { getBlock: (id: string) => unknown },
+  target: CachedPasteTarget,
+): CachedPasteTarget {
+  return (editor.getBlock(target.id) as CachedPasteTarget | undefined) ?? target;
+}
+
+export function finishPasteAtAnchor(
+  editor: Editor,
+  blocks: unknown[],
+  target: CachedPasteTarget,
+): boolean {
+  const anchor = resolvePasteAnchor(editor, target);
+  const last = pasteBlocksAtCursor(editor, blocks, anchor);
+  if (last) focusPastedBlock(editor, last);
+  return last !== null;
+}
+
+/** 剪贴板 HTML 带有源块 ID；粘贴是副本，需由编辑器重新分配块 ID。 */
+function withoutCopiedBlockIds(blocks: unknown[]): unknown[] {
+  return blocks.map((block) => {
+    if (!block || typeof block !== "object" || Array.isArray(block)) return block;
+    const copy = { ...(block as Record<string, unknown>) };
+    delete copy.id;
+    if (copy.type === "image" && copy.props && typeof copy.props === "object") {
+      copy.props = normalizeParsedImageProps(
+        copy.props as Record<string, unknown>,
+      );
+    }
+    if (Array.isArray(copy.children)) {
+      copy.children = withoutCopiedBlockIds(copy.children);
+    }
+    return copy;
+  });
+}
+
+/** 原生粘贴由我们接管时，与 UniqueID 默认 transformPasted 一样清空容器 ID。 */
+function withoutBlockNoteClipboardIds(html: string): string {
+  if (!html || typeof DOMParser === "undefined") return html;
+  const document = new DOMParser().parseFromString(html, "text/html");
+  for (const block of document.querySelectorAll<HTMLElement>(
+    '[data-node-type="blockContainer"]',
+  )) {
+    block.removeAttribute("data-id");
+    block.removeAttribute("id");
+  }
+  return document.body.innerHTML;
+}
+
+export async function pasteClipboardHtmlAsBlocks(
+  editor: Editor,
+  htmlText: string,
+  target: CachedPasteTarget,
+): Promise<boolean> {
+  let blocks: unknown[];
+  try {
+    blocks = await editor.tryParseHTMLToBlocks(htmlText);
+  } catch {
+    blocks = [];
+  }
+  if (!blocks || blocks.length === 0) return false;
+  return finishPasteAtAnchor(editor, withoutCopiedBlockIds(blocks), target);
+}
+
+export function tryPasteGooseMarkdownFragment(
+  editor: Editor,
+  plainText: string,
+  target: CachedPasteTarget,
+): boolean {
+  const fragment = importMarkdownFragment(plainText);
+  if (!fragment || fragment.length === 0) return false;
+  const restored = restoreBlockPropsMarkers(fragment as BlockNoteContent);
+  return finishPasteAtAnchor(editor, restored, target);
+}
 
 type UseEditorPasteOptions = {
   editor: Editor;
   editable: boolean;
   shiftPressedRef: MutableRefObject<boolean>;
 };
+
+/**
+ * 是否走「标题一隔离粘贴」：仅当选区完全落在物理首块 H1 内时。
+ *
+ * 旧逻辑用 `cursorBlock.id === document[0].id`，会把小窗 raw 首段、多 block 选区
+ * （选区锚点落在首块）都误判成标题，于是 insertBlocks 在下方追加而不替换选区。
+ * 跨块选区 / 非 H1 首块必须返回 false，让默认粘贴替换当前选区。
+ */
+export function shouldIsolateTitleStructurePaste(editor: {
+  prosemirrorState: Editor["prosemirrorState"];
+}): boolean {
+  return selectionIsInsideFirstTitleBlock(editor as Editor);
+}
+
+function isMultiBlockTextSelection(editor: Editor): boolean {
+  try {
+    return (editor.getSelection()?.blocks?.length ?? 0) > 1;
+  } catch {
+    return false;
+  }
+}
+
+function getCursorBlockType(editor: Editor): string | null {
+  try {
+    return editor.getTextCursorPosition().block.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function insertPlainInline(editor: Editor, text: string) {
+  const pmState = editor.prosemirrorState;
+  const schema = pmState.schema;
+  const nodes = text.length > 0 ? [schema.text(text)] : [];
+  const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
+  editor.prosemirrorView.dispatch(
+    pmState.tr.replaceSelection(slice).scrollIntoView(),
+  );
+}
+
+export function pasteLinesAsBlocks(
+  editor: Editor,
+  lines: string[],
+  currentBlockType: string | null,
+) {
+  const { firstLine, restBlocks } = planMultilinePaste(lines, currentBlockType);
+  const current = editor.getTextCursorPosition().block;
+
+  // 空行粘贴：当前块为空且首行为空时，直接替换/插入后续块，不留空段落。
+  if (
+    isEmptyInlineBlock(current) &&
+    firstLine === "" &&
+    restBlocks.length > 0
+  ) {
+    const last = pasteBlocksAtCursor(editor, restBlocks, current);
+    if (last) focusPastedBlock(editor, last);
+    return;
+  }
+
+  const pmState = editor.prosemirrorState;
+  if (firstLine) {
+    editor.prosemirrorView.dispatch(
+      pmState.tr.insertText(firstLine).scrollIntoView(),
+    );
+  } else if (pmState.selection.from !== pmState.selection.to) {
+    editor.prosemirrorView.dispatch(
+      pmState.tr.deleteSelection().scrollIntoView(),
+    );
+  }
+  if (restBlocks.length === 0) return;
+
+  const anchor = editor.getTextCursorPosition().block;
+  const last = pasteBlocksAtCursor(editor, restBlocks, anchor);
+  if (last) focusPastedBlock(editor, last);
+}
 
 export function useEditorPaste({
   editor,
@@ -35,25 +261,46 @@ export function useEditorPaste({
       const plainText = normalizeMarkdownPasteText(
         clipboard.getData("text/plain"),
       );
+      const htmlText = clipboard.getData("text/html");
+      const nativeBlockNoteHtml = clipboard.getData("blocknote/html");
+      const recoveredBlockNoteHtml =
+        nativeBlockNoteHtml ||
+        (htmlLooksLikeBlockNoteClipboard(htmlText) ? htmlText : "");
+      const normalizedBlockNoteHtml = normalizeBlockNoteClipboardHtml(
+        recoveredBlockNoteHtml,
+      );
 
-      // ===== 标题一隔离：光标在「文档标题(物理首块 H1)」时粘贴「块结构」=====
-      // 标题一是特殊存在，必须保持独立(恒为物理首块 H1、不被注入图片/列表/代码等结构)。
+      if (looksLikeMermaidDiagram(plainText)) {
+        event.preventDefault();
+        event.stopPropagation();
+        editor.pasteMarkdown(`\`\`\`mermaid\n${plainText.trim()}\n\`\`\``);
+        return;
+      }
+
+      // ===== 标题一隔离：仅当选区完全落在「物理首块 H1」内时 =====
+      // 标题一必须保持独立(恒为物理首块 H1、不被注入图片/列表/代码等结构)。
       // 默认粘贴会把图片等结构块塞成标题一的 children(实测 depth=1)，破坏其独立性。
-      // 处理：光标在标题一且剪贴板是「非纯文本的块结构」时，拦截默认，把内容解析成块
-      // 插到标题一【下方同级】(用户要求：插入前先加空行再放，绝不覆盖标题或已有正文)。
+      // 处理：标题内粘贴「非纯文本的块结构」时，拦截默认，把内容解析成块插到标题下方。
+      // 注意：小窗 raw 首块不是 H1；跨块选区也不走此路径（见 shouldIsolateTitleStructurePaste）。
       // 纯文本(单行)不拦截 → 照常注入标题文字。
+      //
+      // 多 block 选区（含小窗全选后粘贴）必须交给默认粘贴，用剪贴板内容替换选区，
+      // 绝不能 insertBlocks 追加，否则会出现「选中内容还在、下面又贴了一份」。
       {
-        const cursorBlock = editor.getTextCursorPosition().block;
-        const isInTitle =
-          editor.document[0] && cursorBlock.id === editor.document[0].id;
-        const htmlText = clipboard.getData("text/html");
-        if (isInTitle && looksLikeBlockStructure(plainText, htmlText)) {
+        if (
+          shouldIsolateTitleStructurePaste(editor) &&
+          looksLikeBlockStructure(plainText, htmlText)
+        ) {
           event.preventDefault();
           event.stopPropagation();
           void (async () => {
             let blocks: any[] = [];
             try {
-              if (htmlText && htmlText.trim()) {
+              // 标题一不能接收结构块。这里仍从原生内部 HTML 解析为 Blocks，
+              // 再把完整树插到标题下方；普通位置则直接走下方无损原生粘贴。
+              if (normalizedBlockNoteHtml && normalizedBlockNoteHtml.trim()) {
+                blocks = await editor.tryParseHTMLToBlocks(normalizedBlockNoteHtml);
+              } else if (htmlText && htmlText.trim()) {
                 blocks = await editor.tryParseHTMLToBlocks(htmlText);
               } else if (plainText) {
                 blocks = await editor.tryParseMarkdownToBlocks(plainText);
@@ -63,68 +310,128 @@ export function useEditorPaste({
             }
             if (!blocks || blocks.length === 0) return;
             const titleBlock = editor.document[0];
-            // 先加空行再放：在标题与原有正文之间垫一个空段落，再把解析出的块放进去。
-            // 通过「先插块、再确保块前有空行」实现——直接插到标题之后即为「标题下一行」，
-            // 原有正文被这些新块顺移到后面，不被覆盖。
-            const inserted = editor.insertBlocks(blocks, titleBlock, "after");
+            if (!titleBlock) return;
+            // 直接插到标题之后；原有正文顺移，不覆盖标题。
+            const inserted = editor.insertBlocks(
+              withoutCopiedBlockIds(blocks),
+              titleBlock,
+              "after",
+            );
             const last = inserted[inserted.length - 1];
-            if (last) editor.setTextCursorPosition(last, "end");
+            if (last) focusPastedBlock(editor, last);
           })();
           return;
         }
+      }
+
+      // 笔记内复制的原生切片包含选区边界、嵌套 children 与全部 block props。
+      // 普通位置不拦截事件，让 BlockNote 直接粘贴；UniqueID 会为副本父子块分别分配 ID。
+      // 空段落沿用原有「原位替换」语义：BlockNote 默认会删掉目标块并新建 ID，
+      // 而此路径解析完整内部 HTML 后 updateBlock，可保留目标块 ID。
+      if (normalizedBlockNoteHtml) {
+        const target = cachePasteTarget(editor);
+        if (target && isEmptyInlineBlock(target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          void pasteClipboardHtmlAsBlocks(editor, normalizedBlockNoteHtml, target);
+          return;
+        }
+
+        // 仅在需要清除旧 data URL 默认 caption 时接管原生 MIME。直接保留内部
+        // slice，并清空 blockContainer ID 让 UniqueID appendTransaction 重新生成；
+        // 不把完整结构转写为 Markdown 或外部 HTML。
+        if (normalizedBlockNoteHtml !== recoveredBlockNoteHtml) {
+          event.preventDefault();
+          event.stopPropagation();
+          editor.pasteHTML(
+            withoutBlockNoteClipboardIds(normalizedBlockNoteHtml),
+            true,
+          );
+          return;
+        }
+
+        // Electron 系统剪贴板常丢掉自定义 MIME，只剩 text/html。
+        // 默认 paste 随后会被多行纯文本拆行，把 1. 2. 3. 变成 123/333。
+        if (!nativeBlockNoteHtml) {
+          if (!target) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void pasteClipboardHtmlAsBlocks(
+            editor,
+            normalizedBlockNoteHtml,
+            target,
+          );
+          return;
+        }
+
+        // 未改写的原生切片由 BlockNote 默认 paste handler 处理。
+        return;
+      }
+
+      // GOOSE MIME 或 HTML 含块级属性：块级粘贴（async 前同步缓存锚点）。
+      if (shouldPasteClipboardAsBlocks(clipboard, htmlText)) {
+        const target = cachePasteTarget(editor);
+        if (!target) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void pasteClipboardHtmlAsBlocks(editor, htmlText, target);
+        return;
       }
 
       if (!plainText) return;
 
       const trimmedText = plainText.trim();
 
-      // 0. 选区在 callout / quote 内，且粘贴含多行 → 以 hardBreak 软换行注入，
-      //    避免默认 Markdown 解析把多行拆成多个独立 paragraph 块溢出容器
-      // 同样地：在「空列表项」中粘贴时，默认 paste 会把外部 <p> 当成新段落块
-      // 替换掉空的列表块，导致刚打出的 `- ` bullet 被挤掉。这里走同一条软换行路径，
-      // 把粘贴内容作为内联文本注入，保留列表块本身。
+      // 0. callout / quote 内多行仍走 hardBreak，避免拆出容器。
+      //    列表项不再堆成软换行：有换行就拆成同类型的新块；空列表单项仍就地注入，
+      //    防止默认 paste 把空 bullet/待办替换成段落。
       const pmState = editor.prosemirrorState;
-      const $from = pmState.selection.$from;
-      let inSoftWrapContainer = false;
-      let inEmptyListItem = false;
-      for (let d = $from.depth; d >= 1; d--) {
-        const node = $from.node(d);
-        if (node.type.name === "blockContainer") {
-          const contentNode = d + 1 <= $from.depth ? $from.node(d + 1) : null;
-          const name = contentNode?.type.name;
-          if (name === "callout" || name === "quote") {
-            inSoftWrapContainer = true;
-          } else if (
-            contentNode &&
-            (name === "bulletListItem" ||
-              name === "numberedListItem" ||
-              name === "checkListItem" ||
-              name === "toggleListItem") &&
-            contentNode.content.size === 0
-          ) {
-            inEmptyListItem = true;
-          }
-          break;
-        }
+      const container = inspectPasteContainer(pmState.selection.$from);
+      if (pmState.selection instanceof CellSelection) {
+        container.inTable = true;
       }
-      if (
-        (inSoftWrapContainer && plainText.includes("\n")) ||
-        inEmptyListItem
-      ) {
+      const pasteLines = resolvePasteLines(plainText, htmlText);
+      const softWrapText = pasteLines ? pasteLines.join("\n") : plainText;
+      if (container.inSoftWrap && softWrapText.includes("\n")) {
         event.preventDefault();
         event.stopPropagation();
-        const schema = pmState.schema;
-        const hardBreakType = schema.nodes.hardBreak;
-        const lines = plainText.split("\n");
-        const nodes: any[] = [];
-        lines.forEach((line, idx) => {
-          if (idx > 0 && hardBreakType) nodes.push(hardBreakType.create());
-          if (line.length > 0) nodes.push(schema.text(line));
+        const html = htmlText?.trim() ?? "";
+        if (html && htmlHasInlineFormatting(html)) {
+          void (async () => {
+            let blocks: unknown[];
+            try {
+              blocks = await editor.tryParseHTMLToBlocks(htmlText);
+            } catch {
+              blocks = [];
+            }
+            const inline = buildSoftWrapPasteInline({
+              plainText: softWrapText,
+              parsedHtmlBlocks: blocks,
+            });
+            if (inline.length > 0) {
+              insertSoftWrappedInline(editor, inline);
+              return;
+            }
+            insertSoftWrappedLines(editor, softWrapText);
+          })();
+          return;
+        }
+        const inline = buildSoftWrapPasteInline({
+          plainText: softWrapText,
         });
-        const slice = new Slice(Fragment.fromArray(nodes), 0, 0);
-        editor.prosemirrorView.dispatch(
-          pmState.tr.replaceSelection(slice).scrollIntoView(),
-        );
+        if (inline.length > 0) {
+          insertSoftWrappedInline(editor, inline);
+          return;
+        }
+        insertSoftWrappedLines(editor, softWrapText);
+        return;
+      }
+
+      if (!isMultiBlockTextSelection(editor) && !container.inTable &&
+          shouldPreferPlainMultilinePaste(plainText, htmlText)) {
+        event.preventDefault();
+        event.stopPropagation();
+        pasteLinesAsBlocks(editor, pasteLines!, container.listType ?? getCursorBlockType(editor));
         return;
       }
 
@@ -183,14 +490,50 @@ export function useEditorPaste({
         return;
       }
 
+      // 2.6 无格式的多行文本才拆块；Markdown 和富文本保留源格式。
+      if (
+        shouldSplitMultilinePaste({
+          lines: pasteLines,
+          htmlText,
+          inSoftWrap: container.inSoftWrap,
+          inTable: container.inTable,
+          multiBlockSelection: isMultiBlockTextSelection(editor),
+        })
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        pasteLinesAsBlocks(
+          editor,
+          pasteLines!,
+          container.listType ?? getCursorBlockType(editor),
+        );
+        return;
+      }
+
+      // 空列表项单行：就地注入，避免默认 HTML 粘贴把空列表换成段落。
+      if (container.listEmpty && !plainText.includes("\n") &&
+          !looksLikeMarkdownFragment(plainText) && !htmlHasRichPasteContent(htmlText)) {
+        event.preventDefault();
+        event.stopPropagation();
+        insertPlainInline(editor, plainText);
+        return;
+      }
+
       // 3. 其他 Markdown 内容
       if (!looksLikeMarkdownFragment(plainText)) return;
 
-      const htmlText = clipboard.getData("text/html");
-      if (htmlText && htmlText.trim()) return;
+      if (htmlHasRichPasteContent(htmlText)) return;
 
       event.preventDefault();
       event.stopPropagation();
+
+      if (plainHasGooseMarkdownMarkers(plainText)) {
+        const target = cachePasteTarget(editor);
+        if (target && tryPasteGooseMarkdownFragment(editor, plainText, target)) {
+          return;
+        }
+      }
+
       editor.pasteMarkdown(plainText);
     },
     [editable, editor],

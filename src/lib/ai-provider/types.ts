@@ -1,4 +1,13 @@
-export type CustomAIProtocol = "openai" | "claude";
+export type CustomAIProtocol = "openai-responses" | "openai" | "claude";
+
+/** 与 presets.ts 中 AIProviderId 对齐；此处用 string 避免循环依赖，运行时校验。 */
+export type AIProviderIdLike =
+  | "deepseek"
+  | "glm"
+  | "minimax"
+  | "custom-openai-responses"
+  | "custom-openai"
+  | "custom-claude";
 
 export interface AIModelOption {
   id: string;
@@ -6,17 +15,19 @@ export interface AIModelOption {
   description?: string;
 }
 
-export type AIProviderMode = "utools" | "custom";
 export type AIReasoningLevel = "default" | "low" | "medium" | "high";
 
 export interface AISettingsLike {
   enabled: boolean;
   selectedModelId: string | null;
   workspaceReasoningLevel: AIReasoningLevel;
-  useCustomProvider: boolean;
+  /** 供应商预设；缺省时由 base URL / 协议推断 */
+  customProviderId?: AIProviderIdLike | string | null;
   customProtocol: CustomAIProtocol;
+  customOpenAIResponsesBaseURL: string;
   customOpenAIBaseURL: string;
   customClaudeBaseURL: string;
+  customOpenAIResponsesApiKey: string;
   customOpenAIApiKey: string;
   customClaudeApiKey: string;
   customModelOptions: AIModelOption[];
@@ -27,7 +38,11 @@ export interface AIMessage {
   content?: string;
 }
 
-export type AIStreamPhase = "connecting" | "thinking" | "generating" | "finishing";
+export type AIStreamPhase =
+  | "connecting"
+  | "thinking"
+  | "generating"
+  | "finishing";
 
 export interface AIStreamUpdate {
   phase: AIStreamPhase;
@@ -48,21 +63,4 @@ export interface RunAITextOptions {
 export interface RunAITextStreamOptions extends RunAITextOptions {
   onUpdate?: (update: AIStreamUpdate) => void;
   streamIdleTimeoutMs?: number;
-}
-
-export interface UToolsAiApi {
-  ai?: (
-    option: {
-      model?: string;
-      messages: AIMessage[];
-    },
-    streamCallback?: (chunk: {
-      role?: "system" | "user" | "assistant";
-      content?: string;
-      reasoning_content?: string;
-    }) => void,
-  ) => Promise<{
-    content?: string;
-    reasoning_content?: string;
-  }> & { abort?: () => void };
 }

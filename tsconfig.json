@@ -1,4 +1,10 @@
 {
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@host-runtime": ["./src/lib/host/runtime.electron.ts"]
+    }
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

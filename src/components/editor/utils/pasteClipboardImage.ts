@@ -1,8 +1,11 @@
-
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|heic|heif|tiff?)$/i;
+const VIDEO_EXT = /\.(mp4|m4v|mov|webm|avi|mkv|flv|wmv)$/i;
 
 /** 剪贴板 file item 是否应按图片块粘贴（含 Mac 空 file.type、靠 item.type/扩展名判断） */
-export function isPasteableClipboardImageFile(file: File, itemType: string): boolean {
+export function isPasteableClipboardImageFile(
+  file: File,
+  itemType: string,
+): boolean {
   if (itemType.startsWith("image/")) return true;
   if (file.type.startsWith("image/")) return true;
   return IMAGE_EXT.test(file.name);
@@ -19,6 +22,93 @@ export function clipboardHasPasteableImage(
     const file = item.getAsFile();
     if (!file) continue;
     if (isPasteableClipboardImageFile(file, item.type)) return true;
+  }
+  return false;
+}
+
+/**
+ * 可测的剪贴板/拖放数据形状（避免单测 mock 完整 DataTransfer）。
+ * 与 DataTransfer 兼容：优先 items（Mac 截图常 files 为空），再扫 files。
+ */
+export type ClipboardImageSource = {
+  items?: ArrayLike<{
+    kind: string;
+    type: string;
+    getAsFile: () => File | null;
+  }> | null;
+  files?: ArrayLike<File> | null;
+};
+
+/**
+ * 从剪贴板/拖放数据提取图片 File。
+ * Mac 截图/复制图常只有 items（files 为空）；item.type 有 image/* 而 file.type 可能为空。
+ * 空 type 会按 item.type / 扩展名归一，便于下游 isImageUploadFile 通过。
+ */
+export function extractClipboardImageFiles(
+  data: ClipboardImageSource | null | undefined,
+): File[] {
+  if (!data) return [];
+
+  const fromItems: File[] = [];
+  const items = data.items;
+  if (items && items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind !== "file") continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      if (!isPasteableClipboardImageFile(file, item.type)) continue;
+      const mime =
+        (file.type.startsWith("image/") && file.type) ||
+        (item.type.startsWith("image/") && item.type) ||
+        resolveImageMimeForUpload(file);
+      fromItems.push(
+        file.type === mime
+          ? file
+          : new File([file], file.name || `paste-${Date.now()}.png`, {
+              type: mime,
+              lastModified: file.lastModified,
+            }),
+      );
+    }
+  }
+  if (fromItems.length > 0) return fromItems;
+
+  const fromFiles: File[] = [];
+  const files = data.files;
+  if (files && files.length > 0) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (isImageUploadFile(file)) fromFiles.push(file);
+    }
+  }
+  return fromFiles;
+}
+
+export function isPasteableClipboardVideoFile(
+  file: File,
+  itemType: string,
+): boolean {
+  return (
+    itemType.startsWith("video/") ||
+    file.type.startsWith("video/") ||
+    VIDEO_EXT.test(file.name)
+  );
+}
+
+export function clipboardHasPasteableMedia(
+  data: DataTransfer | null | undefined,
+): boolean {
+  if (!data?.items?.length) return false;
+  for (let i = 0; i < data.items.length; i++) {
+    const item = data.items[i];
+    const file = item.kind === "file" ? item.getAsFile() : null;
+    if (
+      file &&
+      (isPasteableClipboardImageFile(file, item.type) ||
+        isPasteableClipboardVideoFile(file, item.type))
+    )
+      return true;
   }
   return false;
 }

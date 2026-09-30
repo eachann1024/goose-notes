@@ -8,7 +8,6 @@
  * 非 React 调用点（BlockNote/ProseMirror extension 回调）无法用 hook，改用
  * `getEditorPlatform()` 读取模块级单例；Provider 挂载时同步该单例。
  *
- * 来源：plans/2026-06-01-Tauri迁移与编辑器抽取计划/extraction-blueprint.md §1 / §4 Step 4
  */
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import type { EditorPlatform } from "./types";

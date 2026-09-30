@@ -1,0 +1,172 @@
+/* 标题区块折叠：隐藏 collapsed heading 后续兄弟块（不用 BlockNote toggle children）。 */
+.bn-editor .bn-block-outer[data-goose-section-hidden="true"],
+.bn-editor .bn-block-outer.goose-section-hidden,
+.bn-editor .goose-section-hidden {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-editor .bn-block-outer[data-goose-section-hidden="true"] {
+    transition: none;
+  }
+}
+
+
+/* 折叠箭头换成与侧栏一致的 Lucide ChevronRight（描边 1.75）：
+   BlockNote 内置的是 Material 实心箭头，与整体图标风格不符。
+   用 mask + currentColor 适配深浅模式；展开旋转沿用 BlockNote 原有
+   .bn-toggle-wrapper[data-show-children=true] 的 rotate(90deg)。 */
+.bn-editor .bn-toggle-button svg {
+  display: none;
+}
+.bn-editor .bn-toggle-button {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  width: 1.25em;
+  height: 1.25em;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.15s ease-out,
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+.bn-editor .bn-toggle-button::before {
+  content: "";
+  width: 0.85em;
+  height: 0.85em;
+  min-width: 14px;
+  min-height: 14px;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.bn-editor .bn-toggle-button:hover,
+.bn-editor .bn-toggle-add-block-button:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+/* 侧栏折叠按钮：默认 muted；hover/active/data-fold-hot 用高特异 + !important 压 portal 层叠 */
+.bn-side-menu button.goose-heading-fold-btn {
+  color: hsl(var(--muted-foreground) / 0.55);
+  background-color: transparent;
+  transition:
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] {
+  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):hover span,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active svg,
+html body .bn-side-menu button.goose-heading-fold-btn:not([aria-expanded="false"]):active span,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] svg,
+html body .bn-side-menu button.goose-heading-fold-btn[data-fold-hot="true"] span {
+  color: var(--goose-interactive-hover-fg) !important;
+}
+
+/* 折叠标题整行虚线边框：
+   - 用 outline 不占地；左右 8px 外扩在 block-background.css 对所有标题
+     统一做，折叠只加虚线，文字起点不跳。
+   - outline-offset -1px 让虚线贴在背景条边缘内侧，圆角跟随 4px；
+   - BlockNote 标题默认 padding-top:18px 制造块间距，outline 会把这段空白
+     一起框进去；折叠态把 15px 挪到透明 margin-top，虚线只贴文字行。
+     无背景标题原本没有这条补偿，所以折叠态也要补上。
+   - 不用 color-mix：当前内核解析失败会让整条 outline 简写作废，
+     颜色一律写死 rgba（取值对应 --goose-interactive-selected-fg /
+     --goose-editor-highlight-purple-text 的半透明实色）；
+   - 选择器用后代链不用 > 子代链，容忍 block-outer 与 block-content
+     之间多一层 wrapper。 */
+.bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"] {
+  margin-top: 15px;
+  padding-top: 3px;
+  outline: 1px dashed rgba(79, 70, 229, 0.45) !important;
+  outline-width: 1px !important;
+  outline-style: dashed !important;
+  outline-offset: -1px !important;
+  outline-color: rgba(79, 70, 229, 0.45) !important;
+  border-radius: 4px;
+}
+
+/* 浅紫背景条：虚线跟标题紫同族（--goose-editor-highlight-purple-text 实色半透明），50% 透明度不抢文字。 */
+.bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"][data-background-color="purple"] {
+  outline-color: rgba(105, 64, 165, 0.5) !important;
+}
+
+.dark
+  .bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"] {
+  outline-color: rgba(165, 180, 252, 0.45) !important;
+}
+
+.dark
+  .bn-editor
+  .bn-block-outer[data-goose-heading-collapsed="true"]
+  .bn-block-content[data-content-type="heading"][data-background-color="purple"] {
+  outline-color: rgba(208, 186, 248, 0.5) !important;
+}
+
+/* 折叠态侧栏按钮始终呈选中样式；展开态保持默认、hover 才高亮。 */
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"],
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:active {
+  background-color: var(--goose-icon-chip-on-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"] svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"] span,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover svg,
+html body .bn-side-menu button.goose-heading-fold-btn[aria-expanded="false"]:hover span {
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+/* 普通折叠列表：箭头钉在首行 marker 位；子块跟标题文字对齐，不画竖线。 */
+.bn-block-content[data-content-type="toggleListItem"]
+  > div
+  > .bn-toggle-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  padding-left: 22px;
+}
+.bn-block-content[data-content-type="toggleListItem"]
+  > div
+  > .bn-toggle-wrapper
+  > .bn-toggle-button {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+}
+.bn-block-content[data-content-type="toggleListItem"] ~ .bn-block-group {
+  margin-left: 22px;
+}

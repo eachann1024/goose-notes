@@ -1,0 +1,297 @@
+.setup-guide {
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  min-height: 480px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.setup-guide [hidden] {
+  display: none !important;
+}
+
+.setup-guide-windowbar {
+  display: flex;
+  min-height: 32px;
+  align-items: stretch;
+  justify-content: flex-end;
+  -webkit-app-region: no-drag;
+}
+
+.setup-guide-windowbar [data-electron-no-drag],
+.setup-guide-windowbar button {
+  -webkit-app-region: no-drag;
+}
+
+.setup-guide[data-native-platform="mac"] .setup-guide-windowbar,
+.setup-guide[data-native-platform="win"] .setup-guide-windowbar {
+  -webkit-app-region: drag;
+}
+
+.setup-guide[data-native-platform="mac"] .setup-guide-windowbar {
+  padding-inline-start: var(--electron-traffic-inset, 78px);
+}
+
+.setup-guide-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 24px 16px;
+}
+
+.setup-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-guide-steps li {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+}
+
+.setup-guide-steps li:not(:last-child)::after {
+  height: 1px;
+  flex: 1;
+  background: hsl(var(--border));
+  content: "";
+}
+
+.setup-guide-steps li[aria-current="step"] {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.setup-guide-steps li[data-complete="true"] {
+  color: hsl(var(--foreground));
+}
+
+.setup-guide-step-marker {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9999px;
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.setup-guide-steps li[aria-current="step"] .setup-guide-step-marker,
+.setup-guide-steps li[data-complete="true"] .setup-guide-step-marker {
+  border-color: var(--goose-interactive-selected);
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.setup-guide-heading h1 {
+  margin: 4px 0 0;
+  color: hsl(var(--foreground));
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.setup-guide-heading h1:focus-visible {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.setup-guide-content {
+  display: grid;
+  min-height: 0;
+  grid-template-areas: "preview controls";
+  grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+  gap: 20px;
+  padding: 0 24px 16px;
+}
+
+.setup-guide-preview {
+  min-width: 0;
+  min-height: 0;
+  grid-area: preview;
+}
+
+.setup-guide-preview > [aria-label="编辑器即时预览"] {
+  width: 100%;
+  height: 100%;
+}
+
+.setup-guide-preview [data-page-layout="standard"] .page-layout-document {
+  max-width: min(640px, 78%);
+}
+
+.setup-guide-controls {
+  min-width: 0;
+  min-height: 0;
+  grid-area: controls;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.setup-guide-control-step {
+  min-width: 0;
+}
+
+.setup-guide .settings-appearance-layout {
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.setup-guide .settings-appearance-options {
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+.setup-guide-advanced-settings summary:focus-visible,
+.setup-guide button:focus-visible,
+.setup-guide select:focus-visible,
+.setup-guide input:focus-visible {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.setup-guide-ai-settings .settings-groups > div {
+  max-width: none;
+  margin: 0;
+}
+
+.setup-guide-ai-settings .settings-groups > div > * {
+  min-width: 0;
+}
+
+.setup-guide-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid hsl(var(--border));
+  padding: 12px 24px;
+  background: hsl(var(--background));
+}
+
+.setup-guide-footer-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+.setup-guide-status {
+  max-width: 320px;
+  margin: 0 0 0 12px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .setup-guide {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-rows: auto auto auto auto;
+    overflow: visible;
+  }
+
+  .setup-guide-content {
+    grid-template-areas:
+      "controls"
+      "preview";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-inline: 16px;
+  }
+
+  .setup-guide-controls {
+    overflow: visible;
+  }
+
+  .setup-guide-preview {
+    height: 320px;
+  }
+
+  .setup-guide-footer {
+    flex-wrap: wrap;
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .setup-guide-header {
+    gap: 8px;
+    padding: 4px 16px 12px;
+  }
+
+  .setup-guide-steps {
+    gap: 8px;
+  }
+
+  .setup-guide-steps li {
+    gap: 6px;
+    font-size: 0.8125rem;
+  }
+
+  .setup-guide-step-marker {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+  }
+
+  .setup-guide-heading h1 {
+    font-size: 1.25rem;
+  }
+
+  .setup-guide-content {
+    gap: 12px;
+    padding-inline: 12px;
+  }
+
+  .setup-guide-preview {
+    height: 300px;
+  }
+
+  .setup-guide-preview .appearance-preview-sidebar {
+    display: none;
+  }
+
+  .setup-guide-footer {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .setup-guide-footer-actions {
+    margin-inline-start: auto;
+  }
+
+  .setup-guide-status {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    order: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-guide * {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

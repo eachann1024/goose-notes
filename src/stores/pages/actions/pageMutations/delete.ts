@@ -9,7 +9,7 @@ import {
 } from "../../persistence";
 
 /**
- * 删除后把侧栏的键盘焦点/选中同步到新激活页。
+ * 删除后把侧栏的键盘焦点/选中同步到新的合理行。
  * 否则 focusedItem 仍指向已删除项，react-complex-tree 焦点丢失，
  * 连续删除与方向键导航的起点会错乱。
  */
@@ -17,17 +17,16 @@ function syncSidebarSelectionAfterDelete(
   workspaceId: string,
   removedIds: Set<string>,
   get: StoreGet,
+  fallbackPageId?: string | null,
 ): void {
   const view = useSidebarView.getState();
   const focused = view.focusedByNotebook[workspaceId];
   const selected = view.selectedByNotebook[workspaceId];
-  if (
-    !removedIds.has(focused || "") &&
-    !removedIds.has(selected || "")
-  ) {
+  if (!removedIds.has(focused || "") && !removedIds.has(selected || "")) {
     return;
   }
-  const nextActive = get().activePageId;
+  const nextActive =
+    fallbackPageId !== undefined ? fallbackPageId : get().activePageId;
   // nextActive 可能为 null（整本删空），此时清掉焦点/选中。
   if (removedIds.has(focused || "")) {
     view.setFocused(workspaceId, nextActive);
@@ -41,6 +40,7 @@ export const deletePageAction = async (
   set: StoreSet,
   get: StoreGet,
   id: string,
+  options?: { trashBatchId?: string; onLocalTrash?: (token: string) => void },
 ): Promise<boolean> => {
   flushEditorContent();
   const page = get().pages[id];
@@ -70,6 +70,8 @@ export const deletePageAction = async (
     const removedIds = new Set<string>();
     const stack = [id];
     const snapshotPages = get().pages;
+    const expandedIds =
+      useSidebarView.getState().expandedByNotebook[page.workspaceId] ?? [];
     while (stack.length) {
       const currentId = stack.pop()!;
       removedIds.add(currentId);
@@ -77,10 +79,28 @@ export const deletePageAction = async (
         if (p.parentId === currentId) stack.push(p.id);
       });
     }
+    const sidebarView = useSidebarView.getState();
+    const removedFocusedOrSelected =
+      removedIds.has(sidebarView.focusedByNotebook[page.workspaceId] || "") ||
+      removedIds.has(sidebarView.selectedByNotebook[page.workspaceId] || "");
+    const nextSelectionPageId = removedFocusedOrSelected
+      ? resolveVisibleRowAfterDeletion({
+          pages: snapshotPages,
+          currentPage: page,
+          removedIds,
+          isLocalNotebook: true,
+          expandedIds,
+        })
+      : undefined;
 
-    const removeOk = page.isFolder
-      ? await window.gooseFs.deleteDir(targetPath)
-      : await window.gooseFs.deleteFile(targetPath);
+    const token = window.gooseFs.trashWithUndo
+      ? await window.gooseFs.trashWithUndo(targetPath)
+      : null;
+    const removeOk = window.gooseFs.trashWithUndo
+      ? Boolean(token)
+      : page.isFolder
+        ? await window.gooseFs.deleteDir(targetPath)
+        : await window.gooseFs.deleteFile(targetPath);
     if (!removeOk) return false;
 
     set((state) => {
@@ -94,13 +114,11 @@ export const deletePageAction = async (
           currentPage: page,
           removedIds,
           isLocalNotebook: true,
-          expandedIds:
-            useSidebarView.getState().expandedByNotebook[page.workspaceId] ?? [],
+          expandedIds,
         });
-        useNotebooks.getState().setLastActivePage(
-          page.workspaceId,
-          nextActivePageId,
-        );
+        useNotebooks
+          .getState()
+          .setLastActivePage(page.workspaceId, nextActivePageId);
       }
 
       return {
@@ -109,9 +127,16 @@ export const deletePageAction = async (
       };
     });
 
-    syncSidebarSelectionAfterDelete(page.workspaceId, removedIds, get);
+    syncSidebarSelectionAfterDelete(
+      page.workspaceId,
+      removedIds,
+      get,
+      nextSelectionPageId,
+    );
 
     removePersistedPageSnapshots(snapshotPages, removedIds);
+
+    if (token) options?.onLocalTrash?.(token);
 
     return true;
   }
@@ -134,7 +159,7 @@ export const deletePageAction = async (
 
     const newPages = { ...state.pages };
     const now = Date.now();
-    const batchId = `b-${now}-${id}`;
+    const batchId = options?.trashBatchId || `b-${now}-${id}`;
     removedIds.forEach((pid) => {
       if (newPages[pid]) {
         newPages[pid] = {
@@ -160,10 +185,7 @@ export const deletePageAction = async (
         expandedIds:
           useSidebarView.getState().expandedByNotebook[workspaceId] ?? [],
       });
-      useNotebooks.getState().setLastActivePage(
-        workspaceId,
-        newActivePageId,
-      );
+      useNotebooks.getState().setLastActivePage(workspaceId, newActivePageId);
     }
 
     return {

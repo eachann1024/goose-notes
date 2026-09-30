@@ -1,0 +1,196 @@
+/* 有序/无序列表 marker、代码块与表格块外边距。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-list-* / --goose-bullet-* / --goose-interactive-selected-fg。
+ */
+
+/* 有序列表数字是字体字形：墨迹中心会比中文正文低约 0.04em，用 em 轻微上移。
+   无序圆点 / 方点是自绘几何，几何中心即视觉中心，不套这段偏移。
+   提醒事项同样是自绘方框，也不套。 */
+.workspace-editor-surface {
+  --goose-list-marker-optical-offset-y: -0.04em;
+  /* 无序列表各级几何 marker 半径（随字号 em 缩放） */
+  --goose-bullet-marker-radius: 0.2109375em; /* 一级实心圆 */
+  --goose-bullet-marker-radius-nested: 0.196875em; /* 二级空心圆外半径 */
+  --goose-bullet-marker-ring: 0.084375em; /* 二级空心圆环厚 */
+  --goose-bullet-marker-square: 0.3375em; /* 三级方点边长 */
+  --goose-bullet-marker-center-x: 10.3px;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="numberedListItem"]::before {
+  transform: translateY(var(--goose-list-marker-optical-offset-y));
+}
+
+/* 自定义圆点给 ::before 设了真实高度，覆盖 BlockNote #1588 的 height:0 规避，
+   点行尾空白时 Chromium 会把光标算到块首。marker 不接收指针，点击落到文字。 */
+.bn-editor
+  .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  pointer-events: none;
+}
+
+/*
+ * 嵌套块不再画左侧引用线。BlockNote 默认在 child outer::before 上画
+ * 分段线；折叠列表 / 折叠标题本来就不画，普通列表也不再补主干。
+ */
+.workspace-editor-surface
+  .bn-block-group
+  .bn-block-group
+  > .bn-block-outer::before {
+  content: none !important;
+  border-left: 0 !important;
+}
+
+/* 有序列表数字的字形墨迹中心会比 24px marker 槽的几何中心偏左约 1px。
+   保持 4px 总内边距和正文起点不变，仅在槽内做光学右移。
+   无序列表改用几何圆/方点，不走这段内边距（见下方 bullet 规则）。 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="numberedListItem"]::before {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 1.5em;
+  padding-left: 0.0625em;
+  padding-right: 0.1875em;
+}
+
+/* 飞书式列表圆点：不用字体字形 / radial-gradient（硬切边在旧 Chromium
+   锯齿明显），改用 border-radius 几何圆。圆心仍固定在 center-x、首行
+   垂直中心随正文行高变化；默认 16px 正文下一级圆点直径 6.75px，随字号缩放。
+   marker 槽总占位仍为 1.5em（左右 margin 补齐），避免正文起点偏移。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "" !important;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: calc(2 * var(--goose-bullet-marker-radius));
+  min-width: 0;
+  height: calc(2 * var(--goose-bullet-marker-radius));
+  margin-top: calc(var(--editor-line-height, 1.5) * 0.5em - var(--goose-bullet-marker-radius));
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-radius)
+  );
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-radius)
+  );
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: currentColor;
+  background-image: none;
+  line-height: 0;
+  transform: none;
+}
+
+/* 光标所在列表行的 marker 使用产品现有强调前景色。强调色令牌为实色，
+   避免 Electron 旧 Chromium 对 hsl(var(...)/alpha) 的错误回退。 */
+.workspace-shell
+  .workspace-editor-surface
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-list-marker
+  > .bn-block
+  > .bn-block-content:is(
+    [data-content-type="bulletListItem"],
+    [data-content-type="numberedListItem"]
+  )::before {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.workspace-shell
+  .workspace-editor-surface
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-list-marker
+  > .bn-block
+  > .bn-block-content[data-content-type="checkListItem"]
+  > div
+  > input:not(:checked) {
+  outline: 1px solid var(--goose-interactive-selected-fg);
+  outline-offset: -1px;
+}
+
+/* 一级子无序列表始终使用空心圆，不依赖父项是否也是无序列表。
+   外径略小于父级实心圆；用 border 画环，避免 radial-gradient 硬切边锯齿。 */
+.workspace-editor-surface
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "" !important;
+  width: calc(2 * var(--goose-bullet-marker-radius-nested));
+  height: calc(2 * var(--goose-bullet-marker-radius-nested));
+  margin-top: calc(0.75em - var(--goose-bullet-marker-radius-nested));
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-radius-nested)
+  );
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-radius-nested)
+  );
+  border: var(--goose-bullet-marker-ring) solid currentColor;
+  border-radius: 50%;
+  background-color: transparent;
+  background-image: none;
+  transform: none;
+}
+
+/* 第二级子无序列表继续使用方点，保持层级可辨识。 */
+.workspace-editor-surface
+  .bn-editor
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-group
+  > .bn-block-outer
+  > .bn-block
+  > .bn-block-content[data-content-type="bulletListItem"]::before {
+  content: "" !important;
+  width: var(--goose-bullet-marker-square);
+  height: var(--goose-bullet-marker-square);
+  margin-top: calc(0.75em - var(--goose-bullet-marker-square) / 2);
+  margin-left: calc(
+    var(--goose-bullet-marker-center-x) - var(--goose-bullet-marker-square) / 2
+  );
+  margin-right: calc(
+    1.5em - var(--goose-bullet-marker-center-x) -
+      var(--goose-bullet-marker-square) / 2
+  );
+  border: none;
+  border-radius: 0;
+  background-color: currentColor;
+  background-image: none;
+  transform: none;
+}
+
+/*
+ * 有序列表编号：直接采用 BlockNote 算好的 data-index（1-based，已正确处理
+ * start 属性 + 被 divider/标题等非列表块打断后的重新计数），不要再用自增
+ * CSS counter——counter 会无视 data-index、整篇文档连续累加，导致用户输入
+ * 「1.」却延续上文显示「3.」、无法新起列表。
+ */
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="numberedListItem"])
+  > .bn-block
+  > .bn-block-content[data-content-type="numberedListItem"]::before {
+  content: attr(data-index) "." !important;
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="codeBlock"]) {
+  margin-bottom: 0.6em;
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="table"]) {
+  margin-bottom: 0.6em;
+}

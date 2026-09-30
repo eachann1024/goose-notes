@@ -1,0 +1,416 @@
+/* 表格与分割线、链接、标注、表格扩展/拖拽手柄、图视频块间距。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-editor-selection-bg / --goose-interactive-selected-fg / --goose-accent-link / --border / --primary / --muted-foreground。
+ */
+
+/* Screenshot uses 2× image pixels: 44px rows, 12px inset, 24px append bars.
+   Keep native colgroup widths; only unconstrained tables fill the editor. */
+.workspace-editor-surface {
+  --goose-table-grid: hsl(var(--goose-menu-border));
+  --goose-table-header: var(--goose-block-subtle-bg);
+  --goose-table-selection: var(--goose-accent-focus);
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] .tableWrapper {
+  padding: calc(28px * var(--editor-scale, 1));
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] table {
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  table:not(:has(col[style*="width:"])) {
+  width: 100% !important;
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] :is(th, td) {
+  height: calc(44px * var(--editor-scale, 1));
+  box-sizing: border-box;
+  padding: calc(9px * var(--editor-scale, 1))
+    calc(12px * var(--editor-scale, 1));
+  border: 1px solid var(--goose-table-grid);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--editor-scale, 1));
+  line-height: calc(24px * var(--editor-scale, 1));
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  :is(th, td)
+  > .bn-inline-content {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  line-height: inherit;
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th:is(:not([data-background-color]), [data-background-color="default"]) {
+  background-color: var(--goose-table-header);
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  font-weight: 600;
+}
+
+/* CellSelection 时隐藏原生文字高亮，避免和格子装饰叠在一起。
+   :has() 给新内核；.goose-table-cell-grid 给旧 Chromium。
+   选择器要比 goose-accent-colors.css 的 ::selection 更高，才能盖住后加载的强调色。 */
+:root .workspace-editor-surface .bn-editor table:has(.selectedCell) ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor
+  table:has(.selectedCell)
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid ::selection,
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+/* 文档跨表选区保留强调底色。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  th,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  td {
+  background-color: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  );
+}
+
+/* 只叠加选区底，不改保存的标题/自定义底色；取消选择立即恢复。 */
+:root .workspace-editor-surface .bn-editor .selectedCell {
+  --goose-table-selection-bg: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  );
+  background-image: linear-gradient(
+    var(--goose-table-selection-bg),
+    var(--goose-table-selection-bg)
+  );
+}
+
+/* 相邻格不描边；跨过原网格边缘接合外轮廓，不改变布局盒或文字。 */
+:root .workspace-editor-surface .bn-editor .selectedCell::after {
+  background: transparent;
+  background-color: transparent;
+  border: 0 solid var(--goose-table-selection);
+  inset: -1px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-top::after {
+  border-top-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-right::after {
+  border-right-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-bottom::after {
+  border-bottom-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-left::after {
+  border-left-width: 2px;
+}
+
+/* 跨表格文档选区用单元格背景连成一片；同时压住文字级
+   ::selection，避免 token 背景被重复叠加。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+.workspace-editor-surface .bn-editor .selectedCell {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.55);
+}
+
+.dark .workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.4);
+}
+
+/* ===== 链接：正文色+下划线；按住 Cmd/Ctrl 再悬停才进可打开态 ===== */
+.workspace-editor-surface a[data-inline-content-type="link"],
+.quicknote-editor-surface a[data-inline-content-type="link"] {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: text;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover,
+  .quicknote-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover,
+  .workspace-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover
+    *,
+  .quicknote-editor-surface
+    .goose-link-armed
+    a[data-inline-content-type="link"]:hover
+    * {
+    color: var(--goose-interactive-selected-fg) !important;
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface a[data-inline-content-type="link"],
+  .quicknote-editor-surface a[data-inline-content-type="link"] {
+    transition: none;
+  }
+}
+
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: visible;
+}
+
+.workspace-editor-surface .bn-block-outer:has([data-callout="true"]),
+.workspace-editor-surface .bn-block:has([data-callout="true"]),
+.workspace-editor-surface .bn-block-content[data-content-type="callout"],
+.workspace-editor-surface .bn-block-content:has([data-callout="true"]),
+.workspace-editor-surface .react-renderer.node-callout {
+  width: 100%;
+}
+
+/* ===== 标注（callout）图标与首行文字垂直居中 =====
+   与 checklist 同原理：图标槽高度 = 1.5em（一行行高），槽内 flex 居中；
+   多行时槽仍只占首行高度，图标对齐第一行。 */
+.workspace-editor-surface [data-callout="true"],
+.quicknote-editor-surface [data-callout="true"] {
+  align-items: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot,
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger],
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot,
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  padding: 0;
+  line-height: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.workspace-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot > *,
+.quicknote-editor-surface [data-callout="true"] [data-callout-icon-trigger] > *,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content.bn-inline-content {
+  line-height: var(--editor-line-height, 1.5);
+}
+
+.workspace-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.workspace-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg,
+.quicknote-editor-surface [data-callout="true"] .callout-icon-slot svg,
+.quicknote-editor-surface
+  [data-callout="true"]
+  button[data-callout-icon-trigger]
+  svg {
+  display: block;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-outer:first-child,
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  > .bn-block-group
+  > .bn-block-outer:first-child {
+  margin-top: 0 !important;
+}
+
+.workspace-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"],
+.quicknote-editor-surface
+  [data-callout="true"]
+  .callout-content
+  .bn-block-content[data-content-type="paragraph"] {
+  line-height: var(--editor-line-height, 1.5);
+}
+
+/* ===== 表格控件：尺寸来自实际 table border box，不裁成 viewport 尺寸 ===== */
+.goose-table-extend-button,
+.goose-table-handle-btn {
+  --radius-sm: 4px;
+}
+.goose-table-extend-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  zoom: 1;
+  border: 0;
+  border-radius: calc(var(--radius-sm) * var(--editor-scale, 1));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  box-shadow: none;
+}
+.goose-table-extend-button > svg,
+.goose-table-handle-btn > svg {
+  inline-size: var(--editor-control-icon-lg-size);
+  block-size: var(--editor-control-icon-lg-size);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+.goose-table-extend-button:hover,
+.goose-table-extend-button.is-editing,
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  background: var(--goose-table-control-hover);
+  color: hsl(var(--foreground));
+}
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  outline: none !important;
+}
+.goose-table-extend-button-columns {
+  inline-size: calc(24px * var(--editor-scale, 1));
+  block-size: 100%;
+  cursor: col-resize;
+}
+.goose-table-extend-button-rows {
+  inline-size: 100%;
+  block-size: calc(32px * var(--editor-scale, 1));
+  cursor: row-resize;
+}
+.workspace-editor-surface .bn-table-drop-cursor {
+  background-color: var(--goose-accent-drag-line);
+  border-radius: var(--radius-sm);
+}
+/* Real scaled layout boxes preserve Floating UI's 4px gap without CSS zoom. */
+.goose-table-handle-btn.goose-editor-position-safe-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  zoom: 1;
+  transform: none;
+  width: var(--editor-control-height-sm);
+  height: var(--editor-control-height-sm);
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius-sm) * var(--editor-scale, 1));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: grab;
+}
+.goose-table-handle-btn:hover,
+.goose-table-handle-btn[aria-expanded="true"] {
+  background: var(--goose-table-control-hover);
+  color: hsl(var(--foreground));
+}
+.goose-table-menu .goose-table-menu-note {
+  white-space: normal;
+}
+.goose-table-color-menu .goose-table-color-group {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  gap: 4px;
+  padding: 0 8px 8px;
+}
+.goose-table-color-group .goose-table-menu-heading {
+  grid-column: 1 / -1;
+  margin: 0 -8px;
+}
+.goose-table-menu .goose-menu-item.goose-table-color-swatch {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+}
+.goose-table-color-swatch > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: var(--goose-menu-item-radius);
+  background-color: var(--goose-table-swatch-bg);
+  color: var(--goose-table-swatch-fg);
+  font-weight: 600;
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="image"]),
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
+  margin-bottom: 0.5em;
+}

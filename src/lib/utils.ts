@@ -24,20 +24,25 @@ export function getPrimaryModifierKeyLabel() {
   return isMacPlatform() ? "Command" : "Ctrl";
 }
 
-export function getPrimaryModifierKeyDisplay(options?: { style?: "symbol" | "text" }) {
+export function getPrimaryModifierKeyDisplay(
+  options?: { style?: "symbol" | "text" },
+  platform: PlatformKind = getPlatformKind(),
+) {
   const style = options?.style ?? "symbol";
-  const platform = getPlatformKind();
 
   if (platform === "mac") {
     return style === "symbol" ? "⌘" : "Command";
   }
 
   // Win/Linux/other: 当前快捷键主键都是 Ctrl
-  return style === "symbol" ? "⌃" : "Ctrl";
+  return "Ctrl";
 }
 
-export function formatShortcut(shortcut: string) {
-  const isMac = isMacPlatform();
+export function formatShortcut(
+  shortcut: string,
+  platform: PlatformKind = getPlatformKind(),
+) {
+  const isMac = platform === "mac";
 
   return shortcut
     .split("+")
@@ -47,23 +52,36 @@ export function formatShortcut(shortcut: string) {
         p === "mod" ||
         p === "cmdorctrl" ||
         p === "cmdorcontrol" ||
-        p === "commandorcontrol" ||
-        p === "command" ||
-        p === "meta"
+        p === "commandorcontrol"
       ) {
         return isMac ? "⌘" : "Ctrl";
+      }
+      if (
+        p === "command" ||
+        p === "meta" ||
+        p === "super" ||
+        p === "win" ||
+        p === "windows"
+      ) {
+        if (isMac) return "⌘";
+        if (platform === "windows") return "Win";
+        if (platform === "linux") return "Super";
+        return "Meta";
       }
       if (p === "ctrl" || p === "control") return isMac ? "⌃" : "Ctrl";
       if (p === "alt" || p === "option") return isMac ? "⌥" : "Alt";
       if (p === "shift") return isMac ? "⇧" : "Shift";
-      if (p === "enter") return "↵";
+      if (p === "plus") return "+";
+      if (p === "enter" || p === "return") return "↵";
       if (p === "backspace") return "⌫";
       if (p === "tab") return "⇥";
       if (p === "esc" || p === "escape") return isMac ? "⎋" : "Esc";
-      if (p === "up") return "↑";
-      if (p === "down") return "↓";
-      if (p === "left") return "←";
-      if (p === "right") return "→";
+      if (p === "up" || p === "arrowup") return "↑";
+      if (p === "down" || p === "arrowdown") return "↓";
+      if (p === "left" || p === "arrowleft") return "←";
+      if (p === "right" || p === "arrowright") return "→";
+      if (p === "mouseback") return "鼠标后退键";
+      if (p === "mouseforward") return "鼠标前进键";
       return part.trim();
     })
     .join(isMac ? "" : " + ");

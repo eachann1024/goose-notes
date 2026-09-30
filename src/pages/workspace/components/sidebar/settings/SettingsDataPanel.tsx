@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { Download, FileText, Globe, RotateCcw, Upload, Cloud, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Download, FileText, Globe, RotateCcw, Upload, Cloud, CloudOff, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 import { renderNotebookIcon } from "../notebookUtils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSettings } from "@/stores/settings";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { usePages } from "@/stores/usePages";
@@ -19,7 +18,7 @@ import {
   normalizeRemoteDir,
   type WebdavBackupFile
 } from "@/lib/webdavSync";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface NotebookOption {
   id: string;
@@ -28,6 +27,7 @@ interface NotebookOption {
 }
 
 interface SettingsDataPanelProps {
+  active: boolean;
   importing: boolean;
   onImport: () => void;
   selectedIds: string[];
@@ -39,7 +39,7 @@ interface SettingsDataPanelProps {
   exporting: boolean;
   onExport: () => void;
   onOpenResetDialog: () => void;
-  onImportBlob?: (blob: Blob) => Promise<void>;
+  onRestartGuide: () => void;
   onResetAndImport?: (blob: Blob) => Promise<void>;
 }
 
@@ -47,7 +47,7 @@ const DATA_BADGE_CLASS =
   "rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75 dark:bg-[hsl(var(--foreground)/0.1)]";
 
 const DATA_UNSELECTED_CARD_CLASS =
-  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]";
+  "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -63,6 +63,7 @@ function formatRemoteTime(value: string | null | undefined): string {
 }
 
 export function SettingsDataPanel({
+  active,
   importing,
   onImport,
   selectedIds,
@@ -74,7 +75,7 @@ export function SettingsDataPanel({
   exporting,
   onExport,
   onOpenResetDialog,
-  onImportBlob,
+  onRestartGuide,
   onResetAndImport,
 }: SettingsDataPanelProps) {
   const selectedCount = selectedIds.length;
@@ -122,6 +123,23 @@ export function SettingsDataPanel({
     onConfirm: () => void | Promise<void>;
     onCancel?: () => void;
   } | null>(null);
+
+  const activationRef = useRef({ active, epoch: 0 });
+  useLayoutEffect(() => {
+    const activation = activationRef.current;
+    activation.active = active;
+    activation.epoch += 1;
+    if (!active) {
+      setConfirmConfig(null);
+      setSyncingLatest(false);
+    }
+    return () => {
+      activation.active = false;
+      activation.epoch += 1;
+    };
+  }, [active]);
+  const isCurrentActivation = (epoch: number) =>
+    activationRef.current.active && activationRef.current.epoch === epoch;
 
   useEffect(() => {
     setTempUrl(webdavUrl);
@@ -217,6 +235,8 @@ export function SettingsDataPanel({
   };
 
   const handleUploadNow = async () => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setUploading(true);
     try {
       const notebookIds = notebookList.map((n) => n.id);
@@ -226,6 +246,7 @@ export function SettingsDataPanel({
         return;
       }
       const zipBlob = await generateExportZip({ format: "md", notebookIds }, notebooks, Object.values(pages));
+      if (!isCurrentActivation(epoch)) return;
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
       const fileName = `goose-note-export-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.zip`;
@@ -260,9 +281,12 @@ export function SettingsDataPanel({
   };
 
   const handleSyncLatest = async () => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setSyncingLatest(true);
     try {
       const list = await listWebdavBackups(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir);
+      if (!isCurrentActivation(epoch)) return;
       setRemoteFiles(list);
       if (list.length === 0) {
         toast.error("云端未发现可用的备份文件");
@@ -272,13 +296,15 @@ export function SettingsDataPanel({
       const latest = list[0];
       setConfirmConfig({
         open: true,
-        title: "同步最新配置",
-        description: `确认拉取最新的远端备份 ${latest.basename} 并同步到本地？该操作将覆盖本地现有数据。`,
+        title: "同步最新备份",
+        description: `确认拉取最新的远端备份 ${latest.basename} 并同步到本地？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
         isDestructive: true,
         onConfirm: async () => {
+          if (!isCurrentActivation(epoch)) return;
           setSyncingLatest(true);
           try {
             const blob = await downloadWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, latest.basename);
+            if (!isCurrentActivation(epoch)) return;
             if (onResetAndImport) {
               await onResetAndImport(blob);
               updateWebdavSettings({
@@ -287,17 +313,19 @@ export function SettingsDataPanel({
               });
             }
           } catch (err: any) {
+            if (!isCurrentActivation(epoch)) return;
             console.error(err);
             toast.error("同步失败", { description: err.message || String(err) });
           } finally {
-            setSyncingLatest(false);
+            if (isCurrentActivation(epoch)) setSyncingLatest(false);
           }
         },
         onCancel: () => {
-          setSyncingLatest(false);
+          if (isCurrentActivation(epoch)) setSyncingLatest(false);
         }
       });
     } catch (err: any) {
+      if (!isCurrentActivation(epoch)) return;
       console.error(err);
       toast.error("同步失败", { description: err.message || String(err) });
       setSyncingLatest(false);
@@ -313,15 +341,19 @@ export function SettingsDataPanel({
   };
 
   const handleRestore = async (file: WebdavBackupFile) => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
       title: "恢复备份",
-      description: `确认从远端备份 ${file.basename} 恢复数据？该操作将覆盖本地现有数据。`,
+      description: `确认从远端备份 ${file.basename} 恢复数据？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
       isDestructive: true,
       onConfirm: async () => {
+        if (!isCurrentActivation(epoch)) return;
         setRestoringFile(file.basename);
         try {
           const blob = await downloadWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, file.basename);
+          if (!isCurrentActivation(epoch)) return;
           if (onResetAndImport) {
             await onResetAndImport(blob);
             updateWebdavSettings({
@@ -340,12 +372,15 @@ export function SettingsDataPanel({
   };
 
   const handleDelete = async (file: WebdavBackupFile) => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
       title: "删除备份",
       description: `确认删除远端备份 ${file.basename}？该操作无法撤销。`,
       isDestructive: true,
       onConfirm: async () => {
+        if (!isCurrentActivation(epoch)) return;
         setDeletingFile(file.basename);
         try {
           await deleteWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, file.basename);
@@ -366,22 +401,14 @@ export function SettingsDataPanel({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          数据管理
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          配置并管理应用数据的本地备份与云端同步。
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-foreground">
+        数据管理
+      </h3>
 
-      <Tabs defaultValue="webdav" className="w-full">
-        <TabsList className="flex w-full mb-2 bg-muted/60 p-1 rounded-[12px]">
-          <TabsTrigger value="webdav" className="flex-1 rounded-[10px] py-1.5 text-sm font-medium">WebDAV备份</TabsTrigger>
-          <TabsTrigger value="local" className="flex-1 rounded-[10px] py-1.5 text-sm font-medium">本地备份</TabsTrigger>
-        </TabsList>
+      <SettingsSectionCard title="新手引导" description="重新选择书写布局与阅读偏好，已有笔记保持不变。" actions={<Button variant="outline" onClick={onRestartGuide}>重新开始引导</Button>} />
 
-        <TabsContent value="local" className="space-y-2 outline-none">
+      <div className="settings-data-grid">
+        <div className="space-y-2">
           <SettingsSectionCard
             title={<span className="flex items-center gap-2"><Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />导入与导出</span>}
             description="导入选 ZIP 文件；导出时会弹出系统保存对话框让你选路径。"
@@ -406,7 +433,7 @@ export function SettingsDataPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onSelectAll}
-                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-foreground"
+                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
                     {selectedCount === totalCount ? "取消全选" : "全选"}
                   </Button>
@@ -423,9 +450,9 @@ export function SettingsDataPanel({
                       onClick={() => onToggleNotebook(notebook.id)}
                       className={cn(
                         "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        "",
                         isSelected
-                          ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
+                          ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                           : DATA_UNSELECTED_CARD_CLASS,
                       )}
                     >
@@ -448,7 +475,7 @@ export function SettingsDataPanel({
                   className={cn(
                     "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                     format === "md"
-                      ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
+                      ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                       : DATA_UNSELECTED_CARD_CLASS,
                   )}
                 >
@@ -464,7 +491,7 @@ export function SettingsDataPanel({
                   className={cn(
                     "flex h-16 items-center gap-3 rounded-[12px] border px-3 py-2 transition-all duration-200",
                     format === "html"
-                      ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
+                      ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                       : DATA_UNSELECTED_CARD_CLASS,
                   )}
                 >
@@ -494,16 +521,16 @@ export function SettingsDataPanel({
             tone="danger"
             className="pt-3"
             title={<span className="flex items-center gap-2"><RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />重置所有数据</span>}
-            description="会清空所有记事本和页面，无法撤销，操作前建议先导出备份。"
+            description="会清空内部记事本、页面、历史、AI 会话、标签与应用设置；不会删除本地文件夹中的磁盘文件。操作前建议先导出备份。"
             actions={
               <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
                 重置所有数据
               </Button>
             }
           />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="webdav" className="space-y-2 outline-none">
+        <div className="space-y-2">
           <SettingsSectionCard
             title={<span className="flex items-center gap-2"><Cloud className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />WebDAV 配置</span>}
             description="配置 WebDAV 服务以同步并自动管理云端备份。"
@@ -513,7 +540,7 @@ export function SettingsDataPanel({
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-foreground/80">服务地址</Label>
                 <input
-                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   value={tempUrl}
                   disabled={busy}
                   onChange={(e) => setTempUrl(e.target.value)}
@@ -528,7 +555,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">账号</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempUsername}
                     disabled={busy}
                     onChange={(e) => setTempUsername(e.target.value)}
@@ -538,7 +565,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">远端目录</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempRemoteDir}
                     disabled={busy}
                     onChange={(e) => setTempRemoteDir(e.target.value)}
@@ -552,7 +579,7 @@ export function SettingsDataPanel({
                   <Label className="text-xs font-medium text-foreground/80">应用密码</Label>
                   <input
                     type="password"
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempPassword}
                     disabled={busy}
                     onChange={(e) => setTempPassword(e.target.value)}
@@ -565,7 +592,7 @@ export function SettingsDataPanel({
                     type="number"
                     min={1}
                     max={365}
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempRetentionDays}
                     disabled={busy}
                     onChange={(e) => setTempRetentionDays(parseInt(e.target.value) || 30)}
@@ -602,7 +629,6 @@ export function SettingsDataPanel({
 
               <div className="grid grid-cols-3 gap-2 w-full pt-2">
                 <Button
-                  variant="secondary"
                   className="w-full flex items-center justify-center gap-1.5 rounded-[12px]"
                   disabled={busy}
                   onClick={handleSaveAndTest}
@@ -611,6 +637,7 @@ export function SettingsDataPanel({
                   测试/保存配置
                 </Button>
                 <Button
+                  variant="secondary"
                   className="w-full flex items-center justify-center gap-1.5 rounded-[12px]"
                   disabled={busy || !hasSavedConfig}
                   onClick={handleUploadNow}
@@ -636,7 +663,7 @@ export function SettingsDataPanel({
             title={
               <button
                 type="button"
-                className="flex items-center gap-2 text-left focus:outline-none"
+                className="flex items-center gap-2 text-left "
                 onClick={toggleRemoteList}
               >
                 <ChevronRight
@@ -656,7 +683,7 @@ export function SettingsDataPanel({
                   size="sm"
                   disabled={busy || !hasSavedConfig}
                   onClick={fetchRemoteList}
-                  className="h-8 rounded-[10px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)]"
+                  className="h-8 rounded-[10px] px-2 text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", remoteLoading && "animate-spin")} />
                 </Button>
@@ -666,10 +693,14 @@ export function SettingsDataPanel({
             {isRemoteListOpen && (
               <div className="space-y-3 pt-2">
                 {remoteLoading ? (
-                  <p className="text-center text-xs text-muted-foreground py-4">加载中...</p>
+                  <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>正在加载远端备份</span>
+                  </div>
                 ) : remoteFiles.length === 0 ? (
-                  <div className="text-center py-6 border border-dashed rounded-[12px] border-muted">
-                    <p className="text-xs text-muted-foreground">暂无远端备份</p>
+                  <div className="flex flex-col items-center gap-2 border border-dashed rounded-[12px] border-muted py-6 text-center">
+                    <CloudOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                    <p className="text-xs font-medium text-foreground">暂无远端备份</p>
                     <p className="text-[11px] text-muted-foreground/70 mt-1">
                       保存连接配置后，点击“生成并上传”创建您的第一份云端备份
                     </p>
@@ -733,7 +764,7 @@ export function SettingsDataPanel({
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowAllRemote((prev) => !prev)}
-                          className="text-xs hover:bg-[var(--goose-interactive-hover)]"
+                          className="text-xs hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                         >
                           {showAllRemote ? "收起备份" : `展开全部远端备份 (还有 ${remoteFiles.length - 3} 个)`}
                         </Button>
@@ -744,11 +775,11 @@ export function SettingsDataPanel({
               </div>
             )}
           </SettingsSectionCard>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <DialogShell
-        open={confirmConfig?.open || false}
+        open={active && (confirmConfig?.open || false)}
         onOpenChange={(open) => {
           if (!open) {
             confirmConfig?.onCancel?.();
@@ -776,6 +807,7 @@ export function SettingsDataPanel({
               variant={confirmConfig?.isDestructive ? "destructive" : "default"}
               className="rounded-[10px]"
               onClick={async () => {
+                if (!activationRef.current.active) return;
                 const onConfirm = confirmConfig?.onConfirm;
                 setConfirmConfig(null);
                 if (onConfirm) {

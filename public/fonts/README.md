@@ -1,20 +1,14 @@
 # PDF 中文字体
 
-PDF 导出使用 `NotoSansSC-Regular.ttf` 渲染中文。该字体 ~4MB，未随源码提交，需要用户手动放置。
+不再内置 Noto Sans SC。构建不会下载或拷贝 `public/fonts` 里的 otf/ttf，避免 8MB 打进 dist。
 
-## 下载步骤
+Electron 主进程使用隐藏窗口 `printToPDF`，采用系统中文字体栈，不嵌入此文件。
 
-1. 访问 [Google Fonts — Noto Sans SC](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
-2. 点击右上角 "Get font" → "Download all"
-3. 解压后取 `NotoSansSC-Regular.ttf`，放到本目录：
+浏览器 / printToPDF 失败时的 react-pdf 降级：首次导出从钉版本 CDN 拉 **Noto Sans SC static TTF**（不要 WOFF2 / OTF），同会话内存缓存后转 data URL 再 `Font.register`。失败则明确报错，不假装 Helvetica/Inter 成功。
 
-```
-public/fonts/NotoSansSC-Regular.ttf
-```
+- 主源：`https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.2.8/chinese-simplified-400-normal.ttf`
+- 备用：`https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@5.1.0/chinese-simplified-400-normal.ttf`
 
-## 行为
+打包后的 `file://` 页面不能把字体 src 设成站点根 `/fonts/...`（会变成 `file:///fonts/...`）。
 
-- 字体存在：PDF 中文正常渲染
-- 字体缺失：控制台 warn，回退到 react-pdf 内置 Helvetica（**中文会显示为方框**），不阻塞导出流程
-
-> 仅 PDF 导出依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。
+> 仅 PDF 导出的 react-pdf 降级依赖此字体；Markdown / HTML / DOCX / PNG 导出不受影响。

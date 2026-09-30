@@ -1,5 +1,5 @@
 import { createExtension } from "@blocknote/core";
-import { Plugin, PluginKey } from "prosemirror-state";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import type { EditorView } from "prosemirror-view";
 import type { BlockNoteEditor } from "@blocknote/core";
@@ -27,7 +27,7 @@ type FindMeta =
 
 export const findInPageKey = new PluginKey<FindState>("goose-find-in-page");
 
-function collectMatches(
+export function collectMatches(
   doc: import("prosemirror-model").Node,
   query: string,
   caseSensitive: boolean,
@@ -36,15 +36,32 @@ function collectMatches(
   const needle = caseSensitive ? query : query.toLowerCase();
   const matches: FindMatch[] = [];
   doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return;
-    const haystack = caseSensitive ? node.text : node.text.toLowerCase();
+    if (!node.isTextblock) return;
+    let text = "";
+    const positions: number[] = [];
+    node.forEach((child, offset) => {
+      if (!child.isText || !child.text) {
+        // hardBreaks and inline atoms deliberately split searchable text runs.
+        text += "\u0000";
+        positions.push(-1);
+        return;
+      }
+      for (let i = 0; i < child.text.length; i++) {
+        text += child.text[i];
+        positions.push(pos + 1 + offset + i);
+      }
+    });
+    const haystack = caseSensitive ? text : text.toLowerCase();
     let from = 0;
     while (from <= haystack.length - needle.length) {
       const idx = haystack.indexOf(needle, from);
       if (idx === -1) break;
-      matches.push({ from: pos + idx, to: pos + idx + needle.length });
+      const start = positions[idx];
+      const end = positions[idx + needle.length - 1];
+      if (start >= 0 && end >= start) matches.push({ from: start, to: end + 1 });
       from = idx + Math.max(needle.length, 1);
     }
+    return false;
   });
   return matches;
 }
@@ -59,7 +76,7 @@ function recomputeAfterDocChange(prev: FindState, doc: import("prosemirror-model
   return { ...prev, matches, current };
 }
 
-const findInPagePlugin = new Plugin<FindState>({
+export const findInPagePlugin = new Plugin<FindState>({
   key: findInPageKey,
   state: {
     init: () => initialState,
@@ -154,6 +171,59 @@ export function clearFind(editor: BlockNoteEditor<any, any, any>) {
   const view = getView(editor);
   if (!view) return;
   view.dispatch(view.state.tr.setMeta(findInPageKey, { type: "clear" } satisfies FindMeta));
+}
+
+export function createReplaceCurrentTransaction(
+  state: EditorState,
+  replacement: string,
+): Transaction | null {
+  const value = findInPageKey.getState(state);
+  if (!value || value.current < 0 || value.current >= value.matches.length) {
+    return null;
+  }
+  const match = value.matches[value.current];
+  return state.tr.insertText(replacement, match.from, match.to);
+}
+
+export function createReplaceAllTransaction(
+  state: EditorState,
+  replacement: string,
+): Transaction | null {
+  const value = findInPageKey.getState(state);
+  if (!value || value.matches.length === 0) return null;
+  let tr = state.tr;
+  for (let i = value.matches.length - 1; i >= 0; i--) {
+    const match = value.matches[i];
+    tr = tr.insertText(replacement, match.from, match.to);
+  }
+  return tr;
+}
+
+export function replaceCurrentMatch(
+  editor: BlockNoteEditor<any, any, any>,
+  replacement: string,
+): boolean {
+  const view = getView(editor);
+  if (!view) return false;
+  const tr = createReplaceCurrentTransaction(view.state, replacement);
+  if (!tr) return false;
+  view.dispatch(tr);
+  scrollToCurrentMatch(view);
+  return true;
+}
+
+export function replaceAllMatches(
+  editor: BlockNoteEditor<any, any, any>,
+  replacement: string,
+): number {
+  const view = getView(editor);
+  if (!view) return 0;
+  const value = findInPageKey.getState(view.state);
+  const count = value?.matches.length ?? 0;
+  const tr = createReplaceAllTransaction(view.state, replacement);
+  if (!tr) return 0;
+  view.dispatch(tr);
+  return count;
 }
 
 function scrollToCurrentMatch(view: EditorView) {

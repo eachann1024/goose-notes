@@ -90,3 +90,36 @@ export function repairNormalizedContentInPages(
 
   return { pages: nextPages, repairedPageIds };
 }
+
+export function repairHeadingSectionFoldInPages(
+  pages: Record<string, Page>,
+): { pages: Record<string, Page>; repairedPageIds: string[] } {
+  let nextPages = pages;
+  const repairedPageIds: string[] = [];
+
+  Object.entries(pages).forEach(([pageId, page]) => {
+    const normalizedContent = normalizePageContent(page.content);
+    if (JSON.stringify(page.content) === JSON.stringify(normalizedContent)) {
+      return;
+    }
+
+    if (nextPages === pages) {
+      nextPages = { ...pages };
+    }
+
+    nextPages[pageId] = {
+      ...page,
+      content: normalizedContent,
+    };
+    repairedPageIds.push(pageId);
+  });
+
+  return { pages: nextPages, repairedPageIds };
+}
+
+/** @deprecated 由 repairHeadingSectionFoldInPages 取代 */
+export function repairHeadingToggleableInPages(
+  pages: Record<string, Page>,
+): { pages: Record<string, Page>; repairedPageIds: string[] } {
+  return repairHeadingSectionFoldInPages(pages);
+}

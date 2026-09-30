@@ -1,0 +1,58 @@
+.bn-editor .goose-ai-preview-target {
+  outline: 1px dashed hsl(var(--ring)) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-lg, var(--radius));
+  background: hsl(var(--accent) / 0.45);
+}
+.bn-editor .goose-ai-preview-deletion,
+.bn-editor .goose-ai-preview-deletion * {
+  color: var(--goose-interactive-danger-fg) !important;
+  background: var(--goose-interactive-danger);
+  text-decoration: line-through;
+}
+.bn-editor .goose-ai-preview-addition {
+  color: var(--goose-interactive-success-fg);
+  background: var(--goose-interactive-success);
+  border-bottom: 1px dotted var(--goose-interactive-success-border);
+  text-decoration: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.goose-ai-menu-selection.goose-ai-review-surface {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg, var(--radius));
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+.goose-ai-review-surface .goose-ai-preview-summary {
+  margin: 0;
+  padding: 8px 12px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 20px;
+}
+.goose-ai-preview-summary del {
+  color: var(--goose-interactive-danger-fg);
+  background: var(--goose-interactive-danger);
+}
+.goose-ai-preview-summary ins {
+  color: var(--goose-interactive-success-fg);
+  background: var(--goose-interactive-success);
+}
+.bn-editor .goose-ai-preview-format-change {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding-inline: 4px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm, var(--radius));
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--background));
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: normal;
+  user-select: none;
+}

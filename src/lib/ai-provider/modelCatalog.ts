@@ -1,22 +1,23 @@
-import {
-  getAvailableUToolsAiModels,
-  isUToolsAiSupported,
-  type UToolsAiModel,
-} from "@/lib/utools-ai";
 import type {
   AIModelOption,
-  AIProviderMode,
   AISettingsLike,
   AIReasoningLevel,
   AIRequestOverrides,
   CustomAIProtocol,
-  UToolsAiApi,
 } from "./types";
+import {
+  getAIProviderPreset,
+  getProviderFixedBaseURL,
+  inferProviderIdFromSettings,
+  isAIProviderId,
+  resolveProtocolForProvider,
+  type AIProviderId,
+} from "./presets";
 
-export const DEFAULT_UTOOLS_MODEL = "deepseek-v3";
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
-export const SETTINGS_ENTRY_HINT = '请前往"设置 -> AI 助手 -> 自定义 AI"检查配置。';
+export const SETTINGS_ENTRY_HINT =
+  '请前往"设置 -> AI 助手 -> AI 服务"检查配置。';
 export const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
   default: 0,
   low: 1024,
@@ -24,9 +25,40 @@ export const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
   high: 12000,
 };
 
-export function getUToolsApi(): UToolsAiApi | null {
-  if (typeof window === "undefined") return null;
-  return ((window as Window & { utools?: UToolsAiApi }).utools ?? null);
+export function getSettingsProviderId(
+  settings: Pick<
+    AISettingsLike,
+    | "customProviderId"
+    | "customProtocol"
+    | "customOpenAIResponsesBaseURL"
+    | "customOpenAIBaseURL"
+    | "customClaudeBaseURL"
+  >,
+): AIProviderId {
+  if (isAIProviderId(settings.customProviderId)) {
+    return settings.customProviderId;
+  }
+  return inferProviderIdFromSettings(settings);
+}
+
+/**
+ * 按供应商 + 当前模型解析实际协议。
+ * DeepSeek：Flash → Responses；Pro → 兼容 Chat Completions。
+ */
+export function resolveActiveProtocol(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+): CustomAIProtocol {
+  const providerId = getSettingsProviderId(settings);
+  const modelId =
+    requestOverrides?.selectedModelId?.trim() ||
+    settings.selectedModelId?.trim() ||
+    null;
+  return resolveProtocolForProvider(
+    providerId,
+    modelId,
+    settings.customProtocol,
+  );
 }
 
 export function normalizeModelOption(input: unknown): AIModelOption | null {
@@ -51,21 +83,26 @@ export function normalizeModelOption(input: unknown): AIModelOption | null {
   if (!id) return null;
 
   const labelSource =
-    typeof maybeModel.display_name === "string" && maybeModel.display_name.trim()
+    typeof maybeModel.display_name === "string" &&
+    maybeModel.display_name.trim()
       ? maybeModel.display_name
       : typeof maybeModel.name === "string" && maybeModel.name.trim()
         ? maybeModel.name
         : id;
 
   const descriptionParts = [
-    typeof maybeModel.description === "string" ? maybeModel.description.trim() : "",
+    typeof maybeModel.description === "string"
+      ? maybeModel.description.trim()
+      : "",
     typeof maybeModel.type === "string" ? maybeModel.type.trim() : "",
   ].filter(Boolean);
 
   return {
     id,
     label: labelSource.trim(),
-    description: descriptionParts.length ? descriptionParts.join(" · ") : undefined,
+    description: descriptionParts.length
+      ? descriptionParts.join(" · ")
+      : undefined,
   };
 }
 
@@ -78,28 +115,55 @@ function getClaudeModelsUrl(baseURL: string) {
 }
 
 export function getDefaultCustomAIBaseURL(protocol: CustomAIProtocol) {
-  return protocol === "openai" ? DEFAULT_OPENAI_BASE_URL : DEFAULT_CLAUDE_BASE_URL;
-}
-
-function normalizeCustomAIBaseURL(baseURL: string, protocol: CustomAIProtocol) {
-  return baseURL.trim() || getDefaultCustomAIBaseURL(protocol);
+  return protocol === "claude"
+    ? DEFAULT_CLAUDE_BASE_URL
+    : DEFAULT_OPENAI_BASE_URL;
 }
 
 export function getCustomAIBaseURL(
   settings: AISettingsLike,
-  protocol: CustomAIProtocol = settings.customProtocol,
+  protocol: CustomAIProtocol = resolveActiveProtocol(settings),
 ) {
-  return normalizeCustomAIBaseURL(
-    protocol === "openai" ? settings.customOpenAIBaseURL : settings.customClaudeBaseURL,
-    protocol,
-  );
+  const providerId = getSettingsProviderId(settings);
+  const fixedBaseURL = getProviderFixedBaseURL(providerId);
+  if (fixedBaseURL) {
+    return fixedBaseURL;
+  }
+
+  if (protocol === "claude") {
+    const baseURL = settings.customClaudeBaseURL?.trim();
+    return baseURL || DEFAULT_CLAUDE_BASE_URL;
+  }
+  if (protocol === "openai") {
+    const baseURL = settings.customOpenAIBaseURL?.trim();
+    return baseURL || DEFAULT_OPENAI_BASE_URL;
+  }
+  const baseURL = settings.customOpenAIResponsesBaseURL?.trim();
+  return baseURL || DEFAULT_OPENAI_BASE_URL;
 }
 
 export function getCustomAIApiKey(
   settings: AISettingsLike,
-  protocol: CustomAIProtocol = settings.customProtocol,
+  protocol: CustomAIProtocol = resolveActiveProtocol(settings),
 ) {
-  return (protocol === "openai" ? settings.customOpenAIApiKey : settings.customClaudeApiKey).trim();
+  const key = (
+    protocol === "openai-responses"
+      ? settings.customOpenAIResponsesApiKey
+      : protocol === "openai"
+        ? settings.customOpenAIApiKey
+        : settings.customClaudeApiKey
+  ).trim();
+
+  // DeepSeek 双协议共用同一 Key：某一槽位为空时回退另一槽位。
+  if (!key && getSettingsProviderId(settings) === "deepseek") {
+    return (
+      settings.customOpenAIResponsesApiKey?.trim() ||
+      settings.customOpenAIApiKey?.trim() ||
+      ""
+    );
+  }
+
+  return key;
 }
 
 export async function readErrorMessage(response: Response) {
@@ -108,7 +172,10 @@ export async function readErrorMessage(response: Response) {
     if (typeof payload?.error === "string" && payload.error.trim()) {
       return payload.error.trim();
     }
-    if (typeof payload?.error?.message === "string" && payload.error.message.trim()) {
+    if (
+      typeof payload?.error?.message === "string" &&
+      payload.error.message.trim()
+    ) {
       return payload.error.message.trim();
     }
     if (typeof payload?.message === "string" && payload.message.trim()) {
@@ -134,35 +201,16 @@ export function getAuthFailedMessage(providerLabel: string) {
   return `${providerLabel} 鉴权失败。${SETTINGS_ENTRY_HINT}`;
 }
 
-export function getAIProviderMode(settings: AISettingsLike): AIProviderMode {
-  return settings.useCustomProvider ? "custom" : "utools";
+export function getStoredAIModelOptions(
+  settings: Pick<AISettingsLike, "customModelOptions">,
+) {
+  return settings.customModelOptions;
 }
 
-export function getStoredAIModelOptions(settings: Pick<AISettingsLike, "useCustomProvider" | "customModelOptions">) {
-  return settings.useCustomProvider ? settings.customModelOptions : [];
-}
-
-export function mapUToolsAiModelsToOptions(models: UToolsAiModel[]): AIModelOption[] {
-  return models
-    .filter((item) => Boolean(item?.id && item?.label))
-    .map((item) => ({
-      id: item.id.trim(),
-      label: item.label.trim(),
-      description: item.description?.trim() || undefined,
-    }))
-    .filter((item) => item.id && item.label);
-}
-
-export async function getAvailableAIModelOptions(settings: Pick<AISettingsLike, "useCustomProvider" | "customModelOptions">) {
-  if (settings.useCustomProvider) {
-    return getStoredAIModelOptions(settings);
-  }
-
-  const models = await getAvailableUToolsAiModels();
-  return mapUToolsAiModelsToOptions(models);
-}
-
-export function getRequestedModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
+export function getRequestedModelId(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+) {
   const overrideModelId = requestOverrides?.selectedModelId?.trim();
   if (overrideModelId) {
     return overrideModelId;
@@ -171,8 +219,15 @@ export function getRequestedModelId(settings: AISettingsLike, requestOverrides?:
   return settings.selectedModelId?.trim() || null;
 }
 
-export function getCustomSelectedModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
-  return getRequestedModelId(settings, requestOverrides) ?? settings.customModelOptions[0]?.id ?? null;
+export function getCustomSelectedModelId(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+) {
+  return (
+    getRequestedModelId(settings, requestOverrides) ??
+    settings.customModelOptions[0]?.id ??
+    null
+  );
 }
 
 export function getRequestReasoningLevel(
@@ -197,10 +252,21 @@ export function getCustomProviderOptions(
     return undefined;
   }
 
-  if (settings.customProtocol === "openai") {
+  const protocol = resolveActiveProtocol(settings, requestOverrides);
+
+  if (protocol === "openai") {
     return {
       openaiCompatible: {
         reasoningEffort: reasoningLevel,
+      },
+    };
+  }
+
+  if (protocol === "openai-responses") {
+    return {
+      openai: {
+        reasoningEffort: reasoningLevel,
+        reasoningSummary: "auto",
       },
     };
   }
@@ -215,22 +281,12 @@ export function getCustomProviderOptions(
   };
 }
 
-export function getAIAvailability(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
+export function getAIAvailability(
+  settings: AISettingsLike,
+  requestOverrides?: AIRequestOverrides,
+) {
   if (!settings.enabled) {
     return { ok: false as const, reason: "AI 助手尚未开启，请先到设置中打开" };
-  }
-
-  if (!settings.useCustomProvider) {
-    const utools = getUToolsApi();
-    if (!utools) {
-      return { ok: false as const, reason: "当前不在 uTools 环境内" };
-    }
-
-    if (!isUToolsAiSupported() || typeof utools.ai !== "function") {
-      return { ok: false as const, reason: "当前 uTools 版本未提供 AI 能力" };
-    }
-
-    return { ok: true as const, provider: "utools" as const };
   }
 
   if (!getCustomAIApiKey(settings)) {
@@ -239,82 +295,87 @@ export function getAIAvailability(settings: AISettingsLike, requestOverrides?: A
 
   const selectedModelId = getCustomSelectedModelId(settings, requestOverrides);
   if (!selectedModelId) {
-    return { ok: false as const, reason: "请先保存自定义 AI 配置并获取模型列表" };
+    return {
+      ok: false as const,
+      reason: "请先保存自定义 AI 配置并获取模型列表",
+    };
   }
 
-  return { ok: true as const, provider: "custom" as const };
+  return { ok: true as const };
 }
 
 export async function fetchCustomAIModels(config: {
   protocol: CustomAIProtocol;
   baseURL: string;
   apiKey: string;
+  providerId?: AIProviderId | string | null;
+  signal?: AbortSignal;
 }) {
   const apiKey = config.apiKey.trim();
   if (!apiKey) {
     throw new Error(getApiKeyMissingMessage());
   }
 
-  const modelsUrl = config.protocol === "openai" ? getOpenAIModelsUrl(config.baseURL) : getClaudeModelsUrl(config.baseURL);
+  const providerId = isAIProviderId(config.providerId)
+    ? config.providerId
+    : null;
+  const preset = providerId ? getAIProviderPreset(providerId) : null;
+  const providerLabel = preset?.label
+    ?? (config.protocol === "claude"
+      ? "自定义 Anthropic 源"
+      : config.protocol === "openai-responses"
+        ? "自定义 OpenAI Responses 源"
+        : "自定义 OpenAI 兼容源");
+
+  const modelsUrl =
+    config.protocol === "claude"
+      ? getClaudeModelsUrl(config.baseURL)
+      : getOpenAIModelsUrl(config.baseURL);
 
   const response = await fetch(modelsUrl, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "x-api-key": apiKey,
-    },
+    headers:
+      config.protocol === "claude"
+        ? {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true",
+          }
+        : { Authorization: `Bearer ${apiKey}` },
+    ...(config.signal ? { signal: config.signal } : {}),
   });
 
   if (!response.ok) {
+    // 预设供应商鉴权失败时，若有兜底模型且明确是列表接口问题，仍抛错让用户知悉 Key 问题。
     const errorMsg = await readErrorMessage(response);
-    throw new Error(errorMsg || getAuthFailedMessage(config.protocol === "openai" ? "自定义 OpenAI兼容源" : "自定义 Claude源"));
+    throw new Error(errorMsg || getAuthFailedMessage(providerLabel));
   }
 
   const payload = await response.json();
-  const rawList = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+  const rawList = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : [];
 
   if (rawList.length === 0 && config.protocol === "claude") {
     return [
       { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
       { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
       { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
-      { id: "claude-3-opus-20240229", label: "Claude 3 Opus" }
+      { id: "claude-3-opus-20240229", label: "Claude 3 Opus" },
     ];
   }
 
   const parsed = (rawList as unknown[])
     .map(normalizeModelOption)
-    .filter((item): item is AIModelOption => item !== null && Boolean(item.id && item.label));
+    .filter(
+      (item): item is AIModelOption =>
+        item !== null && Boolean(item.id && item.label),
+    );
+
+  if (parsed.length === 0 && preset?.fallbackModels?.length) {
+    return preset.fallbackModels;
+  }
 
   return parsed;
-}
-
-export async function resolveUToolsModelId(settings: AISettingsLike, requestOverrides?: AIRequestOverrides) {
-  try {
-    const models = await getAvailableUToolsAiModels();
-    const validModels = models.filter((item) => item.id?.trim());
-    if (!validModels.length) {
-      return DEFAULT_UTOOLS_MODEL;
-    }
-
-    const requestedModelId = getRequestedModelId(settings, requestOverrides);
-    if (requestedModelId) {
-      const normalizedRequested = requestedModelId.trim().toLowerCase();
-      const matchedRequestedModel = validModels.find((item) => {
-        const normalizedId = item.id.trim().toLowerCase();
-        const normalizedLabel = item.label.trim().toLowerCase();
-        return (
-          normalizedId === normalizedRequested ||
-          normalizedLabel === normalizedRequested
-        );
-      });
-      if (matchedRequestedModel) {
-        return matchedRequestedModel.id;
-      }
-    }
-
-    const defaultModel = validModels.find((item) => item.id === DEFAULT_UTOOLS_MODEL);
-    return defaultModel?.id ?? validModels[0].id;
-  } catch {
-    return getRequestedModelId(settings, requestOverrides) ?? DEFAULT_UTOOLS_MODEL;
-  }
 }

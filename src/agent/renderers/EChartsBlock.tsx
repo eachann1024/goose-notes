@@ -1,17 +1,19 @@
 import React, { useMemo, useRef, useState } from "react";
-import * as echarts from "echarts";
+import type { EChartsOption } from "echarts";
 import { EDITOR_FONT_SIZE_DEFAULT, useSettings } from "@/stores/useSettings";
 import { DatavizToolbar } from "./DatavizToolbar";
-import { PALETTE } from "./echarts/chartPalette";
+import { getPalette } from "./echarts/chartPalette";
 import {
   TM,
   clamp,
   parseConfig,
   isRawEChartsOption,
   buildOption,
+  polishRawOption,
   getPreferredChartHeight,
 } from "./echarts/chartTheme";
 import { useEchartsLifecycle } from "./echarts/useEchartsLifecycle";
+import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 
 /* ── component ──────────────────────────────────────────────────── */
 
@@ -26,10 +28,7 @@ export const EChartsBlock = React.memo(
 
     const theme = useSettings((state) => state.theme);
     const editorFontSize = useSettings((state) => state.editorFontSize);
-
-    const isDark =
-      theme === "dark" ||
-      (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const isDark = useResolvedTheme(theme) === "dark";
     const editorScale = editorFontSize / EDITOR_FONT_SIZE_DEFAULT;
     const framePadding = Math.round(clamp(12 * editorScale, 10, 18));
     const contentWidth = Math.max(frameWidth - framePadding * 2, 0);
@@ -43,20 +42,16 @@ export const EChartsBlock = React.memo(
       () => !parsedConfig && isRawEChartsOption(config),
       [config, parsedConfig],
     );
-    const option = useMemo((): echarts.EChartsOption | null => {
+    const option = useMemo((): EChartsOption | null => {
       if (parsedConfig) {
         return {
           backgroundColor: "transparent",
-          color: PALETTE,
+          color: getPalette(isDark),
           ...buildOption(parsedConfig, isDark, editorScale),
-        } satisfies echarts.EChartsOption;
+        } satisfies EChartsOption;
       }
       if (useRaw) {
-        return {
-          backgroundColor: "transparent",
-          color: PALETTE,
-          ...(config as echarts.EChartsOption),
-        } satisfies echarts.EChartsOption;
+        return polishRawOption(config as EChartsOption, isDark);
       }
       return null;
     }, [config, editorScale, isDark, parsedConfig, useRaw]);

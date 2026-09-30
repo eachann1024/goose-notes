@@ -1,13 +1,51 @@
 import { expect, test } from "playwright/test";
 import JSZip from "jszip";
-import { generateExportZip, importNotebooksFromZip } from "../../src/lib/export";
+import {
+  blocksToHTML,
+  blocksToMarkdown,
+  buildSinglePageExport,
+  generateExportZip,
+  importFromMarkdown,
+  importNotebooksFromZip,
+  inspectNotebookImportZip,
+} from "../../src/lib/export";
+import { inlineExportMediaAsBase64 } from "../../src/lib/export/inlineImagesBase64";
 import type { Page } from "../../src/types";
+import {
+  clearElectronLocalStorageRuntime,
+  installElectronLocalStorageRuntime,
+} from "./electronLocalStorageRuntime";
 
 const notebookId = "notebook-export";
 const imageRef = "att:goose-img/pixel.png";
 const fileRef = "att-file:goose-file/report.pdf";
 const audioRef = "att-file:goose-file/chime.mp3";
-const videoRef = "att-file:goose-file/clip.mp4";
+const videoRef = "att-video:goose-file/clip.mp4";
+
+
+function installDomStub(documentElement: any) {
+  if (!documentElement.style) {
+    documentElement.style = { setProperty() {}, removeProperty() {} };
+  }
+  if (typeof documentElement.getAttribute !== "function") {
+    documentElement.getAttribute = () => null;
+    documentElement.setAttribute = () => undefined;
+    documentElement.removeAttribute = () => undefined;
+  }
+
+  const styleEl = { type: "", textContent: "", appendChild() {}, setAttribute() {}, style: {} };
+  (globalThis as any).document = {
+    documentElement,
+    head: { appendChild() {} },
+    body: { appendChild() {} },
+    getElementsByTagName: (tag: string) => (tag === "head" ? [(globalThis as any).document.head] : []),
+    getElementById: () => null,
+    createElement: () => ({ ...styleEl, id: "" }),
+    createTextNode: (text: string) => ({ textContent: text, nodeType: 3 }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+}
 
 class TestFileReader {
   result: string | ArrayBuffer | null = null;
@@ -45,10 +83,7 @@ class TestFileReader {
 }
 
 function installAttachmentRuntime(onGetAttachment?: (id: string) => void) {
-  const attachments = new Map<
-    string,
-    { data: Uint8Array; type: string }
-  >([
+  const attachments = new Map<string, { data: Uint8Array; type: string }>([
     [
       "goose-img/pixel.png",
       {
@@ -90,34 +125,40 @@ function installAttachmentRuntime(onGetAttachment?: (id: string) => void) {
     removeAttribute: () => undefined,
   };
 
-  (globalThis as any).document = { documentElement };
-  (globalThis as any).window = {
+  installDomStub(documentElement);
+  installElectronLocalStorageRuntime({
+    attachments: Object.fromEntries(attachments),
+    onGetAttachment,
+  });
+  Object.assign((globalThis as any).window, {
     matchMedia: () => ({
       matches: false,
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
     }),
-    localStorage: {
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined,
-    },
-    utools: {
-      db: {
-        getAttachment: (id: string) => {
-          onGetAttachment?.(id);
-          return attachments.get(id)?.data ?? null;
-        },
-        getAttachmentType: (id: string) => attachments.get(id)?.type ?? null,
-      },
-      dbStorage: {
-        getItem: () => null,
-        setItem: () => undefined,
-        removeItem: () => undefined,
-      },
-    },
-  };
+  });
   (globalThis as any).FileReader = TestFileReader;
+}
+
+function installDbRuntime() {
+  const classes = new Set<string>();
+
+  installDomStub({
+    classList: {
+      add: (className: string) => classes.add(className),
+      remove: (className: string) => classes.delete(className),
+      contains: (className: string) => classes.has(className),
+    },
+    setAttribute: () => undefined,
+    removeAttribute: () => undefined,
+  });
+
+  const runtime = installElectronLocalStorageRuntime();
+  Object.assign((globalThis as any).window, {
+    matchMedia: () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }),
+  });
+
+  return { docs: runtime.docs };
 }
 
 function buildPage(): Page {
@@ -126,7 +167,6 @@ function buildPage(): Page {
     workspaceId: notebookId,
     isFolder: false,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,
@@ -155,16 +195,12 @@ function buildPage(): Page {
   };
 }
 
-function buildLocalImagePage(
-  id: string,
-  localFilePath: string,
-): Page {
+function buildLocalImagePage(id: string, localFilePath: string): Page {
   return {
     id,
     workspaceId: notebookId,
     isFolder: false,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,
@@ -188,7 +224,6 @@ function buildMediaPage(): Page {
     workspaceId: notebookId,
     isFolder: false,
     isLocked: false,
-    isFullWidth: false,
     fontSize: "default",
     fontFamily: "default",
     createdAt: 1,
@@ -246,7 +281,7 @@ async function buildZipBlob() {
 }
 
 test.afterEach(() => {
-  delete (globalThis as { window?: unknown }).window;
+  clearElectronLocalStorageRuntime();
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { FileReader?: unknown }).FileReader;
 });
@@ -294,6 +329,154 @@ test("importNotebooksFromZip restores metadata asset refs to portable data URLs"
   );
 });
 
+test("importNotebooksFromZip keeps external urls that contain assets path", async () => {
+  const zip = new JSZip();
+  const externalUrl = "https://example.com/assets/shared.png";
+  zip.file(
+    "backup-metadata.json",
+    JSON.stringify({
+      version: 1,
+      notebooks: [{ id: notebookId, name: "Notebook", icon: "BookOpen" }],
+      pages: [
+        {
+          id: "external-assets-url",
+          workspaceId: notebookId,
+          isFolder: false,
+          content: [
+            {
+              type: "image",
+              props: {
+                url: externalUrl,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  zip.file("Notebook/assets/shared.png", "aW1wb3J0ZWQ=", { base64: true });
+
+  const importedPages: Array<Partial<Page>> = [];
+  await importNotebooksFromZip(
+    (await zip.generateAsync({ type: "arraybuffer" })) as unknown as Blob,
+    (_name, _icon, id) => id ?? notebookId,
+    async (data) => {
+      importedPages.push(data);
+      return data.id ?? "page-imported";
+    },
+  );
+
+  const importedContent = importedPages[0].content as any[];
+  expect(importedContent[0].props.url).toBe(externalUrl);
+});
+
+test("metadata import failure propagates without falling back into duplicate folder import", async () => {
+  const zip = new JSZip();
+  zip.file(
+    "backup-metadata.json",
+    JSON.stringify({
+      version: 1,
+      notebooks: [{ id: notebookId, name: "Notebook", icon: "BookOpen" }],
+      pages: [
+        {
+          id: "page-that-fails",
+          workspaceId: notebookId,
+          content: [{ type: "paragraph", content: "Imported" }],
+        },
+      ],
+    }),
+  );
+  zip.file("Notebook/fallback.md", "# 不应回退导入");
+
+  let notebookCreates = 0;
+  await expect(
+    importNotebooksFromZip(
+      (await zip.generateAsync({ type: "arraybuffer" })) as unknown as Blob,
+      (_name, _icon, id) => {
+        notebookCreates += 1;
+        return id ?? notebookId;
+      },
+      async () => {
+        throw new Error("模拟页面写入失败");
+      },
+    ),
+  ).rejects.toThrow("模拟页面写入失败");
+  expect(notebookCreates).toBe(1);
+});
+
+test("importNotebooksFromZip scrubs local paths and remaps history to created page id", async () => {
+  const { docs } = installDbRuntime();
+  const zip = new JSZip();
+  zip.file(
+    "backup-metadata.json",
+    JSON.stringify({
+      version: 1,
+      notebooks: [{ id: notebookId, name: "Notebook", icon: "BookOpen" }],
+      pages: [
+        {
+          id: "source-page",
+          workspaceId: notebookId,
+          isFolder: false,
+          localFilePath: "/old-machine/notes/source.md",
+          content: [{ type: "paragraph", content: "Imported" }],
+        },
+      ],
+      history: {
+        "source-page": {
+          index: {
+            pageId: "source-page",
+            versions: [
+              {
+                versionId: "v1",
+                createdAt: 1,
+                trigger: "manual",
+                isMilestone: false,
+                charCount: 8,
+                charDelta: 8,
+                size: 64,
+              },
+            ],
+            lastVersionCharCount: 8,
+          },
+          versions: [
+            {
+              versionId: "v1",
+              pageId: "source-page",
+              workspaceId: notebookId,
+              createdAt: 1,
+              trigger: "manual",
+              isMilestone: false,
+              charCount: 8,
+              charDelta: 8,
+              size: 64,
+              content: [{ type: "paragraph", content: "Imported" }],
+            },
+          ],
+        },
+      },
+    }),
+  );
+
+  const importedPages: Array<Partial<Page>> = [];
+  await importNotebooksFromZip(
+    (await zip.generateAsync({ type: "arraybuffer" })) as unknown as Blob,
+    (_name, _icon, id) => id ?? notebookId,
+    async (data, _workspaceId, _parentId, id) => {
+      importedPages.push(data);
+      return `created-${id}`;
+    },
+  );
+
+  expect(importedPages[0].localFilePath).toBeUndefined();
+  expect(docs.has("gn:hist-idx:source-page")).toBe(false);
+  expect(docs.get("gn:hist-idx:created-source-page")?.data).toMatchObject({
+    pageId: "created-source-page",
+  });
+  expect(docs.get("gn:hist:created-source-page:v1")?.data).toMatchObject({
+    pageId: "created-source-page",
+  });
+});
+
 test("generateExportZip bundles audio and video attachment refs", async () => {
   installAttachmentRuntime();
 
@@ -322,6 +505,49 @@ test("generateExportZip bundles audio and video attachment refs", async () => {
   );
   expect(assetPaths.some((path) => path.endsWith(".mp3"))).toBe(true);
   expect(assetPaths.some((path) => path.endsWith(".mp4"))).toBe(true);
+
+  const markdownPath = Object.keys(zip.files).find((path) =>
+    path.endsWith("/Media.md"),
+  );
+  expect(markdownPath).toBeTruthy();
+  const markdown = await zip.file(markdownPath!)!.async("text");
+  expect(markdown).toMatch(
+    /<video src="\.\/assets\/[^"\s]+\.mp4" controls preload="metadata"><\/video>/,
+  );
+});
+
+test("standalone Markdown and HTML exports inline playable video", async () => {
+  installAttachmentRuntime();
+  const content = buildMediaPage().content;
+
+  await inlineExportMediaAsBase64(content);
+
+  const videoBlock = content[2] as { props: { url: string } };
+  expect(videoBlock.props.url).toMatch(/^data:video\/mp4;base64,/);
+
+  const markdown = await blocksToMarkdown(content);
+  expect(markdown).toContain(
+    `<video src="${videoBlock.props.url}" controls preload="metadata"></video>`,
+  );
+
+  const html = await blocksToHTML(content);
+  expect(html).toContain(
+    `<video src="${videoBlock.props.url}" controls preload="metadata"></video>`,
+  );
+
+  const externalVideo = [
+    {
+      type: "video",
+      props: { url: 'https://example.com/clip.mp4?token=a&label="demo"' },
+    },
+  ] as any;
+  const externalMarkdown = await blocksToMarkdown(externalVideo);
+  const imported = importFromMarkdown(externalMarkdown, undefined, {
+    preserveStructure: true,
+  });
+  expect((imported.content[0] as { props: { url: string } }).props.url).toBe(
+    'https://example.com/clip.mp4?token=a&label="demo"',
+  );
 });
 
 test("generateExportZip reuses bundled attachment refs before repeated loads", async () => {
@@ -351,35 +577,20 @@ test("generateExportZip reuses bundled attachment refs before repeated loads", a
 test("generateExportZip keeps same relative image names separate across local folders", async () => {
   const reads: string[] = [];
   const classes = new Set<string>();
-  (globalThis as any).document = {
-    documentElement: {
-      classList: {
-        add: (className: string) => classes.add(className),
-        remove: (className: string) => classes.delete(className),
-        contains: (className: string) => classes.has(className),
-      },
-      setAttribute: () => undefined,
-      removeAttribute: () => undefined,
+  installDomStub({
+    classList: {
+      add: (className: string) => classes.add(className),
+      remove: (className: string) => classes.delete(className),
+      contains: (className: string) => classes.has(className),
     },
-  };
-  (globalThis as any).window = {
-    matchMedia: () => ({
-      matches: false,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }),
-    localStorage: {
-      getItem: () => null,
-      setItem: () => undefined,
-      removeItem: () => undefined,
-    },
-    gooseFs: {
-      readFileBase64: (path: string) => {
-        reads.push(path);
-        return path.includes("/b/") ? "YmJi" : "YQ==";
-      },
-    },
-  };
+    setAttribute: () => undefined,
+    removeAttribute: () => undefined,
+  });
+  installElectronLocalStorageRuntime();
+  Object.assign((globalThis as any).window, {
+    matchMedia: () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }),
+    gooseFs: { readFileBase64: (path: string) => { reads.push(path); return path.includes("/b/") ? "YmJi" : "YQ=="; } },
+  });
   (globalThis as any).FileReader = TestFileReader;
 
   const zipBlob = await generateExportZip(
@@ -409,4 +620,156 @@ test("generateExportZip keeps same relative image names separate across local fo
     "C:/notes/a/assets/shared.png",
     "C:/notes/b/assets/shared.png",
   ]);
+});
+
+test("inspectNotebookImportZip accepts a valid metadata backup without mutating stores", async () => {
+  const zip = new JSZip();
+  zip.file(
+    "backup-metadata.json",
+    JSON.stringify({
+      version: 1,
+      notebooks: [{ id: "nb-1", name: "Note" }],
+      pages: [{ id: "page-1", workspaceId: "nb-1", content: [] }],
+      history: {},
+    }),
+  );
+
+  const result = await inspectNotebookImportZip(
+    await zip.generateAsync({ type: "blob" }),
+  );
+
+  expect(result).toEqual({
+    source: "metadata",
+    notebookCount: 1,
+    pageCount: 1,
+  });
+});
+
+test("inspectNotebookImportZip rejects damaged metadata before destructive restore", async () => {
+  const zip = new JSZip();
+  zip.file("backup-metadata.json", "{not-json");
+
+  await expect(
+    inspectNotebookImportZip(await zip.generateAsync({ type: "blob" })),
+  ).rejects.toThrow("备份元数据已损坏");
+});
+
+test("inspectNotebookImportZip rejects an empty zip before destructive restore", async () => {
+  const zip = new JSZip();
+
+  await expect(
+    inspectNotebookImportZip(await zip.generateAsync({ type: "blob" })),
+  ).rejects.toThrow("没有可恢复的鹅的笔记数据");
+});
+
+function buildPlainPage(): Page {
+  return {
+    id: "page-plain-export",
+    workspaceId: notebookId,
+    isFolder: false,
+    isLocked: false,
+    fontSize: "default",
+    fontFamily: "default",
+    createdAt: 1,
+    updatedAt: 1,
+    content: [
+      {
+        type: "heading",
+        props: { level: 1 },
+        content: "Plain",
+      },
+      {
+        type: "paragraph",
+        content: "没有附件",
+      },
+    ],
+  };
+}
+
+function buildImageOnlyPage(): Page {
+  return {
+    id: "page-image-only-export",
+    workspaceId: notebookId,
+    isFolder: false,
+    isLocked: false,
+    fontSize: "default",
+    fontFamily: "default",
+    createdAt: 1,
+    updatedAt: 1,
+    content: [
+      {
+        type: "heading",
+        props: { level: 1 },
+        content: "Photo",
+      },
+      {
+        type: "image",
+        props: {
+          url: imageRef,
+          caption: "Pixel",
+        },
+      },
+    ],
+  };
+}
+
+test("single-page Markdown export with file attachment packs bytes into a zip", async () => {
+  installAttachmentRuntime();
+  const { blob, filename } = await buildSinglePageExport(buildPage(), "md");
+
+  expect(filename).toBe("Exported.zip");
+  const zip = await JSZip.loadAsync(blob);
+  const markdownPath = Object.keys(zip.files).find((path) =>
+    path.endsWith(".md"),
+  );
+  expect(markdownPath).toBeTruthy();
+
+  const markdown = await zip.file(markdownPath!)!.async("text");
+  expect(markdown).not.toContain("att-file:");
+  expect(markdown).toMatch(/\[📎 report\.pdf\]\(\.\/assets\/[^)]+\.pdf\)/);
+
+  const assetPaths = Object.keys(zip.files).filter(
+    (path) => path.startsWith("assets/") && !zip.files[path].dir,
+  );
+  const pdfPath = assetPaths.find((path) => path.endsWith(".pdf"));
+  expect(pdfPath).toBeTruthy();
+  const pdfBytes = await zip.file(pdfPath!)!.async("uint8array");
+  expect(pdfBytes.byteLength).toBeGreaterThan(0);
+});
+
+test("single-page PDF export wrapper zips the pdf with video attachment bytes", async () => {
+  installAttachmentRuntime();
+  const fakePdf = new Blob(["%PDF-1.4 fake"], { type: "application/pdf" });
+  const { blob, filename } = await buildSinglePageExport(
+    buildMediaPage(),
+    "pdf",
+    fakePdf,
+  );
+
+  expect(filename).toBe("Media.zip");
+  const zip = await JSZip.loadAsync(blob);
+  const pdfFile = zip.file("Media.pdf");
+  expect(pdfFile).not.toBeNull();
+  expect(await pdfFile!.async("string")).toBe("%PDF-1.4 fake");
+
+  const assetPaths = Object.keys(zip.files).filter(
+    (path) => path.startsWith("assets/") && !zip.files[path].dir,
+  );
+  expect(assetPaths.some((path) => path.endsWith(".mp4"))).toBe(true);
+  const videoPath = assetPaths.find((path) => path.endsWith(".mp4"));
+  const videoBytes = await zip.file(videoPath!)!.async("uint8array");
+  expect(videoBytes.byteLength).toBeGreaterThan(0);
+});
+
+test("single-page export without sidecar attachments stays a single file", async () => {
+  installAttachmentRuntime();
+
+  const plain = await buildSinglePageExport(buildPlainPage(), "md");
+  expect(plain.filename).toBe("Plain.md");
+  expect(plain.filename.endsWith(".zip")).toBe(false);
+  expect(await plain.blob.text()).toContain("没有附件");
+
+  const imageOnly = await buildSinglePageExport(buildImageOnlyPage(), "md");
+  expect(imageOnly.filename).toBe("Photo.md");
+  expect(await imageOnly.blob.text()).toContain("![Pixel](data:image/png;base64,");
 });

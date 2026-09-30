@@ -32,7 +32,6 @@ export const buildLocalPageMetadata = (
   if (typeof source.pinnedAt === "number") {
     metadata.pinnedAt = source.pinnedAt;
   }
-
   return Object.keys(metadata).length > 0 ? metadata : null;
 };
 
@@ -64,12 +63,12 @@ export const isLocalFolderPage = (page: Page | undefined): boolean => {
   return notebook?.source === "local-folder";
 };
 
-export const persistPageSnapshot = (page: Page | undefined) => {
-  if (!page) return;
+export const persistPageSnapshot = (page: Page | undefined): boolean => {
+  if (!page) return false;
 
   if (isLocalFolderPage(page)) {
     syncLocalPageMetadataCache(page.id, page);
-    saveLocalPageMeta({
+    return saveLocalPageMeta({
       id: page.id,
       workspaceId: page.workspaceId,
       updatedAt: page.updatedAt,
@@ -79,19 +78,20 @@ export const persistPageSnapshot = (page: Page | undefined) => {
       isPinned: page.isPinned,
       pinnedAt: page.pinnedAt,
     });
-    return;
   }
 
-  saveInternalPage(page);
+  return saveInternalPage(page);
 };
 
 export const persistPageSnapshots = (
   pages: Record<string, Page>,
   pageIds: Iterable<string>,
-) => {
+): boolean => {
+  let ok = true;
   for (const pageId of pageIds) {
-    persistPageSnapshot(pages[pageId]);
+    ok = persistPageSnapshot(pages[pageId]) && ok;
   }
+  return ok;
 };
 
 export const removePersistedPageSnapshot = (page: Page | undefined, pageId?: string) => {

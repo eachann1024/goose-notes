@@ -1,74 +1,106 @@
-# 鹅的笔记 · goose-note
+<p align="center">
+  <img src="public/logo.png" width="64" height="64" alt="Goose Note 图标" />
+</p>
 
-[![CI](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/eachann1024/goose-notes/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<h1 align="center">Goose Note</h1>
 
-A local-first, Notion-style note-taking app — built as a [uTools](https://u.tools/) plugin, also runnable in the browser.
+<p align="center">鹅的笔记 · 给思绪一个安静的地方</p>
 
-本地优先的 Notion 风格笔记应用，基于 [BlockNote](https://www.blocknotejs.org/) 块编辑器构建，内置 AI 能力，可作为 uTools 插件运行，也支持浏览器端使用。
+<p align="center">
+  本地 Markdown、随手速记与 AI，放在同一个写作空间。
+</p>
 
-## ✨ 特性
+<p align="center">
+  <a href="https://github.com/eachann1024/goose-notes/releases/latest">下载安装包</a> ·
+  <a href="#开始记录">开始记录</a> ·
+  <a href="docs/showcase/goose-note-first-release.mp4">产品视频</a> ·
+  <a href="DEVELOP.md">开发文档</a> ·
+  <a href="SECURITY.md">安全说明</a>
+</p>
 
-- **块编辑器**：基于 BlockNote 的所见即所得编辑，支持标题、列表、折叠块、代码块等
-- **本地优先**：笔记存储在本地，支持挂载本地文件夹作为记事本
-- **AI 能力**：集成 AI SDK（Anthropic / OpenAI-compatible），支持续写、改写、问答
-- **快速速记**：独立的速记小窗（鹅的小窗），随手记录、一键入库
-- **全局搜索**：跨记事本搜索标题与正文，跳转即定位
-- **深色模式**：完整的明暗主题适配
+<p align="center">
+  macOS 可用 Homebrew 安装：<code>brew trust --cask eachann1024/goose-notes/goose-note</code><br />
+  <code>brew tap eachann1024/goose-notes https://github.com/eachann1024/goose-notes</code><br />
+  <code>brew install --cask eachann1024/goose-notes/goose-note</code><br />
+  升级：<code>brew upgrade --cask goose-note</code>
+</p>
 
-## 🛠 技术栈
+<br />
 
-- **编辑器**：BlockNote（ProseMirror）+ Tiptap 扩展
-- **框架**：React + TypeScript + Vite
-- **状态管理**：Zustand
-- **UI**：Radix UI + HeroUI + Tailwind CSS
-- **AI**：Vercel AI SDK
-- **宿主**：uTools（可选）/ 浏览器
+## 演示视频
 
-## 🚀 本地开发
+https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
+
+[![Goose Note：笔记编辑与 AI 助手并排，原文和整理结果随时对照](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
+
+<p align="center"><sub>写下想法，慢慢理清。macOS 开发版实拍，点击查看原图。</sub></p>
+
+<br />
+
+## 从自己的文件夹开始
+
+打开一个本地 Markdown 文件夹，就能继续写作。项目资料、阅读摘录与日常记录，都留在自己的文件里。
+
+灵感来得突然时，用独立速记小窗先记下来，再收进笔记。需要梳理思路时，让 AI 引用已有内容、提炼重点，或修改指定段落；原文与对话始终可以并排对照。
+
+<br />
+
+## 让复杂的内容，也容易读
+
+文字、代码、公式和 Mermaid 图示写在一起。用清单推进下一步，用表格整理信息，再将笔记导出为 Markdown、HTML、PDF、Word 或图片。
+
+[![Goose Note：代码高亮、Mermaid 图示与页面菜单](docs/showcase/02-code-and-diagram-user.png)](docs/showcase/02-code-and-diagram-user.png)
+
+<sub>macOS 开发版实拍，内容为演示笔记。页面菜单提供字体、历史与导出入口。</sub>
+
+<br />
+
+## 留下内容，也保留余地
+
+- **文件在本地。** 直接使用 Markdown 目录，解除挂载不会删除磁盘文件。
+- **重要内容有迹可循。** 页面锁定与历史版本，保留值得回看的节点。
+- **按需使用 AI。** 使用在线服务时，请求及引用的笔记内容会发送至所配置的服务。
+
+<br />
+
+## 开始记录
+
+1. 启动 Goose Note，选择「打开本地文件夹」。
+2. 打开已有 Markdown 文件，或新建一页，写下第一个想法。
+3. 需要整理时打开 AI 面板；需要分享时，从页面菜单导出。
+
+<details>
+<summary>从源码运行与平台说明</summary>
+
+采用 Electron、React、TypeScript 和 BlockNote。仓库提供 macOS、Windows 和 Linux 的开发与构建命令；上方截图来自 macOS 开发版，安装包可用性以实际提供的构建为准。
 
 ```bash
-# 安装依赖（推荐 bun）
-bun install
-
-# 启动开发服务器（http://localhost:6001）
-bun run dev
-
-# 构建（产出 uTools 插件包）
-bun run build
+bun install --frozen-lockfile
+bun run mac:dev
 ```
 
-### uTools 插件调试
+完整运行、验证与打包步骤见 [开发文档](DEVELOP.md)。
 
-浏览器 `bun run dev` 适合改 UI，但 uTools 真机行为（preload、主题、窗口等）需在插件环境里验证：
+</details>
 
-1. 执行 `bun run build`（会生成 `dist/` 下的完整插件包，含 `dist/plugin.json`）
-2. 打开 **uTools 开发者工具**
-3. **加载插件**，选择本仓库的 `dist/plugin.json`
-4. 在开发者工具中 **打开** 该插件，即可看到最新构建效果
+<br />
 
-改代码后重复步骤 1，再在开发者工具里重新打开插件（或按工具提示刷新）即可。
+---
 
-速记小窗（B 插件）产物在 `dist-quicknote/plugin.json`，加载方式相同。
+**同系列**　[鹅的书签](https://github.com/eachann1024/goose-mark) · [鹅的监控](https://github.com/eachann1024/goose-monitor) · [鹅的验证](https://github.com/eachann1024/goose-2fa) · [鹅的 Agent](https://github.com/eachann1024/eachann1024)
+
+<details>
+<summary>许可与第三方声明 · MIT</summary>
+
+当前源码以 **MIT** 许可提供，允许商用、修改和再分发；请保留版权与许可声明。详见 [LICENSE](LICENSE)。
+
+AI 菜单与 PDF 导出使用项目独立实现，已移除 BlockNote XL AI/PDF 包。BlockNote core/react/mantine 保留 MPL-2.0，其他第三方部分沿用各自许可，详见 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)。原有 MIT 来源与贡献者署名均保留。
+
+</details>
 
 
-## 📦 构建产物
+## 贡献者
 
-`bun run build` 会执行 `tsc` 类型检查 + `vite build` + uTools 打包脚本，产出可加载到 uTools 的插件包。
+感谢以下贡献者：
 
-提交前请确保以下检查通过（CI 也会跑这些）：
-
-```bash
-bun run typecheck   # tsc -b --noEmit
-bun run lint        # eslint .
-bun run build
-```
-
-## 🤝 贡献
-
-欢迎贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解开发流程与规范，并遵守
-[行为准则](./CODE_OF_CONDUCT.md)。报告安全问题请参阅 [SECURITY.md](./SECURITY.md)。
-
-## 📄 许可证
-
-[MIT](./LICENSE) © eachann
+<a href="https://github.com/eachann1024"><img src="https://github.com/eachann1024.png?size=64" width="40" height="40" alt="eachann1024" title="eachann1024" /></a> <a href="https://github.com/xdd666t"><img src="https://github.com/xdd666t.png?size=64" width="40" height="40" alt="xdd666t" title="xdd666t" /></a> <a href="https://github.com/gjxwxt"><img src="https://github.com/gjxwxt.png?size=64" width="40" height="40" alt="gjxwxt" title="gjxwxt" /></a>

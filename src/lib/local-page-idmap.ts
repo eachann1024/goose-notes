@@ -12,14 +12,15 @@
  * - 外部直接重命名/删除文件时，旧 id 自然退役（扫描结束清理已消失路径的条目），可接受。
  *
  * 存储：key = `gn:local-idmap:{notebookId}`，值为 { [relativePath]: stableId }
- * 使用 utoolsDbStorage 的 readDbStorageJSON / writeDbStorageJSON，
- * 浏览器 dev 环境自动回落 localStorage，uTools 环境用 dbStorage / db 文档。
+ * 使用 localDbStorage 的 readDbStorageJSON / writeDbStorageJSON，
+ * 浏览器 dev 环境自动回落 localStorage，Electron 环境用 dbStorage / db 文档。
  */
 
 import {
   readDbStorageJSON,
+  removeDbStorageItem,
   writeDbStorageJSON,
-} from "./storage/utoolsDbStorage";
+} from "./storage/localDbStorage";
 
 const IDMAP_KEY_PREFIX = "gn:local-idmap:";
 
@@ -40,6 +41,11 @@ export function writeLocalPageIdMap(
   map: LocalPageIdMap,
 ): void {
   writeDbStorageJSON(storageKey(notebookId), map);
+}
+
+/** 清除某个本地文件夹记事本的页面 ID 映射（仅应用元数据，不触碰磁盘文件）。 */
+export function removeLocalPageIdMap(notebookId: string): void {
+  removeDbStorageItem(storageKey(notebookId));
 }
 
 /** 从文件路径计算相对路径（不含前导斜杠）。 */
@@ -115,6 +121,28 @@ export function resolveOrCreateStableId(
   const id = generateAvailableStableId(notebookId, relativePath, map);
   map[relativePath] = id;
   return { id, dirty: true };
+}
+
+/**
+ * 把已有 pageId（未落盘标签）绑定到即将写出的相对路径，避免写盘后 id 被公式重算。
+ */
+export function assignExistingStableId(
+  _notebookId: string,
+  relativePath: string,
+  existingId: string,
+  map: LocalPageIdMap,
+): { dirty: boolean } {
+  if (!existingId) return { dirty: false };
+  if (map[relativePath] === existingId) return { dirty: false };
+  if (map[relativePath] && map[relativePath] !== existingId) {
+    console.warn(
+      "[local-page-idmap] assignExistingStableId: path already mapped to different id",
+      { relativePath, existing: map[relativePath], existingId },
+    );
+    return { dirty: false };
+  }
+  map[relativePath] = existingId;
+  return { dirty: true };
 }
 
 /**

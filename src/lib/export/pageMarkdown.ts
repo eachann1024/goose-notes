@@ -1,7 +1,8 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import type { Page } from "@/types";
 import { getPageTitle } from "@/components/editor/utils/page-title";
-import { blocksToMarkdown, blocksToHTML } from "./blocknoteSerializer";
+import { blocksToMarkdown } from "./blocknoteSerializer";
+import { blocksToEditorHtml } from "./blocksToEditorHtml";
 
 function isFirstBlockH1(block: unknown): boolean {
   if (!block || typeof block !== "object" || !("type" in block)) return false;
@@ -21,12 +22,21 @@ export function stripFirstH1(blocks: BlockNoteContent): BlockNoteContent {
   return blocks;
 }
 
+export interface BuildExportMarkdownOptions {
+  includeTitleHeading?: boolean;
+}
+
 export async function buildExportMarkdown(
   page: Page,
   blocks: BlockNoteContent,
+  options: BuildExportMarkdownOptions = {},
 ): Promise<string> {
   if (page.localFilePath) {
     return blocksToMarkdown(blocks);
+  }
+  const includeTitleHeading = options.includeTitleHeading ?? true;
+  if (!includeTitleHeading) {
+    return blocksToMarkdown(stripFirstH1(blocks));
   }
   const title = getPageTitle(page);
   const body = await blocksToMarkdown(stripFirstH1(blocks));
@@ -37,8 +47,6 @@ export async function buildExportHtmlBody(
   page: Page,
   blocks: BlockNoteContent,
 ): Promise<string> {
-  if (page.localFilePath) {
-    return blocksToHTML(blocks);
-  }
-  return blocksToHTML(stripFirstH1(blocks));
+  const target = page.localFilePath ? blocks : stripFirstH1(blocks);
+  return blocksToEditorHtml(target);
 }

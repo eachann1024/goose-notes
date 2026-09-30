@@ -1,0 +1,14 @@
+.sidebar-rename-caret {
+  display: inline-block;
+  width: 4px;
+  height: 1.15em;
+  border-radius: 2px;
+  background: var(--goose-accent-focus);
+  animation: sidebar-rename-blink 1s step-end infinite;
+}
+@keyframes sidebar-rename-blink {
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-rename-caret { animation: none; }
+}

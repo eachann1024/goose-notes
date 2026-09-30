@@ -1,0 +1,11 @@
+/* 行布局、背景和箭头均复用本地主树；大纲只增加收起标记。
+ * 绝对定位包含块已排除共享行的透明边框，虚线贴合整条背景。 */
+.outline-heading-row[data-collapsed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border: 1px dashed var(--goose-interactive-selected-fg);
+  border-radius: var(--radius-lg) / calc(var(--radius-lg) - 2px);
+  pointer-events: none;
+}

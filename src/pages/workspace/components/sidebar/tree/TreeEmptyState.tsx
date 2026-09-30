@@ -1,46 +1,33 @@
-import * as LucideIcons from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isElectronHost } from "@/lib/local-vault";
 
 interface TreeEmptyStateProps {
   isLocalNotebook: boolean;
-  width: number;
-  onCreatePage: () => void;
+  /** 侧栏树可视区高度；有值时用它做垂直居中，避免 flex 高度链断裂 */
+  height?: number;
 }
 
 export function TreeEmptyState({
   isLocalNotebook,
-  width,
-  onCreatePage,
+  height = 0,
 }: TreeEmptyStateProps) {
-  const EmptyIcon = isLocalNotebook ? LucideIcons.FolderOpen : LucideIcons.Files;
-  const isCompactEmptyState = width <= 172;
+  const hasMeasuredHeight = height > 0;
 
   return (
     <div
-      className={cn("flex flex-col flex-1 items-center justify-center", isCompactEmptyState ? "px-2" : "px-4")}
+      className={cn(
+        "flex w-full items-center justify-center px-4",
+        !hasMeasuredHeight && "h-full min-h-0 flex-1",
+      )}
+      style={hasMeasuredHeight ? { height, minHeight: height } : undefined}
     >
-      <div className="flex flex-col items-center gap-2.5">
-        <EmptyIcon className="h-7 w-7 text-foreground/45 stroke-[1.75]" />
-        <p
-          className={cn(
-            "font-medium tracking-[0.01em] text-foreground/70",
-            isCompactEmptyState ? "text-[14px]" : "text-[15px]",
-          )}
-        >
-          {isLocalNotebook ? "暂无文件可选" : "暂无页面可选"}
-        </p>
-      </div>
-      <Button
-        variant="link"
-        onClick={onCreatePage}
-        className={cn(
-          "mt-1 h-auto p-0 font-medium text-muted-foreground hover:text-foreground whitespace-normal break-words leading-snug",
-          isCompactEmptyState ? "max-w-[9.5rem] text-[13px]" : "max-w-[11rem] text-[15px]",
-        )}
-      >
-        {isLocalNotebook ? "新建文件" : "点击侧栏右上角加号创建"}
-      </Button>
+      <p className="text-center text-xs font-normal text-muted-foreground">
+        {isLocalNotebook
+          ? "暂无文件可选"
+          : isElectronHost
+            ? "尚未打开仓库"
+            : "暂无页面可选"}
+      </p>
     </div>
   );
 }

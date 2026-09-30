@@ -1,6 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 
-export type SettingsTab = "general" | "shortcuts" | "local-folder" | "appearance" | "ai" | "data";
+export type SettingsTab =
+  | "appearance"
+  | "general"
+  | "shortcuts"
+  | "local-folder"
+  | "git-sync"
+  | "ai"
+  | "data";
 
 export interface SettingsTabConfig {
   id: SettingsTab;

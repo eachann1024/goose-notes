@@ -1,0 +1,21 @@
+/* 空状态 AI 入口：保留结构与键盘交互，去掉专属渐变/彩虹装饰。 */
+.page-empty-ai-card { perspective: none; transform-style: flat; }
+.page-empty-ai-chip {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--goose-interactive-selected-border);
+  background: var(--goose-interactive-selected);
+  box-shadow: none;
+  transform: none;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.page-empty-ai-card:hover .page-empty-ai-chip,
+.page-empty-ai-card:focus-visible .page-empty-ai-chip {
+  border-color: var(--goose-interactive-hover-border);
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  box-shadow: none;
+}
+.page-empty-ai-chip .page-empty-ai-icon { color: currentColor; filter: none; transform: none; animation: none; }
+.page-empty-ai-fx, .page-empty-ai-orb, .page-empty-ai-sheen, .page-empty-ai-spark { display: none; }
+@media (prefers-reduced-motion: reduce) { .page-empty-ai-chip { transition: none; } }

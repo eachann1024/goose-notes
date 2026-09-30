@@ -1,7 +1,13 @@
 import type { PartialBlock } from "@blocknote/core";
+import { normalizeParsedImageProps } from "@/components/editor/blocks/image/imageCaption";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent, createEmptyBlockNoteContent } from "./emptyContent";
-import { normalizeBlockContent, ensureFirstTitleHeading } from "./normalize";
+import {
+  normalizeBlockContent,
+  ensureFirstTitleHeading,
+  normalizeHeadingSectionFold,
+} from "./normalize";
+import { ensureBodyParagraphAfterTitle } from "./ensureBodyParagraph";
 
 export interface LegacyPageContent {
   type?: string;
@@ -118,12 +124,16 @@ function legacyNodeToBlocks(node: LegacyPageContent): PartialBlock[] {
           type: "image",
           props: {
             url: node.attrs?.src || node.attrs?.url || "",
-            caption: node.attrs?.alt || node.attrs?.title || "",
+            ...normalizeParsedImageProps({
+              caption: node.attrs?.alt || node.attrs?.title || "",
+              name: node.attrs?.alt || node.attrs?.title || "",
+            }),
           },
         } as PartialBlock,
       ];
     case "horizontalRule":
-      return [{ type: "paragraph", content: "---" } as PartialBlock];
+    case "divider":
+      return [{ type: "divider" } as PartialBlock];
     default: {
       const text = textFromLegacy(node).trim();
       if (text) return [{ type: "paragraph", content: text } as PartialBlock];
@@ -177,11 +187,21 @@ export function normalizePageContent(
   },
 ): BlockNoteContent {
   const ensureTitle = options?.ensureFirstTitle !== false;
-  if (!content) return ensureTitle ? createEmptyBlockNoteContent() : [];
-  const sanitized = isBlockNoteContent(content)
-    ? normalizeBlockContent(content)
-    : normalizeBlockContent(childrenFromLegacy(content.content));
-  if (!ensureTitle) return sanitized;
-  if (!sanitized.length) return createEmptyBlockNoteContent();
-  return stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized));
+  try {
+    if (!content) return ensureTitle ? createEmptyBlockNoteContent() : [];
+    const sanitized = isBlockNoteContent(content)
+      ? normalizeBlockContent(content)
+      : normalizeBlockContent(childrenFromLegacy(content.content));
+    const withSectionFold = (blocks: BlockNoteContent) =>
+      normalizeHeadingSectionFold(blocks);
+    if (!ensureTitle) return withSectionFold(sanitized);
+    if (!sanitized.length) return createEmptyBlockNoteContent();
+    return withSectionFold(
+      ensureBodyParagraphAfterTitle(
+        stripRedundantEmptyHeadings(ensureFirstTitleHeading(sanitized)),
+      ),
+    );
+  } catch {
+    return ensureTitle ? createEmptyBlockNoteContent() : [];
+  }
 }

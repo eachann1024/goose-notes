@@ -1,12 +1,25 @@
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useExtension } from "@blocknote/react";
 import { SuggestionMenu } from "@blocknote/core/extensions";
 import { cn } from "@/components/editor/utils/cn";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/editor/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/editor/ui/tooltip";
 import { Kbd } from "@/components/editor/ui/kbd";
-import { Button } from "@/components/editor/ui/button";
 import type { SlashMenuItem } from "./blocknoteSlashItems";
 import { isSlashMenuDivider } from "./blocknoteSlashItems";
+import { isSuggestionMenuAcceptKey } from "@/components/editor/utils/slashMenuPolicy";
 
 interface CustomSlashMenuProps {
   items: SlashMenuItem[];
@@ -17,8 +30,6 @@ interface CustomSlashMenuProps {
 
 const KEYBOARD_NAV_IGNORE_MOUSE_MS = 700;
 const SCROLL_ANIM_MS = 180;
-const SCROLL_EDGE_PADDING_PX = 10;
-
 function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
 }
@@ -28,27 +39,21 @@ function clampScrollTop(container: HTMLElement, top: number): number {
   return Math.max(0, Math.min(top, max));
 }
 
-function scrollTopToRevealItem(
+function scrollTopToCenterItem(
   container: HTMLElement,
   itemEl: HTMLElement,
+  movingDown: boolean,
+  movingUp: boolean,
 ): number | null {
-  const viewTop = container.scrollTop;
-  const viewBottom = viewTop + container.clientHeight;
-  const pad = SCROLL_EDGE_PADDING_PX;
-  const itemTop = itemEl.offsetTop;
-  const itemBottom = itemTop + itemEl.offsetHeight;
-
-  if (itemTop >= viewTop + pad && itemBottom <= viewBottom - pad) {
+  const itemCenter = itemEl.offsetTop + itemEl.offsetHeight / 2;
+  const viewportCenter = container.scrollTop + container.clientHeight / 2;
+  if (
+    (!movingDown || itemCenter < viewportCenter) &&
+    (!movingUp || itemCenter > viewportCenter)
+  ) {
     return null;
   }
-
-  let next = viewTop;
-  if (itemTop < viewTop + pad) {
-    next = itemTop - pad;
-  } else if (itemBottom > viewBottom - pad) {
-    next = itemBottom - container.clientHeight + pad;
-  }
-  return clampScrollTop(container, next);
+  return clampScrollTop(container, itemCenter - container.clientHeight / 2);
 }
 
 interface ScrollTween {
@@ -65,6 +70,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
     const suggestionMenu = useExtension(SuggestionMenu);
     const ignoreMouseEnterUntilRef = useRef(0);
     const lastKeyboardNavAtRef = useRef(0);
+    const previousSelectedIndexRef = useRef(selectedIndex);
     const scrollTweenRef = useRef<ScrollTween | null>(null);
     const scrollRafRef = useRef(0);
     const suppressHoverTimerRef = useRef<number | null>(null);
@@ -193,27 +199,44 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       ) as HTMLElement | null;
       if (!selectedEl) return;
 
-      const target = scrollTopToRevealItem(container, selectedEl);
+      const previousIndex = previousSelectedIndexRef.current;
+      previousSelectedIndexRef.current = selectedIndex;
+      const fromKeyboard =
+        Date.now() - lastKeyboardNavAtRef.current <
+        KEYBOARD_NAV_IGNORE_MOUSE_MS;
+      if (!fromKeyboard) return;
+
+      const wrappedToStart =
+        previousIndex === selectableIndexes[selectableIndexes.length - 1] &&
+        selectedIndex === selectableIndexes[0];
+      const wrappedToEnd =
+        previousIndex === selectableIndexes[0] &&
+        selectedIndex === selectableIndexes[selectableIndexes.length - 1];
+      const target = wrappedToStart
+        ? 0
+        : wrappedToEnd
+          ? container.scrollHeight - container.clientHeight
+          : scrollTopToCenterItem(
+              container,
+              selectedEl,
+              selectedIndex > previousIndex,
+              selectedIndex < previousIndex,
+            );
       if (target === null) return;
 
-      const fromKeyboard =
-        Date.now() - lastKeyboardNavAtRef.current < KEYBOARD_NAV_IGNORE_MOUSE_MS;
-      if (fromKeyboard) {
-        startScrollTo(target);
-      } else {
-        cancelScrollAnimation();
-        container.scrollTop = target;
-      }
-    }, [selectedIndex, startScrollTo, cancelScrollAnimation]);
+      startScrollTo(target);
+    }, [selectedIndex, selectableIndexes, startScrollTo]);
 
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
+        if (isWorkspaceSettingsOpen()) return;
         if (!containerRef.current || !containerRef.current.isConnected) return;
         const target = e.target as HTMLElement | null;
         const inEditorScope = !!target?.closest(
           '.bn-editor, [data-content-type="blockNote"]',
         );
         if (!inEditorScope) return;
+        if (e.isComposing) return;
         if (!selectableIndexes.length) return;
         if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -235,13 +258,14 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
           } else {
             setSelectedIndex(selectableIndexes[pos + 1]);
           }
-        } else if (e.key === "Enter") {
+        } else if (isSuggestionMenuAcceptKey(e)) {
           e.preventDefault();
           e.stopPropagation();
           const validIndex = selectableIndexes.includes(selectedIndex)
             ? selectedIndex
             : selectableIndexes[0];
           selectItem(validIndex);
+          suggestionMenu?.closeMenu();
         }
       };
       window.addEventListener("keydown", handler, true);
@@ -252,59 +276,51 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
       return null;
     }
 
-    const lite = __GOOSE_LITE__;
+    const lite = __GOOSE_EDITOR_COMPACT__;
+    const needsTooltip = items.some(
+      (item) =>
+        !isSlashMenuDivider(item) && item.disabled && item.disabledReason,
+    );
 
-    return (
-      <div
-        className="inline-flex max-h-[inherit] min-h-0 flex-col overflow-visible bg-transparent"
-        data-notion-slash-root="true"
-        {...(lite ? { "data-goose-slash-lite": "true" } : {})}
-      >
-        <div
-          data-notion-slash-surface="true"
-          className={cn(
-            "z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-border/75 bg-popover text-popover-foreground shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
-            lite
-              ? "max-h-[inherit] w-[248px] rounded-xl p-1"
-              : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
-          )}
-        >
-          <div
-            ref={containerRef}
-            data-notion-slash-scroll={lite ? "" : undefined}
-            className={cn(
-              "min-h-0 overflow-y-auto overscroll-contain",
-              lite ? "max-h-[inherit] pb-2" : "max-h-[20rem] pb-1",
-              suppressItemHover && "pointer-events-none",
-            )}
-          >
-            <TooltipProvider delayDuration={600}>
+    const list = (
               <div className={cn("flex flex-col", lite ? "gap-0" : "gap-0.5")}>
                 {items.map((item, index) => {
                   if (isSlashMenuDivider(item)) {
                     return (
                       <div
                         key={`divider-${index}`}
-                        className={cn("mx-2 h-px bg-border/60", lite ? "my-0.5" : "my-1")}
+                        className={cn(
+                          "mx-2 h-px bg-border/60",
+                          lite ? "my-0.5" : "my-1",
+                        )}
                       />
                     );
                   }
 
                   const button = (
-                    <Button
+                    <button
+                      type="button"
                       key={item.title ?? index}
-                      variant="ghost"
                       data-index={index}
+                      data-goose-slash-item={lite ? "" : undefined}
+                      data-goose-slash-selected={
+                        lite && index === selectedIndex ? "true" : undefined
+                      }
                       className={cn(
                         "relative flex h-auto w-full items-center justify-start text-left outline-none transition-colors whitespace-normal",
                         lite
-                          ? "min-h-[34px] rounded-lg px-2 py-1.5"
-                          : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2",
-                        index === selectedIndex ? "bg-accent" : "bg-transparent",
+                          ? "min-h-[34px] rounded-lg px-2 py-1.5 shadow-none hover:bg-[var(--goose-interactive-hover)] hover:text-[hsl(var(--foreground))]"
+                          : "min-h-[40px] rounded-[var(--radius-notion-slash-item)] px-2.5 py-2 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:[&_*]:text-[var(--goose-interactive-hover-fg)]",
+                        index === selectedIndex
+                          ? lite
+                            ? "bg-transparent text-[hsl(var(--foreground))]"
+                            : "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                          : "bg-transparent",
                       )}
                       onMouseEnter={() => {
                         if (suppressItemHover) return;
-                        if (Date.now() < ignoreMouseEnterUntilRef.current) return;
+                        if (Date.now() < ignoreMouseEnterUntilRef.current)
+                          return;
                         setSelectedIndex(index);
                       }}
                       onClick={() => selectItem(index)}
@@ -319,13 +335,19 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                           <span
                             className={cn(
                               "text-xs",
-                              index === selectedIndex ? "text-accent-foreground" : "text-muted-foreground",
+                              index === selectedIndex
+                                ? lite
+                                  ? "text-[hsl(var(--foreground))]"
+                                  : "text-[var(--goose-interactive-selected-fg)]"
+                                : "text-muted-foreground",
                             )}
-                          >
+                      >
                             {item.icon}
                           </span>
                         ) : (
-                          <span className="text-xs font-semibold text-muted-foreground">T</span>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            T
+                          </span>
                         )}
                       </div>
 
@@ -337,7 +359,9 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                             item.disabled
                               ? "text-muted-foreground/55"
                               : index === selectedIndex
-                                ? "text-accent-foreground"
+                                ? lite
+                                  ? "text-[hsl(var(--foreground))]"
+                                  : "text-[var(--goose-interactive-selected-fg)]"
                                 : "text-foreground",
                           )}
                         >
@@ -356,23 +380,62 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                       </div>
 
                       {item.badge && (
-                        <Kbd shortcut={item.badge} className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none" />
+                        <Kbd
+                          shortcut={item.badge}
+                          className="ml-2 h-4 border-transparent bg-transparent px-0 text-[9px] opacity-45 shadow-none"
+                        />
                       )}
-                    </Button>
+                    </button>
                   );
 
                   if (!item.disabled || !item.disabledReason) return button;
                   return (
                     <Tooltip key={item.title ?? index}>
                       <TooltipTrigger asChild>
-                        <span className="block w-full cursor-not-allowed">{button}</span>
+                        <span className="block w-full cursor-not-allowed">
+                          {button}
+                        </span>
                       </TooltipTrigger>
-                      <TooltipContent side="right">{item.disabledReason}</TooltipContent>
+                      <TooltipContent editorContext side="right">
+                        {item.disabledReason}
+                      </TooltipContent>
                     </Tooltip>
                   );
                 })}
               </div>
-            </TooltipProvider>
+    );
+
+    return (
+      <div
+        className="inline-flex max-h-[inherit] min-h-0 flex-col overflow-visible bg-transparent"
+        data-notion-slash-root="true"
+        {...(lite ? { "data-goose-slash-lite": "true" } : {})}
+      >
+        <div
+          data-notion-slash-surface="true"
+          className={cn(
+            "goose-editor-inline-context-ui z-50 flex h-auto min-h-0 min-w-0 flex-col overflow-hidden border border-[hsl(var(--goose-menu-border))] bg-[hsl(var(--goose-menu-surface))] text-popover-foreground",
+            !lite &&
+              "shadow-[0_14px_34px_rgba(15,23,42,0.16),0_2px_8px_rgba(15,23,42,0.08)]",
+            lite
+              ? "max-h-[inherit] w-[248px] rounded-xl p-1"
+              : "max-h-[20rem] w-[280px] rounded-[var(--radius-notion-slash)] p-1.5",
+          )}
+        >
+          <div
+            ref={containerRef}
+            data-notion-slash-scroll={lite ? "" : undefined}
+            className={cn(
+              "min-h-0 overflow-y-auto overscroll-contain",
+              lite ? "max-h-[inherit] pb-2" : "max-h-[20rem] pb-1",
+              suppressItemHover && "pointer-events-none",
+            )}
+          >
+            {needsTooltip ? (
+              <TooltipProvider delayDuration={600}>{list}</TooltipProvider>
+            ) : (
+              list
+            )}
           </div>
         </div>
       </div>

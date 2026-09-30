@@ -3,6 +3,7 @@ export type JSONContent = PageContent | any;
 
 export type SyncProvider = "local" | "jianguoyun" | "icloud";
 export type FontFamily = "default" | "serif" | "mono";
+export type PageLayout = "full" | "standard";
 export type FontSize = "default" | "small";
 export type LocalFileReadState = "ready" | "error";
 
@@ -46,9 +47,9 @@ export interface Page {
   isFolder?: boolean;
   isFavorite?: boolean;
   isLocked: boolean;
-  isFullWidth: boolean;
   fontSize: FontSize;
   fontFamily: FontFamily;
+  pageLayout?: PageLayout;
 
   // Metadata
   createdAt: number;
@@ -62,6 +63,9 @@ export interface Page {
 
   // Local file system (for local-folder mode)
   localFilePath?: string;
+  /** Electron 新标签：先在内存编辑，输入内容后再写盘。 */
+  localUnsaved?: boolean;
+  localPendingCreate?: "folder" | "file";
   localReadState?: LocalFileReadState;
   localReadError?: string;
   // 文件顶部 YAML frontmatter 原文（含起止 --- 行，不入编辑器，保存时 prepend 回去）。

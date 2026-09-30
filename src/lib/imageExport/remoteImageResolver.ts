@@ -86,12 +86,16 @@ async function resolveSingleUrl(url: string): Promise<string | null> {
     try {
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, {
-        mode: "cors",
-        credentials: "omit",
-        signal: controller.signal,
-      });
-      clearTimeout(tid);
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          mode: "cors",
+          credentials: "omit",
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(tid);
+      }
       if (res.ok) {
         const blob = await res.blob();
         return blobToBase64(blob);
@@ -108,6 +112,10 @@ async function resolveSingleUrl(url: string): Promise<string | null> {
     return null;
   }
   return null;
+}
+
+export async function resolveRemoteImageToDataUrl(url: string): Promise<string | null> {
+  return resolveSingleUrl(url);
 }
 
 export async function resolveImageUrls(blocks: BlockNoteContent): Promise<void> {

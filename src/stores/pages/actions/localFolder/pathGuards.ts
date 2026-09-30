@@ -43,3 +43,70 @@ export async function localFilePathExists(
     return false;
   }
 }
+
+/**
+ * 目标路径是否已被占用（磁盘已有 或 其它页面已绑定）。
+ * 当前页自己的路径视为空闲（重命名回环时不应被 exists 挡住）。
+ */
+export async function isLocalFilePathTaken(
+  fs: GooseFs,
+  pages: Record<string, Page>,
+  pageId: string,
+  filePath: string,
+  currentFilePath?: string | null,
+): Promise<boolean> {
+  if (
+    currentFilePath &&
+    normalizeLocalFilePathKey(currentFilePath) ===
+      normalizeLocalFilePathKey(filePath)
+  ) {
+    return false;
+  }
+  if (findDuplicateLocalFileOwner(pages, pageId, filePath)) return true;
+  return localFilePathExists(fs, filePath);
+}
+
+/**
+ * 为本地文件解析可用基名：目标空闲则原样；否则按 `名称 (1)`、`名称 (2)`… 递增。
+ * 与新建页命名策略对齐，避免重命名撞名后再弹二次确认。
+ */
+export async function allocateUniqueLocalBaseName(
+  fs: GooseFs,
+  pages: Record<string, Page>,
+  pageId: string,
+  dir: string,
+  baseName: string,
+  ext: string,
+  currentFilePath?: string | null,
+): Promise<string> {
+  const preferredPath = `${dir}/${baseName}${ext}`;
+  if (
+    !(await isLocalFilePathTaken(
+      fs,
+      pages,
+      pageId,
+      preferredPath,
+      currentFilePath,
+    ))
+  ) {
+    return baseName;
+  }
+
+  for (let suffix = 1; suffix <= 99; suffix += 1) {
+    const candidate = `${baseName} (${suffix})`;
+    const candidatePath = `${dir}/${candidate}${ext}`;
+    if (
+      !(await isLocalFilePathTaken(
+        fs,
+        pages,
+        pageId,
+        candidatePath,
+        currentFilePath,
+      ))
+    ) {
+      return candidate;
+    }
+  }
+
+  throw new Error("无法生成可用名称，请手动修改");
+}

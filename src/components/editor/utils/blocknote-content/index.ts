@@ -19,7 +19,13 @@ export {
   normalizeBlocks,
   normalizeBlockContent,
   ensureFirstTitleHeading,
+  normalizeHeadingSectionFold,
+  normalizeHeadingToggleableFlags,
 } from "./normalize";
+export {
+  ensureBodyParagraphAfterTitle,
+  needsBodyParagraphAfterTitle,
+} from "./ensureBodyParagraph";
 
 export { createEditorSafeContent } from "./editorSafeContent";
 
@@ -27,7 +33,7 @@ import type { PartialBlock } from "@blocknote/core";
 import type { PageContent } from "./legacyMigration";
 import type { BlockNoteContent } from "./emptyContent";
 import { isBlockNoteContent } from "./emptyContent";
-import { simpleExtractText } from "./normalize";
+import { hasStructuredBlocks, simpleExtractText } from "./normalize";
 import { normalizePageContent } from "./legacyMigration";
 import type { LegacyPageContent } from "./legacyMigration";
 
@@ -77,22 +83,8 @@ export function extractPlainText(content: PageContent | undefined): string {
 
   const parts: string[] = [];
   const visit = (block: any) => {
-    if (typeof block.content === "string") parts.push(block.content);
-    else if (Array.isArray(block.content)) {
-      for (const inline of block.content) {
-        if (typeof inline === "string") parts.push(inline);
-        else if (inline?.type === "link" && Array.isArray(inline.content)) {
-          parts.push(...inline.content.map((c: any) => c?.text ?? ""));
-        } else if (inline?.text) parts.push(inline.text);
-      }
-    } else if (block.content?.rows) {
-      for (const row of block.content.rows) {
-        for (const cell of row.cells ?? []) {
-          if (typeof cell === "string") parts.push(cell);
-          else parts.push(extractPlainText(cell as PageContent));
-        }
-      }
-    }
+    const text = simpleExtractText(block);
+    if (text) parts.push(text);
     for (const child of block.children ?? []) visit(child);
   };
   for (const block of content as PartialBlock[]) visit(block);
@@ -102,11 +94,41 @@ export function extractPlainText(content: PageContent | undefined): string {
 export function extractBlockNoteTitle(
   content: PageContent | undefined,
 ): string {
-  const blocks = normalizePageContent(content);
-  const first = blocks[0] as any;
-  if (first?.type === "heading") {
-    const text = extractPlainText([first] as BlockNoteContent);
-    if (text) return text;
+  try {
+    const heading = Array.isArray(content) ? content[0] : undefined;
+    if (
+      heading?.type === "heading" &&
+      typeof heading === "object" &&
+      !Array.isArray(heading) &&
+      !("attrs" in heading) &&
+      (heading.children == null || Array.isArray(heading.children)) &&
+      (heading.props == null ||
+        (typeof heading.props === "object" && !Array.isArray(heading.props))) &&
+      (typeof heading.content === "string" ||
+        (Array.isArray(heading.content) && !hasStructuredBlocks(heading.content)))
+    ) {
+      // ponytail: 仅快速读取普通首标题，不校验正文或保证所有异常输入等价；复杂格式仍全文 normalize。
+      const inlineText = simpleExtractText({ content: heading.content }).trim();
+      if (
+        inlineText ||
+        heading.children == null ||
+        (Array.isArray(heading.children) && heading.children.length === 0)
+      ) {
+        // normalize 会丢弃顶层 text 并将标题 children 移到正文，不能直接读取整个 heading。
+        return (
+          simpleExtractText({ content: heading.content, props: heading.props }).trim() ||
+          "无标题"
+        );
+      }
+    }
+    const blocks = normalizePageContent(content);
+    const first = blocks[0] as any;
+    if (first?.type === "heading") {
+      const text = extractPlainText([first] as BlockNoteContent);
+      if (text) return text;
+    }
+    return "无标题";
+  } catch {
+    return "无标题";
   }
-  return "无标题";
 }

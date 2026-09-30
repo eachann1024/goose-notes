@@ -20,15 +20,8 @@ export const loadAllLocalFolderPagesAction = async (
     if (nb.source !== "local-folder") return false;
     if (!nb.localPath || nb.localPathMissing) return false;
     const loadState = localFolderLoadStates[nb.id];
-    // 正在加载或已就绪的跳过；只补加载从未触发过的。
-    if (loadState?.status === "loading" || loadState?.status === "ready") {
-      return false;
-    }
-    // 已有该记事本页面在内存里（可能由旧路径加载过）也跳过。
-    const hasPages = Object.values(get().pages).some(
-      (p) => p.workspaceId === nb.id,
-    );
-    return !hasPages;
+    // 正在加载中的跳过；为了确保磁盘 Frontmatter 与置顶/收藏状态同步，未在加载中的都执行扫盘校准
+    return loadState?.status !== "loading";
   });
 
   if (targets.length === 0) return;

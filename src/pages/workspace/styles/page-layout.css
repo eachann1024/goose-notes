@@ -1,0 +1,90 @@
+/* Each pane owns its measure; explicit document and code formatting stay intact. */
+[data-page-layout] {
+  container: page-layout / inline-size;
+  --page-layout-width: 800px;
+  --page-layout-gutter: 48px;
+  --page-layout-top: 80px;
+  --page-paragraph-gap: 4px;
+  --page-title-gap: 37px;
+}
+[data-page-layout="full"] {
+  --page-layout-width: none;
+  --page-layout-top: 24px;
+}
+[data-page-layout] .page-layout-document {
+  width: 100%;
+  max-width: var(--page-layout-width);
+  min-height: 100%;
+  margin-inline: auto;
+  padding: var(--page-layout-top) var(--page-layout-gutter) 100px;
+}
+[data-page-layout] .page-layout-document > .workspace-editor-surface { padding-block: 0; }
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="paragraph"] {
+  padding-block: 0;
+  margin-bottom: var(--page-paragraph-gap);
+}
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="heading"]:not([data-is-toggleable="true"]) {
+  --page-heading-gap: max(0px, calc(var(--page-title-gap) - var(--previous-prose-gap, 0px)));
+  --page-heading-padding: 0px;
+  padding-block: 0;
+  margin-block: var(--page-heading-gap) 14px;
+}
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="heading"]:not([data-is-toggleable="true"]):has(h1) {
+  --page-heading-gap: 0px;
+  margin-block: 0 var(--page-title-gap);
+}
+/* Only a heading in the first root block loses its leading prose gap. */
+[data-page-layout] .workspace-editor-surface .bn-editor > .bn-block-group > .bn-block-outer:first-child > .bn-block > [data-content-type="heading"]:not([data-is-toggleable="true"]) {
+  margin-top: 0;
+}
+[data-page-layout] .bn-editor :is(h1, [data-content-type="heading"]:has(h1)) { --level: calc(34px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 700; letter-spacing: -0.5px; }
+[data-page-layout] .bn-editor :is(h2, [data-content-type="heading"]:has(h2)) { --level: calc(21px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; font-weight: 600; letter-spacing: -0.25px; }
+[data-page-layout] .bn-editor :is(h3, [data-content-type="heading"]:has(h3)) { --level: calc(19px * var(--editor-scale, 1)); font-size: var(--level); line-height: 1.6; }
+/* BlockNote wraps blocks in flex columns, so the HTML reference's prose margins
+ * cannot collapse naturally. Subtract the previous leaf block's trailing gap.
+ * ponytail: nested structures keep their own rhythm; extend their last-block rule if needed. */
+[data-page-layout] .bn-editor .bn-block-outer { --previous-prose-gap: 0px; }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="paragraph"]:only-child) + .bn-block-outer { --previous-prose-gap: var(--page-paragraph-gap); }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="heading"]:not([data-is-toggleable="true"]):only-child) + .bn-block-outer { --previous-prose-gap: 14px; }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="heading"]:has(h1):not([data-is-toggleable="true"]):only-child) + .bn-block-outer { --previous-prose-gap: var(--page-title-gap); }
+[data-page-layout] .bn-editor .bn-block-outer:has(> .bn-block > [data-content-type="quote"]:only-child) + .bn-block-outer { --previous-prose-gap: 16px; }
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"] {
+  margin-block: max(0px, calc(16px - var(--previous-prose-gap, 0px))) 16px;
+  padding-block: 0;
+}
+[data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"] > blockquote {
+  border-left-width: 2px;
+  padding: 0 0 0 14px;
+  font-size: inherit;
+  line-height: inherit;
+}
+[data-page-layout] .bn-editor .bn-inline-content strong { font-weight: 700; }
+/* Dense structures keep their own rhythm rather than inheriting prose spacing. */
+[data-page-layout] .bn-editor :is(td, th, [data-content-type="bulletListItem"], [data-content-type="numberedListItem"]) {
+  --page-paragraph-gap: 0px;
+}
+@container page-layout (max-width: 680px) {
+  [data-page-layout] .page-layout-document { padding: 48px 32px 80px; }
+  [data-page-layout="full"] .page-layout-document { padding-top: var(--page-layout-top); }
+}
+@container page-layout (max-width: 400px) {
+  [data-page-layout] .page-layout-document { padding-inline: 24px; }
+}
+
+[data-page-layout][data-font-family="default"] { --goose-document-font: var(--font-default); }
+[data-page-layout][data-font-family="serif"] { --goose-document-font: var(--font-serif); }
+[data-page-layout][data-font-family="mono"] { --goose-document-font: var(--font-mono); }
+[data-page-layout] .bn-editor {
+  --bn-font-family: var(--goose-document-font);
+  font-family: var(--goose-document-font);
+  letter-spacing: normal;
+}
+/* Only the two approved light palettes replace BlockNote's independent ink. */
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="mono"]) [data-page-layout] .bn-editor {
+  --bn-colors-editor-text: hsl(var(--foreground));
+  --goose-accent-focus: hsl(var(--primary));
+}
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="mono"]) [data-page-layout] .workspace-editor-surface .bn-editor [data-content-type="quote"]:not([data-text-color]) > blockquote {
+  color: hsl(var(--muted-foreground));
+  border-left-color: hsl(var(--primary));
+}

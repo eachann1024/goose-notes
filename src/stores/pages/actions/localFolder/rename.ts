@@ -7,11 +7,17 @@ import {
   splitFilePath,
 } from "@/lib/local-title-binding";
 import { migrateLocalPageIdMapEntry, toRelativePath } from "@/lib/local-page-idmap";
-import { migratePendingLocalSave } from "../../folderSync";
+import {
+  acquireLocalPageFileOperation,
+  confirmRecoveredLocalSave,
+  flushPendingLocalSaveByPageIdInternal,
+  migratePendingLocalSave,
+} from "../../folderSync";
 import type { StoreSet, StoreGet } from "../hydrate";
 import { cloneLocalPageContent } from "../pageCreate";
 import { markSelfMoved } from "./move";
 import {
+  allocateUniqueLocalBaseName,
   findDuplicateLocalFileOwner,
   localFilePathExists,
 } from "./pathGuards";
@@ -35,6 +41,11 @@ function renameLocalPageInStore(
       };
     });
     return oldPageId;
+  }
+
+  const migration = migratePendingLocalSave(oldPageId, newPageId, get);
+  if (!migration.ok) {
+    throw new Error(`恢复日志迁移失败：${migration.error}`);
   }
 
   set((state) => {
@@ -66,10 +77,6 @@ function renameLocalPageInStore(
         state.activePageId === oldPageId ? newPageId : state.activePageId,
     };
   });
-
-  // 防抖保存队列里挂在旧 id 上的待写内容迁到新 id，
-  // 避免计时器到期后按旧 id 查不到页面、内容丢失且脏标记清不掉。
-  migratePendingLocalSave(oldPageId, newPageId, get);
 
   // tabs 引用同步
   useTabs.setState((state) => ({
@@ -167,6 +174,72 @@ async function maybeRenameLocalFileForTitle(
   return { pageId: nextPageId, collision: false };
 }
 
+async function renameLocalDirectory(
+  set: StoreSet,
+  get: StoreGet,
+  pageId: string,
+  name: string,
+): Promise<string> {
+  const page = get().pages[pageId];
+  const fs = window.gooseFs;
+  const basePath = useNotebooks.getState().notebooks[page.workspaceId]?.localPath;
+  if (!fs || !basePath || !page.localFilePath) throw new Error("文件系统不可用");
+  const oldPath = page.localFilePath.replace(/\\/g, "/");
+  const nextPath = oldPath.slice(0, oldPath.lastIndexOf("/") + 1) + name;
+  if (oldPath === nextPath) return pageId;
+  const affected = Object.values(get().pages).filter((p) =>
+    p.workspaceId === page.workspaceId && p.localFilePath &&
+    (p.localFilePath.replace(/\\/g, "/") === oldPath ||
+      p.localFilePath.replace(/\\/g, "/").startsWith(oldPath + "/")),
+  ).sort((a, b) => a.id.localeCompare(b.id));
+
+  // 先提交编辑器和子文件防抖，再锁住写盘；后续保存只能读到改名后的路径。
+  window.dispatchEvent(new CustomEvent("goose-note:flush-editor", {
+    detail: { immediate: true },
+  }));
+  for (const p of affected) {
+    if (!p.isFolder) await flushPendingLocalSaveByPageIdInternal(p.id, get);
+  }
+  const releases: Array<() => void> = [];
+  try {
+    for (const p of affected) releases.push(await acquireLocalPageFileOperation(p.id));
+    if (affected.some((p) => get().pages[p.id]?.localFilePath !== p.localFilePath)) {
+      throw new Error("路径已发生变化，请重新重命名");
+    }
+    const exists = fs.existsAsync ? await fs.existsAsync(nextPath) : await fs.exists(nextPath);
+    if (exists) throw new Error("重命名失败：目标名称已存在");
+    if (!(await fs.rename(page.localFilePath, nextPath))) throw new Error("重命名操作未成功");
+    markSelfMoved(oldPath);
+    markSelfMoved(nextPath);
+    // 磁盘成功后先更新全部路径，保持页面 ID、收藏、标签页与手动顺序不变。
+    set((state) => {
+      const pages = { ...state.pages };
+      for (const p of affected) {
+        if (!pages[p.id]) continue;
+        pages[p.id] = { ...pages[p.id], localFilePath:
+          nextPath + p.localFilePath!.replace(/\\/g, "/").slice(oldPath.length) };
+      }
+      return { pages };
+    });
+    const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
+      await import("@/lib/local-md-snapshot");
+    for (const p of affected) {
+      const previous = p.localFilePath!;
+      const next = nextPath + previous.replace(/\\/g, "/").slice(oldPath.length);
+      const snapshot = getLocalMdSnapshot(previous);
+      if (snapshot !== undefined) {
+        setLocalMdSnapshot(next, snapshot);
+        deleteLocalMdSnapshot(previous);
+      }
+      migrateLocalPageIdMapEntry(page.workspaceId,
+        toRelativePath(basePath, previous), toRelativePath(basePath, next), p.id);
+    }
+    return pageId;
+  } finally {
+    releases.reverse().forEach((release) => release());
+  }
+}
+
 /**
  * 显式重命名 local-folder 页面文件。
  * 由虚拟标题组件在用户提交新名称时调用。
@@ -185,10 +258,15 @@ export async function renameLocalPageFileAction(
     throw new Error("页面不存在或非本地文件夹页面");
   }
 
+  if (/[\\/:*?"<>|\x00-\x1f\x7f]/.test(newBaseName) || /^\.+$/.test(newBaseName.trim())) {
+    throw new Error("名称不能包含路径分隔符或非法字符");
+  }
   const sanitized = sanitizeFilenameSegment(newBaseName);
   if (!sanitized) {
     throw new Error("文件名不能为空");
   }
+
+  if (page.isFolder) return renameLocalDirectory(set, get, pageId, sanitized);
 
   const { dir, base, ext } = splitFilePath(page.localFilePath);
   if (sanitized === base) {
@@ -196,69 +274,101 @@ export async function renameLocalPageFileAction(
     return pageId;
   }
 
-  const nextFilePath = `${dir}/${sanitized}${ext}`;
-
   if (typeof window === "undefined" || !window.gooseFs) {
     throw new Error("文件系统不可用");
   }
 
   const fs = window.gooseFs;
-  const duplicatePage = findDuplicateLocalFileOwner(
+  // 与新建页一致：撞名时自动 `名称 (1)` / `名称 (2)`，不抛错打断用户
+  const uniqueBase = await allocateUniqueLocalBaseName(
+    fs,
     get().pages,
     pageId,
-    nextFilePath,
+    dir,
+    sanitized,
+    ext,
+    page.localFilePath,
   );
-  if (duplicatePage || await localFilePathExists(fs, nextFilePath)) {
-    throw new Error(`已存在同名文件：${sanitized}${ext}`);
+  const nextFilePath = `${dir}/${uniqueBase}${ext}`;
+  // 解析后仍与当前基名相同（例如「foo (1)」→「foo」但「foo」已被占，落回自身）
+  if (uniqueBase === base) {
+    return pageId;
   }
 
-  let renamed: boolean;
+  // 先让编辑器的 800ms 防抖立即提交到 store，再写完已经排队的旧路径内容。
+  // 标题输入与编辑器同属同步事件链，dispatch 返回时 updatePage 已完成入队。
+  window.dispatchEvent(
+    new CustomEvent("goose-note:flush-editor", {
+      detail: { immediate: true, pageId },
+    }),
+  );
+  await flushPendingLocalSaveByPageIdInternal(pageId, get);
+
+  // 与所有正文写盘共用页面级串行锁：等待在途的直接保存结束，并阻止后续保存
+  // 在 localFilePath 切换前读取旧路径。同页并发 rename 也会自然串行。
+  const releaseFileOperation = await acquireLocalPageFileOperation(pageId);
   try {
+    if (get().pages[pageId]?.localFilePath !== page.localFilePath) {
+      throw new Error("路径已发生变化，请重新重命名");
+    }
+    const renamed = Boolean(
+      await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)),
+    );
+    if (!renamed) {
+      throw new Error("重命名操作未成功");
+    }
+
+    // 成功后才登记自移路径；失败时不应误吞接下来 5 秒的真实文件事件。
     markSelfMoved(page.localFilePath.replace(/\\/g, "/"));
     markSelfMoved(nextFilePath.replace(/\\/g, "/"));
-    renamed = Boolean(await Promise.resolve(fs.rename(page.localFilePath, nextFilePath)));
-  } catch (err) {
-    throw new Error(`重命名失败：${(err as Error).message ?? String(err)}`, { cause: err });
+
+    // 磁盘已改名后先同步 store。后面的快照/idMap 属于附属元数据，即使迁移异常，
+    // 等待锁的保存也会读取新路径，不会把旧文件重新创建出来。
+    set((state) => {
+      const current = state.pages[pageId];
+      if (!current) return state;
+      return {
+        pages: {
+          ...state.pages,
+          [pageId]: { ...current, localFilePath: nextFilePath },
+        },
+      };
+    });
+
+    // 迁移快照 Map：旧路径 → 新路径（保持保存前 diff 有效）
+    const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
+      await import("@/lib/local-md-snapshot");
+    const oldSnapshot = getLocalMdSnapshot(page.localFilePath);
+    if (oldSnapshot !== undefined) {
+      setLocalMdSnapshot(nextFilePath, oldSnapshot);
+      deleteLocalMdSnapshot(page.localFilePath);
+    }
+
+    // 稳定 id：更新映射表（旧 relativePath → 新 relativePath，stableId 不变），
+    // 然后只更新 page 的 localFilePath 字段，id 保持不变。
+    const notebook = useNotebooks.getState().notebooks[page.workspaceId];
+    const basePath = notebook?.localPath || "";
+    const oldRelativePath = toRelativePath(basePath, page.localFilePath);
+    const newRelativePath = toRelativePath(basePath, nextFilePath);
+    migrateLocalPageIdMapEntry(
+      page.workspaceId,
+      oldRelativePath,
+      newRelativePath,
+      pageId,
+    );
+
+    return pageId;
+  } catch (error) {
+    if (error instanceof Error && error.message === "重命名操作未成功") {
+      throw error;
+    }
+    throw new Error(
+      `重命名失败：${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  } finally {
+    releaseFileOperation();
   }
-  if (!renamed) {
-    throw new Error("重命名操作未成功");
-  }
-
-  // 迁移快照 Map：旧路径 → 新路径（保持保存前 diff 有效）
-  const { getLocalMdSnapshot, setLocalMdSnapshot, deleteLocalMdSnapshot } =
-    await import("@/lib/local-md-snapshot");
-  const oldSnapshot = getLocalMdSnapshot(page.localFilePath);
-  if (oldSnapshot !== undefined) {
-    setLocalMdSnapshot(nextFilePath, oldSnapshot);
-    deleteLocalMdSnapshot(page.localFilePath);
-  }
-
-  // 稳定 id：更新映射表（旧 relativePath → 新 relativePath，stableId 不变），
-  // 然后只更新 page 的 localFilePath 字段，id 保持不变。
-  const notebook = useNotebooks.getState().notebooks[page.workspaceId];
-  const basePath = notebook?.localPath || "";
-  const oldRelativePath = toRelativePath(basePath, page.localFilePath);
-  const newRelativePath = toRelativePath(basePath, nextFilePath);
-  migrateLocalPageIdMapEntry(
-    page.workspaceId,
-    oldRelativePath,
-    newRelativePath,
-    pageId,
-  );
-
-  // id 不变，仅更新 localFilePath（以及同步 dirtyLocalPageIds 键不需要改变）。
-  set((state) => {
-    const current = state.pages[pageId];
-    if (!current) return state;
-    return {
-      pages: {
-        ...state.pages,
-        [pageId]: { ...current, localFilePath: nextFilePath },
-      },
-    };
-  });
-
-  return pageId;
 }
 
 export const saveDirtyLocalPageAction = async (
@@ -270,35 +380,32 @@ export const saveDirtyLocalPageAction = async (
   if (!page) return false;
   if (page.localReadState === "error") return false;
 
-  try {
-    // 先让编辑器把最新内容刷进 store。
-    window.dispatchEvent(
-      new CustomEvent("goose-note:flush-editor", {
-        detail: { immediate: true, pageId },
-      }),
-    );
+  // 先让编辑器把最新内容刷进 store。
+  window.dispatchEvent(
+    new CustomEvent("goose-note:flush-editor", {
+      detail: { immediate: true, pageId },
+    }),
+  );
 
-    // NOTE: 「H1 → 文件名」自动 rename 已停用。
-    // H1 不再绑定文件名（见 P0 止血：local-folder 链路重构），
-    // maybeRenameLocalFileForTitle 调用被跳过，待虚拟标题方案接管后再重新设计此机制。
-    // const { pageId: effectivePageId, collision } =
-    //   await maybeRenameLocalFileForTitle(set, get, pageId);
-    const effectivePageId = pageId;
+  // NOTE: 「H1 → 文件名」自动 rename 已停用。
+  // H1 不再绑定文件名（见 P0 止血：local-folder 链路重构），
+  // maybeRenameLocalFileForTitle 调用被跳过，待虚拟标题方案接管后再重新设计此机制。
+  // const { pageId: effectivePageId, collision } =
+  //   await maybeRenameLocalFileForTitle(set, get, pageId);
+  const effectivePageId = pageId;
 
-    const latest = get().pages[effectivePageId];
-    if (!latest) return false;
+  const latest = get().pages[effectivePageId];
+  if (!latest) return false;
 
-    const ok = await get().saveLocalPageContent(
-      effectivePageId,
-      cloneLocalPageContent(latest.content),
-    );
-    if (ok) {
-      set((s) => ({
-        dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [effectivePageId]: false },
-      }));
-    }
-    return ok;
-  } catch {
-    return false;
+  const ok = await get().saveLocalPageContent(
+    effectivePageId,
+    cloneLocalPageContent(latest.content),
+  );
+  if (ok) {
+    confirmRecoveredLocalSave(effectivePageId);
+    set((s) => ({
+      dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [effectivePageId]: false },
+    }));
   }
+  return ok;
 };

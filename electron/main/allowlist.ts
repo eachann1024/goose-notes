@@ -1,0 +1,150 @@
+import { app } from "electron";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { canonicalLocalPath } from "../../src/lib/canonicalLocalPath";
+
+const ROOTS_FILE = "vault-roots.json";
+
+const vaultRoots = new Set<string>();
+const sessionAllowed = new Set<string>();
+
+export function normalizePath(p: string): string {
+  return canonicalLocalPath(path.resolve(p));
+}
+
+function rootsFilePath(): string {
+  return path.join(app.getPath("userData"), ROOTS_FILE);
+}
+
+export function attachmentsRoot(): string {
+  return path.join(app.getPath("userData"), "attachments");
+}
+
+export function userDataRoot(): string {
+  return app.getPath("userData");
+}
+
+export function downloadsRoot(): string {
+  return app.getPath("downloads");
+}
+
+export function loadVaultRoots(): void {
+  vaultRoots.clear();
+  try {
+    const raw = readFileSync(rootsFilePath(), "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      for (const entry of parsed) {
+        if (typeof entry === "string" && entry.trim()) {
+          vaultRoots.add(normalizePath(entry));
+        }
+      }
+    }
+  } catch {
+    // first run or corrupt file
+  }
+  mkdirSync(attachmentsRoot(), { recursive: true });
+}
+
+function persistVaultRoots(): void {
+  mkdirSync(app.getPath("userData"), { recursive: true });
+  writeFileSync(rootsFilePath(), JSON.stringify([...vaultRoots], null, 2));
+}
+
+export function addVaultRoot(p: string): string {
+  const resolved = normalizePath(p);
+  vaultRoots.add(resolved);
+  persistVaultRoots();
+  return resolved;
+}
+
+export function addSessionAllowed(p: string): string {
+  const resolved = normalizePath(p);
+  sessionAllowed.add(resolved);
+  return resolved;
+}
+
+export function hasUnsafeSegments(p: string): boolean {
+  return p.split(/[/\\]/).includes("..") || p.includes("\0");
+}
+
+function isUnder(root: string, target: string): boolean {
+  const from = normalizePath(root);
+  const to = normalizePath(target);
+  let relFrom = from;
+  let relTo = to;
+  if (process.platform === "win32" || process.platform === "darwin") {
+    relFrom = from.toLowerCase();
+    relTo = to.toLowerCase();
+  }
+  const rel = path.relative(relFrom, relTo);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+export function findVaultRootContaining(p: string): string | null {
+  if (hasUnsafeSegments(p)) return null;
+  const resolved = normalizePath(p);
+  let best: string | null = null;
+  for (const root of vaultRoots) {
+    if (!isUnder(root, resolved)) continue;
+    if (!best || root.length > best.length) best = root;
+  }
+  return best;
+}
+
+/** 系统「打开方式」选中的 md：允许读该文件，必要时把父目录登记为仓库根。 */
+export function allowAssociatedMarkdownFile(filePath: string): string {
+  const resolved = normalizePath(filePath);
+  addSessionAllowed(resolved);
+  const parent = path.dirname(resolved);
+  const root = path.parse(resolved).root;
+  if (parent && parent !== resolved && parent !== root) {
+    addSessionAllowed(parent);
+    if (!findVaultRootContaining(resolved)) {
+      addVaultRoot(parent);
+    }
+  }
+  return resolved;
+}
+
+export function isAllowedPath(p: string): boolean {
+  if (hasUnsafeSegments(p)) return false;
+  const resolved = normalizePath(p);
+  if (isUnder(attachmentsRoot(), resolved)) return true;
+  if (isUnder(userDataRoot(), resolved)) return true;
+  if (isUnder(downloadsRoot(), resolved)) return true;
+  for (const root of vaultRoots) {
+    if (isUnder(root, resolved)) return true;
+  }
+  for (const allowed of sessionAllowed) {
+    if (resolved === allowed || isUnder(allowed, resolved)) return true;
+  }
+  return false;
+}
+
+export function assertAllowed(p: string): string {
+  if (hasUnsafeSegments(p)) {
+    throw new Error("路径不允许包含 ..");
+  }
+  const resolved = normalizePath(p);
+  if (!isAllowedPath(resolved)) {
+    throw new Error("路径不在允许的仓库或应用数据目录内");
+  }
+  return resolved;
+}
+
+export function assertAllowedOpen(p: string): string {
+  return assertAllowed(p);
+}
+
+export function ensureParentDir(filePath: string): void {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+export function pathExists(p: string): boolean {
+  try {
+    return existsSync(p);
+  } catch {
+    return false;
+  }
+}

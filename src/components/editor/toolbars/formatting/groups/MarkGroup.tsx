@@ -4,8 +4,7 @@ import { Toggle } from "@/components/editor/ui/toggle";
 import { useBlockNoteEditor } from "@blocknote/react";
 import { ToolbarTooltip, type BindTooltip } from "../ToolbarTooltip";
 
-const ITEM_CLASS =
-  "h-7 min-w-7 rounded-md px-0 text-foreground/90 hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground";
+const ITEM_CLASS = "goose-formatting-toolbar-control";
 
 export function MarkGroup({
   isBold,

@@ -22,14 +22,21 @@ node_modules
 dist
 dist-ssr
 dist-quicknote/
-# src/lib/build/ contains source (lite-empty.ts is the quicknote alias target),
-# NOT build output. Global ~/.gitignore_global has `build/` which would hide it.
-!src/lib/build/
-!src/lib/build/*
+dist-editor/
+dist-electron/
+dist-desktop/
+default.profraw
+# Vite stubs live in src/lib/vite-stubs/ (NOT src/lib/build/).
+# Global ~/.gitignore_global has `build/`; a folder named build is dropped by
+# electron publish and store Linux CI then fails (missing node-fs-stub.ts).
+!src/lib/vite-stubs/
+!src/lib/vite-stubs/*
 *.local
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -40,31 +47,60 @@ dist-quicknote/
 *.sw?
 
 # Local docs / changelog
-docs
+!/docs/
+/docs/*
+!/docs/showcase/
+/docs/showcase/*
+!/docs/showcase/cover.png
+!/docs/showcase/01-writing-ai.png
+!/docs/showcase/02-code-and-diagram-user.png
+!/docs/showcase/PUBLISH.md
 CHANGELOG.md
 
-# ---- AI assistant / tooling artifacts ----
-# Claude Code: keep shared agents/skills & project specs, ignore local-only noise
-.claude/
-# Skill/MCP tool lock files
 skills-lock.json
-# Other AI coding tools (Codex / Cursor / Zed / Trae / agent runners)
-.codex
-.cursor
-.zed
-.trae/
-.agents/
-# Skill / MCP tool outputs
-.impeccable/
-.playwright-mcp/
-.gitnexus
-.serena/
-playwright*/
-# design checks (local screenshots)
-.design-check/
+!src/agent/AGENTS.md
+!src/agent/**/SKILL.md
 
 # ---- Local-only scratch ----
 tasks/
-scripts/
+.pi-lens.json
+scripts/*
+!scripts/audit-editor.mjs
+!scripts/serve-editor.mjs
+!scripts/collect-desktop-artifacts.mjs
+!scripts/compile-electron.mjs
+!scripts/electron-build-linux.mjs
+!scripts/electron-build-mac.mjs
+!scripts/electron-build-win.mjs
+!scripts/electron-dev.mjs
+!scripts/prepare-electron-pack.mjs
+!scripts/generate-license-notices.mjs
 # stray verification screenshots in repo root
 /*.png
+!cover.png
+!series-features.png
+
+未命名/
+
+# PDF CJK font (downloaded at build; not committed)
+public/fonts/*.ttf
+public/fonts/*.otf
+
+# Local QA evidence and throwaway prototypes
+/artifacts/
+/screenshots/
+/prototypes/
+/.ego-qa/
+/output/
+/test-results/
+/src/**/_prototype/
+
+# Private desktop CI configuration
+!/.github/
+!/.github/workflows/
+!/.github/workflows/desktop-build.yml
+!scripts/build-ci-installers.mjs
+!scripts/publish-release.mjs
+
+!/docs/showcase/goose-note-first-release.mp4
+

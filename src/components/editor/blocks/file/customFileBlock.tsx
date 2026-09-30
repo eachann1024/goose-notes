@@ -2,8 +2,28 @@ import { useCallback, useState } from "react";
 import { createFileBlockConfig, fileParse } from "@blocknote/core";
 import { createReactBlockSpec, useUploadLoading } from "@blocknote/react";
 import { FilePanelExtension } from "@blocknote/core/extensions";
-import { toast } from "sonner";
-import { fileStorage } from "@/lib/fileStorage";
+import { toast } from "@/components/ui/sonner";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
+import { useEditorPlatform } from "@/components/editor/platform/context";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
+import {
+  MediaLoadingPreview,
+  MediaPlaceholder,
+} from "@/components/editor/blocks/shared/MediaPlaceholder";
+
+function describeOpenFailure(error: unknown): string {
+  const message =
+    typeof error === "string"
+      ? error.trim()
+      : error instanceof Error
+        ? error.message.trim()
+        : "";
+  if (!message || /failed to fetch/i.test(message)) return "请下载后再打开";
+  return message;
+}
 
 function triggerDownload(url: string, name: string): void {
   const link = document.createElement("a");
@@ -14,6 +34,15 @@ function triggerDownload(url: string, name: string): void {
   document.body.removeChild(link);
 }
 
+async function saveOrFallback(blob: Blob, name: string): Promise<void> {
+  const saved = await saveBlobAndReveal(blob, name);
+  if (saved) {
+    toast.success("已保存到下载文件夹");
+    return;
+  }
+  toast.error("保存失败");
+}
+
 function CustomFileBlockContent({
   block,
   editor,
@@ -22,6 +51,9 @@ function CustomFileBlockContent({
   editor: any;
 }) {
   const showLoader = useUploadLoading(block.id);
+  const platform = useEditorPlatform();
+  const { onOpenAttachment } = useEditorPageContext();
+  const { features } = useEditorSettings();
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState("");
 
@@ -36,32 +68,65 @@ function CustomFileBlockContent({
     const name = block.props.name || "download";
     if (!url) return;
 
-    if (url.startsWith("att-file:")) {
-      const blob = await fileStorage.load(url);
-      if (!blob) {
-        toast.error("附件不存在或尚未同步完成");
+    try {
+      if (!/^(?:https?|data|blob):/i.test(url)) {
+        const blob = await platform.imageStorage.load(url);
+        if (!blob) {
+          toast.error("附件不存在或尚未同步完成");
+          return;
+        }
+        await saveOrFallback(blob, name);
         return;
       }
-      const objectUrl = URL.createObjectURL(blob);
-      try {
-        triggerDownload(objectUrl, name);
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-      }
+
+      const response = await fetch(url);
+      await saveOrFallback(await response.blob(), name);
+    } catch (error) {
+      console.error("[file-block] 保存失败，回退浏览器下载:", error);
+      triggerDownload(url, name);
+    }
+  }, [block.props.url, block.props.name, platform]);
+
+  const handleOpen = useCallback(async () => {
+    const url = block.props.url as string;
+    const name = (block.props.name as string) || "download";
+    if (!url) return;
+
+    if (!features.openAttachmentsExternally || !onOpenAttachment) {
+      await handleDownload();
       return;
     }
 
-    triggerDownload(url, name);
-  }, [block.props.url, block.props.name]);
+    try {
+      const result = await onOpenAttachment(url, name);
+      if (!result.ok) {
+        toast.error("系统默认应用打开失败", {
+          description: describeOpenFailure(result.error),
+        });
+      }
+    } catch (error) {
+      toast.error("系统默认应用打开失败", {
+        description: describeOpenFailure(error),
+      });
+    }
+  }, [
+    block.props.name,
+    block.props.url,
+    features.openAttachmentsExternally,
+    handleDownload,
+    onOpenAttachment,
+  ]);
 
   const handleDelete = useCallback(() => {
+    if (!editor.isEditable) return;
     editor.removeBlocks([block]);
   }, [editor, block]);
 
   const handleRenameStart = useCallback(() => {
+    if (!editor.isEditable) return;
     setDraftName(block.props.name || "");
     setRenaming(true);
-  }, [block.props.name]);
+  }, [block.props.name, editor]);
 
   const handleRenameCommit = useCallback(() => {
     const trimmed = draftName.trim();
@@ -86,38 +151,44 @@ function CustomFileBlockContent({
         handleRenameCancel();
       }
     },
-    [handleRenameCommit, handleRenameCancel]
+    [handleRenameCommit, handleRenameCancel],
   );
 
   if (showLoader) {
-    return (
-      <div className="bn-file-loading-preview">Loading...</div>
-    );
+    return <MediaLoadingPreview />;
   }
 
   if (!block.props.url) {
     return (
-      <div className="bn-add-file-button" onClick={handleAddFile}>
-        <div className="bn-add-file-button-icon">
-          <LucideIcons.FileUp size={24} />
-        </div>
-        <div className="bn-add-file-button-text">添加文件</div>
-      </div>
+      <MediaPlaceholder
+        variant="file"
+        blockId={block.id}
+        editor={editor}
+        title="添加文件"
+        hint="点击选择，或直接拖入编辑器"
+        icon={<LucideIcons.FileUp size={18} strokeWidth={1.75} />}
+      />
     );
   }
 
   return (
     <div className="goose-file-block-content">
       <div className="goose-file-block-info">
-        <button
-          type="button"
-          className="goose-file-block-icon-btn"
-          onClick={handleAddFile}
-          title="更换文件"
-        >
-          <LucideIcons.FileText size={20} strokeWidth={1.75} />
-        </button>
-        {renaming ? (
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-icon-btn"
+            onClick={handleAddFile}
+            title="更换文件"
+          >
+            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+          </button>
+        ) : (
+          <span className="goose-file-block-icon-btn">
+            <LucideIcons.FileText size={20} strokeWidth={1.75} />
+          </span>
+        )}
+        {renaming && editor.isEditable ? (
           <input
             className="goose-file-block-name-input"
             value={draftName}
@@ -129,18 +200,37 @@ function CustomFileBlockContent({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="goose-file-block-name">{block.props.name}</span>
+          <button
+            type="button"
+            className="goose-file-block-name"
+            onClick={handleOpen}
+            title="使用系统默认应用打开"
+          >
+            {block.props.name}
+          </button>
         )}
       </div>
-      <div className="goose-file-block-actions">
-        <button
-          type="button"
-          className="goose-file-block-action-btn"
-          onClick={handleRenameStart}
-          title="重命名"
-        >
-          <LucideIcons.Pencil size={16} strokeWidth={1.75} />
-        </button>
+      <div className="goose-editor-inline-context-ui goose-file-block-actions">
+        {features.openAttachmentsExternally && (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleOpen}
+            title="使用系统默认应用打开"
+          >
+            <LucideIcons.ExternalLink size={16} strokeWidth={1.75} />
+          </button>
+        )}
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleRenameStart}
+            title="重命名"
+          >
+            <LucideIcons.Pencil size={16} strokeWidth={1.75} />
+          </button>
+        ) : null}
         <button
           type="button"
           className="goose-file-block-action-btn"
@@ -149,14 +239,16 @@ function CustomFileBlockContent({
         >
           <LucideIcons.Download size={16} strokeWidth={1.75} />
         </button>
-        <button
-          type="button"
-          className="goose-file-block-action-btn"
-          onClick={handleDelete}
-          title="删除"
-        >
-          <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
-        </button>
+        {editor.isEditable ? (
+          <button
+            type="button"
+            className="goose-file-block-action-btn"
+            onClick={handleDelete}
+            title="删除"
+          >
+            <LucideIcons.Trash2 size={16} strokeWidth={1.75} />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -166,7 +258,9 @@ export const customFileBlock = createReactBlockSpec(createFileBlockConfig(), {
   meta: {
     fileBlockAccept: ["*/*"],
   },
-  render: (props) => <CustomFileBlockContent block={props.block} editor={props.editor} />,
+  render: (props) => (
+    <CustomFileBlockContent block={props.block} editor={props.editor} />
+  ),
   parse: fileParse(),
   toExternalHTML: ({ block }) => {
     if (!block.props.url) {

@@ -1,21 +1,28 @@
 import { listNotebooks, listPages, searchNotes, readPage } from "./notes";
-import { createPage, updatePage, replaceInPage } from "./write";
-import { showTable, showChart } from "./visual";
+import { showTable, showChart, showDiagram, showSvg } from "./visual";
+import { loadSkill } from "./skills";
+import { readWebPage, searchWeb } from "./web";
+import { executeBatchPlan } from "../batch-plan";
 
 export const notebookAiTools = {
+  loadSkill,
+  searchWeb,
+  readWebPage,
   listNotebooks,
   listPages,
   searchNotes,
   readPage,
-  createPage,
-  updatePage,
-  replaceInPage,
+  executeBatchPlan,
   showTable,
   showChart,
+  showDiagram,
+  showSvg,
 } as const;
 
 export type NotebookAiTools = typeof notebookAiTools;
 
+export { loadSkill };
+export { searchWeb, readWebPage };
 export { listNotebooks, listPages, searchNotes, readPage };
-export { createPage, updatePage, replaceInPage };
-export { showTable, showChart };
+export { executeBatchPlan };
+export { showTable, showChart, showDiagram, showSvg };

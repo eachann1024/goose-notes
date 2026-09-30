@@ -1,9 +1,23 @@
-import { useCallback, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import {
   type AiFileReferenceAttrs,
   type AiReferenceSuggestionItem,
 } from "./referenceLookup";
 import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import {
+  ensureComposerCaretAnchors,
+  getComposerCaretTextContext,
+  placeCaretAfterNode,
+  pruneEmptyComposerTextNodes,
+} from "./useSkillCommands";
+import { isSuggestionMenuAcceptKey } from "@/components/editor/utils/slashMenuPolicy";
 
 interface DetectedMention {
   query: string;
@@ -22,6 +36,8 @@ interface UseReferenceMentionsOptions {
   isComposingRef: RefObject<boolean>;
   onContentMutation: () => void;
   onReferenceAdded?: (reference: AiFileReferenceAttrs) => void;
+  searchPages?: (query: string) => AiReferenceSuggestionItem[];
+  referencePlacement?: "inline" | "external";
 }
 
 const INACTIVE_MENTION: MentionState = {
@@ -32,41 +48,71 @@ const INACTIVE_MENTION: MentionState = {
 };
 
 function detectMentionAtCaret(container: HTMLElement): DetectedMention | null {
-  const selection = window.getSelection();
-  if (!selection?.isCollapsed) return null;
+  const caret = getComposerCaretTextContext(container);
+  if (!caret) return null;
 
-  const anchor = selection.anchorNode;
-  if (!anchor || anchor.nodeType !== Node.TEXT_NODE) return null;
-  if (!container.contains(anchor)) return null;
-
-  const text = anchor.textContent ?? "";
-  const offset = selection.anchorOffset;
-  const beforeCaret = text.slice(0, offset);
-
-  const atIndex = beforeCaret.lastIndexOf("@");
+  const atIndex = caret.beforeCaret.lastIndexOf("@");
   if (atIndex === -1) return null;
+  if (atIndex > 0) {
+    const prevChar = caret.beforeCaret[atIndex - 1];
+    if (!/[\s\n\u200B\uFEFF]/.test(prevChar)) {
+      const textBefore = caret.beforeCaret.slice(0, atIndex);
+      if (textBefore.replace(/[\u200B\uFEFF]/g, "").length > 0) {
+        return null;
+      }
+    }
+  }
 
-  if (atIndex > 0 && !/[\s\n]/.test(beforeCaret[atIndex - 1])) return null;
-
-  const query = beforeCaret.slice(atIndex + 1);
-  if (/[\s\n]/.test(query)) return null;
+  const rawQuery = caret.beforeCaret.slice(atIndex + 1);
+  if (/[\s\n]/.test(rawQuery)) return null;
+  const query = rawQuery.replace(/[\u200B\uFEFF]/g, "");
 
   const range = document.createRange();
-  range.setStart(anchor, atIndex);
-  range.setEnd(anchor, offset);
+  range.setStart(caret.textNode, atIndex);
+  range.setEnd(caret.textNode, caret.beforeCaret.length);
 
   return { query, range };
 }
 
-export function createChipElement(attrs: AiFileReferenceAttrs): HTMLSpanElement {
+/** 解析 @ 菜单锚点；range 为空时退到 caret / 编辑器矩形，避免菜单飞到左上角。 */
+function resolveMentionAnchorRect(range: Range, editor: HTMLElement): DOMRect {
+  const rect = range.getBoundingClientRect();
+  if (rect.width > 0 || rect.height > 0) {
+    return rect;
+  }
+
+  const clientRects = range.getClientRects();
+  if (clientRects.length > 0) {
+    const first = clientRects[0];
+    if (first.width > 0 || first.height > 0) {
+      return first;
+    }
+  }
+
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const caretRect = selection.getRangeAt(0).getBoundingClientRect();
+    if (caretRect.width > 0 || caretRect.height > 0) {
+      return caretRect;
+    }
+  }
+
+  return editor.getBoundingClientRect();
+}
+
+export function createChipElement(
+  attrs: AiFileReferenceAttrs,
+): HTMLSpanElement {
   const span = document.createElement("span");
   span.contentEditable = "false";
   span.dataset.aiMentionId = attrs.pageId;
   span.dataset.aiMentionAttrs = JSON.stringify(attrs);
+  // 垂直对齐：chip 用 inline-flex + items-center；高度与行高由 notebook-ai.css 统一。
+  // 高度/行高/垂直对齐由 notebook-ai.css 与编辑器行高对齐；勿加 leading-none/h-*
   span.className =
-    "inline-flex items-center mx-1 rounded px-1 py-0 text-[11px] font-medium" +
-    " bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30" +
-    " cursor-pointer hover:bg-sky-500/20 select-none align-middle leading-5";
+    "ai-composer-chip inline-flex items-center justify-center rounded text-[11px] font-medium" +
+    " bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] border border-[var(--goose-inline-code-border-hover)]" +
+    " cursor-pointer hover:bg-[var(--goose-interactive-hover)] select-none";
   span.textContent = `@${attrs.titleSnapshot}`;
   return span;
 }
@@ -76,19 +122,25 @@ export function useReferenceMentions({
   isComposingRef,
   onContentMutation,
   onReferenceAdded,
+  searchPages: searchPagesOverride,
+  referencePlacement = "inline",
 }: UseReferenceMentionsOptions) {
   const { searchPages } = useEditorPageContext();
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDetectedRef = useRef<DetectedMention | null>(null);
   const [mention, setMention] = useState<MentionState>(INACTIVE_MENTION);
 
-  const mentionItems = mention.active
-    ? searchPages(mention.query).filter((item) => !item.isFolder)
-    : [];
+  const mentionItems = useMemo(
+    () =>
+      mention.active ? (searchPagesOverride ?? searchPages)(mention.query) : [],
+    [mention.active, mention.query, searchPages, searchPagesOverride],
+  );
 
   // Keep a ref so keyboard handler always sees current items without stale closure
   const mentionItemsRef = useRef(mentionItems);
-  mentionItemsRef.current = mentionItems;
+  useEffect(() => {
+    mentionItemsRef.current = mentionItems;
+  }, [mentionItems]);
 
   const clearMentionState = useCallback(() => {
     lastDetectedRef.current = null;
@@ -103,7 +155,7 @@ export function useReferenceMentions({
     const detected = detectMentionAtCaret(el);
     if (detected) {
       lastDetectedRef.current = detected;
-      const rect = detected.range.getBoundingClientRect();
+      const rect = resolveMentionAnchorRect(detected.range, el);
       setMention((prev) => ({
         active: true,
         query: detected.query,
@@ -131,36 +183,42 @@ export function useReferenceMentions({
       lastDetectedRef.current = null;
       if (!detected) return;
 
-      const chip = createChipElement(item);
-      const spacer = document.createTextNode(" ");
       try {
         detected.range.deleteContents();
-        // Insert chip + spacer as one fragment so range state after insertNode
-        // doesn't affect spacer placement.
-        const frag = document.createDocumentFragment();
-        frag.appendChild(chip);
-        frag.appendChild(spacer);
-        detected.range.insertNode(frag);
+        if (referencePlacement === "inline") {
+          // 间距靠 CSS；ZWSP 锚点保证旧 Chromium 光标可见。
+          const chip = createChipElement(item);
+          detected.range.insertNode(chip);
+          pruneEmptyComposerTextNodes(el);
+          ensureComposerCaretAnchors(el);
+          // Focus BEFORE placing the cursor — calling focus() after addRange()
+          // resets the selection in some browsers.
+          el.focus();
+          placeCaretAfterNode(chip);
+        } else {
+          // Notebook AI keeps page context outside the editable prompt, so the
+          // typed @query is removed and the caret stays at that position.
+          const caretRange = document.createRange();
+          caretRange.setStart(
+            detected.range.startContainer,
+            detected.range.startOffset,
+          );
+          caretRange.collapse(true);
+          el.focus();
+          const sel = window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(caretRange);
+          }
+        }
       } catch {
         return;
-      }
-
-      // Focus BEFORE placing the cursor — calling focus() after addRange()
-      // resets the selection in some browsers.
-      el.focus();
-      const sel = window.getSelection();
-      if (sel) {
-        const r = document.createRange();
-        r.setStart(spacer, spacer.length);
-        r.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(r);
       }
 
       onContentMutation();
       onReferenceAdded?.(item);
     },
-    [editorRef, onContentMutation, onReferenceAdded],
+    [editorRef, onContentMutation, onReferenceAdded, referencePlacement],
   );
 
   const handleMentionKeyDown = useCallback(
@@ -172,7 +230,10 @@ export function useReferenceMentions({
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setMention((prev) => ({ ...prev, activeIndex: (prev.activeIndex + 1) % count }));
+        setMention((prev) => ({
+          ...prev,
+          activeIndex: (prev.activeIndex + 1) % count,
+        }));
         return true;
       }
       if (event.key === "ArrowUp") {
@@ -183,7 +244,8 @@ export function useReferenceMentions({
         }));
         return true;
       }
-      if (event.key === "Enter") {
+      // Shift+Enter 留给 composer 做换行；Enter / Tab 确认 @ 引用
+      if (isSuggestionMenuAcceptKey(event)) {
         event.preventDefault();
         const item = items[mention.activeIndex];
         if (item) {

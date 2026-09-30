@@ -1,335 +1,692 @@
-import type { CodeStyle } from "@/stores/useSettings";
+import { useSettings } from "@/stores/useSettings";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import type { UIFontSize } from "@/stores/settings/types";
+import type { AccentColor } from "@/stores/useSettings";
+import {
+  SIDEBAR_FONT_SIZE_MAX,
+  SIDEBAR_FONT_SIZE_MIN,
+} from "@/stores/useSettings";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
+import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
+import { ReadingPreferences } from "../ReadingPreferences";
+import { AppearanceEditorPreview } from "./AppearanceEditorPreview";
+import { DefaultFontSelect } from "../shared/DefaultFontSelect";
+import { LocalFontInput } from "../shared/LocalFontInput";
 
 interface SettingsAppearanceProps {
   theme: "light" | "dark" | "system";
   setTheme: (theme: "light" | "dark" | "system") => void;
-  codeStyle: CodeStyle;
-  setCodeStyle: (style: CodeStyle) => void;
-  globalEditorFullWidth: boolean;
-  setGlobalEditorFullWidth: (enabled: boolean) => void;
-  tableEvenColumnWidth: boolean;
-  setTableEvenColumnWidth: (enabled: boolean) => void;
-  customFonts: Record<"default" | "serif" | "mono", { label: string | null; font: string | null }>;
-  setCustomLabel: (type: "default" | "serif" | "mono", label: string | null) => void;
-  setCustomFont: (type: "default" | "serif" | "mono", font: string | null) => void;
-  uiFontSize: "small" | "normal";
-  setUIFontSize: (size: "small" | "normal") => void;
-  hideExpandArrows: boolean;
-  setHideExpandArrows: (hidden: boolean) => void;
+  accentColor: AccentColor;
+  setAccentColor: (accentColor: AccentColor) => void;
+  customFonts: Record<
+    "default" | "serif" | "mono",
+    { label: string | null; font: string | null }
+  >;
+  setCustomFont: (
+    type: "default" | "serif" | "mono",
+    font: string | null,
+  ) => void;
+  uiFontSize: UIFontSize;
+  setUIFontSize: (size: UIFontSize) => void;
+  sidebarFontSize: number;
+  increaseSidebarFontSize: () => void;
+  decreaseSidebarFontSize: () => void;
+  editorFontSize: number;
+  increaseEditorFontSize: () => void;
+  decreaseEditorFontSize: () => void;
+  section?: "all" | "appearance" | "reading";
+  showPreview?: boolean;
 }
 
-const codeStyles: { value: CodeStyle; label: string; description: string }[] = [
-  { value: "github", label: "GitHub", description: "经典的开发者风格" },
+type AccentOption = {
+  value: AccentColor;
+  label: string;
+  previewLight: string;
+  previewDark: string;
+  lightSurface: string;
+  lightForeground: string;
+  darkSurface: string;
+  darkForeground: string;
+};
+
+const accentOptions: AccentOption[] = [
   {
-    value: "modern",
-    label: "One Dark Pro",
-    description: "流行的暗色开发者风格，浅色自动配对",
+    value: "mono",
+    label: "叶脉",
+    previewLight: "#756b42",
+    previewDark: "#f5f5f5",
+    lightSurface: "#eeebde",
+    lightForeground: "#6b623d",
+    darkSurface: "rgba(255, 255, 255, 0.16)",
+    darkForeground: "#f5f5f5",
   },
   {
-    value: "nord",
-    label: "Dracula",
-    description: "高对比霓虹风格，深浅自动切换",
+    value: "iris",
+    label: "鸢尾",
+    previewLight: "#6366f1",
+    previewDark: "#a5b4fc",
+    lightSurface: "#e0e7ff",
+    lightForeground: "#4f46e5",
+    darkSurface: "rgba(99, 102, 241, 0.2)",
+    darkForeground: "#a5b4fc",
   },
-  { value: "night", label: "Tokyo Night", description: "东京夜系风格，自动适配日夜" },
+  {
+    value: "ocean",
+    label: "海蓝",
+    previewLight: "#3b82f6",
+    previewDark: "#93c5fd",
+    lightSurface: "#dbeafe",
+    lightForeground: "#2563eb",
+    darkSurface: "rgba(59, 130, 246, 0.2)",
+    darkForeground: "#93c5fd",
+  },
+  {
+    value: "pine",
+    label: "松绿",
+    previewLight: "#15803d",
+    previewDark: "#86efac",
+    lightSurface: "#dcfce7",
+    lightForeground: "#15803d",
+    darkSurface: "rgba(34, 197, 94, 0.2)",
+    darkForeground: "#86efac",
+  },
+  {
+    value: "amber",
+    label: "晨橙",
+    previewLight: "#ed963e",
+    previewDark: "#edaa62",
+    lightSurface: "#fffaf3",
+    lightForeground: "#ad4e15",
+    darkSurface: "rgba(237, 170, 98, 0.16)",
+    darkForeground: "#f4c99b",
+  },
+  {
+    value: "coral",
+    label: "朱砂",
+    previewLight: "#c2410c",
+    previewDark: "#fdba74",
+    lightSurface: "#ffedd5",
+    lightForeground: "#c2410c",
+    darkSurface: "rgba(249, 115, 22, 0.2)",
+    darkForeground: "#fdba74",
+  },
+  {
+    value: "rose",
+    label: "莓红",
+    previewLight: "#be123c",
+    previewDark: "#fda4af",
+    lightSurface: "#ffe4e6",
+    lightForeground: "#be123c",
+    darkSurface: "rgba(244, 63, 94, 0.2)",
+    darkForeground: "#fda4af",
+  },
+  {
+    value: "grape",
+    label: "葡萄",
+    previewLight: "#7e22ce",
+    previewDark: "#d8b4fe",
+    lightSurface: "#f3e8ff",
+    lightForeground: "#7e22ce",
+    darkSurface: "rgba(168, 85, 247, 0.2)",
+    darkForeground: "#d8b4fe",
+  },
 ];
 
-const LEGACY_CODE_STYLE_DISPLAY_MAP: Partial<Record<CodeStyle, CodeStyle>> = {
-  default: "github",
-  "nord-light": "night",
+type AccentOptionStyle = CSSProperties & {
+  "--goose-accent-option-light-surface": string;
+  "--goose-accent-option-light-fg": string;
+  "--goose-accent-option-dark-surface": string;
+  "--goose-accent-option-dark-fg": string;
 };
 
-const defaultLabels = { default: "默认", serif: "衬线体", mono: "等宽体" };
-const defaultFonts = {
-  default: "DM Sans",
-  serif: "仓耳今楷",
-  mono: "DM Mono",
-};
-const fontPlaceholders = {
-  default: "例：PingFang SC",
-  serif: "例：Songti SC",
-  mono: "例：JetBrains Mono",
-};
-const fontPreviewText = {
-  default: "字体预览 Font Preview：Project Notes v2.1, Weekly Plan, Design Review, Alpha Beta Gamma 0123456789",
-  serif: "衬线预览 Serif Sample：山高水长，风物有信；Reading Journal, Chapter 08, Classic Typography 0123456789",
-  mono: "Monospace Preview: const releaseTag = 'build_2026_Q1_rc07'; function renderPreview(){ return 'AaBbCc 0123456789'; }",
-};
-
+const defaultLabels = { serif: "衬线体", mono: "等宽体" };
 const APPEARANCE_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
-const APPEARANCE_SWITCH_CLASS =
-  "data-[state=unchecked]:bg-[hsl(var(--foreground)/0.12)]";
+function FontSizeStepper({
+  label,
+  description,
+  icon,
+  value,
+  min,
+  max,
+  onDecrease,
+  onIncrease,
+}: {
+  label: string;
+  description: string;
+  icon: ReactNode;
+  value: number;
+  min: number;
+  max: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+    >
+      <div>
+        <div className="flex items-center gap-3">
+          {icon}
+          <Label>{label}</Label>
+        </div>
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 rounded-full"
+          aria-label={`减小${label}`}
+          disabled={value <= min}
+          onClick={onDecrease}
+        >
+          <LucideIcons.Minus className="h-3.5 w-3.5" />
+        </Button>
+        <span
+          className="min-w-8 text-center text-xs tabular-nums text-foreground"
+          aria-live="polite"
+        >
+          {value}
+        </span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 rounded-full"
+          aria-label={`增大${label}`}
+          disabled={value >= max}
+          onClick={onIncrease}
+        >
+          <LucideIcons.Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function SettingsAppearance({
   theme,
   setTheme,
-  codeStyle,
-  setCodeStyle,
-  globalEditorFullWidth,
-  setGlobalEditorFullWidth,
-  tableEvenColumnWidth,
-  setTableEvenColumnWidth,
+  accentColor,
+  setAccentColor,
   customFonts,
-  setCustomLabel,
   setCustomFont,
   uiFontSize,
   setUIFontSize,
-  hideExpandArrows,
-  setHideExpandArrows,
+  sidebarFontSize,
+  increaseSidebarFontSize,
+  decreaseSidebarFontSize,
+  editorFontSize,
+  section = "all",
+  showPreview = true,
 }: SettingsAppearanceProps) {
-  const getFontPreview = (type: "default" | "serif" | "mono") =>
-    customFonts[type].font || defaultFonts[type];
-  const primaryModifier = getPrimaryModifierKeyDisplay({ style: "symbol" });
-  const displayedCodeStyle =
-    LEGACY_CODE_STYLE_DISPLAY_MAP[codeStyle] ?? codeStyle;
+  const editorLineHeight = useSettings((s) => s.editorLineHeight);
+  const setEditorLineHeight = useSettings((s) => s.setEditorLineHeight);
+  const setEditorFontSize = useSettings((s) => s.setEditorFontSize);
+  const uiFontFamily = useSettings((s) => s.uiFontFamily);
+  const sidebarFontFamily = useSettings((s) => s.sidebarFontFamily);
+  const setUIFontFamily = useSettings((s) => s.setUIFontFamily);
+  const setSidebarFontFamily = useSettings((s) => s.setSidebarFontFamily);
+  const accentRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [focusedAccentIndex, setFocusedAccentIndex] = useState(() =>
+    Math.max(
+      0,
+      accentOptions.findIndex((option) => option.value === accentColor),
+    ),
+  );
 
-  return (
-    <div className="space-y-6">
+  const focusAccentOption = (index: number) => {
+    const nextIndex = (index + accentOptions.length) % accentOptions.length;
+    setFocusedAccentIndex(nextIndex);
+    accentRefs.current[nextIndex]?.focus();
+  };
+
+  const handleAccentKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      focusAccentOption(index + 1);
+      setAccentColor(accentOptions[(index + 1) % accentOptions.length].value);
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      focusAccentOption(index - 1);
+      setAccentColor(
+        accentOptions[(index - 1 + accentOptions.length) % accentOptions.length]
+          .value,
+      );
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusAccentOption(0);
+      setAccentColor(accentOptions[0].value);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      focusAccentOption(accentOptions.length - 1);
+      setAccentColor(accentOptions[accentOptions.length - 1].value);
+      return;
+    }
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      setAccentColor(accentOptions[index].value);
+    }
+  };
+
+  const interfaceFontSettings = (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="appearance-ui-font">界面字体</Label>
+          <LocalFontInput
+            id="appearance-ui-font"
+            value={uiFontFamily ?? ""}
+            onChange={setUIFontFamily}
+            placeholder="系统默认"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="appearance-sidebar-font">侧栏字体</Label>
+          <LocalFontInput
+            id="appearance-sidebar-font"
+            value={sidebarFontFamily ?? ""}
+            onChange={setSidebarFontFamily}
+            placeholder="系统默认"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        正文默认字体与首次引导共用；页面仍可单独切换默认、衬线或等宽字体。
+      </p>
+    </>
+  );
+
+  const defaultFontSettings = (
+    <DefaultFontSelect
+      id="appearance-default-font"
+      value={customFonts.default.font}
+      fontSize={editorFontSize}
+      lineHeight={editorLineHeight}
+      onChange={(font) => setCustomFont("default", font)}
+      showPreview={section === "all"}
+    />
+  );
+
+  const additionalFontSettings = (
+    <div className="space-y-4">
+      {(["serif", "mono"] as const).map((type) => (
+        <div
+          key={type}
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 rounded-xl bg-[hsl(var(--goose-selected-bg)/0.4)] p-2"
+        >
+          <Label htmlFor={`appearance-${type}-font`}>{defaultLabels[type]}</Label>
+          <div className="flex flex-1 items-center gap-2">
+            <LocalFontInput
+              id={`appearance-${type}-font`}
+              label={`${defaultLabels[type]}字体名称`}
+              value={customFonts[type].font || ""}
+              onChange={(value) => setCustomFont(type, value || null)}
+              placeholder={`默认：${DEFAULT_FONT_NAMES[type]}`}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const sidebarFontSizeSettings = (
+    <FontSizeStepper
+      label="侧栏字体大小"
+      description="只影响左侧栏的页面树、分区标题和笔记本名称。"
+      icon={
+        <LucideIcons.PanelLeft
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          strokeWidth={1.75}
+        />
+      }
+      value={sidebarFontSize}
+      min={SIDEBAR_FONT_SIZE_MIN}
+      max={SIDEBAR_FONT_SIZE_MAX}
+      onDecrease={decreaseSidebarFontSize}
+      onIncrease={increaseSidebarFontSize}
+    />
+  );
+
+  const readingSettings = (
+    <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+      <ReadingPreferences
+        showPreview={false}
+        fontSize={editorFontSize}
+        lineHeight={editorLineHeight}
+        onFontSizeChange={setEditorFontSize}
+        onLineHeightChange={setEditorLineHeight}
+      />
+      <p className="mt-4 text-xs text-muted-foreground">
+        代码块保留独立行高。
+      </p>
+    </div>
+  );
+
+  const uiFontSizeSettings = (
+    <div
+      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
+    >
       <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-foreground">外观</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          自定义界面的外观和感觉。
+        <div className="flex items-center gap-3">
+          <LucideIcons.AppWindow
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            strokeWidth={1.75}
+          />
+          <Label>界面缩放</Label>
+        </div>
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">
+          调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
         </p>
       </div>
-
-      <SettingsSectionCard
-        title="主题设置"
-        description="选择深浅模式，并调整界面字体大小。"
+      <div
+        role="group"
+        aria-label="界面缩放"
+        className="flex shrink-0 items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1"
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <LucideIcons.SunMoon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-            <Label htmlFor="dark-mode">深色模式</Label>
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-            <TooltipProvider delayDuration={600}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="浅色模式"
-                    className={cn(
-                      "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "light" && "bg-background shadow-sm",
-                    )}
-                    onClick={() => setTheme("light")}
-                  >
-                    <LucideIcons.Sun className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">浅色模式</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="深色模式"
-                    className={cn(
-                      "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "dark" && "bg-background shadow-sm",
-                    )}
-                    onClick={() => setTheme("dark")}
-                  >
-                    <LucideIcons.Moon className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">深色模式</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="跟随系统"
-                    className={cn(
-                      "h-7 w-7 rounded-full transition-all duration-200",
-                      theme === "system" && "bg-background shadow-sm",
-                    )}
-                    onClick={() => setTheme("system")}
-                  >
-                    <LucideIcons.Laptop className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">跟随系统</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-
-        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.ALargeSmall className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label>界面字体大小</Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              调整整体界面的文字大小；也可随时按 {primaryModifier} + / - / 0 临时缩放。
-            </p>
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className={cn(
-                "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "small" && "bg-background shadow-sm",
-              )}
-              onClick={() => setUIFontSize("small")}
-            >
-              标准
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={cn(
-                "h-7 rounded-full px-3 text-xs transition-all duration-200",
-                uiFontSize === "normal" && "bg-background shadow-sm",
-              )}
-              onClick={() => setUIFontSize("normal")}
-            >
-              放大
-            </Button>
-          </div>
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title="编辑器布局"
-        description="你可以一键让所有记事本都使用更开阔的编辑宽度。"
-      >
-        <div className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.StretchHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="global-editor-full-width" className="cursor-pointer">
-                全局默认全宽
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              让编辑区铺满整个宽度；每个记事本还可以单独覆盖这个默认值。
-            </p>
-          </div>
-          <Switch
-            id="global-editor-full-width"
-            checked={globalEditorFullWidth}
-            onCheckedChange={setGlobalEditorFullWidth}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.Table2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="table-even-column-width" className="cursor-pointer">
-                表格两端对齐
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              让表格撑满可用宽度，并按列数均分每列宽度，像 Notion 表格那样整齐。
-            </p>
-          </div>
-          <Switch
-            id="table-even-column-width"
-            checked={tableEvenColumnWidth}
-            onCheckedChange={setTableEvenColumnWidth}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-        <div className={`mt-3 flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <LucideIcons.ChevronsDownUp className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-              <Label htmlFor="hide-expand-arrows" className="cursor-pointer">
-                隐藏展开箭头
-              </Label>
-            </div>
-            <p className="mt-1 pl-7 text-xs text-muted-foreground">
-              藏起侧栏里的小箭头，给标题腾地方；展开/收起请点行首箭头。
-            </p>
-          </div>
-          <Switch
-            id="hide-expand-arrows"
-            checked={hideExpandArrows}
-            onCheckedChange={setHideExpandArrows}
-            className={APPEARANCE_SWITCH_CLASS}
-          />
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Code2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />主题与代码风格</span>}
-        description="选择代码块的配色方案，深浅模式自动适配。"
-      >
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {codeStyles.map((t) => (
-            <SelectableCard
-              key={t.value}
-              selected={displayedCodeStyle === t.value}
-              onClick={() => setCodeStyle(t.value)}
-              className={cn(
-                "flex items-center gap-3 rounded-[12px] border px-3 py-3 transition-all duration-200",
-                displayedCodeStyle === t.value
-                  ? "border-transparent bg-[var(--goose-interactive-selected)] text-foreground"
-                  : "border-transparent bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
-              )}
-            >
-              <LucideIcons.Code2 className="h-5 w-5 shrink-0" />
-              <div className="flex-1">
-                <div className="text-sm font-medium">{t.label}</div>
-                <div className="text-xs text-muted-foreground">
-                  {t.description}
-                </div>
-              </div>
-            </SelectableCard>
-          ))}
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title={<span className="flex items-center gap-2"><LucideIcons.Type className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />自定义字体</span>}
-        description="填写系统已安装的字体名；留空则用默认字体。"
-      >
-        <div className="space-y-4">
-          {(["default", "serif", "mono"] as const).map((type) => (
-            <div
-              key={type}
-              className="grid grid-cols-1 items-center gap-3 md:grid-cols-[88px_200px_minmax(0,1fr)]"
-            >
-              <div className="flex items-center gap-1">
-                <Input
-                  value={customFonts[type].label || ""}
-                  onChange={(e) => setCustomLabel(type, e.target.value || null)}
-                  placeholder={defaultLabels[type]}
-                  className="h-8 border-0 px-2 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-              <div className="flex flex-1 items-center gap-2">
-                <Input
-                  value={customFonts[type].font || ""}
-                  onChange={(e) => setCustomFont(type, e.target.value || null)}
-                  placeholder={fontPlaceholders[type]}
-                  className="h-8 w-[200px] border-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-              <div
-                className="flex h-8 min-w-0 items-center overflow-hidden rounded-md bg-[hsl(var(--goose-selected-bg)/0.58)] px-3 text-sm md:text-base"
-                style={{
-                  fontFamily: customFonts[type].font || getFontPreview(type),
-                }}
-              >
-                <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {fontPreviewText[type]}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </SettingsSectionCard>
+        {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            size="sm"
+            variant="ghost"
+            aria-pressed={uiFontSize === value}
+            className={cn(
+              "h-7 rounded-full px-3 text-xs transition-all duration-200",
+              uiFontSize === value &&
+                "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+            )}
+            onClick={() => setUIFontSize(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
     </div>
+  );
+
+  return (
+    <div
+      className="settings-appearance-layout"
+      data-appearance-section={section}
+    >
+      {showPreview && (
+        <AppearanceEditorPreview
+          sidebarFontSize={sidebarFontSize}
+          editorFontSize={editorFontSize}
+          editorLineHeight={editorLineHeight}
+          uiFontSize={uiFontSize}
+        />
+      )}
+      <div className="settings-appearance-options min-w-0 space-y-8">
+        {section !== "reading" && (
+          <SettingsSectionCard title="主题" className="border border-border/60">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <LucideIcons.SunMoon
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <Label>主题模式</Label>
+            </div>
+            <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+              <TooltipProvider delayDuration={600}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="跟随系统"
+                      aria-pressed={theme === "system"}
+                      className={cn(
+                        "h-7 w-7 rounded-full transition-all duration-200",
+                        theme !== "system" && "text-foreground",
+                        theme === "system" &&
+                          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      )}
+                      onClick={() => setTheme("system")}
+                    >
+                      <LucideIcons.Laptop className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">跟随系统</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="浅色模式"
+                      aria-pressed={theme === "light"}
+                      className={cn(
+                        "h-7 w-7 rounded-full transition-all duration-200",
+                        theme !== "light" && "text-foreground",
+                        theme === "light" &&
+                          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      )}
+                      onClick={() => setTheme("light")}
+                    >
+                      <LucideIcons.Sun className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">浅色模式</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="深色模式"
+                      aria-pressed={theme === "dark"}
+                      className={cn(
+                        "h-7 w-7 rounded-full transition-all duration-200",
+                        theme !== "dark" && "text-foreground",
+                        theme === "dark" &&
+                          "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
+                      )}
+                      onClick={() => setTheme("dark")}
+                    >
+                      <LucideIcons.Moon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">深色模式</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+
+          <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+            <div className="mb-3 flex items-start gap-3">
+              <LucideIcons.Palette
+                className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <div
+                id="appearance-accent-color-label"
+                className="text-sm font-medium text-foreground"
+              >
+                强调色
+              </div>
+            </div>
+            <div
+              role="radiogroup"
+              aria-labelledby="appearance-accent-color-label"
+              className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2"
+            >
+              {accentOptions.map((option, index) => {
+                const selected = accentColor === option.value;
+                const style: AccentOptionStyle = {
+                  "--goose-accent-option-light-surface": option.lightSurface,
+                  "--goose-accent-option-light-fg": option.lightForeground,
+                  "--goose-accent-option-dark-surface": option.darkSurface,
+                  "--goose-accent-option-dark-fg": option.darkForeground,
+                };
+
+                return (
+                  <button
+                    key={option.value}
+                    ref={(node) => {
+                      accentRefs.current[index] = node;
+                    }}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={option.label}
+                    data-state={selected ? "checked" : "unchecked"}
+                    tabIndex={focusedAccentIndex === index ? 0 : -1}
+                    style={style}
+                    onFocus={() => setFocusedAccentIndex(index)}
+                    onKeyDown={(event) => handleAccentKeyDown(event, index)}
+                    onClick={() => {
+                      setFocusedAccentIndex(index);
+                      setAccentColor(option.value);
+                    }}
+                    className="goose-accent-option flex h-11 min-w-0 items-center gap-2 rounded-[10px] px-2.5 text-left text-xs font-medium text-foreground transition-[background-color,color,box-shadow,transform]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="relative h-5 w-5 shrink-0 overflow-hidden rounded-full shadow-[inset_0_0_0_1px_rgba(15,23,42,0.12)]"
+                    >
+                      <span
+                        className="absolute inset-y-0 left-0 w-1/2"
+                        style={{ backgroundColor: option.previewLight }}
+                      />
+                      <span
+                        className="absolute inset-y-0 right-0 w-1/2"
+                        style={{ backgroundColor: option.previewDark }}
+                      />
+                    </span>
+                    <span className="flex-1 whitespace-nowrap">
+                      {option.label}
+                    </span>
+                    <LucideIcons.Check
+                      aria-hidden="true"
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0",
+                        selected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          </SettingsSectionCard>
+        )}
+        {section !== "appearance" && (
+          <SettingsSectionCard
+            title="字体与阅读"
+            description={section === "all"
+              ? "界面、侧栏与正文默认字体彼此独立；选择后保存，自定义字体按 Enter 或移开焦点应用。"
+              : undefined}
+            className="border border-border/60"
+          >
+            {section === "reading" ? (
+              <>
+                {defaultFontSettings}
+                {readingSettings}
+                <details className="setup-guide-advanced-settings border-t border-border/60 pt-3">
+                  <summary className="cursor-pointer rounded-md py-2 text-sm font-medium text-foreground">
+                    界面与侧栏调节
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                    {interfaceFontSettings}
+                    {additionalFontSettings}
+                    {sidebarFontSizeSettings}
+                    {uiFontSizeSettings}
+                  </div>
+                </details>
+              </>
+            ) : (
+              <>
+                {interfaceFontSettings}
+                {defaultFontSettings}
+                {additionalFontSettings}
+                <div className="space-y-3 border-t border-border/60 pt-4">
+                  {sidebarFontSizeSettings}
+                  {readingSettings}
+                  {uiFontSizeSettings}
+                </div>
+              </>
+            )}
+          </SettingsSectionCard>
+        )}
+        {section !== "reading" && <EditorLayoutSettings />}
+      </div>
+    </div>
+  );
+}
+
+function EditorLayoutSettings() {
+  const layout = useSettings((state) => state.defaultPageLayout);
+  return (
+    <SettingsSectionCard
+      title="编辑布局"
+      description="未单独设置布局的笔记使用此项；单篇笔记可在右上角菜单覆盖。"
+    >
+      <div
+        role="group"
+        aria-label="默认布局"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+      >
+        {(
+          [
+            ["full", "全宽", "铺满可用编辑区域"],
+            ["standard", "标准", "均衡留白，日常编辑"],
+          ] as const
+        ).map(([value, label, description]) => (
+          <SelectableCard
+            key={value}
+            type="button"
+            selected={layout === value}
+            aria-pressed={layout === value}
+            onClick={() => useSettings.setState({ defaultPageLayout: value })}
+            className={cn(
+              "flex flex-col gap-3 p-3",
+              layout === value
+                ? "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
+                : "bg-[hsl(var(--goose-selected-bg)/0.48)] hover:bg-[var(--goose-interactive-hover)] dark:bg-[hsl(var(--foreground)/0.08)]",
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className="flex h-14 w-full gap-2 rounded-md border border-current/20 bg-background/50 p-2"
+            >
+              <span
+                className={cn(
+                  "flex flex-col gap-1.5",
+                  value === "standard" ? "mx-auto w-2/3" : "flex-1",
+                )}
+              >
+                <span className="h-1 w-1/2 rounded bg-current/30" />
+                <span className="h-1 w-full rounded bg-current/20" />
+                <span className="h-1 w-4/5 rounded bg-current/20" />
+              </span>
+            </span>
+            <span className="flex w-full items-center justify-between text-sm font-medium">
+              {label}
+              {layout === value && (
+                <LucideIcons.Check className="h-4 w-4" aria-hidden="true" />
+              )}
+            </span>
+            <span className="text-xs text-muted-foreground">{description}</span>
+          </SelectableCard>
+        ))}
+      </div>
+    </SettingsSectionCard>
   );
 }

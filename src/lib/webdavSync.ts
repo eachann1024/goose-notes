@@ -103,7 +103,7 @@ export function isBackupFileName(fileName: string): boolean {
 function formatWebdavError(error: any): string {
   const msg = String(error.message || error);
   if (msg.includes("AncestorsNotFound") || msg.includes("The ancestors of this location does not found")) {
-    return "检测到上级目录不存在，请确认“远端目录”填写的是服务端已经存在的路径。部分 WebDAV 服务不支持直接在根目录创建文件夹，例如 Nextcloud、ownCloud、坚果云或部分 NAS 场景通常需要先在服务端创建同步目录，再在这里填写对应路径（如“backups/goose-notes”）。";
+    return "检测到上级目录不存在，请确认“远端目录”填写的是服务端已经存在的路径。部分 WebDAV 服务不支持直接在根目录创建文件夹，例如 Nextcloud、ownCloud、坚果云或部分 NAS 场景通常需要先在服务端创建同步目录，再在这里填写对应路径（如“backups/goose-note-app”）。";
   }
   return msg;
 }
@@ -282,7 +282,10 @@ export async function deleteWebdavBackup(
   }
 }
 
+let autoBackupInFlight = false;
+
 export async function triggerAutoWebdavBackup(): Promise<void> {
+  if (autoBackupInFlight) return;
   const settings = useSettings.getState();
   const {
     webdavUrl,
@@ -306,11 +309,13 @@ export async function triggerAutoWebdavBackup(): Promise<void> {
     }
   }
 
+  autoBackupInFlight = true;
   try {
     const notebooksStore = useNotebooks.getState();
     const pagesStore = usePages.getState();
-    const notebookList = Object.values(notebooksStore.notebooks);
-    const notebookIds = notebookList.map(n => n.id);
+    const notebookIds = Object.values(notebooksStore.notebooks)
+      .filter((notebook) => notebook.source !== "local-folder")
+      .map((n) => n.id);
     if (notebookIds.length === 0) return;
 
     const zipBlob = await generateExportZip(
@@ -342,5 +347,7 @@ export async function triggerAutoWebdavBackup(): Promise<void> {
     }
   } catch (err) {
     console.warn("[AutoBackup] WebDAV auto backup failed silently:", err);
+  } finally {
+    autoBackupInFlight = false;
   }
 }

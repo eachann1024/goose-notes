@@ -42,9 +42,9 @@ export interface AiTargetSelection {
   source: AiTargetSource;
 }
 
-export interface AiTargetRef extends AiFileReferenceAttrs {
+export type AiTargetRef = Omit<AiFileReferenceAttrs, "role"> & {
   role: "destination";
-}
+};
 
 export interface AiStickyTarget {
   pageId: string;
@@ -94,7 +94,7 @@ export interface AiContextBundle {
 
 const EXPLICIT_CHAT_PATTERN = /(仅聊天|只聊天|只回答|不要写入|不要落盘|仅回复|只讨论)/;
 // 可视化请求强制走 chat_only，图表只在聊天界面渲染
-const DATAVIZ_CHAT_PATTERN = /(图表|折线图|柱状图|饼图|散点图|热力图|面积图|趋势图|可视化|画图|画个图|出个图|对比图|交互式视图|交互视图|echarts|数据图|柱形图|扇形图|曲线图|雷达图)/;
+const DATAVIZ_CHAT_PATTERN = /(图表|折线图|柱状图|饼图|散点图|热力图|面积图|趋势图|可视化|画图|画个图|出个图|对比图|交互式视图|交互视图|echarts|数据图|柱形图|扇形图|曲线图|雷达图|canvas|画布|海报|信息图|介绍图|示意图)/;
 const APPEND_PATTERN =
   /(追加|补充|添加|附加|继续写|续写|补到|加到|append)/;
 const CHILD_PATTERN = /(下面|下边|下方|子页面|子页|子文档)/;
@@ -122,7 +122,16 @@ function collectNeighborText(
 
   while (cursor >= 0 && cursor < tokens.length && remaining > 0) {
     const token = tokens[cursor];
-    const text = token.type === "text" ? token.text : `@${token.reference.titleSnapshot}`;
+    const text =
+      token.type === "text"
+        ? token.text
+        : token.type === "reference"
+          ? `@${token.reference.titleSnapshot}`
+          : token.type === "skill"
+            ? `/${token.skill.name}`
+            : token.type === "image"
+              ? `[图片 ${token.image.fileName}]`
+              : token.quote.text;
     if (text) {
       const slice =
         direction === "before"
@@ -218,6 +227,18 @@ export function resolveAiTargetReference(payload: AiComposerPayload): {
   for (let index = 0; index < payload.tokens.length; index += 1) {
     const token = payload.tokens[index];
     if (token.type !== "reference") continue;
+
+    const explicitRole = token.role ?? token.reference.role;
+    if (explicitRole === "context") continue;
+    if (explicitRole === "target") {
+      return {
+        tokenIndex: index,
+        reference: {
+          ...token.reference,
+          role: "destination",
+        },
+      };
+    }
 
     const before = normalizeSemanticText(collectNeighborText(payload.tokens, index, "before"));
     const after = normalizeSemanticText(collectNeighborText(payload.tokens, index, "after"));
@@ -461,6 +482,8 @@ export function resolveAiTargetFromSelection(params: {
       promptText: "",
       freeformText: "",
       references: [],
+      images: [],
+      skills: [],
       tokens: [],
     },
     selection: params.selection,

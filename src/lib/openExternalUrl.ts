@@ -1,5 +1,4 @@
-import { shell } from "@/lib/utools/shell";
-import { isUTools } from "@/lib/utools/env";
+import { shell } from "@/lib/electron-platform/shell";
 
 export function normalizeExternalUrl(url: string): string {
   const trimmed = url.trim();
@@ -12,10 +11,5 @@ export function openExternalUrl(url: string): void {
   const targetUrl = normalizeExternalUrl(url);
   if (!targetUrl) return;
 
-  if (isUTools()) {
-    shell.openUrl(targetUrl, false);
-    return;
-  }
-
-  window.open(targetUrl, "_blank", "noopener,noreferrer");
+  shell.openUrl(targetUrl);
 }

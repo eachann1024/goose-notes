@@ -1,6 +1,9 @@
+import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
+import { frontmatterBodyHasUserVisibleKeys } from "@/lib/local-frontmatter";
 import { parseInlineMarkdown } from "./inline";
 import {
   isLegacyCodeBlockMetaComment,
+  isThematicBreakLine,
   parseCodeFenceInfo,
   parseTableBlock,
 } from "./blockHelpers";
@@ -25,6 +28,14 @@ function indentLevel(line: string): number {
     else break;
   }
   return count;
+}
+
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 /**
@@ -58,7 +69,7 @@ function parseNestedList(
 
     const stripped = line.slice(lvl);
 
-    const taskM = stripped.match(/^-\s+\[([ xX])\]\s+(.+)$/);
+    const taskM = stripped.match(/^-\s+\[([ xX])\](?:\s+(.*))?$/);
     const orderedM = !taskM && stripped.match(/^(\d+)\.\s+(.+)$/);
     const bulletM = !taskM && !orderedM && stripped.match(/^[-*+]\s+(.+)$/);
 
@@ -69,7 +80,7 @@ function parseNestedList(
       item = {
         type: "checkListItem",
         props: { checked: taskM[1].toLowerCase() === "x" },
-        content: parseInline(taskM[2]),
+        content: parseInline(taskM[2] ?? ""),
       };
     } else if (orderedM) {
       const num = parseInt(orderedM[1], 10);
@@ -106,7 +117,8 @@ function collectChildren(
   parseInline: (t: string) => any[],
 ): { items: any[]; nextIndex: number } {
   const i = startI;
-  if (i >= lines.length || !lines[i].trim()) return { items: [], nextIndex: startI };
+  if (i >= lines.length || !lines[i].trim())
+    return { items: [], nextIndex: startI };
   const childIndent = indentLevel(lines[i]);
   if (childIndent < minIndent) return { items: [], nextIndex: startI };
   return parseNestedList(lines, i, childIndent, parseInline);
@@ -131,11 +143,15 @@ export function markdownToJsonContent(markdown: string): any {
       i++;
     }
     if (i < lines.length && lines[i].trim() === "---") {
-      content.push({
-        type: "codeBlock",
-        props: { language: "yaml-frontmatter" },
-        content: frontmatterLines.join("\n"),
-      });
+      const yamlBody = frontmatterLines.join("\n");
+      // 只有用户属性才展示 YAML 块；仅 goose-favorite 等应用设置不进编辑器。
+      if (frontmatterBodyHasUserVisibleKeys(yamlBody)) {
+        content.push({
+          type: "codeBlock",
+          props: { language: "yaml-frontmatter" },
+          content: yamlBody,
+        });
+      }
       i++;
     } else {
       i = 0;
@@ -151,13 +167,15 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    // ── video 块（serialize 写出的 <video src="…"></video> 单行）
+    // ── video 块（serialize 写出的 <video src="…" controls ...></video> 单行）
     // video 在 raw-guard allowlist 中不会被包成 goose-raw-block，这里映射回 video 块
-    const videoLineMatch = trimmedLine.match(/^<video\s+src="([^"]*)"[^>]*>\s*<\/video>$/i);
+    const videoLineMatch = trimmedLine.match(
+      /^<video\s+src="([^"]*)"[^>]*>\s*<\/video>$/i,
+    );
     if (videoLineMatch) {
       content.push({
         type: "video",
-        props: { url: videoLineMatch[1] },
+        props: { url: decodeHtmlAttribute(videoLineMatch[1]) },
       });
       i++;
       continue;
@@ -205,11 +223,13 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    if (line.startsWith("```")) {
-      const fenceInfo = parseCodeFenceInfo(line.slice(3).trim());
+    const fenceOpen = line.match(/^(```|~~~)(.*)$/);
+    if (fenceOpen) {
+      const fence = fenceOpen[1];
+      const fenceInfo = parseCodeFenceInfo(fenceOpen[2].trim());
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith("```")) {
+      while (i < lines.length && !lines[i].startsWith(fence)) {
         codeLines.push(lines[i]);
         i++;
       }
@@ -273,10 +293,8 @@ export function markdownToJsonContent(markdown: string): any {
       }
     }
 
-    if (line.match(/^---+$/)) {
-      // editor schema 的 divider 不在 VALID_BLOCK_TYPES，会被 normalize 丢弃；
-      // 沿用既有行为：水平线落为字面量段落，序列化时原样写回 ---
-      content.push({ type: "paragraph", content: "---" });
+    if (isThematicBreakLine(line)) {
+      content.push({ type: "divider" });
       i++;
       continue;
     }
@@ -289,12 +307,19 @@ export function markdownToJsonContent(markdown: string): any {
       );
 
       if (calloutMatch) {
+        const calloutLines: string[] = [calloutMatch[2]];
+        i++;
+        // 本地文件夹的块级 wrapper 会让多行 callout 的后续行保持 `> ` 前缀；
+        // 与普通多行引用一致地合并，避免第二行被拆成独立 quote 块。
+        while (i < lines.length && lines[i].trim().startsWith(">")) {
+          calloutLines.push(lines[i].trim().slice(1).trim());
+          i++;
+        }
         content.push({
           type: "callout",
           props: { icon: calloutMatch[1] },
-          content: parseInlineMarkdown(calloutMatch[2]),
+          content: parseInlineMarkdown(calloutLines.join("\n")),
         });
-        i++;
         continue;
       }
 
@@ -338,7 +363,7 @@ export function markdownToJsonContent(markdown: string): any {
     const baseIndent = indentLevel(line);
     const stripped = line.slice(baseIndent);
     if (
-      stripped.match(/^-\s+\[[ xX]\]\s+/) ||
+      stripped.match(/^-\s+\[[ xX]\](?:\s+.*)?$/) ||
       stripped.match(/^[-*+]\s+\S/) ||
       stripped.match(/^\d+\.\s+\S/)
     ) {
@@ -356,7 +381,9 @@ export function markdownToJsonContent(markdown: string): any {
     }
 
     // 图片：![alt](url){width=N align=X}（width → previewWidth，align → textAlignment）
-    const imgMatch = trimmedLine.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/);
+    const imgMatch = trimmedLine.match(
+      /^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/,
+    );
     if (imgMatch) {
       const metaRaw = imgMatch[3] || "";
       const metaMap = new Map<string, string>();
@@ -372,11 +399,16 @@ export function markdownToJsonContent(markdown: string): any {
       const width = metaMap.get("width");
       const widthValue = width ? Number(width) : undefined;
       const align = metaMap.get("align");
+      const alt = imgMatch[1];
+      const isGeneratedName = isGeneratedDataImageName(alt, imgMatch[2]);
       content.push({
         type: "image",
         props: {
           url: imgMatch[2],
-          caption: imgMatch[1],
+          // Markdown alt 同时供编辑器的 img alt（name）使用。剪贴板生成的
+          // image.png 一类默认文件名不应升级为可见 caption；name 仍保留。
+          ...(alt ? { name: alt } : {}),
+          ...(alt && !isGeneratedName ? { caption: alt } : {}),
           ...(Number.isFinite(widthValue) ? { previewWidth: widthValue } : {}),
           ...(align && align !== "left" ? { textAlignment: align } : {}),
         },
@@ -399,11 +431,12 @@ export function markdownToJsonContent(markdown: string): any {
             currentLine.startsWith("#") ||
             currentLine.startsWith(">") ||
             currentLine.startsWith("```") ||
+            currentLine.startsWith("~~~") ||
             currentLine.startsWith("$$") ||
             currentLine.match(/^-\s+\[[ xX]\]/) ||
             currentLine.match(/^[-*+]\s+/) ||
             currentLine.match(/^\d+\.\s+/) ||
-            currentLine.match(/^---+$/) ||
+            isThematicBreakLine(currentLine) ||
             currentLine.match(/^\|/) ||
             currentLine.match(/^\[📎/) ||
             trimmed.match(/^<video\s+src=/) ||

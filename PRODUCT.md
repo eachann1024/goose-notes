@@ -1,10 +1,10 @@
 # 鹅的笔记 (Goose Note)
 
 ## Product Purpose
-uTools 插件，Notion 风格的本地化笔记应用。BlockNote 编辑器驱动，支持 Markdown 导入导出、AI 写作辅助、多记事本管理、标签页、收藏、置顶。桌面端单页应用。
+Electron 插件，Notion 风格的本地化笔记应用。BlockNote 编辑器驱动，支持 Markdown 导入导出、AI 写作辅助、多记事本管理、标签页、收藏、置顶。桌面端单页应用。
 
 ## Users
-中文用户，使用 uTools 效率工具链的知识工作者、开发者、学生。重视本地数据隐私和快速访问。
+中文用户，使用 Electron 效率工具链的知识工作者、开发者、学生。重视本地数据隐私和快速访问。
 
 ## Brand
 品牌名"鹅的笔记"，吉祥物为鹅 🪿。风格简洁、专业、略带温暖。不做花哨品牌营销，产品即品牌。设计服务于笔记写作本身。
@@ -20,7 +20,7 @@ product — 设计服务于笔记编辑和管理的核心任务流。
 
 ## Strategic Principles
 1. 本地优先，所有数据存本地
-2. 快速打开，uTools 即唤即用
+2. 快速打开，Electron 即唤即用
 3. 编辑器体验核心，BlockNote 驱动
 4. 导入导出完善（JSON/MD/HTML/DOCX/PNG）
 5. AI 辅助写作，非主力功能

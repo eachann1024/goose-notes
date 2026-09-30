@@ -44,16 +44,16 @@ function buildSearchHaystack(page: Page) {
 
 function findPageByTitle(title: string, originNotebookId?: string | null) {
   const normalizedTitle = normalizeText(title);
-  const pages = getReadablePages();
+  const pages = getReadablePages().filter(
+    (page) => page.workspaceId === originNotebookId,
+  );
   const exactMatches = pages.filter((page) => normalizeText(getPageTitle(page)) === normalizedTitle);
-  const exactPreferred =
-    exactMatches.find((page) => page.workspaceId === originNotebookId) ?? exactMatches[0];
-  if (exactPreferred) return exactPreferred;
+  if (exactMatches[0]) return exactMatches[0];
 
   const fuzzyMatches = pages.filter((page) =>
     normalizeText(getPageTitle(page)).includes(normalizedTitle),
   );
-  return fuzzyMatches.find((page) => page.workspaceId === originNotebookId) ?? fuzzyMatches[0] ?? null;
+  return fuzzyMatches[0] ?? null;
 }
 
 function extractMarkdownSection(markdown: string, sectionTitle: string) {
@@ -87,14 +87,13 @@ function extractMarkdownSection(markdown: string, sectionTitle: string) {
 }
 
 function executeSearchTool(argument: string, originNotebookId?: string | null) {
-  const scopeAll = /\bscope:all\b/i.test(argument);
   const query = argument.replace(/\bscope:all\b/gi, "").trim();
   if (!query) {
     return "搜索失败：缺少查询关键词。";
   }
 
   const pages = getReadablePages()
-    .filter((page) => scopeAll || page.workspaceId === originNotebookId)
+    .filter((page) => page.workspaceId === originNotebookId)
     .filter((page) => buildSearchHaystack(page).includes(query.toLowerCase()))
     .slice(0, 5);
 

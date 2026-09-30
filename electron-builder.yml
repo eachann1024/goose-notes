@@ -1,0 +1,65 @@
+# 实际打包在 dist-electron/app-pack 内执行（见 scripts/prepare-electron-pack.mjs），
+# 避免 electron-builder 把仓库根目录 node_modules 打进 .app。
+# bun run mac / bun run win / bun run linux 会先 prepare 再在 app-pack 里调用 electron-builder。
+appId: com.goosenote.desktop
+productName: Goose Note
+electronVersion: 44.0.0
+directories:
+  app: dist-electron/app-pack
+  output: dist-electron/packaged
+  buildResources: electron/icons
+asar: true
+npmRebuild: false
+compression: maximum
+# mac Chromium 语言包文件名是 zh_CN.lproj，必须带下划线形式。
+electronLanguages:
+  - zh_CN
+  - zh-CN
+  - zh-Hans
+  - en
+  - en-US
+files:
+  - "!**/*.map"
+  - "!**/*.md"
+  - "!**/*.d.ts"
+  - "!**/test/**"
+  - "!**/tests/**"
+fileAssociations:
+  - ext: md
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
+    icon: icon.icns
+  - ext: markdown
+    name: Markdown
+    description: Markdown 文档
+    mimeType: text/markdown
+    role: Editor
+    icon: icon.icns
+mac:
+  identity: null
+  extendInfo:
+    LSMultipleInstancesProhibited: true
+    NSAppleEventsUsageDescription: Goose Note 需要发送系统事件，以便用快捷键唤出主窗口和速记小窗。
+    NSAccessibilityUsageDescription: Goose Note 需要辅助功能权限，以便在其他应用处于前台时用全局快捷键唤出主窗口和速记小窗。
+win:
+  icon: electron/icons/icon.ico
+  signAndEditExecutable: true
+linux:
+  icon: electron/icons/icon.png
+  category: Utility
+  vendor: Goose Note
+  synopsis: Local-first note taking app
+  maintainer: Goose Note <goose-note@users.noreply.github.com>
+  target:
+    - AppImage
+    - deb
+    - rpm
+  desktop:
+    entry:
+      Name: Goose Note
+      Comment: Local-first notes
+      Categories: Office;Note;
+      MimeType: text/markdown;text/x-markdown;
+      StartupWMClass: goose-note

@@ -61,26 +61,32 @@ test("uploadEditorFile keeps image files in file storage when replacing a file b
   expect(savedFiles).toEqual([imageFile]);
 });
 
-test("uploadEditorFile rejects unsupported local-folder file attachments", async () => {
+test("uploadEditorFile saves local-folder file attachments as relative assets", async () => {
+  const savedFiles: File[] = [];
   const file = new File(["hello"], "notes.txt", { type: "text/plain" });
 
-  await expect(
-    uploadEditorFile(file, undefined, {
-      getBlock: () => null,
-      imageStorage: {
-        save: async () => {
-          throw new Error("images only");
-        },
+  const url = await uploadEditorFile(file, undefined, {
+    getBlock: () => null,
+    imageStorage: {
+      save: async () => {
+        throw new Error("images only");
       },
-      fileStorage: {
-        save: async () => {
-          throw new Error("should not save");
-        },
+    },
+    fileStorage: {
+      save: async (input) => {
+        savedFiles.push(input);
+        return {
+          storageRef: "./assets/file_1_abcdef01.txt",
+          fileName: "notes.txt",
+          mimeType: "text/plain",
+          size: input.size,
+          uploadedAt: 1,
+        };
       },
-      getFileUploadAvailability: () => ({
-        enabled: false,
-        reason: "本地文件夹记事本暂不支持附件上传",
-      }),
-    }),
-  ).rejects.toThrow("本地文件夹记事本暂不支持附件上传");
+    },
+    getFileUploadAvailability: () => ({ enabled: true }),
+  });
+
+  expect(url).toBe("./assets/file_1_abcdef01.txt");
+  expect(savedFiles).toEqual([file]);
 });

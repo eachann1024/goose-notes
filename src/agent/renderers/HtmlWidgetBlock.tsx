@@ -4,9 +4,18 @@ import { DatavizToolbar } from "./DatavizToolbar";
 import { HOST_FONTS_CSS, buildDesignSystemCss } from "./htmlWidget/iframeHost";
 import { RESIZE_SCRIPT, STORAGE_SHIM, UPDATE_LISTENER_SCRIPT } from "./htmlWidget/widgetRuntime";
 import { HTML_TO_IMAGE_CDN, CAPTURE_SCRIPT, requestCapture, type CapturePromise } from "./htmlWidget/screenshotBridge";
+import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 
 const MIN_HEIGHT = 60;
 const DEFAULT_HEIGHT = 200;
+
+function buildWidgetPreviewDocument(html: string, isDark: boolean): string {
+  if (/^\s*<!doctype html/i.test(html) || /^\s*<html[\s>]/i.test(html)) {
+    return html;
+  }
+  const colorScheme = isDark ? "dark" : "light";
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="color-scheme" content="${colorScheme}"><style>${HOST_FONTS_CSS}</style><style>${buildDesignSystemCss(isDark)}</style></head><body>${html}</body></html>`;
+}
 
 /** iframe→host 合法消息类型白名单（sandbox srcdoc，origin 为 opaque 'null'，靠 source+type 双重校验） */
 const ALLOWED_IFRAME_MSG_TYPES = new Set([
@@ -27,16 +36,12 @@ export const HtmlWidgetBlock = React.memo(
       const increaseEditorFontSize = useSettings((state) => state.increaseEditorFontSize);
       const decreaseEditorFontSize = useSettings((state) => state.decreaseEditorFontSize);
       const resetEditorFontSize = useSettings((state) => state.resetEditorFontSize);
+      const isDark = useResolvedTheme(theme) === "dark";
       const [height, setHeight] = useState(DEFAULT_HEIGHT);
       const iframeRef = useRef<HTMLIFrameElement>(null);
       const lastSentHtmlRef = useRef<string>("");
       const postMessageRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
       const capturePromiseRef = useRef<CapturePromise | null>(null);
-
-      const isDark =
-        theme === "dark" ||
-        (theme === "system" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
 
       // iframeKey only changes on theme switch — NOT on every html change.
       // This prevents the iframe from being destroyed & recreated on every render.
@@ -170,7 +175,14 @@ export const HtmlWidgetBlock = React.memo(
 
       return (
         <div ref={ref} className="group relative">
-          <DatavizToolbar onCapture={handleCapture} />
+          <DatavizToolbar
+            onCapture={handleCapture}
+            onPreview={async () => ({
+              kind: "html",
+              html: buildWidgetPreviewDocument(html, isDark),
+              fileName: "widget.html",
+            })}
+          />
           <iframe
             key={iframeKey}
             ref={iframeRef}

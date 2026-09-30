@@ -1,32 +1,67 @@
-import { useEffect } from "react";
+import { SetupGuide } from "@/pages/workspace/components/SetupGuide";
+import { useEffect, useState } from "react";
+import { isSetupGuideVisible } from "@/lib/setupGuide";
+import { useShallow } from "zustand/react/shallow";
 import { WorkspacePage } from "./pages/workspace/WorkspacePage";
 import { Toaster } from "@/components/ui/sonner";
 import { usePages } from "./stores/usePages";
 import { useTabs } from "./stores/useTabs";
-import {
-  useSettings,
-  EDITOR_FONT_SIZE_DEFAULT,
-} from "@/stores/useSettings";
+import { useSettings } from "@/stores/useSettings";
+import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useAppHotkeys } from "./hooks/useAppHotkeys";
+import { useDesktopHotkeys } from "./hooks/useDesktopHotkeys";
 import { usePluginEvents } from "./hooks/usePluginEvents";
 import { useNativeContextMenuGuard } from "./hooks/useNativeContextMenuGuard";
+import {
+  applyAppearanceScaleVariables,
+  releaseStartupSettlingAfterPaint,
+} from "@/lib/appearance";
+import { shouldPreserveStartupSelection } from "@/lib/workspaceStartup";
 
-const UI_FONT_SIZE_MAP = {
-  small: 14,
-  normal: 16,
-} as const;
+// Appearance changes update CSS without re-rendering the whole workspace.
+function AppearanceSync() {
+  const {
+    uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize,
+    customFonts, uiFontFamily, sidebarFontFamily,
+  } = useSettings(useShallow((state) => ({
+      uiFontSize: state.uiFontSize,
+      editorFontSize: state.editorFontSize,
+      editorLineHeight: state.editorLineHeight,
+      sidebarFontSize: state.sidebarFontSize,
+      customFonts: state.customFonts,
+      uiFontFamily: state.uiFontFamily,
+      sidebarFontFamily: state.sidebarFontFamily,
+    })));
+  useEffect(() => {
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize });
+  }, [uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize]);
+
+  useEffect(() => {
+    applyFontVariables(customFonts, { uiFontFamily, sidebarFontFamily });
+  }, [customFonts, uiFontFamily, sidebarFontFamily]);
+
+  return null;
+}
 
 function App() {
-  const {
-    uiFontSize,
-    editorFontSize,
-    customFonts,
-    privacy,
-  } = useSettings();
-  const { hydrated, onboardingCompleted, activePageId } = usePages();
+  const settingsHydrated = useSettings((state) => state._hasHydrated);
+  const showSetupGuide = useSettings(isSetupGuideVisible);
+  const [workspaceOpened, setWorkspaceOpened] = useState(false);
+  const mountWorkspace = workspaceOpened || (settingsHydrated && !showSetupGuide);
+
+  useEffect(() => {
+    if (settingsHydrated && !showSetupGuide) setWorkspaceOpened(true);
+  }, [settingsHydrated, showSetupGuide]);
+  const privacy = useSettings((state) => state.privacy);
+  const singleTabModeSetting = useSettings((state) => state.singleTabMode);
+  const hydrated = usePages((s) => s.hydrated);
+  const activePageId = usePages((s) => s.activePageId);
 
   // 绑定全局快捷键
   useAppHotkeys();
+
+  // Electron 桌面端：设置水合后注册主窗/速记小窗全局热键（Electron 构建内部 no-op）
+  useDesktopHotkeys();
 
   // 全局兜底：禁止未被 Radix / A1 处理的原生浏览器右键菜单
   useNativeContextMenuGuard();
@@ -34,17 +69,16 @@ function App() {
   // 订阅插件/本地关联事件
   const { restoreLastNoteIfNeeded, clearActivePageForBlankEntry } = usePluginEvents();
 
+  // 首帧稳定后解除启动过渡禁用（bootstrap 在渲染前已打上标记；
+  // 若未标记则该调用是无副作用的清理）。
+  useEffect(() => {
+    releaseStartupSettlingAfterPaint();
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     (window as any).__gooseNoteAutoOpenLastNote = privacy.autoOpenLastNote;
   }, [privacy.autoOpenLastNote]);
-
-  // 首次打开应用时创建新手引导页面
-  useEffect(() => {
-    if (hydrated && !onboardingCompleted) {
-      usePages.getState().createOnboardingPages();
-    }
-  }, [hydrated, onboardingCompleted]);
 
   // 同步 tab 状态：清理已删除页面的 tab（保留尚未加载的本地文件夹标签）
   useEffect(() => {
@@ -72,38 +106,49 @@ function App() {
     if (!hydrated) return;
 
     const { privacy } = useSettings.getState();
+    if (shouldPreserveStartupSelection()) return;
+
     if (!privacy.autoOpenLastNote) {
       clearActivePageForBlankEntry();
       return;
     }
 
     restoreLastNoteIfNeeded();
-  }, [hydrated, privacy.autoOpenLastNote, restoreLastNoteIfNeeded, clearActivePageForBlankEntry]);
+  }, [hydrated, restoreLastNoteIfNeeded, clearActivePageForBlankEntry]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    const targetSize = UI_FONT_SIZE_MAP[uiFontSize] ?? UI_FONT_SIZE_MAP.small;
-    root.style.setProperty("font-size", `${targetSize}px`);
-  }, [uiFontSize]);
+    if (!hydrated || !privacy.autoCloseInactiveTabs) return;
+
+    const closeExpiredTabs = () => {
+      useTabs.getState().closeExpiredTabs();
+    };
+
+    closeExpiredTabs();
+    const timer = window.setInterval(closeExpiredTabs, 15 * 60 * 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    hydrated,
+    privacy.autoCloseInactiveTabs,
+    privacy.autoCloseInactiveTabsHours,
+  ]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    root.style.setProperty("--editor-font-size", `${editorFontSize}px`);
-    root.style.setProperty(
-      "--editor-scale",
-      (editorFontSize / EDITOR_FONT_SIZE_DEFAULT).toFixed(4),
-    );
-  }, [editorFontSize]);
-
-  useEffect(() => {
-    applyFontVariables(customFonts);
-  }, [customFonts]);
+    if (!hydrated || !effectiveSingleTabMode(singleTabModeSetting)) return;
+    useTabs.getState().collapseToActiveTab();
+  }, [hydrated, singleTabModeSetting]);
 
   return (
     <>
-      <WorkspacePage />
+      <AppearanceSync />
+      {mountWorkspace && (
+        <div hidden={showSetupGuide} inert={showSetupGuide} className="h-full">
+          {/* Keep an existing editor mounted when reopening the guide. */}
+          <WorkspacePage />
+        </div>
+      )}
+      <SetupGuide />
       <Toaster />
     </>
   );

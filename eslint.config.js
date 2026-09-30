@@ -15,6 +15,8 @@ export default defineConfig([
     'node_modules',
     'scripts',
     '.claude',
+    '.delta',
+    '.treehouse',
   ]),
   {
     files: ['**/*.{ts,tsx}'],
@@ -60,6 +62,9 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 ])

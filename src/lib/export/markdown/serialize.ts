@@ -1,25 +1,11 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
 import { isBlockNoteContent } from "@/components/editor/utils/blocknote-content";
-
-const LUCIDE_ICON_TO_EMOJI: Record<string, string> = {
-  Lightbulb: "💡",
-  AlertTriangle: "⚠️",
-  CircleAlert: "❗",
-  CircleCheck: "✅",
-  Flame: "🔥",
-  Pin: "📌",
-  MessageSquare: "💬",
-  Target: "🎯",
-  Rocket: "🚀",
-  Star: "⭐",
-  Bell: "🔔",
-  Bug: "🐛",
-};
-
-function resolveCalloutIcon(raw: string | undefined): string {
-  if (!raw) return "💡";
-  return LUCIDE_ICON_TO_EMOJI[raw] ?? raw;
-}
+import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
+import { sanitizeCssColor, wrapLocalBlockPropsMarkdown } from "./blockPropsMarker";
+import {
+  sanitizePageMentionProps,
+  serializePageMentionMarkdown,
+} from "@/components/editor/inline/pageMention";
 
 const CODE_BLOCK_META_PREFIX = "goose-note=";
 
@@ -33,7 +19,8 @@ function serializeCodeFenceInfo(
   attrs?: Record<string, unknown>,
 ): string {
   const tokens: string[] = [];
-  const normalizedLanguage = typeof language === "string" ? language.trim() : "";
+  const normalizedLanguage =
+    typeof language === "string" ? language.trim() : "";
   if (normalizedLanguage) {
     tokens.push(normalizedLanguage);
   }
@@ -58,19 +45,39 @@ function serializeCodeFenceInfo(
   return tokens.join(" ");
 }
 
+function serializeInlineText(
+  text: string,
+  styles: Record<string, unknown>,
+): string {
+  const hasUnderline = styles.underline === true;
+  const textColor = sanitizeCssColor(styles.textColor);
+  const backgroundColor = sanitizeCssColor(styles.backgroundColor);
+  const hasColor = textColor && textColor !== "default";
+  const hasBg = backgroundColor && backgroundColor !== "default";
+  const isYellowHighlight = hasBg && backgroundColor === "yellow" && !hasColor;
+
+  if (styles.bold) text = `**${text}**`;
+  if (styles.italic) text = `*${text}*`;
+  if (styles.strike) text = `~~${text}~~`;
+  if (styles.code) text = `\`${text}\``;
+  if (isYellowHighlight) {
+    text = `==${text}==`;
+  } else if (hasColor || hasBg) {
+    const parts: string[] = [];
+    if (hasColor) parts.push(`color:${textColor}`);
+    if (hasBg) parts.push(`background-color:${backgroundColor}`);
+    text = `<span style="${escapeHtmlAttribute(parts.join("; "))}">${text}</span>`;
+  }
+  return hasUnderline ? `<u>${text}</u>` : text;
+}
+
 function extractLinkText(linkContent: any): string {
   if (typeof linkContent === "string") return linkContent;
   if (!Array.isArray(linkContent)) return "";
   return linkContent
     .map((child: any) => {
       if (typeof child === "string") return child;
-      let text = child?.text || "";
-      const styles = child?.styles || {};
-      if (styles.bold) text = `**${text}**`;
-      if (styles.italic) text = `*${text}*`;
-      if (styles.strike) text = `~~${text}~~`;
-      if (styles.code) text = `\`${text}\``;
-      return text;
+      return serializeInlineText(child?.text || "", child?.styles || {});
     })
     .join("");
 }
@@ -99,30 +106,11 @@ function blockNoteInlineToText(content: any): string {
         const linkText = extractLinkText(item.content);
         return `[${linkText}](${item.href || ""})`;
       }
-      let text = item.text || "";
-      const styles = item.styles || {};
-      // inline 样式序列化：underline → <u>，textColor/backgroundColor → <span style="…">，
-      // 高亮 backgroundColor=yellow → ==…==，其他颜色组合走 span
-      const hasUnderline = styles.underline === true;
-      const hasColor = styles.textColor && styles.textColor !== "default";
-      const hasBg = styles.backgroundColor && styles.backgroundColor !== "default";
-      const isYellowHighlight = hasBg && styles.backgroundColor === "yellow" && !hasColor;
-
-      if (styles.bold) text = `**${text}**`;
-      if (styles.italic) text = `*${text}*`;
-      if (styles.strike) text = `~~${text}~~`;
-      if (styles.code) text = `\`${text}\``;
-      if (isYellowHighlight) {
-        text = `==${text}==`;
-      } else if (hasColor || hasBg) {
-        // canonical 形式无空格（color:red）；parse 侧带/不带空格都接受
-        const parts: string[] = [];
-        if (hasColor) parts.push(`color:${styles.textColor}`);
-        if (hasBg) parts.push(`background-color:${styles.backgroundColor}`);
-        text = `<span style="${parts.join("; ")}">${text}</span>`;
+      if (item.type === "pageMention") {
+        const mention = sanitizePageMentionProps(item);
+        return mention ? serializePageMentionMarkdown(mention) : "";
       }
-      if (hasUnderline) text = `<u>${text}</u>`;
-      return text;
+      return serializeInlineText(item.text || "", item.styles || {});
     })
     .join("");
 }
@@ -130,6 +118,14 @@ function blockNoteInlineToText(content: any): string {
 function escapePipeInCell(value: string): string {
   // GFM 表格 cell 里的 | 必须转义，否则会被解析成列分隔符
   return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 // ── 列表序列化（BlockNote 块格式：连续 *ListItem 顶层块组成一个列表）────────────
@@ -156,7 +152,11 @@ const CHILDREN_CONSUMED_TYPES = new Set([
  * 子缩进按 CommonMark 标记宽度对齐：`- ` → 2 空格，`1. ` → 3，`10. ` → 4。
  * checkbox 的 `[x]` 属于内容而非标记，继续行对齐 `- ` 之后（2 空格）。
  */
-function serializeListItemBlock(item: any, indent: string, num: number | null): string {
+function serializeListItemBlock(
+  item: any,
+  indent: string,
+  num: number | null,
+): string {
   const text = blockNoteInlineToText(item.content);
   let marker: string;
   let childIndentWidth: number;
@@ -170,9 +170,12 @@ function serializeListItemBlock(item: any, indent: string, num: number | null): 
     marker = "- ";
     childIndentWidth = 2;
   }
-  let line = `${indent}${marker}${text}`;
+  let line = wrapLocalBlockPropsMarkdown(item, `${indent}${marker}${text}`);
   if (Array.isArray(item.children) && item.children.length > 0) {
-    const childMd = serializeBlocks(item.children, indent + " ".repeat(childIndentWidth));
+    const childMd = serializeBlocks(
+      item.children,
+      indent + " ".repeat(childIndentWidth),
+    );
     if (childMd) line += "\n" + childMd;
   }
   return line;
@@ -247,7 +250,8 @@ function serializeLegacyListItem(item: any, indent: string): string {
 
   let line: string;
   if (item.type === "taskItem") {
-    const checked = item?.attrs?.checked === true || item?.props?.checked === true;
+    const checked =
+      item?.attrs?.checked === true || item?.props?.checked === true;
     line = `${indent}- [${checked ? "x" : " "}] ${legacyItemInline(item)}`;
   } else if (item.type === "listItem") {
     if (item.attrs?.start != null) {
@@ -286,7 +290,10 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       // 编辑器/新 parse 用 props，极旧存量数据用 attrs
       const codeProps = block.props ?? block.attrs ?? {};
       const lang = (codeProps.language || "").trim();
-      if (lang === "math" || lang === "latex") {
+      if (lang === "yaml-frontmatter") {
+        const trimmed = text.trim();
+        result = trimmed ? `---\n${trimmed}\n---` : "---\n---";
+      } else if (lang === "math" || lang === "latex") {
         result = `$$\n${text}\n$$`;
       } else {
         result = `\`\`\`${serializeCodeFenceInfo(lang, codeProps)}\n${text}\n\`\`\``;
@@ -299,7 +306,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       // previewWidth → {width=N}，textAlignment(≠left) → {align=X}
       const p = block.props ?? block.attrs ?? {};
       const url = p.url || p.src || "";
-      const caption = p.caption || p.alt || "";
+      // name 是 BlockNote 图片的替代文本。无 caption 时也写入 Markdown alt，
+      // 才能让复制后的 data 图片在下一次解析时保留该字段。
+      const caption = p.caption || p.alt || p.name || "";
       const meta: string[] = [];
       const width = p.previewWidth ?? p.width;
       if (width != null && Number.isFinite(Number(width))) {
@@ -359,7 +368,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
       if (!tableRows.length) return "";
       const colCount = Math.max(...tableRows.map((r) => r.length), 1);
       const padRow = (cells: any[]) => {
-        const out = cells.map((cell) => escapePipeInCell(blockNoteInlineToText(cell)));
+        const out = cells.map((cell) =>
+          escapePipeInCell(blockNoteInlineToText(cell)),
+        );
         while (out.length < colCount) out.push("");
         return out;
       };
@@ -376,7 +387,14 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "callout": {
       const icon = block.props?.icon ?? block.attrs?.emoji;
-      result = `> [!INFO] ${resolveCalloutIcon(icon)} ${text}`;
+      result = text
+        .split("\n")
+        .map((line, index) => (
+          index === 0
+            ? `> [!INFO] ${resolveCalloutIcon(icon)} ${line}`
+            : `> ${line}`
+        ))
+        .join("\n");
       break;
     }
 
@@ -394,7 +412,7 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     case "video": {
       const p = block.props ?? block.attrs ?? {};
       const src = p.url || p.src || "";
-      result = `<video src="${src}"></video>`;
+      result = `<video src="${escapeHtmlAttribute(src)}" controls preload="metadata"></video>`;
       break;
     }
 
@@ -406,7 +424,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "toggleListItem": {
       // BlockNote 折叠块 ↔ <details><summary>…</summary>…</details>
-      const children: any[] = Array.isArray(block.children) ? block.children : [];
+      const children: any[] = Array.isArray(block.children)
+        ? block.children
+        : [];
       const innerMd = children.length ? serializeBlocks(children, "") : "";
       result = innerMd
         ? `<details>\n<summary>${text}</summary>\n\n${innerMd}\n\n</details>`
@@ -416,9 +436,15 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
 
     case "details": {
       // 极旧 parse 三件套格式：content = [detailsSummary, detailsContent]
-      const contentArr: any[] = Array.isArray(block.content) ? block.content : [];
-      const summaryBlock = contentArr.find((c: any) => c?.type === "detailsSummary");
-      const contentBlock = contentArr.find((c: any) => c?.type === "detailsContent");
+      const contentArr: any[] = Array.isArray(block.content)
+        ? block.content
+        : [];
+      const summaryBlock = contentArr.find(
+        (c: any) => c?.type === "detailsSummary",
+      );
+      const contentBlock = contentArr.find(
+        (c: any) => c?.type === "detailsContent",
+      );
       const summaryText = summaryBlock
         ? blockNoteInlineToText(summaryBlock.content)
         : "详情";
@@ -468,7 +494,9 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     }
 
     case "blockquote": {
-      const innerContent: any[] = Array.isArray(block.content) ? block.content : [];
+      const innerContent: any[] = Array.isArray(block.content)
+        ? block.content
+        : [];
       const quoteText = innerContent
         .map((b: any) => blockNoteInlineToText(b?.content ?? b))
         .join("\n");
@@ -482,6 +510,8 @@ function blockNoteBlockToMarkdown(block: any, indent = ""): string {
     default:
       result = text;
   }
+
+  result = wrapLocalBlockPropsMarkdown(block, result);
 
   // 通用 children 追加（如 isToggleable 折叠标题的子块）：
   // 用空行分隔保证 md → blocks → md 二轮收敛（子块重读后成为兄弟块，输出不再变化）

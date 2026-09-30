@@ -1,0 +1,19 @@
+/* The menu shadow describes its surface, including when Radix focuses it.
+ * Keep this in the focus-reset layer so its scoped selector wins over *:focus.
+ * Use the shadow token directly for Electron's older CSS property support. */
+@layer properties {
+  .goose-page-menu-surface,
+  .goose-page-menu-surface:focus,
+  .goose-page-menu-surface:focus-visible {
+    box-shadow: var(--goose-menu-shadow) !important;
+  }
+}
+
+/* HeroUI Popover.Trigger defaults to inline-block and would shrink the
+ * export row to icon+label. Keep the hit target the full menu row. */
+.goose-page-menu-surface [data-slot="popover-trigger"] {
+  display: grid;
+  width: 100%;
+}
+
+

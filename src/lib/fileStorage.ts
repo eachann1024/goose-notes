@@ -1,29 +1,29 @@
-import { useNotebooks } from "@/stores/useNotebooks";
-import { usePages } from "@/stores/usePages";
-import { UToolsAdapter } from "@/lib/utools";
-import { fs } from "@/lib/utools/fs";
+import { HostAdapter } from "@/lib/host/adapter";
+import { hostRuntime } from "@/lib/host";
+import { fs } from "@/lib/electron-platform/fs";
+import {
+  currentLocalNotebookRoot,
+  currentLocalPagePath,
+  isPathInsideNotebookRoot,
+  pageDirectory,
+} from "@/lib/currentLocalPagePath";
+import {
+  readLocalFileAsBlobAsync,
+  resolveToAbsolute,
+} from "@/lib/imageStorage/strategies/file-system";
+import { isInternalAssetRef } from "@/lib/internalAssetRef";
 import type { FileAttachmentAttrs } from "@/types";
 
 export const MAX_FILE_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+export const ELECTRON_MAX_FILE_ATTACHMENT_SIZE = 50 * 1024 * 1024;
+
+/** 附件上限：Electron 10MB，Electron 桌面端 50MB。 */
+export function getMaxFileAttachmentSize(): number {
+  return hostRuntime.kind === "electron" ? ELECTRON_MAX_FILE_ATTACHMENT_SIZE : MAX_FILE_ATTACHMENT_SIZE;
+}
 const FILE_ATTACHMENT_PREFIX = "att-file:";
 const FILE_ID_PREFIX = "goose-file/";
-const TEMP_ATTACHMENT_PREFIX = "goose-note/attachments";
 const DEFAULT_MIME_TYPE = "application/octet-stream";
-
-let tempCleanupPromise: Promise<void> | null = null;
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
-}
 
 export function sanitizeFileName(fileName: string): string {
   const trimmed = fileName.trim();
@@ -36,28 +36,23 @@ function getAttachmentId(storageRef: string): string {
   return storageRef.replace(FILE_ATTACHMENT_PREFIX, "");
 }
 
-function resolveCurrentNotebookSource(): "default" | "local-folder" | "unknown" {
-  const { activePageId, pages } = usePages.getState();
-  const pageWorkspaceId = activePageId ? pages[activePageId]?.workspaceId : null;
-  const notebookId = pageWorkspaceId ?? useNotebooks.getState().activeNotebookId;
-
-  if (!notebookId) return "unknown";
-  const notebook = useNotebooks.getState().notebooks[notebookId];
-  return notebook?.source === "local-folder" ? "local-folder" : "default";
+function resolveStorageExtension(fileName: string): string {
+  const sanitized = sanitizeFileName(fileName);
+  const dot = sanitized.lastIndexOf(".");
+  if (dot > 0 && dot < sanitized.length - 1) {
+    const ext = sanitized.slice(dot + 1).toLowerCase();
+    if (/^[a-z0-9]{1,12}$/.test(ext)) return ext;
+  }
+  return "bin";
 }
 
-export function getFileUploadAvailability(): {
-  enabled: boolean;
-  reason?: string;
-} {
-  if (resolveCurrentNotebookSource() === "local-folder") {
-    return {
-      enabled: false,
-      reason: "本地文件夹记事本暂不支持附件上传",
-    };
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
   }
-
-  return { enabled: true };
+  return btoa(binary);
 }
 
 export function formatAttachmentSize(size: number): string {
@@ -80,22 +75,8 @@ export function getAttachmentBadgeLabel(fileName: string, mimeType: string): str
   return "FILE";
 }
 
-async function ensureTempCleanup(): Promise<void> {
-  if (tempCleanupPromise) {
-    return tempCleanupPromise;
-  }
-
-  tempCleanupPromise = (async () => {
-    try {
-      await fs.cleanupTempFiles(TEMP_ATTACHMENT_PREFIX, 24 * 60 * 60 * 1000);
-    } catch (error) {
-      console.error("[fileStorage] cleanup temp files failed", error);
-    }
-  })().finally(() => {
-    tempCleanupPromise = null;
-  });
-
-  return tempCleanupPromise;
+function isLocalFileStorageRef(storageRef: string): boolean {
+  return !isInternalAssetRef(storageRef) && !/^[a-z][a-z0-9+.-]*:/i.test(storageRef);
 }
 
 export const fileStorage = {
@@ -104,17 +85,75 @@ export const fileStorage = {
       throw new Error("不能上传空文件");
     }
 
-    if (file.size > MAX_FILE_ATTACHMENT_SIZE) {
-      throw new Error("文件不能超过 10MB");
+    const maxSize = getMaxFileAttachmentSize();
+    if (file.size > maxSize) {
+      throw new Error(
+        `文件超过 ${Math.floor(maxSize / (1024 * 1024))}MB 上限（当前 ${formatAttachmentSize(file.size)}）`,
+      );
+    }
+
+    const mimeType = file.type || DEFAULT_MIME_TYPE;
+    const localPagePath = await currentLocalPagePath();
+
+    // Electron 仅本地文件夹模式：无仓库（当前页非本地文件）时禁止附件写入内置 db
+    if (!localPagePath && hostRuntime.kind === "electron") {
+      throw new Error("请先打开文件夹仓库，再插入附件");
+    }
+
+    if (localPagePath) {
+      if (!fs.isAvailable()) {
+        throw new Error("本地文件服务未就绪，无法保存附件");
+      }
+
+      const assetsDirectory = `${pageDirectory(localPagePath)}/assets`;
+      const ext = resolveStorageExtension(file.name);
+      const filename = `file_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}`;
+      const fullPath = `${assetsDirectory}/${filename}`;
+      const notebookRoot = await currentLocalNotebookRoot();
+      if (notebookRoot && !isPathInsideNotebookRoot(fullPath, notebookRoot)) {
+        throw new Error("附件保存路径超出笔记本目录");
+      }
+
+      if (
+        !(await fs.existsAsync(assetsDirectory)) &&
+        !(await fs.mkdir(assetsDirectory))
+      ) {
+        throw new Error("附件资源目录创建失败");
+      }
+
+      const buffer = new Uint8Array(await file.arrayBuffer());
+      const saved = await fs.writeFileAsync(
+        fullPath,
+        uint8ArrayToBase64(buffer),
+        "base64",
+      );
+      if (!saved) {
+        throw new Error("附件写入本地文件夹失败");
+      }
+
+      return {
+        storageRef: `./assets/${filename}`,
+        fileName: sanitizeFileName(file.name),
+        mimeType,
+        size: file.size,
+        uploadedAt: Date.now(),
+      };
     }
 
     const attachmentId = `${FILE_ID_PREFIX}${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
-    const mimeType = file.type || DEFAULT_MIME_TYPE;
     const buffer = new Uint8Array(await file.arrayBuffer());
-    const result = UToolsAdapter.db.postAttachment(attachmentId, buffer, mimeType);
+    const result = await HostAdapter.db.postAttachment(attachmentId, buffer, mimeType);
 
     if (!result || result.ok === false) {
-      throw new Error("附件上传失败，请稍后重试");
+      const detail = typeof result?.error === "string" ? result.error : "";
+      if (detail.includes("上限")) {
+        throw new Error(detail);
+      }
+      throw new Error(
+        hostRuntime.kind === "electron"
+          ? detail || "附件写入磁盘失败"
+          : "附件上传失败，请检查存储空间",
+      );
     }
 
     return {
@@ -126,54 +165,70 @@ export const fileStorage = {
     };
   },
 
-  async load(storageRef: string): Promise<Blob | null> {
-    const attachmentId = getAttachmentId(storageRef);
-    const data = UToolsAdapter.db.getAttachment(attachmentId);
-    if (!data) return null;
+  async load(
+    storageRef: string,
+    pageLocalFilePath?: string | null,
+  ): Promise<Blob | null> {
+    if (storageRef.startsWith(FILE_ATTACHMENT_PREFIX)) {
+      const attachmentId = getAttachmentId(storageRef);
+      const data = await HostAdapter.db.getAttachment(attachmentId);
+      if (!data) return null;
 
-    const mimeType = UToolsAdapter.db.getAttachmentType(attachmentId) || DEFAULT_MIME_TYPE;
-    return new Blob([data.slice()], {
-      type: mimeType,
-    });
+      const mimeType =
+        (await HostAdapter.db.getAttachmentType(attachmentId)) || DEFAULT_MIME_TYPE;
+      return new Blob([data.slice()], {
+        type: mimeType,
+      });
+    }
+
+    if (!isLocalFileStorageRef(storageRef)) return null;
+
+    const pagePath = pageLocalFilePath ?? (await currentLocalPagePath());
+    if (!pagePath) return null;
+
+    const fullPath = resolveToAbsolute(pageDirectory(pagePath), storageRef);
+    return readLocalFileAsBlobAsync(fullPath);
   },
 
   async open(
     storageRef: string,
-    meta: { fileName: string; size: number },
+    meta: { fileName: string; size?: number },
   ): Promise<{ ok: boolean; error?: string }> {
-    if (!fs.isAvailable()) {
-      return { ok: false, error: "uTools 文件桥接未就绪，无法打开附件" };
-    }
-
-    await ensureTempCleanup();
-
-    const blob = await this.load(storageRef);
-    if (!blob) {
-      return { ok: false, error: "附件不存在或尚未同步完成" };
-    }
-
-    const attachmentId = getAttachmentId(storageRef).replace(/[\\/]/g, "_");
-    const safeFileName = sanitizeFileName(meta.fileName);
-    const base64 = arrayBufferToBase64(await blob.arrayBuffer());
-    const tempFilePath = await fs.writeTempFile(
-      `${TEMP_ATTACHMENT_PREFIX}/${attachmentId}/${safeFileName}`,
-      base64,
+    const { openResourceExternally } = await import(
+      "@/components/editor/utils/openResourceExternally"
     );
-
-    if (!tempFilePath) {
-      return { ok: false, error: "临时文件写入失败" };
-    }
-
-    const opened = await UToolsAdapter.openPath(tempFilePath);
-    if (!opened) {
-      return { ok: false, error: "系统默认应用打开失败" };
-    }
-
-    return { ok: true };
+    const { editorPlatform } = await import("@/lib/editor-platform/resolve");
+    const pageLocalFilePath = await currentLocalPagePath();
+    return openResourceExternally({
+      source: storageRef,
+      fileName: meta.fileName,
+      pageLocalFilePath,
+      platform: editorPlatform,
+      loadInternalResource: (ref) => fileStorage.load(ref, pageLocalFilePath),
+    });
   },
 
-  async delete(storageRef: string): Promise<void> {
-    const attachmentId = getAttachmentId(storageRef);
-    UToolsAdapter.db.remove(attachmentId);
+  async delete(
+    storageRef: string,
+    pageLocalFilePath?: string | null,
+  ): Promise<void> {
+    if (storageRef.startsWith(FILE_ATTACHMENT_PREFIX)) {
+      const attachmentId = getAttachmentId(storageRef);
+      HostAdapter.db.remove(attachmentId);
+      return;
+    }
+
+    if (!isLocalFileStorageRef(storageRef) || !fs.isAvailable()) return;
+
+    const pagePath = pageLocalFilePath ?? (await currentLocalPagePath());
+    if (!pagePath) return;
+
+    const fullPath = resolveToAbsolute(pageDirectory(pagePath), storageRef);
+    const notebookRoot = await currentLocalNotebookRoot();
+    if (notebookRoot && !isPathInsideNotebookRoot(fullPath, notebookRoot)) {
+      return;
+    }
+
+    await fs.deleteFile(fullPath);
   },
 };

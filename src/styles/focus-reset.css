@@ -1,0 +1,68 @@
+/* 控件焦点不额外绘制外圈；只清 ring 变量，保留单层边框和真实投影。
+   properties 是最早的 layer，!important 可覆盖供应商的焦点 ring。 */
+@layer properties {
+  :where(
+    a[href], button, input, textarea, select, summary,
+    [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+    [role="menuitemcheckbox"], [role="menuitemradio"], [role="switch"],
+    [role="checkbox"], [role="radio"], [role="slider"],
+    .checkbox, .radio, .switch, [data-focus-visible="true"]
+  ):is(:focus, [data-focus-visible="true"]),
+  /* HeroUI 把键盘焦点标在 label 上，ring 则画在其 control 子元素上。 */
+  :is(.checkbox, .radio, .switch, [data-slot="checkbox"], [data-slot="radio"], [data-slot="switch"]):is(:focus-visible, [data-focus-visible="true"])
+    :is(.checkbox__control, .radio__control, .switch__control, [data-slot="checkbox-control"], [data-slot="radio-control"], [data-slot="switch-control"]) {
+    outline: none !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-inset-ring-shadow: 0 0 #0000 !important;
+  }
+}
+
+/* 键盘焦点用底色/文字表达。label 的反馈不改子 control 的 checked 图形；
+   range 使用 range.css 的实心 thumb，disabled 不套用交互色。
+   :where 保持低优先级，让业务的选中、危险色等状态仍可覆盖。 */
+:where(
+  a[href], button, input:not([type="range"]):not([type="hidden"]), textarea, select, summary,
+  [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+  [role="menuitemcheckbox"], [role="menuitemradio"], [role="switch"],
+  [role="checkbox"], [role="radio"], [role="slider"],
+  [data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"],
+  [data-slot="slider-thumb"], .checkbox, .radio, .switch
+):is(:focus-visible, [data-focus-visible="true"]):where(
+  :not([type="range"]):not([type="hidden"]):not(:disabled):not([data-disabled="true"]):not([aria-disabled="true"])
+) {
+  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+}
+
+/* Chromium may classify a programmatically focused container as focus-visible
+   after a pointer click. Retain the existing pointer-only container reset. */
+html[data-goose-pointer-focus="true"] :is(
+    a,
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [tabindex]
+  ):focus {
+  outline: none !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+::-moz-focus-inner {
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Text entry stays ring-free after a click and typing; Tab restores keyboard focus. */
+html[data-goose-pointer-focus="true"] :is(input, textarea, select, [contenteditable="true"]):focus {
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}

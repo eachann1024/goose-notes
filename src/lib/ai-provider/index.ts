@@ -1,7 +1,7 @@
 export type {
   CustomAIProtocol,
+  AIProviderIdLike,
   AIModelOption,
-  AIProviderMode,
   AIReasoningLevel,
   AISettingsLike,
   AIMessage,
@@ -12,24 +12,48 @@ export type {
   RunAITextStreamOptions,
 } from "./types";
 
+export type { AIProviderId, AIProviderPreset } from "./presets";
+
+export {
+  AI_PROVIDER_PRESETS,
+  DEEPSEEK_BASE_URL,
+  GLM_BASE_URL,
+  MINIMAX_BASE_URL,
+  getAIProviderPreset,
+  getProviderCredentialSlots,
+  getProviderFixedBaseURL,
+  inferProviderIdFromSettings,
+  isAIProviderId,
+  isDeepSeekProModel,
+  resolveProtocolForProvider,
+} from "./presets";
+
 export {
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_CLAUDE_BASE_URL,
   getDefaultCustomAIBaseURL,
   getCustomAIBaseURL,
   getCustomAIApiKey,
-  getAIProviderMode,
+  getApiKeyMissingMessage,
   getStoredAIModelOptions,
-  mapUToolsAiModelsToOptions,
-  getAvailableAIModelOptions,
   getAIAvailability,
+  getSettingsProviderId,
+  resolveActiveProtocol,
   fetchCustomAIModels,
 } from "./modelCatalog";
 
-import type { AISettingsLike, AIMessage, AIStreamPhase, AIStreamUpdate, AIRequestOverrides, RunAITextOptions, RunAITextStreamOptions } from "./types";
-import { getAIAvailability } from "./modelCatalog";
-import { handleUToolsStream } from "./providers/utools";
+import type {
+  AISettingsLike,
+  AIMessage,
+  AIStreamPhase,
+  AIStreamUpdate,
+  AIRequestOverrides,
+  RunAITextOptions,
+  RunAITextStreamOptions,
+} from "./types";
+import { getAIAvailability, resolveActiveProtocol } from "./modelCatalog";
 import { handleOpenAIStream } from "./providers/openai";
+import { handleOpenAIResponsesStream } from "./providers/openaiResponses";
 import { handleClaudeStream } from "./providers/claude";
 
 async function handleCustomStream(
@@ -39,8 +63,24 @@ async function handleCustomStream(
   emit: (phase: AIStreamPhase, text: string, isReasoning: boolean) => void,
   requestOverrides?: AIRequestOverrides,
 ) {
-  if (settings.customProtocol === "openai") {
-    return handleOpenAIStream(settings, messages, signal, emit, requestOverrides);
+  const protocol = resolveActiveProtocol(settings, requestOverrides);
+  if (protocol === "openai-responses") {
+    return handleOpenAIResponsesStream(
+      settings,
+      messages,
+      signal,
+      emit,
+      requestOverrides,
+    );
+  }
+  if (protocol === "openai") {
+    return handleOpenAIStream(
+      settings,
+      messages,
+      signal,
+      emit,
+      requestOverrides,
+    );
   }
   return handleClaudeStream(settings, messages, signal, emit, requestOverrides);
 }
@@ -54,7 +94,11 @@ export async function runAIText(
   await runAITextStream(settings, messages, {
     ...options,
     onUpdate: (update: AIStreamUpdate) => {
-      if (update.phase === "finishing" || update.phase === "generating" || update.phase === "thinking") {
+      if (
+        update.phase === "finishing" ||
+        update.phase === "generating" ||
+        update.phase === "thinking"
+      ) {
         if (update.text) {
           finalResultText = update.text;
         }
@@ -87,7 +131,6 @@ export async function runAITextStream(
     throw new Error(availability.reason);
   }
 
-  const { provider } = availability;
   const abortController = new AbortController();
   const signal = options.abortSignal ?? abortController.signal;
 
@@ -95,9 +138,16 @@ export async function runAITextStream(
   let contentText = "";
   let reasoningText = "";
 
-  const emit = (phaseMatch: string, contentUpdate: string, isReasoning: boolean) => {
+  const emit = (
+    phaseMatch: string,
+    contentUpdate: string,
+    isReasoning: boolean,
+  ) => {
     // Phase flow logic: connecting -> thinking -> generating
-    if (currentPhase === "connecting" || (isReasoning && currentPhase !== "thinking")) {
+    if (
+      currentPhase === "connecting" ||
+      (isReasoning && currentPhase !== "thinking")
+    ) {
       currentPhase = isReasoning ? "thinking" : "generating";
     }
     // Automatically jump to generating if payload has content and it's not reasoning
@@ -111,7 +161,11 @@ export async function runAITextStream(
       contentText += contentUpdate;
     }
 
-    options.onUpdate?.({ phase: currentPhase, text: contentText, reasoningText });
+    options.onUpdate?.({
+      phase: currentPhase,
+      text: contentText,
+      reasoningText,
+    });
   };
 
   if (options.onUpdate) {
@@ -119,15 +173,20 @@ export async function runAITextStream(
   }
 
   try {
-    let finalChunk;
-    if (provider === "utools") {
-      finalChunk = await handleUToolsStream(settings, messages, signal, emit, options.requestOverrides);
-    } else {
-      finalChunk = await handleCustomStream(settings, messages, signal, emit, options.requestOverrides);
-    }
+    const finalChunk = await handleCustomStream(
+      settings,
+      messages,
+      signal,
+      emit,
+      options.requestOverrides,
+    );
 
     if (options.onUpdate) {
-      options.onUpdate({ phase: "finishing", text: finalChunk.text, reasoningText: finalChunk.reasoningText });
+      options.onUpdate({
+        phase: "finishing",
+        text: finalChunk.text,
+        reasoningText: finalChunk.reasoningText,
+      });
     }
     return finalChunk.text;
   } catch (err: unknown) {

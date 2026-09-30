@@ -2,7 +2,10 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { createExtension } from "@blocknote/core";
 import { Plugin, PluginKey } from "prosemirror-state";
 
-import { reconcileSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
+import {
+  reconcilePageMentionSuggestionMenu,
+  reconcileSlashSuggestionMenu,
+} from "@/components/editor/utils/slashMenuPolicy";
 
 const PLUGIN_KEY = new PluginKey("goose-slash-menu-reconcile");
 
@@ -23,6 +26,7 @@ export function createGooseSlashMenuReconcileExtension(
             reconcileSlashSuggestionMenu(ed, {
               allowSlashMenuOnFirstBlock: allowSlashMenuOnFirstBlockRef.current,
             });
+            reconcilePageMentionSuggestionMenu(ed);
           });
           return null;
         },

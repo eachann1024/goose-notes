@@ -3,26 +3,25 @@ import { z } from "zod";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
 import { getPageTitle } from "@/components/editor/utils/page-title";
-import {
-  extractTextFromContent,
-} from "@/components/editor/utils/content-text-extractor";
+import { extractTextFromContent } from "@/components/editor/utils/content-text-extractor";
 import { blocksToMarkdown } from "@/lib/export/blocknoteSerializer";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import type { NotebookAiAgentContext } from "../types";
 
 // ----------------------------------------------------------------
 // listNotebooks
 // ----------------------------------------------------------------
 export const listNotebooks = tool({
-  description: "列出所有笔记本，包含 id、名称和是否为当前笔记本。",
+  description: "返回当前绑定笔记本。AI 不可访问其他笔记本。",
   inputSchema: z.object({}),
   execute: async (_input, { experimental_context }) => {
-    const { notebookId: currentNotebookId } = experimental_context as { notebookId: string };
+    const { notebookId: currentNotebookId } =
+      experimental_context as NotebookAiAgentContext;
     const notebooks = useNotebooks.getState().notebooks;
-    return Object.values(notebooks).map((nb) => ({
-      id: nb.id,
-      name: nb.name,
-      isCurrent: nb.id === currentNotebookId,
-    }));
+    const notebook = notebooks[currentNotebookId];
+    return notebook
+      ? [{ id: notebook.id, name: notebook.name, isCurrent: true }]
+      : [];
   },
 });
 
@@ -39,8 +38,12 @@ export const listPages = tool({
       .describe("指定笔记本 id；省略则使用当前绑定笔记本"),
   }),
   execute: async (input, { experimental_context }) => {
-    const { notebookId: boundNotebookId } = experimental_context as { notebookId: string };
+    const { notebookId: boundNotebookId } =
+      experimental_context as NotebookAiAgentContext;
     const targetId = input.notebookId ?? boundNotebookId;
+    if (targetId !== boundNotebookId) {
+      return { error: "AI 只能访问当前绑定笔记本" };
+    }
     const pages = usePages.getState().pages;
     return Object.values(pages)
       .filter((p) => p.workspaceId === targetId && !p.trashedAt)
@@ -48,6 +51,8 @@ export const listPages = tool({
       .map((p) => ({
         pageId: p.id,
         title: getPageTitle(p),
+        parentId: p.parentId,
+        isFolder: !!p.isFolder,
         updatedAt: p.updatedAt,
       }));
   },
@@ -58,25 +63,19 @@ export const listPages = tool({
 // ----------------------------------------------------------------
 export const searchNotes = tool({
   description:
-    "在笔记内容中全文搜索。scope='notebook' 只搜当前绑定笔记本；scope='all' 搜索所有笔记本（会预加载本地文件夹笔记本）。返回匹配页面列表含命中上下文片段。",
+    "在当前绑定笔记本中全文搜索。仅用于跨页面查找或目标页面不明确的任务；当前页编辑、润色、总结、删除区块时不要调用。返回匹配页面和命中片段。",
   inputSchema: z.object({
-    query: z.string().describe("搜索关键词"),
-    scope: z
-      .enum(["notebook", "all"])
-      .default("notebook")
-      .describe("搜索范围：notebook=当前笔记本，all=所有笔记本"),
+    query: z.string().optional().default("").describe("搜索关键词"),
   }),
   execute: async (input, { experimental_context }) => {
-    const { notebookId: boundNotebookId } = experimental_context as { notebookId: string };
-
-    // scope=all 时预加载所有本地文件夹笔记本
-    if (input.scope === "all") {
-      await usePages.getState().loadAllLocalFolderPages();
-    }
+    const { notebookId: boundNotebookId } =
+      experimental_context as NotebookAiAgentContext;
+    const query = input.query.trim();
+    if (!query) return [];
 
     const pages = usePages.getState().pages;
     const notebooks = useNotebooks.getState().notebooks;
-    const queryLower = input.query.toLowerCase();
+    const queryLower = query.toLowerCase();
 
     // 把 query 按分隔符切成 ≥2 字的词项（用于降级分词匹配）
     const queryTerms = queryLower
@@ -128,8 +127,7 @@ export const searchNotes = tool({
 
     for (const page of Object.values(pages)) {
       if (page.trashedAt) continue;
-      if (input.scope === "notebook" && page.workspaceId !== boundNotebookId)
-        continue;
+      if (page.workspaceId !== boundNotebookId) continue;
 
       const title = getPageTitle(page);
       const bodyText = extractTextFromContent(page.content);
@@ -155,17 +153,19 @@ export const searchNotes = tool({
     candidates.sort((a, b) => b.score - a.score);
     const top = candidates.slice(0, 20);
 
-    return top.map(({ pageId, notebookId, notebookName, title, rawCombined, matchIdx }) => {
-      // 从原始文本（保留大小写）截取 snippet
-      const safeIdx = Math.max(0, matchIdx);
-      const start = Math.max(0, safeIdx - 60);
-      const end = Math.min(rawCombined.length, safeIdx + input.query.length + 60);
-      let snippet = rawCombined.slice(start, end);
-      if (start > 0) snippet = "…" + snippet;
-      if (end < rawCombined.length) snippet = snippet + "…";
+    return top.map(
+      ({ pageId, notebookId, notebookName, title, rawCombined, matchIdx }) => {
+        // 从原始文本（保留大小写）截取 snippet
+        const safeIdx = Math.max(0, matchIdx);
+        const start = Math.max(0, safeIdx - 60);
+        const end = Math.min(rawCombined.length, safeIdx + query.length + 60);
+        let snippet = rawCombined.slice(start, end);
+        if (start > 0) snippet = "…" + snippet;
+        if (end < rawCombined.length) snippet = snippet + "…";
 
-      return { pageId, notebookId, notebookName, title, snippet };
-    });
+        return { pageId, notebookId, notebookName, title, snippet };
+      },
+    );
   },
 });
 
@@ -173,19 +173,25 @@ export const searchNotes = tool({
 // readPage
 // ----------------------------------------------------------------
 export const readPage = tool({
-  description: "读取指定页面的完整内容，返回标题和 Markdown 格式的正文。",
+  description:
+    "读取页面完整内容，返回标题和 Markdown 格式正文。当前页任务可省略 pageId，默认读取当前打开页面。",
   inputSchema: z.object({
-    pageId: z.string().describe("页面 id"),
+    pageId: z.string().optional().describe("页面 id；省略则读取当前打开页面"),
   }),
-  execute: async (input) => {
-    const page = usePages.getState().pages[input.pageId];
+  execute: async (input, { experimental_context }) => {
+    const { currentPageId, notebookId } =
+      experimental_context as NotebookAiAgentContext;
+    const pageId =
+      input.pageId ?? currentPageId ?? usePages.getState().activePageId ?? "";
+    const page = usePages.getState().pages[pageId];
     if (!page) {
-      return { error: `页面 ${input.pageId} 不存在` };
+      return { error: pageId ? `页面 ${pageId} 不存在` : "当前没有打开页面" };
+    }
+    if (page.workspaceId !== notebookId) {
+      return { error: "AI 只能读取当前绑定笔记本中的页面" };
     }
     const title = getPageTitle(page);
-    const markdown = await blocksToMarkdown(
-      page.content as BlockNoteContent,
-    );
-    return { title, markdown };
+    const markdown = await blocksToMarkdown(page.content as BlockNoteContent);
+    return { pageId, title, markdown };
   },
 });

@@ -1,12 +1,18 @@
 import {
   useBlockNoteEditor,
-  useSelectedBlocks,
   useEditorState,
   useExtension,
 } from "@blocknote/react";
-import { AIExtension } from "@blocknote/xl-ai";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { TextSelection } from "prosemirror-state";
+import { GooseAIExtension } from "@/components/editor/ai/GooseAIExtension";
+import { captureInlineSelectionParts } from "@/components/editor/ai/selectionPrivacy";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { TooltipProvider } from "@/components/editor/ui/tooltip";
 import { Separator } from "@/components/editor/ui/separator";
 import { cn } from "@/components/editor/utils/cn";
@@ -17,10 +23,15 @@ import {
 import { useContextMenu } from "@/components/editor/state/contextMenu";
 import { useGlobalScrollActivity } from "@/components/editor/hooks/useGlobalScrollActivity";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
+import { useFormattingToolbarHold } from "@/components/editor/state/formattingToolbarHold";
 import { FormattingToolbarColorPicker } from "@/components/editor/toolbars/formatting/ColorPicker";
 import { setFakeSelection } from "@/components/editor/extensions/fakeSelectionExtension";
 import {
-  selectionHasNonFormattableBlock,
+  applySelectionTextAlignment,
+  clearSelectionFormatting,
+  getFormattingToolbarCapabilities,
+  resolveFormattingToolbarAiBlockId,
+  selectionDisallowsFormattingToolbar,
   selectionIsInsideFirstTitleBlock,
   selectionIsInsideHeadingBlock,
   shouldRenderFormattingToolbar,
@@ -28,26 +39,48 @@ import {
 } from "@/components/editor/toolbars/formatting/helpers";
 import type { BindTooltip } from "@/components/editor/toolbars/formatting/ToolbarTooltip";
 import { AiButton } from "@/components/editor/toolbars/formatting/groups/AiButton";
-import { toast } from "sonner";
+import { AddToChatButton } from "@/components/editor/toolbars/formatting/groups/AddToChatButton";
+import { toast } from "@/components/ui/sonner";
+import { getCustomAIApiKey } from "@/lib/ai-provider";
 import { MarkGroup } from "@/components/editor/toolbars/formatting/groups/MarkGroup";
 import { InlineGroup } from "@/components/editor/toolbars/formatting/groups/InlineGroup";
 import { LinkButton } from "@/components/editor/toolbars/formatting/groups/LinkButton";
 import { AlignGroup } from "@/components/editor/toolbars/formatting/groups/AlignGroup";
+import { ListTypeGroup } from "@/components/editor/toolbars/formatting/groups/ListTypeGroup";
 import { ClearFormatButton } from "@/components/editor/toolbars/formatting/groups/ClearFormatButton";
+import { getListTypeToolbarState } from "@/components/editor/toolbars/formatting/listType";
+import { canShowAddToChatButton } from "@/components/editor/ai/composer/selectionQuote";
+import { getSelectedImageUrl } from "@/components/editor/utils/selection";
+import { getPageTitle } from "@/components/editor/utils/page-title";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 
 export { shouldRenderFormattingToolbar };
 
+function ToolbarSectionSeparator() {
+  return (
+    <Separator
+      orientation="vertical"
+      className="goose-formatting-toolbar-separator"
+    />
+  );
+}
+
 export function EditorFormattingToolbar() {
   const editor = useBlockNoteEditor();
-  // 速记小窗（__GOOSE_LITE__）不挂 AI 扩展，跳过 useExtension（避免对空壳 AIExtension 取键）。
-  // __GOOSE_LITE__ 是编译期常量，同一构建内分支固定，不违反 hooks 调用一致性。
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const aiExtension = __GOOSE_LITE__ ? undefined : useExtension(AIExtension);
+  // 未启用 AI 的构建跳过 useExtension；编译期分支在同一构建内保持稳定。
+
+  const aiExtension = __GOOSE_EDITOR_AI__
+    ? useExtension(GooseAIExtension)
+    : undefined;
   const { ai: aiSettings } = useEditorSettings();
-  const { page } = useEditorPageContext();
-  const isLocalFolderPage = Boolean(page?.localFilePath);
+  const { contentMode, page } = useEditorPageContext();
+  const protectsFirstTitle = contentMode === "normalized";
+  // Electron 桌面端与主窗共用构建，COMPACT / LITE 恒为 false，必须看运行时草稿页。
+  const isQuickNoteSurface =
+    __GOOSE_EDITOR_COMPACT__ ||
+    __GOOSE_LITE__ ||
+    isQuickNoteEditorPage(page);
   const markStates = useSelectionMarkStates(editor);
-  const selectedBlocks = useSelectedBlocks();
 
   const selectionState = useEditorState({
     editor,
@@ -57,29 +90,48 @@ export function EditorFormattingToolbar() {
       const selectedText = doc
         .textBetween(selection.from, selection.to, "\n", "\n")
         .trim();
+      let quoteText: string;
+      try {
+        quoteText = (editor.getSelectedText() ?? "").trim();
+      } catch {
+        quoteText = selectedText;
+      }
 
       return {
-        hasTextSelection: !selection.empty && selectedText.length > 0,
-        hasNonFormattableBlock: selectionHasNonFormattableBlock(editor),
+        hasTextSelection:
+          (!selection.empty && selectedText.length > 0) ||
+          shouldRenderFormattingToolbar(editor),
+        disallowsFormattingToolbar: selectionDisallowsFormattingToolbar(editor),
+        selectedQuoteText: quoteText,
+        isImageNodeSelection:
+          getSelectedImageUrl(editor.prosemirrorState) != null,
       };
     },
   });
 
-  // B2：仅当选区完全落在标题一内（内部笔记本页面的物理首块 H1）时禁用工具栏。
-  // local-folder 页面的标题由 LocalFileTitle 虚拟渲染，BlockNote 文档首块是普通正文，不施加此限制。
+  // 仅 normalized 文档把物理首块 H1 视为受保护的页面标题。
   const isInTitleOne = useEditorState({
     editor,
     selector: ({ editor }) =>
-      !isLocalFolderPage && selectionIsInsideFirstTitleBlock(editor),
+      protectsFirstTitle && selectionIsInsideFirstTitleBlock(editor),
   });
 
-  const isInHeading = useEditorState({
+  const caps = useEditorState({
     editor,
-    selector: ({ editor }) => selectionIsInsideHeadingBlock(editor),
+    selector: ({ editor }) =>
+      getFormattingToolbarCapabilities(editor, {
+        isInHeading: selectionIsInsideHeadingBlock(editor),
+      }),
   });
 
-  const aiActive = useFormattingToolbarAi((s) => s.active);
-  const setAiActive = useFormattingToolbarAi((s) => s.setActive);
+  const holdDuringPointerSelect = useFormattingToolbarHold();
+  const aiActive = useFormattingToolbarAi((s) => s.active && s.owner === editor);
+  const activateFormattingToolbarAi = useFormattingToolbarAi(
+    (state) => state.activate,
+  );
+  const resetFormattingToolbarAi = useFormattingToolbarAi(
+    (state) => state.reset,
+  );
 
   const openMenuId = useContextMenu((state) => state.openMenuId);
   const isContextMenuOpen = Boolean(openMenuId);
@@ -87,13 +139,12 @@ export function EditorFormattingToolbar() {
   const isScrolling = scrollActivity.isScrolling;
 
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
   const bindTooltip = useCallback<BindTooltip>(
     (id) => ({
-      delayDuration: 600,
+      delayDuration: 400,
       open: activeTooltip === id,
       onOpenChange: (open) =>
         setActiveTooltip((prev) => (open ? id : prev === id ? null : prev)),
@@ -111,105 +162,67 @@ export function EditorFormattingToolbar() {
     setActiveTooltip(null);
   }, [isScrolling, isContextMenuOpen]);
 
-  // Clear AI mode + fake selection on unmount (e.g. when toolbar unmounts)
-  useEffect(() => {
-    return () => {
-      if (savedSelectionRef.current) {
-        try {
-          setFakeSelection(editor, null);
-        } catch {
-          /* ignore */
-        }
-      }
-      setAiActive(false);
-    };
-  }, [editor, setAiActive]);
-
-  // xl-ai 接管：旧自家 AiPanel 不再触发，AI 按钮改为打开 xl-ai 的 AIMenu。
-  // 保留 selection 保存逻辑（用于聚焦/退出还原），但跳过 setAiActive。
+  // AI 按钮打开自有菜单，冻结当前字符选区。
+  // 保存 selection 作为 AI 浮层锚点，并在菜单生命周期内隐藏格式工具栏。
   const handleAiActivate = useCallback(() => {
     try {
       const { selection } = editor.prosemirrorState;
       if (selection.empty) return;
+      if (!editor.isEditable) {
+        toast.error("当前页面不可编辑。");
+        return;
+      }
+      // Freeze only supported text containers; node selections exclude implicit children.
+      captureInlineSelectionParts(editor.prosemirrorState.doc, selection);
 
-      // BlockNote AI 菜单只支持自定义 OpenAI/Claude provider。提前校验，避免
-      // 用户看到 xl-ai 的通用 "出了点问题" 提示而不知所措。
       if (!aiSettings.enabled) {
         toast.error("AI 助手尚未开启，请先到设置中打开");
         return;
       }
-      if (!aiSettings.useCustomProvider) {
-        // 平台原生 AI（uTools 内置）不支持 BlockNote xl-ai 菜单（需要标准 OpenAI/Claude 协议）。
+      const apiKey = getCustomAIApiKey(aiSettings);
+      if (!apiKey) {
         toast.error(
-          "uTools 内置模型暂不支持编辑器内 AI 菜单，请在 设置 → AI 助手 中切换到自定义 OpenAI 或 Claude provider。",
+          '未填写 API Key。请前往"设置 → AI 助手 → AI 服务"检查配置。',
         );
         return;
       }
-      const apiKey = (
-        aiSettings.customProtocol === "openai"
-          ? aiSettings.customOpenAIApiKey
-          : aiSettings.customClaudeApiKey
-      ).trim();
-      if (!apiKey) {
-        toast.error('未填写 API Key。请前往"设置 → AI 助手 → 自定义 AI"检查配置。');
-        return;
-      }
       const hasModel =
-        (aiSettings.selectedModelId?.trim()) ||
+        aiSettings.selectedModelId?.trim() ||
         aiSettings.customModelOptions[0]?.id;
       if (!hasModel) {
-        toast.error("请先保存自定义 AI 配置并获取模型列表");
+        toast.error("请先保存 AI 服务配置并获取模型列表");
         return;
       }
 
       const saved = { from: selection.from, to: selection.to };
-      savedSelectionRef.current = saved;
       setFakeSelection(editor, saved);
+      activateFormattingToolbarAi(saved, editor);
 
-      const blockId = editor.getTextCursorPosition().block.id;
+      const blockId = resolveFormattingToolbarAiBlockId(editor);
+      if (!blockId) {
+        setFakeSelection(editor, null);
+        resetFormattingToolbarAi(editor);
+        toast.error("无法定位当前选区，请重新选中正文文字后再试");
+        return;
+      }
       setActiveTooltip(null);
       aiExtension?.openAIMenuAtBlock(blockId);
-    } catch {
-      /* ignore */
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "当前选区暂不支持行内改写，请重新选择正文文字。");
+      try {
+        setFakeSelection(editor, null);
+      } catch {
+        /* ignore */
+      }
+      resetFormattingToolbarAi(editor);
     }
-  }, [editor, aiExtension, aiSettings]);
-
-  const handleAiClose = useCallback(() => {
-    const savedSel = savedSelectionRef.current;
-    try {
-      setFakeSelection(editor, null);
-    } catch {
-      /* ignore */
-    }
-    savedSelectionRef.current = null;
-    setAiActive(false);
-
-    // 把 ProseMirror 选区恢复到原始范围并把焦点交还给 editor。
-    // 否则点击空白后 editor 失焦：1) 选区高亮消失；2) Mod-z 快捷键
-    // 进不到 ProseMirror，导致撤销整体失灵。
-    if (savedSel) {
-      requestAnimationFrame(() => {
-        try {
-          const view = (editor as any).prosemirrorView;
-          if (!view) return;
-          const { state } = view;
-          const docSize = state.doc.content.size;
-          const from = Math.min(savedSel.from, docSize);
-          const to = Math.min(savedSel.to, docSize);
-          if (from !== to) {
-            const tr = state.tr.setSelection(
-              TextSelection.create(state.doc, from, to),
-            );
-            tr.setMeta("addToHistory", false);
-            view.dispatch(tr);
-          }
-          view.focus();
-        } catch {
-          /* ignore */
-        }
-      });
-    }
-  }, [editor, setAiActive]);
+  }, [
+    activateFormattingToolbarAi,
+    aiExtension,
+    aiSettings,
+    editor,
+    resetFormattingToolbarAi,
+  ]);
 
   const isBold = markStates.bold;
   const isItalic = markStates.italic;
@@ -217,70 +230,174 @@ export function EditorFormattingToolbar() {
   const isUnderline = markStates.underline;
   const isCode = markStates.code;
 
-  const firstBlock = selectedBlocks[0];
-  const textAlignment =
-    (firstBlock?.props as { textAlignment?: string } | undefined)
-      ?.textAlignment ?? "left";
+  const textAlignment = caps.textAlignment;
+  const listState = useEditorState({
+    editor,
+    selector: ({ editor }) => getListTypeToolbarState(editor),
+  });
 
-  const linkUrl = editor.getSelectedLinkUrl();
+  const linkUrl = caps.showLink ? editor.getSelectedLinkUrl() : undefined;
   const isLinkActive = !!linkUrl;
 
   const setTextAlignment = useCallback(
     (alignment: "left" | "center" | "right") => {
-      // 多块逐个 updateBlock 会产生 N 个 undo 步骤，transact 合并成一步整体撤销
-      editor.transact(() => {
-        for (const block of selectedBlocks) {
-          editor.updateBlock(block, {
-            props: { textAlignment: alignment },
-          });
-        }
-      });
+      applySelectionTextAlignment(editor, alignment);
     },
-    [editor, selectedBlocks],
+    [editor],
   );
 
   const clearFormatting = useCallback(() => {
-    editor.transact(() => {
-      editor.removeStyles({
-        bold: true,
-        italic: true,
-        underline: true,
-        strike: true,
-        code: true,
-        textColor: true,
-        backgroundColor: true,
-      } as any);
-      for (const block of selectedBlocks) {
-        editor.updateBlock(block, {
-          props: { textAlignment: "left" },
-        });
-      }
-    });
-  }, [editor, selectedBlocks]);
+    clearSelectionFormatting(editor);
+  }, [editor]);
 
-  const shouldHideForScroll = isScrolling || isContextMenuOpen;
+  // 小窗的格式栏是固定底栏，滚动不会遮挡选区，也不应闪烁隐藏；
+  // 常规笔记本的浮动栏仍在滚动时收起，避免与正文一起漂移。
+  const shouldHideForScroll =
+    (!isQuickNoteSurface && isScrolling) || isContextMenuOpen;
   // While AI is active we keep the toolbar visible regardless of scroll/menu.
-  const shouldHide = !aiActive && shouldHideForScroll;
+  const shouldHide = !aiActive && !colorPickerOpen && shouldHideForScroll;
+
+  if (!editor.isEditable) return null;
 
   // Selection-based gating only matters when AI mode isn't already active.
+  // 拖选按住期间选区会先塌成空：不要卸掉工具栏，否则被挡住的上一行会闪一下。
   if (
     !aiActive &&
+    !colorPickerOpen &&
+    !holdDuringPointerSelect &&
     (!selectionState.hasTextSelection ||
-      selectionState.hasNonFormattableBlock ||
+      selectionState.disallowsFormattingToolbar ||
       isInTitleOne)
   ) {
     return null;
   }
 
+  const showAiButton =
+    __GOOSE_EDITOR_AI__ &&
+    aiSettings.enabled &&
+    caps.showAi &&
+    !isQuickNoteSurface;
+
+  // 分节渲染：仅在「相邻两节都可见」时插入 Separator，避免双分隔线 / 尾随分隔线。
+  const sections: ReactNode[] = [];
+
+  if (showAiButton) {
+    sections.push(
+      <AiButton
+        key="ai"
+        onActivate={handleAiActivate}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  if (caps.showMarks || caps.showColors) {
+    sections.push(
+      <Fragment key="styles">
+        {caps.showMarks && (
+          <MarkGroup
+            isBold={isBold}
+            isItalic={isItalic}
+            isStrike={isStrike}
+            bindTooltip={bindTooltip}
+          />
+        )}
+        {caps.showMarks && (
+          <InlineGroup
+            isUnderline={isUnderline}
+            isCode={isCode}
+            bindTooltip={bindTooltip}
+          />
+        )}
+        {caps.showColors && (
+          <FormattingToolbarColorPicker onOpenChange={setColorPickerOpen} />
+        )}
+      </Fragment>,
+    );
+  }
+
+  if (caps.showLink) {
+    sections.push(
+      <LinkButton
+        key="link"
+        isLinkActive={isLinkActive}
+        linkUrl={linkUrl}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  if (caps.showAlign) {
+    sections.push(
+      <AlignGroup
+        key="align"
+        textAlignment={textAlignment}
+        setTextAlignment={setTextAlignment}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  const showList =
+    listState.show &&
+    caps.mode !== "none" &&
+    caps.mode !== "cellText" &&
+    caps.mode !== "cellGrid";
+
+  if (showList) {
+    sections.push(
+      <ListTypeGroup key="list-type" bindTooltip={bindTooltip} />,
+    );
+  }
+
+  if (caps.showClear) {
+    sections.push(
+      <ClearFormatButton
+        key="clear"
+        onClear={clearFormatting}
+        bindTooltip={bindTooltip}
+      />,
+    );
+  }
+
+  const showAddToChat = canShowAddToChatButton({
+    aiEnabled: aiSettings.enabled,
+    isCompact: isQuickNoteSurface,
+    selectedText: selectionState.selectedQuoteText,
+    isImageNodeSelection: selectionState.isImageNodeSelection,
+  });
+
+  if (showAddToChat) {
+    sections.push(
+      <AddToChatButton
+        key="add-to-chat"
+        selectedText={selectionState.selectedQuoteText}
+        pageId={page.id}
+        pageTitle={getPageTitle(page)}
+      />,
+    );
+  }
+
+  const selectionModeClass =
+    caps.mode === "cellText" || caps.mode === "cellGrid"
+      ? "goose-formatting-toolbar--cell"
+      : caps.mode === "multiBlock"
+        ? "goose-formatting-toolbar--multi"
+        : undefined;
+
   return (
     <TooltipProvider
-      delayDuration={600}
+      delayDuration={400}
       skipDelayDuration={0}
       disableHoverableContent
     >
       <div
         ref={menuRef}
         data-formatting-toolbar
+        data-selection-mode={caps.mode}
+        data-goose-floating-toolbar={
+          !isQuickNoteSurface ? "true" : undefined
+        }
         onMouseDown={(e) => {
           // Allow native focus on the AI textarea; everything else uses onClick.
           const target = e.target as HTMLElement | null;
@@ -294,8 +411,15 @@ export function EditorFormattingToolbar() {
           e.preventDefault();
           e.stopPropagation();
         }}
+        role="toolbar"
+        aria-label="文字格式"
         className={cn(
-          "z-[20000] rounded-[10px] border border-border/75 bg-popover shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] transition-[opacity,transform,width] duration-150 ease-out dark:border-white/15 dark:bg-[#2f3437]",
+          // 小窗底栏已用固定 px 尺寸，禁止再套 CSS zoom：
+          // Electron 旧内核会放大 zoom 祖先的 getBoundingClientRect，
+          // 导致 Portal 色板 / tooltip 错位（只露出「文本颜色」标题）。
+          !isQuickNoteSurface && "goose-formatting-toolbar-scaled",
+          selectionModeClass,
+          "z-[20000] transition-[opacity,transform,width] duration-150 ease-out",
           aiActive ? "w-[520px] max-w-[calc(100vw-24px)]" : "w-auto",
         )}
         style={{
@@ -304,56 +428,13 @@ export function EditorFormattingToolbar() {
           pointerEvents: shouldHide ? "none" : "auto",
         }}
       >
-        <div className="flex items-center gap-0.5 p-1">
-          {!__GOOSE_LITE__ && aiSettings.enabled && (
-            <>
-              <AiButton onActivate={handleAiActivate} bindTooltip={bindTooltip} />
-              <Separator
-                orientation="vertical"
-                className="h-5 opacity-70 mx-0.5"
-              />
-            </>
-          )}
-
-          <MarkGroup
-            isBold={isBold}
-            isItalic={isItalic}
-            isStrike={isStrike}
-            bindTooltip={bindTooltip}
-            hideMarks={isInHeading}
-          />
-
-          <FormattingToolbarColorPicker />
-
-          <InlineGroup
-            isUnderline={isUnderline}
-            isCode={isCode}
-            bindTooltip={bindTooltip}
-            hideMarks={isInHeading}
-          />
-
-          {!isInHeading && <Separator orientation="vertical" className="h-5 opacity-70" />}
-
-          <LinkButton
-            isLinkActive={isLinkActive}
-            linkUrl={linkUrl}
-            bindTooltip={bindTooltip}
-          />
-
-          <Separator orientation="vertical" className="h-5 opacity-70" />
-
-          <AlignGroup
-            textAlignment={textAlignment}
-            setTextAlignment={setTextAlignment}
-            bindTooltip={bindTooltip}
-          />
-
-          <Separator orientation="vertical" className="h-5 opacity-70" />
-
-          <ClearFormatButton
-            onClear={clearFormatting}
-            bindTooltip={bindTooltip}
-          />
+        <div className="goose-formatting-toolbar-row">
+          {sections.map((section, index) => (
+            <Fragment key={index}>
+              {index > 0 && <ToolbarSectionSeparator />}
+              {section}
+            </Fragment>
+          ))}
         </div>
       </div>
     </TooltipProvider>

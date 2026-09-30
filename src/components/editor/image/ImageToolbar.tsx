@@ -1,6 +1,35 @@
-import { AlignCenter, AlignLeft, AlignRight, Download, Maximize2 } from "lucide-react";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Copy,
+  Download,
+  Maximize2,
+} from "lucide-react";
+import { useEffect, type MouseEventHandler, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import {
+  autoUpdate,
+  flip,
+  offset,
+  shift,
+  size,
+  useFloating,
+} from "@floating-ui/react";
 import { cn } from "@/components/editor/utils/cn";
 import type { ImageAlignment } from "@/components/editor/image/imageUtils";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import {
+  EDITOR_CONTEXT_UI_GAP,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
+import { useEditorUiScale } from "@/components/editor/hooks/useEditorUiScale";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/editor/ui/tooltip";
 
 export interface SelectedImageState {
   blockId: string | null;
@@ -15,70 +44,188 @@ interface ImageToolbarProps {
   selectedImage: SelectedImageState;
   applyImageAlignment: (alignment: ImageAlignment) => void;
   handleSelectedImageZoom: () => void;
+  handleSelectedImageSystemPreview?: () => void;
+  handleSelectedImageCopy: () => void;
   handleSelectedImageDownload: () => void;
+  openImageLabel: string;
+  floatingBoundary?: HTMLElement | null;
+  getReferenceRect?: () => DOMRect | null;
+}
+
+const imageToolButtonClass = "goose-block-toolbar-control";
+
+function ImageToolButton({
+  label,
+  className,
+  pressed,
+  onClick,
+  onContextMenu,
+  tooltipSideOffset,
+  children,
+}: {
+  label: string;
+  className?: string;
+  pressed?: boolean;
+  onClick: MouseEventHandler<HTMLButtonElement>;
+  onContextMenu?: MouseEventHandler<HTMLButtonElement>;
+  tooltipSideOffset: number;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={pressed}
+          onClick={onClick}
+          onContextMenu={onContextMenu}
+          className={cn(imageToolButtonClass, className)}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={tooltipSideOffset}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function ImageToolbar({
   selectedImage,
   applyImageAlignment,
   handleSelectedImageZoom,
+  handleSelectedImageSystemPreview,
+  handleSelectedImageCopy,
   handleSelectedImageDownload,
+  openImageLabel,
+  floatingBoundary,
+  getReferenceRect,
 }: ImageToolbarProps) {
-  return (
-    <div
-      data-goose-image-toolbar
-      className="fixed z-[20000] flex items-center gap-0.5 rounded-[10px] border border-border/75 bg-popover p-1 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-white/15 dark:bg-[#2f3437]"
-      style={{
-        top: Math.max(8, selectedImage.rect.top - 42),
-        left: selectedImage.rect.left + selectedImage.rect.width / 2,
-        transform: "translateX(-50%)",
-      }}
-      onMouseDown={(e) => e.preventDefault()}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-    >
-      {([
-        ["left", "左对齐", AlignLeft],
-        ["center", "居中对齐", AlignCenter],
-        ["right", "右对齐", AlignRight],
-      ] as const).map(([alignment, label, Icon]) => (
-        <button
-          key={alignment}
-          type="button"
-          title={label}
-          aria-label={label}
-          onClick={() => applyImageAlignment(alignment)}
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted",
-            selectedImage.alignment === alignment && "bg-accent text-foreground",
-          )}
-        >
-          <Icon className="h-[15px] w-[15px]" />
-        </button>
-      ))}
+  const editorUiScale = useEditorUiScale();
+  const usesFloatingPosition = Boolean(getReferenceRect);
+  const overflowOptions = {
+    boundary: floatingBoundary ?? undefined,
+    padding: getScaledEditorUiPx(8, editorUiScale),
+  };
+  const { refs, floatingStyles, update } = useFloating({
+    open: usesFloatingPosition,
+    strategy: "fixed",
+    placement: "top",
+    middleware: [
+      offset(() => getScaledEditorUiPx(EDITOR_CONTEXT_UI_GAP)),
+      flip({ ...overflowOptions, fallbackPlacements: ["bottom"] }),
+      shift(overflowOptions),
+      size({
+        ...overflowOptions,
+        apply({ availableWidth, elements }) {
+          elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+          elements.floating.style.overflowX = "auto";
+        },
+      }),
+    ],
+    whileElementsMounted(reference, floating, update) {
+      return autoUpdate(reference, floating, update, {
+        animationFrame: true,
+      });
+    },
+  });
 
-      <div className="mx-0.5 h-5 w-px bg-border/70" />
+  useEffect(() => {
+    if (!getReferenceRect) return;
+    refs.setPositionReference({
+      getBoundingClientRect: () => getReferenceRect() ?? selectedImage.rect,
+      contextElement: floatingBoundary ?? undefined,
+    });
+  }, [floatingBoundary, getReferenceRect, refs, selectedImage.rect]);
 
-      <button
-        type="button"
-        title="放大图片"
-        aria-label="放大图片"
-        onClick={handleSelectedImageZoom}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
+  useEffect(() => {
+    if (!usesFloatingPosition) return;
+    window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+    return () =>
+      window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+  }, [update, usesFloatingPosition]);
+
+  const toolbar = (
+    <TooltipProvider delayDuration={400} skipDelayDuration={100}>
+      <div
+        ref={usesFloatingPosition ? refs.setFloating : undefined}
+        data-goose-image-toolbar
+        className="fixed z-[20000]"
+        style={
+          usesFloatingPosition
+            ? floatingStyles
+            : {
+                top: Math.max(
+                  8,
+                  selectedImage.rect.top - getScaledEditorUiPx(40),
+                ),
+                left: selectedImage.rect.left + selectedImage.rect.width / 2,
+                transform: "translateX(-50%)",
+              }
+        }
+        onMouseDown={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        role="toolbar"
+        aria-label="图片操作"
       >
-        <Maximize2 className="h-[15px] w-[15px]" />
-      </button>
-      <button
-        type="button"
-        title="下载图片"
-        aria-label="下载图片"
-        onClick={handleSelectedImageDownload}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/90 transition-colors hover:bg-muted"
-      >
-        <Download className="h-[15px] w-[15px]" />
-      </button>
-    </div>
+        <div className="goose-editor-context-ui goose-block-toolbar-surface animate-in fade-in-0 zoom-in-95 duration-150">
+          {(
+            [
+              ["left", "左对齐", AlignLeft],
+              ["center", "居中对齐", AlignCenter],
+              ["right", "右对齐", AlignRight],
+            ] as const
+          ).map(([alignment, label, Icon]) => (
+            <ImageToolButton
+              key={alignment}
+              label={label}
+              pressed={selectedImage.alignment === alignment}
+              tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+              onClick={() => applyImageAlignment(alignment)}
+            >
+              <Icon className="h-[15px] w-[15px]" />
+            </ImageToolButton>
+          ))}
+
+          <div className="goose-block-toolbar-separator" />
+
+          <ImageToolButton
+            label={openImageLabel}
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+            onClick={handleSelectedImageZoom}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleSelectedImageSystemPreview?.();
+            }}
+          >
+            <Maximize2 className="h-[15px] w-[15px]" />
+          </ImageToolButton>
+          <ImageToolButton
+            label="复制图片"
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+            onClick={handleSelectedImageCopy}
+          >
+            <Copy className="h-[15px] w-[15px]" />
+          </ImageToolButton>
+          <ImageToolButton
+            label="下载图片"
+            tooltipSideOffset={getScaledEditorUiPx(8, editorUiScale)}
+            onClick={handleSelectedImageDownload}
+          >
+            <Download className="h-[15px] w-[15px]" />
+          </ImageToolButton>
+        </div>
+      </div>
+    </TooltipProvider>
   );
+
+  return usesFloatingPosition && typeof document !== "undefined"
+    ? createPortal(toolbar, document.body)
+    : toolbar;
 }

@@ -3,68 +3,105 @@
 @import "./sidebar-dnd.css";
 @import "./code-themes.css";
 @import "./notebook-ai.css";
+@import "./beautiful-ui.css";
+@import "./empty-state-ai.css";
+@import "./editor-split.css";
+@import "./page-layout.css";
+
+@keyframes slow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slow-pulse {
+    animation: none;
+  }
+}
 
 .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.06);
   --workspace-divider-strong: hsl(var(--foreground) / 0.1);
-  --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
-  --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line:
-    linear-gradient(
-      180deg,
-      hsl(218 18% 60% / 0) 0%,
-      hsl(218 18% 60% / 0.18) 22%,
-      hsl(218 18% 60% / 0.9) 50%,
-      hsl(218 18% 60% / 0.18) 78%,
-      hsl(218 18% 60% / 0) 100%
-    );
-  --workspace-resize-line-active:
-    linear-gradient(
-      180deg,
-      hsl(218 22% 52% / 0) 0%,
-      hsl(218 22% 52% / 0.28) 22%,
-      hsl(218 22% 52% / 1) 50%,
-      hsl(218 22% 52% / 0.28) 78%,
-      hsl(218 22% 52% / 0) 100%
-    );
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 3%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-sidebar-surface: var(--goose-sidebar-surface, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-main-surface: var(--goose-editor-surface);
+  --workspace-stage-pad-top: 8px;
+  --workspace-stage-pad-left: 8px;
+  --workspace-stage-pad-right: 8px;
+  --workspace-stage-pad-bottom: 8px;
+  --workspace-sidebar-gap: 0px;
+  --workspace-sidebar-width: 240px;
+  --workspace-rail-width: 56px;
+  --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
   --workspace-resize-line-glow: none;
-  --workspace-drag-line-color: hsl(var(--primary));
-  --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.4);
-  --workspace-main-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.03),
-    0 0 8px rgba(15, 23, 42, 0.05);
-  background: hsl(var(--goose-shell-bg));
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
+  background: var(--goose-shell-surface);
 }
 
 .dark .workspace-shell {
   --workspace-divider: hsl(var(--foreground) / 0.12);
   --workspace-divider-strong: hsl(var(--foreground) / 0.18);
-  --workspace-sidebar-surface: hsl(var(--goose-shell-bg));
-  --workspace-main-surface: hsl(var(--goose-editor-bg));
-  --workspace-resize-line:
-    linear-gradient(
-      180deg,
-      hsl(210 18% 92% / 0) 0%,
-      hsl(210 18% 92% / 0.16) 22%,
-      hsl(210 18% 92% / 0.82) 50%,
-      hsl(210 18% 92% / 0.16) 78%,
-      hsl(210 18% 92% / 0) 100%
-    );
-  --workspace-resize-line-active:
-    linear-gradient(
-      180deg,
-      hsl(210 20% 95% / 0) 0%,
-      hsl(210 20% 95% / 0.24) 22%,
-      hsl(210 20% 95% / 0.96) 50%,
-      hsl(210 20% 95% / 0.24) 78%,
-      hsl(210 20% 95% / 0) 100%
-    );
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 6%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-main-surface: var(--goose-editor-surface);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
   --workspace-resize-line-glow: none;
-  --workspace-drag-line-color: hsl(var(--primary));
-  --workspace-drag-line-glow: 0 0 8px hsl(var(--primary) / 0.42);
-  --workspace-main-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 12px rgba(0, 0, 0, 0.32);
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
+}
+
+/* 晨橙：正文使用暖纸色，次级页面略暖；输入框留白，布局不变。 */
+:root[data-goose-accent="amber"] :is(
+  .workspace-page-empty,
+  .workspace-folder-home,
+  .notebook-ai-shell,
+  .settings-shell > header,
+  .settings-shell > nav,
+  .settings-shell > .min-h-0,
+  .goose-floating-surface,
+  .goose-menu-surface
+) {
+  background: var(--goose-secondary-surface);
+}
+
+:root[data-goose-accent="amber"] .settings-shell :is([data-slot="input"], textarea, select) {
+  background: var(--goose-input-surface);
 }
 
 .workspace-shell .workspace-divider {
@@ -80,123 +117,506 @@
 }
 
 .workspace-shell .workspace-stage {
+  position: relative;
   display: flex;
   height: 100%;
   width: 100%;
-  gap: 8px;
-  padding: 10px 10px 12px 10px;
+  gap: var(--workspace-sidebar-gap);
+  padding: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
+  transition: gap var(--workspace-sidebar-motion);
 }
 
-/* 侧栏折叠后，宽度为 0 但仍是 flex 子项，gap 会在它与主区之间留 8px，
-   导致主区左缝(10+8)比右缝(10)宽。折叠时去掉 gap，使左右缝隙一致。 */
-.workspace-shell .workspace-stage:has(.workspace-sidebar-pane[aria-hidden="true"]) {
+/* ponytail: 共用外沿、不裁切跨栏拖拽热区；需要整板裁切时再重组容器。 */
+.workspace-shell .workspace-content-frame {
+  position: absolute;
+  inset: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
+  z-index: 3;
+  border: 1px solid var(--workspace-divider);
+  transition: left var(--workspace-sidebar-motion);
+}
+.workspace-shell .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) {
+  --workspace-stage-pad-left: 0px;
+}
+.workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) > .workspace-content-frame {
+  left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
+}
+
+/* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。 */
+.dark .workspace-shell .workspace-content-frame {
+  border-color: var(--workspace-top-edge);
+}
+
+/* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
+   shell 改纵向布局，stage 占满剩余高度。仅 Electron 构建渲染该顶栏。
+   标题输入左缘对齐主栏（stage 左垫 + 侧栏宽 + gap），且不小于红绿灯占位。 */
+.workspace-shell[data-electron-chrome] {
+  flex-direction: column;
+}
+.workspace-shell[data-electron-chrome] .workspace-stage,
+.workspace-shell[data-settings] .workspace-stage {
+  --workspace-stage-pad-top: 0px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  padding-top: 0;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar {
+  position: relative;
+  background: transparent;
+  padding-left: max(
+    calc(var(--electron-traffic-inset, 78px) + 7rem + 8px),
+    calc(
+      var(--workspace-stage-pad-left) + var(--workspace-sidebar-width) +
+        var(--workspace-sidebar-gap)
+    )
+  );
+  transition: padding-left var(--workspace-sidebar-motion);
+}
+
+.electron-document-header,
+.electron-ai-header {
+  height: 100%;
+}
+.electron-document-header {
+  padding-inline: 8px;
+}
+.electron-document-header::before,
+.electron-ai-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 24px;
+  transform: translateY(-50%);
+  background: var(--workspace-divider-strong);
+  pointer-events: none;
+}
+.electron-document-header::before {
+  left: -1px;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-ai-side-panel] {
+  padding-right: var(--electron-titlebar-end-inset, 8px);
+}
+.electron-ai-header {
+  width: calc(var(--workspace-ai-width, 338px) + var(--workspace-stage-pad-right) - var(--electron-titlebar-end-inset, 8px) - var(--electron-window-controls-width, 0px));
+}
+.workspace-shell:has(.workspace-sidebar-pane[data-sidebar-resizing]) .electron-titlebar {
+  transition: none;
+}
+
+/* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
+.electron-titlebar button:not(:hover):not([aria-pressed="true"]):not([data-state="open"]) > svg.lucide {
+  color: hsl(var(--foreground));
+}
+
+.electron-window-controls {
+  position: absolute;
+  left: var(--electron-traffic-inset, 78px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+.workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+  padding-left: calc(var(--electron-traffic-inset, 78px) + 7rem + 8px);
+}
+
+html.is-electron {
+  --electron-traffic-inset: 96px;
+}
+html.is-electron.is-win {
+  --electron-traffic-inset: 12px;
+  --electron-titlebar-end-inset: 0px;
+  /* 三个 w-11 按钮和 ml-1，与 WinWindowControls 共用尺寸。 */
+  --electron-window-controls-width: 8.5rem;
+}
+
+@media (max-width: 680px) {
+  .electron-window-controls button:is([aria-label="后退"], [aria-label="前进"]) {
+    display: none;
+  }
+  .workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+  .workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+    padding-left: calc(var(--electron-traffic-inset, 78px) + 40px);
+  }
+}
+
+html.is-electron .electron-titlebar {
+  height: var(--electron-titlebar-height, 2.75rem);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+/* Portal 浮层也要排除拖拽区，否则覆盖标题栏的菜单项收不到点击。 */
+html.is-electron [data-goose-floating-content],
+html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electron-no-drag], [role="button"]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+/* 仅闲置标题/单标签切换；输入框、关闭按钮仍保留 no-drag。 */
+html.is-electron.option-window-drag .electron-titlebar [data-electron-option-drag] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+html.is-electron.window-dragging,
+html.is-electron.window-dragging * {
+  cursor: grabbing !important;
+}
+/* 编辑框铺满标签栏剩余空间；始终保留原生窗口的非拖动输入区域。 */
+html.is-electron .electron-titlebar [data-page-title-field] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* TabRail：1/2/3 等分，4+ 横向滚动；选中只靠浅底胶囊+字色，不要底条。 */
+.tab-rail {
+  padding: 4px;
+  gap: 8px;
+}
+.tab-rail-item {
+  height: 36px;
+  border-radius: 8px;
+  border-bottom: none;
+  text-decoration: none;
+  transition:
+    flex-basis 220ms ease-in-out,
+    background-color 150ms ease;
+}
+.tab-rail-item:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+.tab-rail-item,
+.tab-rail-item span,
+.tab-rail-item input,
+.tab-rail-item [data-page-title-field] {
+  text-decoration: none;
+}
+.tab-rail-item [data-page-title-field],
+.tab-rail-item [data-page-title-field]:focus,
+.tab-rail-item [data-page-title-field]:focus-visible {
+  height: 100%;
+  padding-inline: 0;
+  padding-block: 0;
+  line-height: normal;
+  font-weight: inherit;
+  border-bottom: none;
+  text-decoration: none;
+  box-shadow: none;
+}
+.page-title-edit-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.workspace-shell .page-title-edit-shell [data-page-title-field] {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  line-height: normal;
+  border: 0;
+}
+.workspace-shell .page-title-edit-shell [data-page-title-field]:focus {
+  background: transparent;
+}
+.tab-rail-item:has([data-page-title-field]:focus) {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+.tab-rail-item:has([data-page-title-field]:focus) [aria-label="关闭标签页"] {
+  display: none;
+}
+.page-title-caret {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 1.15em;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--goose-accent-focus);
+  pointer-events: none;
+  animation: page-title-caret-blink 1.1s steps(1) infinite;
+}
+@keyframes page-title-caret-blink {
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-rail-item {
+    transition: none;
+  }
+  .page-title-caret { animation: none; }
+}
+html.is-electron .electron-titlebar .tab-rail-item {
+  height: calc(var(--electron-titlebar-height, 2.75rem) - 8px);
+}
+
+html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
+  --workspace-sidebar-gap: 0px;
+}
+
+
+/* 收起与覆盖模式下，编辑器恢复完整外角，不改变侧栏宽度状态。 */
+.workspace-shell .workspace-stage[data-sidebar-collapsed] {
   gap: 0;
 }
 
-.workspace-shell .workspace-sidebar-pane {
+/* 导航轨道透出 shell 底色；仅文件列表/历史内容面板使用侧栏表面。 */
+.workspace-shell .sidebar-mode-rail {
+  border-right: 0;
+  background: transparent;
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > .sidebar-content-surface {
   background: var(--workspace-sidebar-surface);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+.workspace-shell .workspace-stage .workspace-sidebar-pane .sidebar-size-container .sidebar-design {
+  background: transparent;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] .sidebar-size-container > div > .sidebar-content-surface {
+  border-radius: var(--radius-lg);
+}
+.workspace-shell .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-main-sheet {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 1px;
+  background: var(--workspace-divider);
+  pointer-events: none;
+}
+
+.dark .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  background: var(--workspace-top-edge);
+}
+
+/* 侧栏收起时把手仍可能由 BlockNote 挂到 portal；用根属性藏掉，不让编辑器订侧栏 store。 */
+html[data-sidebar-collapsed] .bn-side-menu {
+  display: none;
+}
+
+.workspace-shell .workspace-sidebar-pane {
+  background: transparent;
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  overflow: hidden;
+  /* 保留跨越两栏接缝的拖拽热区，不增加常驻分隔线。 */
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  font-size: var(--sidebar-font-size, 13px);
+  transition:
+    opacity var(--workspace-sidebar-motion),
+    transform var(--workspace-sidebar-motion),
+    width var(--workspace-sidebar-motion);
+}
+/* 顶栏、导航轨道与外侧留白透出同一张 shell 渐变；覆盖式侧栏仍需独立底色。 */
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] {
+  background: var(--goose-shell-surface);
+}
+
+/* 顶边必须不透底：同一条细线跨越深浅不同的三栏，避免正文看似高出一像素。 */
+.workspace-shell[data-electron-chrome] .workspace-content-frame {
+  border-top-color: var(--workspace-top-edge);
+  /* 只裁掉顶部阴影，保留侧边和底部共用的外沿。 */
+  clip-path: inset(0 -16px -16px);
+}
+
+.workspace-shell .workspace-sidebar-pane[data-sidebar-resizing] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .workspace-stage,
+  .workspace-shell .workspace-content-frame,
+  .workspace-shell .workspace-sidebar-pane,
+  .workspace-shell[data-electron-chrome] .electron-titlebar {
+    transition: none;
+  }
+}
+
+.workspace-shell .workspace-sidebar-pane .sidebar-section-label {
+  font-size: calc(var(--sidebar-font-size, 13px) * 0.85);
+  letter-spacing: 0.02em;
+}
+
+.workspace-shell .workspace-sidebar-pane .main-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-notebook-trigger {
+  font-size: var(--sidebar-font-size, 13px);
 }
 
 .workspace-shell .workspace-main-sheet {
   background: var(--workspace-main-surface);
   border: 0;
-  border-radius: 12px;
-  box-shadow: none;
+  border-radius: var(--radius-lg);
   margin-left: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* 历史页与侧栏控件共享状态色；选中和展开不额外绘制轮廓。 */
+.workspace-shell .history-secondary-control:hover:not(:disabled),
+.workspace-shell .history-version-item[data-selected="false"]:hover,
+.workspace-shell .history-star-control:hover:not(:disabled),
+.workspace-shell .sidebar-footer-control:hover:not([data-active="true"]),
+.workspace-shell .goose-page-icon-trigger:hover {
+  color: var(--goose-interactive-hover-fg);
+  background-color: var(--goose-interactive-hover);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+.workspace-shell .history-version-item[data-selected="true"],
+.workspace-shell .history-version-item[data-selected="true"]:hover,
+.workspace-shell .sidebar-footer-control[data-active="true"],
+.workspace-shell .sidebar-footer-control[data-active="true"]:hover,
+.workspace-shell .goose-page-icon-trigger[data-state="open"],
+.workspace-shell .history-primary-control,
+.workspace-shell .history-primary-control:hover:not(:disabled),
+.workspace-shell .history-secondary-control:active:not(:disabled),
+.workspace-shell .sidebar-footer-control:active,
+.workspace-shell .history-star-control:active:not(:disabled) {
+  color: var(--goose-interactive-selected-fg);
+  background-color: var(--goose-interactive-selected);
+}
+
+.workspace-shell .history-secondary-control:focus-visible,
+.workspace-shell .history-primary-control:focus-visible,
+.workspace-shell .sidebar-footer-control:focus-visible,
+.workspace-shell .history-star-control:focus-visible,
+.workspace-shell .history-version-item:focus-within {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.workspace-shell .history-primary-control:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.workspace-shell .history-star-control svg {
+  opacity: 0;
+}
+
+.workspace-shell .history-version-item:hover .history-star-control svg,
+.workspace-shell .history-version-item:focus-within .history-star-control svg,
+.workspace-shell .history-star-control:focus-visible svg,
+.workspace-shell .history-star-control[data-marked="true"] svg,
+.workspace-shell .history-star-control[aria-busy="true"] svg {
+  opacity: 1;
+}
+
+.workspace-shell .history-star-control:hover svg {
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+.workspace-shell .history-star-control[data-marked="true"] svg {
+  color: var(--goose-interactive-selected-fg) !important;
+  fill: currentColor;
+}
+
+.workspace-shell .sidebar-expand-attention {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  animation: sidebar-expand-attention 4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes sidebar-expand-attention {
+  0% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.16);
+    transform: scale(1);
+  }
+  8% {
+    box-shadow: 0 0 0 7px rgba(15, 23, 42, 0);
+    transform: scale(1.04);
+  }
+  18% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.12);
+    transform: scale(1);
+  }
+  30% {
+    box-shadow: 0 0 0 6px rgba(15, 23, 42, 0);
+    transform: scale(1.03);
+  }
+  42%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0);
+    transform: scale(1);
+  }
+}
+
+.dark .workspace-shell .sidebar-expand-attention {
+  animation-name: sidebar-expand-attention-dark;
+}
+
+@keyframes sidebar-expand-attention-dark {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.16);
+    transform: scale(1);
+  }
+  8% {
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0);
+    transform: scale(1.04);
+  }
+  18% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.12);
+    transform: scale(1);
+  }
+  30% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    transform: scale(1.03);
+  }
+  42%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .sidebar-expand-attention {
+    animation: none;
+  }
 }
 
 .workspace-shell .workspace-editor-surface {
-  background: var(--workspace-main-surface);
+  background: transparent;
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* 页面、文件夹与空白标签由主内容面统一裁切，避免接缝露出第二组内圆角。 */
+.workspace-shell .workspace-content-columns {
+  background: var(--workspace-main-surface);
+}
+.workspace-content-columns:has(> [data-ai-panel-layout="side-panel"]) {
+  gap: 0;
+}
+.workspace-shell .workspace-content-columns > :first-child:not([data-editor-split="true"]) {
+  border-radius: 0;
 }
 
 .workspace-shell .page-scroll-container {
   overflow-anchor: none;
 }
 
-@keyframes page-menu-text-shimmer {
-  0% {
-    background-position: 115% 50%;
-  }
-  100% {
-    background-position: -15% 50%;
-  }
-}
-
+/* 文案装饰不再拥有彩虹/红色渐变，跟随控件与强调色。 */
 .page-menu-generate-image .page-menu-shimmer-text {
-  color: hsl(var(--foreground));
-}
-
-.page-menu-generate-image:hover .page-menu-shimmer-text,
-.page-menu-generate-image:focus .page-menu-shimmer-text,
-.page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
-  background-image: linear-gradient(
-    105deg,
-    hsl(var(--foreground)) 0%,
-    hsl(var(--foreground)) 10%,
-    hsl(350 70% 64%) 24%,
-    hsl(34 82% 65%) 36%,
-    hsl(144 50% 54%) 48%,
-    hsl(199 68% 60%) 60%,
-    hsl(262 62% 68%) 72%,
-    hsl(350 70% 64%) 84%,
-    hsl(var(--foreground)) 94%,
-    hsl(var(--foreground)) 100%
-  );
-  background-size: 240% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: page-menu-text-shimmer 10s linear infinite;
-  will-change: background-position;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-menu-generate-image:hover .page-menu-shimmer-text,
-  .page-menu-generate-image:focus .page-menu-shimmer-text,
-  .page-menu-generate-image[data-highlighted] .page-menu-shimmer-text {
-    animation: none;
-    background-position: 52% 50%;
-  }
-}
-
-@keyframes shortcut-hint-shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 220% 50%;
-  }
+  color: inherit;
 }
 
 .shortcut-capture-hint {
-  color: #ef4444;
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .shortcut-capture-hint {
-    background-image: linear-gradient(
-      90deg,
-      #ef4444 0%,
-      #f87171 36%,
-      #fecaca 50%,
-      #f87171 64%,
-      #ef4444 100%
-    );
-    background-size: 220% 100%;
-    background-position: 0% 50%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: shortcut-hint-shimmer 4.2s linear infinite;
-  }
+  color: var(--goose-interactive-selected-fg);
 }
 
 @keyframes ai-stream-wave-char {
@@ -253,7 +673,8 @@
 /* ── AI Workspace 流式加载动画 ── */
 
 @keyframes ai-workspace-stream-dot {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.25;
     transform: scale(0.85);
   }
@@ -263,40 +684,31 @@
   }
 }
 
-@keyframes ai-workspace-stream-shimmer {
-  0% {
-    background-position: -200% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
 .ai-workspace-stream-dot {
-  background: linear-gradient(90deg, hsl(var(--muted-foreground)), #10b981, hsl(var(--muted-foreground)));
-  background-size: 200% 100%;
-  animation:
-    ai-workspace-stream-dot 1.2s ease-in-out infinite,
-    ai-workspace-stream-shimmer 2s linear infinite;
-  will-change: transform, opacity, background-position;
+  background: var(--goose-interactive-selected-fg);
+  animation: ai-workspace-stream-dot 1.2s ease-in-out infinite;
 }
 
 .ai-workspace-stream-label {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted-foreground)) 0%,
-    #10b981 40%,
-    hsl(var(--muted-foreground)) 80%
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: ai-workspace-stream-shimmer 2.5s linear infinite;
-  will-change: background-position;
+  color: var(--goose-interactive-selected-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-workspace-stream-dot,
+  .ai-stream-wave-char,
+  .ai-stream-wave-dot {
+    animation: none;
+  }
 }
 
 @media (max-width: 768px) {
+  .workspace-shell .workspace-content-frame {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   .workspace-shell .workspace-stage {
     padding: 0;
     gap: 0;
@@ -305,9 +717,27 @@
   .workspace-shell .workspace-main-sheet {
     border-radius: 0;
     margin-left: 0;
+    margin-bottom: 0;
   }
 
   .workspace-shell .workspace-editor-surface {
     border-radius: 0;
   }
+}
+
+
+
+
+/* 外壳与顶栏同色；文件导航和编辑正文各自拥有独立表面。 */
+html.is-electron .workspace-shell,
+html.is-electron body {
+  background: var(--goose-shell-surface);
+}
+
+/* Win frameless：右侧自定义窗控贴齐顶栏高度 */
+html.is-electron.is-win .electron-win-chrome-controls {
+  height: var(--electron-titlebar-height, 2.75rem);
+}
+html.is-electron.is-win .electron-win-chrome-btn {
+  height: 100%;
 }

@@ -1,27 +1,99 @@
 /**
  * 消息列表组件 — Streamdown 渲染 text part，自动吸底，用户上滚暂停
  */
-import { useEffect, useRef, useCallback, useState } from "react";
-import type { ComponentProps } from "react";
+import {
+  cloneElement,
+  createContext,
+  isValidElement,
+  memo,
+  useContext,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Streamdown } from "streamdown";
 import { cjk } from "@streamdown/cjk";
-import { Check } from "lucide-react";
-import { ToolCallCard } from "./ToolCallCard";
+import {
+  ArrowDown,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Image as ImageIcon,
+} from "lucide-react";
+import {
+  ActionBarPrimitive,
+  AttachmentPrimitive,
+  BranchPickerPrimitive,
+  MessagePrimitive,
+  ThreadPrimitive,
+  type TextMessagePartProps,
+  type ToolCallMessagePartProps,
+} from "@assistant-ui/react";
+import { ToolProgressCard } from "./ToolProgressCard";
+import {
+  ApprovalPlanCard,
+  BatchPlanProposal,
+  type ApprovalPlanPart,
+  type BatchApprovalResponse,
+  type BatchUndoResult,
+} from "./ApprovalPlanCard";
 import { TableCard } from "./TableCard";
-import { ChartCard } from "./ChartCard";
+import { ChartCard, ChartIncompleteNotice } from "./ChartCard";
+import { DiagramCard } from "./DiagramCard";
+import { CanvasLoadingCard, SvgArtifactCard } from "./SvgArtifactCard";
+import {
+  extractSvgMarkup,
+  looksLikeCanvasSource,
+  parseCanvasAwareSegments,
+} from "@/lib/notebook-ai/canvasSegments";
+import {
+  isDefaultChatSkillPart,
+  shouldShowToolProgress,
+  type ToolDisplayPart,
+} from "./toolProgressVisibility";
+import type { EditorRef } from "@/components/editor/core/Editor";
+import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
+import {
+  formatChatMessageTime,
+  shouldShowChatTimeDivider,
+} from "@/lib/notebook-ai/messageTime";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
+import { buildUserMessageSegments } from "@/lib/notebook-ai/userMessageSegments";
+import { formatSelectionQuotePromptLabel } from "@/components/editor/ai/composer/selectionQuote";
+import { FullscreenPreview } from "@/components/preview/FullscreenPreview";
+import type { PreviewContent } from "@/lib/preview/previewAction";
+import { cn } from "@/lib/utils";
+import { useEditorPageContext } from "@/components/editor/platform/hostContext";
+import { AssistantUiThreadViewport } from "./AssistantUiThreadViewport";
+import { ChatChrome } from "./beautiful-ui/ChatChrome";
+import { CodeBlock } from "./beautiful-ui/CodeBlock";
+import { StreamingText } from "./beautiful-ui/StreamingText";
+import { navigateNotebookAiReference } from "@/lib/notebook-ai/navigateReference";
+import { useSettings } from "@/stores/useSettings";
+import { usePages } from "@/stores/usePages";
+import { getPageTitle } from "@/components/editor/utils/page-title";
+import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import { getMermaidInitConfig } from "@/lib/imageExport/mermaidTheme";
 
-const ANIMATE_OPTIONS = {
-  animation: "blurIn" as const,
-  duration: 250,
-  sep: "word" as const,
-};
+/** 供测试/外部复用；实现见 userMessageSegments */
+export { buildUserMessageSegments } from "@/lib/notebook-ai/userMessageSegments";
+
+/**
+ * 不用 Streamdown 的 word blurIn：流结束时 isAnimating 翻转会拆掉 animate rehype 插件，
+ * 整段 Markdown 重解析，长中文消息可卡主线程约 1s，连带输入框 BorderBeam 掉帧。
+ * 流式增量本身已有「正在写出」感，足够。
+ */
 
 /** 任务列表的原生 checkbox 替换为自绘勾选框（样式见 notebook-ai.css） */
 function MdInput({
-  node: _node,
+  node,
   ...props
 }: ComponentProps<"input"> & { node?: unknown }) {
+  void node;
   if (props.type === "checkbox") {
     return (
       <span
@@ -35,227 +107,1040 @@ function MdInput({
   return <input {...props} />;
 }
 
-const MD_COMPONENTS = { input: MdInput };
+/**
+ * 覆盖 Streamdown 默认 table。
+ * 默认 table 带 w-full / 无 nowrap，且 utility 可能未被 Tailwind 扫到；
+ * 这里用 plain DOM + notebook-ai.css 锁宽度与横向滚动（兼容 Electron 旧内核）。
+ * node 是 hast 节点，不能落到 DOM 上；className 常含 w-full，直接丢弃。
+ */
+function MdTable({
+  children,
+  node,
+  className,
+  style,
+  ...props
+}: ComponentProps<"table"> & { node?: unknown }) {
+  void node;
+  void className;
+  // 单层 scroll wrapper：外层直接 overflow-x:auto，避免「外 hidden + 内 auto」在旧 Chromium 失效
+  return (
+    <div
+      className="ai-md-table-scroll"
+      data-streamdown="table-wrapper"
+      style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        overflowX: "auto",
+        overflowY: "hidden",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      <table
+        className="ai-md-table"
+        data-streamdown="table"
+        style={{
+          width: "auto",
+          minWidth: "100%",
+          maxWidth: "none",
+          tableLayout: "auto",
+          borderCollapse: "collapse",
+          ...style,
+        }}
+        {...props}
+      >
+        {children}
+      </table>
+    </div>
+  );
+}
+
+function MdThead({
+  children,
+  node,
+  className,
+  ...props
+}: ComponentProps<"thead"> & { node?: unknown }) {
+  void node;
+  void className;
+  return (
+    <thead data-streamdown="table-header" {...props}>
+      {children}
+    </thead>
+  );
+}
+
+function MdTh({
+  children,
+  node,
+  className,
+  style,
+  ...props
+}: ComponentProps<"th"> & { node?: unknown }) {
+  void node;
+  void className;
+  return (
+    <th
+      data-streamdown="table-header-cell"
+      style={{ whiteSpace: "normal", wordBreak: "break-word", ...style }}
+      {...props}
+    >
+      {children}
+    </th>
+  );
+}
+
+function MdTr({
+  children,
+  node,
+  className,
+  ...props
+}: ComponentProps<"tr"> & { node?: unknown }) {
+  void node;
+  void className;
+  return (
+    <tr data-streamdown="table-row" {...props}>
+      {children}
+    </tr>
+  );
+}
+
+function MdTd({
+  children,
+  node,
+  className,
+  style,
+  ...props
+}: ComponentProps<"td"> & { node?: unknown }) {
+  void node;
+  void className;
+  return (
+    <td
+      data-streamdown="table-cell"
+      style={{ whiteSpace: "normal", wordBreak: "break-word", ...style }}
+      {...props}
+    >
+      {children}
+    </td>
+  );
+}
+
+/** 工具 / 正文 part 共享的每消息上下文（组件函数本身保持模块级稳定） */
+interface AssistantToolRenderContextValue {
+  isStreaming: boolean;
+  editorRef?: RefObject<EditorRef | null>;
+  onBatchApproval: (response: BatchApprovalResponse) => Promise<void> | void;
+  onBatchUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
+}
+
+const AssistantToolRenderContext =
+  createContext<AssistantToolRenderContextValue | null>(null);
+
+function languageFromCodeChild(children: ReactNode): string | undefined {
+  if (!isValidElement(children)) return undefined;
+  const className = (children.props as { className?: string }).className ?? "";
+  const match = /(?:^|\s)language-([\w+-]+)/.exec(className);
+  return match?.[1];
+}
+
+function reactNodeToText(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(reactNodeToText).join("");
+  if (isValidElement(node)) {
+    return reactNodeToText((node.props as { children?: ReactNode }).children);
+  }
+  return "";
+}
+
+/** 只包一层 catalog CodeBlock，不替换 Streamdown 高亮。可视化源码走画布卡片。 */
+function MdPre({ children }: ComponentProps<"pre"> & { node?: unknown }) {
+  const ctx = useContext(AssistantToolRenderContext);
+  const language = languageFromCodeChild(children);
+  const source = reactNodeToText(children);
+  if (looksLikeCanvasSource(language, source)) {
+    const svg = extractSvgMarkup(source);
+    if (svg) {
+      return <SvgArtifactCard svg={svg} editorRef={ctx?.editorRef} />;
+    }
+    if (ctx?.isStreaming) return <CanvasLoadingCard />;
+    return null;
+  }
+  // 流式期间沿用 Streamdown：每个 token 都重画 Mermaid 会疯狂闪烁
+  if (!ctx?.isStreaming && language?.toLowerCase() === "mermaid") {
+    return <DiagramCard source={source} editorRef={ctx?.editorRef} />;
+  }
+  const marked = isValidElement(children)
+    ? cloneElement(children as ReactElement<{ "data-block"?: string }>, {
+        "data-block": "true",
+      })
+    : children;
+  return <CodeBlock language={language}>{marked}</CodeBlock>;
+}
+
+const MD_COMPONENTS = {
+  input: MdInput,
+  table: MdTable,
+  thead: MdThead,
+  tr: MdTr,
+  th: MdTh,
+  td: MdTd,
+  pre: MdPre,
+};
+
+/**
+ * 关掉 Streamdown 表格工具条，避免默认 wrapper/utility 依赖。
+ * mermaid 只在流式期间由 Streamdown 渲染，生成完即换成 DiagramCard，
+ * 这段过渡态不需要任何控件。
+ */
+const STREAMDOWN_CONTROLS = {
+  table: false,
+  code: true,
+  mermaid: false,
+} as const;
+
+/** 模块级稳定引用：禁止 plugins={{ cjk }} 内联，避免 Streamdown 每帧当新插件树 */
+const STREAMDOWN_PLUGINS = { cjk };
+
+const STREAMDOWN_MERMAID_LIGHT = {
+  config: getMermaidInitConfig({
+    mode: "light",
+    securityLevel: "loose",
+    useMaxWidth: true,
+  }),
+} as const;
+
+const STREAMDOWN_MERMAID_DARK = {
+  config: getMermaidInitConfig({
+    mode: "dark",
+    securityLevel: "loose",
+    useMaxWidth: true,
+  }),
+} as const;
+
+/**
+ * 助手正文：模块级 memo，禁止在 renderAssistantMessage 内定义 TextPart，
+ * 否则每次父渲染新组件 identity → 卸载/重挂 Streamdown → 流式极卡。
+ */
+const AssistantStreamdownText = memo(function AssistantStreamdownText({
+  text,
+  isStreaming,
+  editorRef,
+}: {
+  text: string;
+  isStreaming: boolean;
+  editorRef?: RefObject<EditorRef | null>;
+}) {
+  const theme = useSettings((state) => state.theme);
+  const resolvedTheme = useResolvedTheme(theme);
+  const mermaid =
+    resolvedTheme === "dark"
+      ? STREAMDOWN_MERMAID_DARK
+      : STREAMDOWN_MERMAID_LIGHT;
+  const segments = useMemo(
+    () => parseCanvasAwareSegments(text, isStreaming),
+    [isStreaming, text],
+  );
+  const hasCanvas = segments.some(
+    (segment) => segment.type === "svg" || segment.type === "pending",
+  );
+
+  if (!text?.trim()) return null;
+
+  return (
+    <StreamingText streaming={isStreaming}>
+      <div className="ai-md notebook-ai-message-text min-w-0 max-w-full select-text text-sm text-foreground">
+        {hasCanvas ? (
+          <div className="min-w-0 max-w-full space-y-[12px]">
+            {segments.map((segment, index) => {
+              if (segment.type === "pending") {
+                return <CanvasLoadingCard key={`canvas-pending-${index}`} />;
+              }
+              if (segment.type === "svg") {
+                return (
+                  <SvgArtifactCard
+                    key={`canvas-svg-${index}`}
+                    svg={segment.content}
+                    editorRef={editorRef}
+                  />
+                );
+              }
+              return (
+                <Streamdown
+                  key={`canvas-md-${index}`}
+                  className="min-w-0 max-w-full space-y-[12px]"
+                  mode={isStreaming ? "streaming" : "static"}
+                  components={MD_COMPONENTS}
+                  plugins={STREAMDOWN_PLUGINS}
+                  controls={STREAMDOWN_CONTROLS}
+                  mermaid={mermaid}
+                  parseIncompleteMarkdown={
+                    isStreaming && index === segments.length - 1
+                  }
+                >
+                  {segment.content}
+                </Streamdown>
+              );
+            })}
+          </div>
+        ) : (
+          <Streamdown
+            className="min-w-0 max-w-full space-y-[12px]"
+            mode={isStreaming ? "streaming" : "static"}
+            components={MD_COMPONENTS}
+            plugins={STREAMDOWN_PLUGINS}
+            controls={STREAMDOWN_CONTROLS}
+            mermaid={mermaid}
+            parseIncompleteMarkdown={isStreaming}
+          >
+            {text}
+          </Streamdown>
+        )}
+      </div>
+    </StreamingText>
+  );
+});
+
+function LetterFoldChevron() {
+  return (
+    <svg
+      className="notebook-ai-letter-chev"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+/** 有变更计划时，把说明收进折叠，默认收起，把版面让给整页改动。 */
+function AssistantLetterFold({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="notebook-ai-letter-fold">
+      <button
+        type="button"
+        className="notebook-ai-letter-fold-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <LetterFoldChevron />
+        <span>思考</span>
+      </button>
+      {open ? (
+        <div className="notebook-ai-letter-fold-body">{children}</div>
+      ) : null}
+    </div>
+  );
+}
+
+/** 从 context 读 isStreaming，避免 stream 结束时换 Text 组件类型导致整段 remount */
+function AssistantTextPart({ text, status }: TextMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  // 多轮工具调用会留下多段正文；只有当前仍在输出的 part 才是 running
+  const isPartStreaming =
+    Boolean(ctx?.isStreaming) && status.type === "running";
+  return (
+    <AssistantStreamdownText
+      text={text}
+      isStreaming={isPartStreaming}
+      editorRef={ctx?.editorRef}
+    />
+  );
+}
+
+/** 工作卡 footer：只渲染 executeBatchPlan 的 embedded 审批，其余 part 一律 null */
+function AssistantApprovalPart({ artifact }: ToolCallMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  if (!ctx) return null;
+  const { isStreaming, onBatchApproval, onBatchUndo } = ctx;
+  const part = artifact as ToolDisplayPart | undefined;
+  if (!part || part.type !== "tool-executeBatchPlan") return null;
+  if (!shouldShowToolPart(part, isStreaming)) return null;
+  if (
+    part.state === "input-streaming" ||
+    part.state === "input-available" ||
+    part.state === "call" ||
+    part.state === "partial-call"
+  ) {
+    return null;
+  }
+  return (
+    <ApprovalPlanCard
+      part={part}
+      onApprovalResponse={onBatchApproval}
+      onUndo={onBatchUndo}
+      embedded
+    />
+  );
+}
+
+/** 纸外 artifact：只渲染 Table/Chart/Diagram/Svg，text 与审批一律 null */
+function AssistantArtifactPart({ artifact }: ToolCallMessagePartProps) {
+  const ctx = useContext(AssistantToolRenderContext);
+  if (!ctx) return null;
+  const { isStreaming, editorRef } = ctx;
+  const part = artifact as ToolDisplayPart | undefined;
+  if (!part || part.type === "tool-executeBatchPlan") return null;
+  if (!shouldShowToolPart(part, isStreaming)) return null;
+  return renderToolVisual(
+    part,
+    part.toolCallId ?? part.type,
+    editorRef,
+    isStreaming,
+  );
+}
+
+function NullMessagePart() {
+  return null;
+}
+
+/**
+ * MessagePrimitive.Parts 的 components 必须模块级常量，避免 identity 抖动。
+ * 同一条消息拆三份 map 各渲一类 part、其余 null，防止正文/审批/artifact 双渲染。
+ */
+export const ASSISTANT_TEXT_PARTS = {
+  Text: AssistantTextPart,
+  Reasoning: NullMessagePart,
+  tools: { Override: NullMessagePart },
+};
+
+export const ASSISTANT_APPROVAL_PARTS = {
+  Text: NullMessagePart,
+  Reasoning: NullMessagePart,
+  tools: { Override: AssistantApprovalPart },
+};
+
+export const ASSISTANT_ARTIFACT_PARTS = {
+  Text: NullMessagePart,
+  Reasoning: NullMessagePart,
+  tools: { Override: AssistantArtifactPart },
+};
 
 interface ChatMessagesProps {
   messages: NotebookAiMessage[];
   /** 正在流式输出的消息 id（最后一条 assistant msg id）*/
   streamingMessageId?: string;
+  editorRef?: RefObject<EditorRef | null>;
+  /** 全屏会话更宽、居中；侧栏保持紧凑 */
+  layout?: "side-panel" | "fullscreen";
+  onEmptySuggestion?: (text: string) => void;
+  onBatchApproval: (response: BatchApprovalResponse) => Promise<void> | void;
+  onBatchUndo: (toolCallId: string, runId: string) => Promise<BatchUndoResult>;
 }
 
-interface ReasoningPartProps {
-  text: string;
+const INPUT_ONLY_STATES = new Set([
+  "call",
+  "partial-call",
+  "input-streaming",
+  "input-available",
+  "approval-requested",
+  "approval-responded",
+]);
+
+function getTextPartText(message: NotebookAiMessage) {
+  const textPart = message.parts?.find((p) => p.type === "text");
+  return textPart && "text" in textPart
+    ? (textPart as { text: string }).text
+    : "";
 }
 
-function ReasoningBlock({ text }: ReasoningPartProps) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="my-1.5 rounded-[8px] border border-border bg-[var(--goose-interactive-hover)] text-xs">
-      <button
-        type="button"
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-muted-foreground"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="text-[10px] uppercase tracking-wide">思考过程</span>
-        <span className="ml-auto text-[10px]">{open ? "收起" : "展开"}</span>
-      </button>
-      {open && (
-        <div className="border-t border-border px-3 py-2 text-muted-foreground italic text-[11px] leading-relaxed whitespace-pre-wrap">
-          {text}
-        </div>
-      )}
-    </div>
+function collectReasoningText(message: NotebookAiMessage): string {
+  const chunks: string[] = [];
+  for (const part of message.parts ?? []) {
+    if (part.type !== "reasoning" || !("text" in part)) continue;
+    const text = String(part.text ?? "").trim();
+    if (text) chunks.push(text);
+  }
+  return chunks.join("\n");
+}
+
+function getUserDisplayText(message: NotebookAiMessage) {
+  const metadataText = message.metadata?.displayText?.trim();
+  if (metadataText) return metadataText;
+
+  const rawText = getTextPartText(message).trim();
+  const hiddenContextStart = rawText.indexOf("\n\n本轮笔记上下文：");
+  if (rawText.startsWith("用户输入：") && hiddenContextStart > -1) {
+    return rawText.slice("用户输入：".length, hiddenContextStart).trim();
+  }
+  if (rawText.startsWith("用户输入：")) {
+    return rawText.slice("用户输入：".length).trim();
+  }
+  return rawText;
+}
+
+function getUserImageParts(message: NotebookAiMessage) {
+  return (message.parts ?? []).filter(
+    (
+      part,
+    ): part is {
+      type: "file";
+      url: string;
+      filename?: string;
+      mediaType: string;
+    } =>
+      part.type === "file" &&
+      "url" in part &&
+      typeof part.url === "string" &&
+      "mediaType" in part &&
+      typeof part.mediaType === "string" &&
+      part.mediaType.startsWith("image/"),
   );
+}
+
+function shouldShowToolPart(
+  part: ToolDisplayPart,
+  isMessageStreaming: boolean,
+) {
+  if (isDefaultChatSkillPart(part)) return false;
+  const state = part.state ?? "";
+  if (
+    part.type === "tool-executeBatchPlan" &&
+    (state === "approval-requested" || state === "approval-responded")
+  ) {
+    return true;
+  }
+  const hasTerminalPayload =
+    state === "output-available" ||
+    state === "output-error" ||
+    state === "output-denied" ||
+    part.output !== undefined ||
+    Boolean(part.errorText);
+
+  return (
+    isMessageStreaming || !INPUT_ONLY_STATES.has(state) || hasTerminalPayload
+  );
+}
+
+/** 与 AssistantApprovalPart 的 input 态 guard 保持一致：只有真正会渲染的审批 part 才需要 footer */
+function hasVisibleApprovalPart(
+  parts: ToolDisplayPart[],
+  isMessageStreaming: boolean,
+) {
+  return parts.some(
+    (part) =>
+      part.type === "tool-executeBatchPlan" &&
+      shouldShowToolPart(part, isMessageStreaming) &&
+      part.state !== "input-streaming" &&
+      part.state !== "input-available" &&
+      part.state !== "call" &&
+      part.state !== "partial-call",
+  );
+}
+
+/** 与 hasVisibleApprovalPart 同一套 guard，取出第一条可见的审批 part 给提案预览用 */
+function findVisibleApprovalPart(
+  parts: ToolDisplayPart[],
+  isMessageStreaming: boolean,
+): ApprovalPlanPart | undefined {
+  return parts.find(
+    (part) =>
+      part.type === "tool-executeBatchPlan" &&
+      shouldShowToolPart(part, isMessageStreaming) &&
+      part.state !== "input-streaming" &&
+      part.state !== "input-available" &&
+      part.state !== "call" &&
+      part.state !== "partial-call",
+  );
+}
+
+function renderToolVisual(
+  part: ToolDisplayPart,
+  key: string | number,
+  editorRef: RefObject<EditorRef | null> | undefined,
+  isStreaming: boolean,
+) {
+  if (
+    part.type === "tool-showTable" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
+    const tableData = part.output as {
+      title?: string;
+      columns: string[];
+      rows: string[][];
+    };
+    return (
+      <TableCard
+        key={key}
+        title={tableData.title}
+        columns={tableData.columns}
+        rows={tableData.rows}
+        editorRef={editorRef}
+      />
+    );
+  }
+
+  if (
+    part.type === "tool-showChart" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
+    const chartData = part.output as {
+      type: "bar" | "line" | "pie";
+      title?: string;
+      categories?: string[];
+      series: Array<{ name: string; data: number[] }>;
+    };
+    if (!Array.isArray(chartData.series) || chartData.series.length === 0) {
+      return <ChartIncompleteNotice key={key} title={chartData.title} />;
+    }
+    return (
+      <ChartCard
+        key={key}
+        type={chartData.type}
+        title={chartData.title}
+        categories={chartData.categories}
+        series={chartData.series}
+        editorRef={editorRef}
+      />
+    );
+  }
+
+  if (
+    part.type === "tool-showDiagram" &&
+    part.state === "output-available" &&
+    part.output
+  ) {
+    const diagramData = part.output as {
+      title?: string;
+      language: "mermaid";
+      source: string;
+    };
+    return (
+      <DiagramCard
+        key={key}
+        title={diagramData.title}
+        source={diagramData.source}
+        editorRef={editorRef}
+      />
+    );
+  }
+
+  if (part.type === "tool-showSvg") {
+    if (part.state === "output-available" && part.output) {
+      const svgData = part.output as {
+        title?: string;
+        svg: string;
+      };
+      return (
+        <SvgArtifactCard
+          key={key}
+          title={svgData.title}
+          svg={svgData.svg}
+          editorRef={editorRef}
+        />
+      );
+    }
+    if (isStreaming && part.state !== "output-error") {
+      const input = part.input as { title?: string } | undefined;
+      return <CanvasLoadingCard key={key} title={input?.title} />;
+    }
+  }
+
+  return null;
 }
 
 export function ChatMessages({
   messages,
   streamingMessageId,
+  editorRef,
+  layout = "side-panel",
+  onEmptySuggestion,
+  onBatchApproval,
+  onBatchUndo,
 }: ChatMessagesProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isUserScrolled = useRef(false);
-  const lastScrollTop = useRef(0);
+  const { onOpenPage } = useEditorPageContext();
+  const isFullscreen = layout === "fullscreen";
+  const [previewContent, setPreviewContent] = useState<PreviewContent | null>(
+    null,
+  );
+  // 只在被引用页面的标题变化时重绘历史消息，正文仍按发送时的快照拆分。
+  usePages((state) =>
+    messages.flatMap((message) => message.metadata?.references ?? [])
+      .map((reference) => {
+        const page = state.pages[reference.pageId];
+        return page ? getPageTitle(page) : reference.titleSnapshot;
+      }).join("\u0000"),
+  );
+  const messageById = useMemo(
+    () => new Map(messages.map((message) => [message.id, message])),
+    [messages],
+  );
 
-  const scrollToBottom = useCallback((force = false) => {
-    const el = containerRef.current;
-    if (!el) return;
-    if (force || !isUserScrolled.current) {
-      el.scrollTop = el.scrollHeight;
+  /** messageId → 格式化时间文案；无则不展示分隔条 */
+  const showTimeById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (let i = 0; i < messages.length; i++) {
+      const current = messages[i];
+      const previous = i > 0 ? messages[i - 1] : null;
+      if (!shouldShowChatTimeDivider(current, previous)) continue;
+      const at = current.metadata?.createdAt;
+      if (typeof at !== "number") continue;
+      const label = formatChatMessageTime(at);
+      if (label) map.set(current.id, label);
     }
-  }, []);
+    return map;
+  }, [messages]);
 
-  // 检测用户手动上滚
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const diff = el.scrollTop - lastScrollTop.current;
-      lastScrollTop.current = el.scrollTop;
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      if (atBottom) {
-        isUserScrolled.current = false;
-      } else if (diff < 0) {
-        isUserScrolled.current = true;
-      }
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  const toolRenderBase = useMemo(
+    () => ({
+      editorRef,
+      onBatchApproval,
+      onBatchUndo,
+    }),
+    [editorRef, onBatchApproval, onBatchUndo],
+  );
 
-  // 新消息到来时吸底
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // 流式结束后强制吸底
-  useEffect(() => {
-    if (!streamingMessageId) {
-      isUserScrolled.current = false;
-      scrollToBottom(true);
-    }
-  }, [streamingMessageId, scrollToBottom]);
-
-  if (messages.length === 0) {
-    return (
-      <div
-        ref={containerRef}
-        className="flex flex-1 items-center justify-center overflow-y-auto px-4"
+  const MessageActionBar = () => (
+    <div className="notebook-ai-message-actions mt-1 flex h-6 min-h-6 items-center gap-1">
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="never"
+        autohideFloat="never"
+        className="flex items-center gap-1"
       >
-        <p className="text-center text-sm text-muted-foreground leading-relaxed">
-          向 AI 提问，让它帮你整理、搜索、创作笔记
-        </p>
-      </div>
+        <ActionBarPrimitive.Copy
+          copiedDuration={1600}
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:hidden"
+          aria-label="复制消息"
+          title="复制"
+        >
+          <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </ActionBarPrimitive.Copy>
+      </ActionBarPrimitive.Root>
+      <BranchPickerPrimitive.Root
+        hideWhenSingleBranch
+        className="flex items-center gap-0.5 text-[11px] text-muted-foreground"
+      >
+        <BranchPickerPrimitive.Previous
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
+          aria-label="上一个回答分支"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </BranchPickerPrimitive.Previous>
+        <span>
+          <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
+        </span>
+        <BranchPickerPrimitive.Next
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
+          aria-label="下一个回答分支"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </BranchPickerPrimitive.Next>
+      </BranchPickerPrimitive.Root>
+    </div>
+  );
+
+  const renderUserMessage = (msg: NotebookAiMessage) => {
+    const text = getUserDisplayText(msg);
+    const hasLiveImages = getUserImageParts(msg).length > 0;
+    const persistedImages = msg.metadata?.imageAttachments ?? [];
+    const references = msg.metadata?.references ?? [];
+    const skills = msg.metadata?.skills ?? [];
+    const selectionQuotes = msg.metadata?.selectionQuotes ?? [];
+    const textSegments = buildUserMessageSegments(
+      text,
+      references,
+      skills,
+      selectionQuotes,
     );
-  }
+
+    return (
+      // 整行 w-full + justify-end：百分比/可用宽度有确定参照，避免 w-fit+max-w% 在旧内核上失效。
+      // 左侧 pl 留呼吸缝；气泡 min-w-0 可在剩余宽度内换行，不再横向撑破后被左侧裁切。
+      <MessagePrimitive.Root className="notebook-ai-message notebook-ai-message-user flex w-full min-w-0 justify-end pl-5">
+        <div className="flex min-w-0 max-w-full flex-col items-end gap-1">
+          <div className="notebook-ai-message-text notebook-ai-user-bubble min-w-0 max-w-full space-y-2 rounded-[14px] rounded-tr-[4px] px-3 py-2 text-sm text-foreground leading-relaxed">
+            <MessagePrimitive.Attachments>
+              {({ attachment }) => {
+                const imagePart = attachment.content.find(
+                  (part) => part.type === "image",
+                );
+                return (
+                  <AttachmentPrimitive.Root className="inline-flex max-w-full flex-col gap-1">
+                    {imagePart?.type === "image" ? (
+                      <img
+                        src={imagePart.image}
+                        alt={attachment.name}
+                        className="h-20 w-20 cursor-zoom-in rounded-[8px] object-cover"
+                        onClick={() =>
+                          setPreviewContent({
+                            kind: "image",
+                            data: imagePart.image,
+                            fileName: attachment.name,
+                          })
+                        }
+                      />
+                    ) : null}
+                    <span className="sr-only">
+                      <AttachmentPrimitive.Name />
+                    </span>
+                  </AttachmentPrimitive.Root>
+                );
+              }}
+            </MessagePrimitive.Attachments>
+            {!hasLiveImages && persistedImages.length > 0 ? (
+              <div className="flex flex-wrap justify-end gap-1.5">
+                {persistedImages.map((image) => (
+                  <span
+                    key={`${image.filename}-${image.mediaType}`}
+                    className="inline-flex max-w-full items-center gap-1 rounded-[6px] bg-background/45 px-1.5 py-1 text-[11px] text-muted-foreground"
+                  >
+                    <ImageIcon
+                      className="h-3 w-3 shrink-0"
+                      strokeWidth={1.75}
+                    />
+                    <span className="max-w-[170px] truncate">
+                      {image.filename}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {textSegments.length > 0 ? (
+              <div className="notebook-ai-message-inline select-text">
+                {textSegments.map((segment, index) => {
+                  if (segment.type === "text") {
+                    return (
+                      <span
+                        key={`text-${index}`}
+                        className="notebook-ai-message-inline-text"
+                      >
+                        {segment.text}
+                      </span>
+                    );
+                  }
+                  if (segment.type === "skill") {
+                    return (
+                      <span
+                        key={segment.key}
+                        data-ai-skill-chip=""
+                        className="ai-composer-chip inline-flex max-w-full min-w-0 items-center align-middle mx-1 truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
+                        title={`本地 Skill：/${segment.skill.name}`}
+                        aria-label={`本地 Skill：/${segment.skill.name}`}
+                      >
+                        /{segment.skill.name}
+                      </span>
+                    );
+                  }
+                  if (segment.type === "selectionQuote") {
+                    return (
+                      <span
+                        key={segment.key}
+                        data-ai-selection-quote-chip=""
+                        className="ai-composer-chip inline-flex max-w-full min-w-0 items-center align-middle mx-1 truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
+                        title={segment.quote.text}
+                        aria-label={`选区引用，来自${segment.quote.pageTitle}`}
+                      >
+                        {formatSelectionQuotePromptLabel(segment.quote)}
+                      </span>
+                    );
+                  }
+                  const page = usePages.getState().pages[segment.reference.pageId];
+                  const title = page ? getPageTitle(page) : segment.reference.titleSnapshot;
+                  return (
+                    <button
+                      key={segment.key}
+                      type="button"
+                      data-ai-mention-chip=""
+                      className="ai-composer-chip inline-flex max-w-full min-w-0 items-center align-middle mx-1 truncate rounded-[6px] px-1.5 text-[11px] font-medium leading-none"
+                      title={`打开：${title}`}
+                      aria-label={`打开：${title}`}
+                      onClick={() =>
+                        navigateNotebookAiReference(
+                          segment.reference.pageId,
+                          onOpenPage,
+                        )
+                      }
+                    >
+                      @{title}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+          <MessageActionBar />
+        </div>
+      </MessagePrimitive.Root>
+    );
+  };
+
+  const renderAssistantMessage = (
+    msg: NotebookAiMessage,
+    isStreaming: boolean,
+  ) => {
+    const progressToolParts = (msg.parts ?? [])
+      .filter(isNotebookAiToolPart)
+      .filter((part) => shouldShowToolPart(part, isStreaming));
+    const showToolProgress =
+      progressToolParts.length > 0 &&
+      shouldShowToolProgress(progressToolParts, isStreaming);
+    const hasText = getTextPartText(msg).trim().length > 0;
+    const reasoningText = collectReasoningText(msg);
+    // 发送后立刻走处理进度，不再单独出一张「思考中」卡片；有正文也出纸，纯问答完成后纸保留
+    const showWorkCard =
+      showToolProgress ||
+      hasText ||
+      (isStreaming && (!hasText || reasoningText.length > 0));
+
+    const toolRenderValue: AssistantToolRenderContextValue = {
+      ...toolRenderBase,
+      isStreaming,
+    };
+    const visibleApprovalPart = findVisibleApprovalPart(
+      progressToolParts,
+      isStreaming,
+    );
+
+    return (
+      <AssistantToolRenderContext.Provider value={toolRenderValue}>
+        <MessagePrimitive.Root
+          className="notebook-ai-message notebook-ai-message-assistant min-w-0 max-w-full overflow-x-hidden space-y-4"
+        >
+          {showWorkCard ? (
+            <ToolProgressCard
+              parts={progressToolParts}
+              isMessageStreaming={isStreaming}
+              thinkingText={reasoningText}
+              footer={
+                hasVisibleApprovalPart(progressToolParts, isStreaming) ? (
+                  <MessagePrimitive.Parts
+                    components={ASSISTANT_APPROVAL_PARTS}
+                  />
+                ) : undefined
+              }
+            >
+              {visibleApprovalPart && hasText ? (
+                <AssistantLetterFold>
+                  <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+                </AssistantLetterFold>
+              ) : (
+                <MessagePrimitive.Parts components={ASSISTANT_TEXT_PARTS} />
+              )}
+              {visibleApprovalPart ? (
+                <BatchPlanProposal part={visibleApprovalPart} />
+              ) : null}
+            </ToolProgressCard>
+          ) : null}
+          <MessagePrimitive.Parts components={ASSISTANT_ARTIFACT_PARTS} />
+          <MessagePrimitive.Error>
+            <p className="text-xs text-destructive">这条回复生成失败。</p>
+          </MessagePrimitive.Error>
+          {/* 流式中不占位：避免底部空出一截操作栏高度 */}
+          {!isStreaming ? <MessageActionBar /> : null}
+        </MessagePrimitive.Root>
+      </AssistantToolRenderContext.Provider>
+    );
+  };
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 overflow-y-auto px-3 py-3 space-y-3 [scrollbar-width:thin]"
-    >
-      {messages.map((msg) => {
-        const isUser = msg.role === "user";
-        const isStreaming = streamingMessageId === msg.id;
-
-        if (isUser) {
-          const textPart = msg.parts?.find((p) => p.type === "text");
-          const text = textPart && "text" in textPart ? (textPart as { text: string }).text : "";
-          return (
-            <div key={msg.id} className="flex justify-end">
-              <div className="max-w-[85%] rounded-[12px] rounded-tr-[4px] bg-[var(--goose-interactive-selected)] px-3 py-2 text-sm text-foreground leading-relaxed">
-                {text}
-              </div>
+    <ChatChrome className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
+      <AssistantUiThreadViewport
+        className={cn(
+          // min-w-0：flex 子项可收缩；横向溢出由消息内表格滚动，这里只负责纵向
+          "notebook-ai-messages min-w-0 flex-1 overflow-x-hidden overflow-y-scroll [scrollbar-width:thin]",
+          messages.length === 0
+            ? cn(
+                "flex items-start justify-center pb-[var(--ai-composer-float-pad,7.5rem)]",
+                isFullscreen ? "px-6 pt-5" : "p-0",
+              )
+            : undefined,
+          messages.length > 0 ? (isFullscreen ? "px-6 pt-5" : "px-3 pt-3") : undefined,
+        )}
+      >
+        {messages.length === 0 ? (
+          <div
+            className={cn(
+              "notebook-ai-empty-state w-full min-w-0",
+              isFullscreen && "notebook-ai-empty-state-fullscreen",
+            )}
+          >
+            <h2 className="notebook-ai-empty-title text-foreground">从这一页开始。</h2>
+            <p className="notebook-ai-empty-description text-muted-foreground">
+              选一段文字，或直接说说想怎么改。
+            </p>
+            <div className="notebook-ai-empty-suggestions flex flex-col">
+              {["润色开头", "梳理结构"].map((text) => (
+                <button
+                  key={text}
+                  type="button"
+                  className="notebook-ai-empty-suggestion"
+                  onClick={() => onEmptySuggestion?.(text)}
+                  aria-label={`发送建议：${text}`}
+                >
+                  <span>{text}</span><span aria-hidden="true">→</span>
+                </button>
+              ))}
             </div>
-          );
-        }
-
-        // assistant message
-        return (
-          <div key={msg.id} className="space-y-1">
-            {msg.parts?.map((part, pi) => {
-              const partType = part.type;
-
-              if (partType === "text") {
-                const textContent = (part as { text: string }).text;
-                return (
-                  <div key={pi} className="ai-md text-sm text-foreground">
-                    <Streamdown
-                      className="space-y-2"
-                      components={MD_COMPONENTS}
-                      isAnimating={isStreaming}
-                      animated={ANIMATE_OPTIONS}
-                      plugins={{ cjk }}
-                      parseIncompleteMarkdown={isStreaming}
-                    >
-                      {textContent}
-                    </Streamdown>
-                  </div>
-                );
-              }
-
-              if (partType === "reasoning") {
-                const reasoningText = (part as { text: string }).text ?? "";
-                return (
-                  <ReasoningBlock key={pi} text={reasoningText} />
-                );
-              }
-
-              // tool parts
-              if (partType?.startsWith("tool-")) {
-                const toolPart = part as {
-                  type: string;
-                  toolCallId: string;
-                  state: string;
-                  input?: unknown;
-                  output?: unknown;
-                };
-                const state = toolPart.state ?? "";
-                const output = toolPart.output;
-
-                // showTable: output-available 渲染 TableCard
-                if (partType === "tool-showTable" && state === "output-available" && output) {
-                  const tableData = output as {
-                    title?: string;
-                    columns: string[];
-                    rows: string[][];
-                  };
-                  return (
-                    <div key={pi}>
-                      <ToolCallCard
-                        toolName={partType}
-                        state={state}
-                        input={toolPart.input}
-                      />
-                      <TableCard
-                        title={tableData.title}
-                        columns={tableData.columns}
-                        rows={tableData.rows}
-                      />
-                    </div>
-                  );
-                }
-
-                // showChart: output-available 渲染 ChartCard
-                if (partType === "tool-showChart" && state === "output-available" && output) {
-                  const chartData = output as {
-                    type: "bar" | "line" | "pie";
-                    title?: string;
-                    categories?: string[];
-                    series: Array<{ name: string; data: number[] }>;
-                  };
-                  return (
-                    <div key={pi}>
-                      <ToolCallCard
-                        toolName={partType}
-                        state={state}
-                        input={toolPart.input}
-                      />
-                      <ChartCard
-                        type={chartData.type}
-                        title={chartData.title}
-                        categories={chartData.categories}
-                        series={chartData.series}
-                      />
-                    </div>
-                  );
-                }
-
-                return (
-                  <ToolCallCard
-                    key={pi}
-                    toolName={partType}
-                    state={state}
-                    input={toolPart.input}
-                    output={output}
-                  />
-                );
-              }
-
-              return null;
-            })}
           </div>
-        );
-      })}
-    </div>
+        ) : (
+          <div
+            className={cn(
+              "mx-auto w-full min-w-0 max-w-full space-y-3",
+              isFullscreen ? "max-w-[720px]" : "max-w-none",
+            )}
+          >
+            <ThreadPrimitive.Messages>
+              {({ message }) => {
+                const sourceMessage = messageById.get(message.id);
+                if (!sourceMessage) return null;
+                const timeLabel = showTimeById.get(sourceMessage.id);
+                const body =
+                  sourceMessage.role === "user"
+                    ? renderUserMessage(sourceMessage)
+                    : renderAssistantMessage(
+                        sourceMessage,
+                        streamingMessageId === sourceMessage.id,
+                      );
+                return (
+                  <>
+                    {timeLabel ? (
+                      <div
+                        className="notebook-ai-message-time"
+                        role="separator"
+                        aria-label={timeLabel}
+                      >
+                        {timeLabel}
+                      </div>
+                    ) : null}
+                    {body}
+                  </>
+                );
+              }}
+            </ThreadPrimitive.Messages>
+            <ThreadPrimitive.ViewportFooter className="pointer-events-none sticky bottom-[calc(var(--ai-composer-float-pad,7.5rem)+12px)] z-10 flex h-0 justify-center overflow-visible">
+              <ThreadPrimitive.ScrollToBottom
+                className="pointer-events-auto flex h-8 w-8 -translate-y-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:hidden"
+                aria-label="滚动到底部"
+                title="滚动到底部"
+              >
+                <ArrowDown className="h-4 w-4" strokeWidth={1.75} />
+              </ThreadPrimitive.ScrollToBottom>
+            </ThreadPrimitive.ViewportFooter>
+            <div
+              className="pointer-events-none h-[var(--ai-composer-float-pad,7.5rem)] shrink-0"
+              aria-hidden
+            />
+          </div>
+        )}
+      </AssistantUiThreadViewport>
+      <FullscreenPreview
+        open={Boolean(previewContent)}
+        content={previewContent}
+        title={previewContent?.fileName}
+        onClose={() => setPreviewContent(null)}
+      />
+    </ChatChrome>
   );
 }

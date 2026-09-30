@@ -1,24 +1,23 @@
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { usePages } from "@/stores/usePages";
-import { wasRecentlyInteracting } from "@/lib/editor-interaction-signal";
 import {
   isDiskContentMatchingSnapshot,
   wasRecentlySelfWritten,
   updateSnapshotAfterWrite,
+  updateSnapshotStat,
+  isStatMatchingSnapshot,
+  deleteLocalMdSnapshot,
+  type LocalMdFileStat,
 } from "@/lib/local-md-snapshot";
 import { wasRecentlySelfMoved } from "@/stores/pages/actions/localFolder/move";
-
-interface GooseFs {
-  existsAsync?: (path: string) => Promise<boolean>;
-  exists: (path: string) => boolean;
-  watch: (path: string, callback: (eventType: string, filename: string) => void) => void;
-  unwatch: (path: string) => void;
-  readFileStatAsync?: (path: string) => Promise<{ ok: boolean; content?: string; error?: string }>;
-  readFileStat?: (path: string) => { ok: boolean; content?: string; error?: string };
-  readFileAsync?: (path: string) => Promise<string | null>;
-  readFile?: (path: string) => string | null;
-}
+import { useSettings } from "@/stores/useSettings";
+import { shouldIgnoreLocalRelativePath } from "@/lib/local-folder-scanner";
+import {
+  confirmRecoveredLocalSave,
+  discardPendingLocalSave,
+} from "@/stores/pages/folderSync";
+import { wasRecentlyInteracting } from "@/lib/editor-interaction-signal";
 
 interface Notebook {
   id: string;
@@ -37,7 +36,7 @@ interface UseLocalFolderWatchOptions {
 }
 
 async function readDiskContent(filePath: string): Promise<string | null> {
-  const fs = (window as any).gooseFs as GooseFs | undefined;
+  const fs = window.gooseFs;
   if (!fs) return null;
   try {
     if (fs.readFileStatAsync) {
@@ -54,6 +53,16 @@ async function readDiskContent(filePath: string): Promise<string | null> {
     // 读失败按「无从判断」处理，调用方跳过本次检查
   }
   return null;
+}
+
+async function statDisk(filePath: string): Promise<LocalMdFileStat | null> {
+  const fs = window.gooseFs;
+  if (!fs?.statAsync) return null;
+  try {
+    return (await fs.statAsync(filePath)) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -103,20 +112,44 @@ function showConflictToast(
 /** 冲突 toast 两个按钮的标准行为（watch change / pre-save / 新鲜度检查共用）。 */
 function conflictHandlers(filePath: string, pageId: string) {
   return {
-    // 保留我的编辑：清空快照使 isLocalMdUnchanged 返回 false（否则 diff 相同时
-    // 跳过写盘），再 force=true 绕过写盘前冲突检查强制落盘。
+    // 保留我的编辑：以磁盘当前内容为已知基线（内存编辑仍 dirty），再 force
+    // 落盘覆盖。禁止把快照写成 ""——空快照会让之后任何磁盘内容都判成外部修改。
+    // 读盘失败则 deleteLocalMdSnapshot：无快照时 isLocalMdUnchanged 为 false
+    //（不会跳过写盘），isDiskContentMatchingSnapshot 为 true（不误报冲突）。
     onKeepMine: () => {
-      updateSnapshotAfterWrite(filePath, "");
-      const pg = usePages.getState().pages[pageId];
-      if (!pg) return;
-      void usePages.getState().saveLocalPageContent(
-        pageId,
-        pg.content as any,
-        { force: true },
-      );
+      void (async () => {
+        try {
+          const diskContent = await readDiskContent(filePath);
+          if (diskContent !== null) {
+            updateSnapshotAfterWrite(filePath, diskContent);
+            try {
+              const stat = await statDisk(filePath);
+              if (stat) updateSnapshotStat(filePath, stat);
+            } catch {
+              // 指纹失败不影响强制落盘
+            }
+          } else {
+            deleteLocalMdSnapshot(filePath);
+          }
+        } catch {
+          deleteLocalMdSnapshot(filePath);
+        }
+        const pg = usePages.getState().pages[pageId];
+        if (!pg) return;
+        void usePages
+          .getState()
+          .saveLocalPageContent(pageId, pg.content as any, { force: true })
+          .then((saved) => {
+            if (saved) confirmRecoveredLocalSave(pageId);
+          })
+          .catch((error) => {
+            console.error("[local-folder] conflict force-save failed", error);
+          });
+      })();
     },
     // 加载磁盘版本：丢弃本地编辑，重读磁盘
     onLoadDisk: () => {
+      discardPendingLocalSave(pageId);
       usePages.setState((s) => ({
         dirtyLocalPageIds: { ...s.dirtyLocalPageIds, [pageId]: false },
       }));
@@ -126,9 +159,9 @@ function conflictHandlers(filePath: string, pageId: string) {
 }
 
 /**
- * 主动新鲜度检查：watch 不在场期间（uTools 窗口隐藏、查看其他笔记本、插件退出）
+ * 主动新鲜度检查：watch 不在场期间（Electron 窗口隐藏、查看其他笔记本、插件退出）
  * 的外部修改收不到 change 事件，在切页 / 窗口恢复可见时主动读盘 diff 兜底。
- * 没变 → 无操作；变了且页面干净 → 静默重载（无感）；变了且有未保存编辑 → 冲突提示。
+ * 没变 → 无操作；变了且页面干净且无近期交互 → 静默重载；变了且 dirty / 刚聚焦编辑器 → 冲突提示。
  */
 async function checkLocalPageFreshness(pageId: string): Promise<void> {
   const page = usePages.getState().pages[pageId];
@@ -139,7 +172,8 @@ async function checkLocalPageFreshness(pageId: string): Promise<void> {
   if (diskContent === null) return;
   if (isDiskContentMatchingSnapshot(filePath, diskContent)) return;
 
-  if (usePages.getState().dirtyLocalPageIds[pageId]) {
+  const isDirty = Boolean(usePages.getState().dirtyLocalPageIds[pageId]);
+  if (isDirty || wasRecentlyInteracting(2000)) {
     const { onKeepMine, onLoadDisk } = conflictHandlers(filePath, pageId);
     showConflictToast(filePath, pageId, onKeepMine, onLoadDisk);
     return;
@@ -153,10 +187,99 @@ export function useLocalFolderWatch({
   page,
 }: UseLocalFolderWatchOptions) {
   // 增量 rename/delete 事件去抖：同一目录连发事件合并，300ms 内只触发一次
-  const renameDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const renameDebounceTimers = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
+  // change 事件 200ms trailing 去抖，避免同一文件连发读盘
+  const changeDebounceTimers = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
 
   // 监听文件变更事件
   useEffect(() => {
+    const processChangeEvent = async (filePath: string) => {
+      if (!notebook) return;
+      const pages = usePages.getState().pages;
+      const target = Object.values(pages).find(
+        (p) =>
+          p.workspaceId === notebook.id &&
+          !p.isFolder &&
+          (p.localFilePath === filePath ||
+            p.localFilePath?.replace(/\\/g, "/") ===
+              filePath.replace(/\\/g, "/")),
+      );
+      if (!target) return;
+
+      const selfWrite = wasRecentlySelfWritten(filePath);
+      let statMatch = false;
+      const dirty = Boolean(usePages.getState().dirtyLocalPageIds[target.id]);
+
+      const debugWatch = (contentMatch?: boolean) => {
+        if (import.meta.env.DEV) {
+          console.debug("[local-folder-watch]", {
+            path: filePath,
+            eventType: "change",
+            selfWrite,
+            statMatch,
+            contentMatch,
+            dirty,
+          });
+        }
+      };
+
+      // 自写回声：时间窗内直接忽略（主判据仍是内容/指纹 diff）。
+      if (selfWrite) {
+        debugWatch();
+        return;
+      }
+
+      let diskStat: LocalMdFileStat | null;
+      try {
+        diskStat = await statDisk(filePath);
+      } catch {
+        diskStat = null;
+      }
+      if (diskStat && isStatMatchingSnapshot(filePath, diskStat)) {
+        statMatch = true;
+        debugWatch();
+        return;
+      }
+
+      const diskContent = await readDiskContent(filePath);
+      if (diskContent === null) {
+        debugWatch();
+        return;
+      }
+      const contentMatch = isDiskContentMatchingSnapshot(filePath, diskContent);
+      if (contentMatch) {
+        if (diskStat) {
+          updateSnapshotStat(filePath, diskStat);
+        } else {
+          try {
+            const lateStat = await statDisk(filePath);
+            if (lateStat) updateSnapshotStat(filePath, lateStat);
+          } catch {
+            // 指纹刷新失败不影响「内容未变」结论
+          }
+        }
+        debugWatch(contentMatch);
+        return;
+      }
+
+      debugWatch(contentMatch);
+      const isDirty = Boolean(usePages.getState().dirtyLocalPageIds[target.id]);
+      if (isDirty || wasRecentlyInteracting(2000)) {
+        const { onKeepMine, onLoadDisk } = conflictHandlers(
+          filePath,
+          target.id,
+        );
+        showConflictToast(filePath, target.id, onKeepMine, onLoadDisk);
+        return;
+      }
+
+      void usePages.getState().reloadLocalPageFromDisk(target.id);
+    };
+
     const handleFileChange = async (event: Event) => {
       const customEvent = event as CustomEvent;
       const { eventType, filename, dirPath } = customEvent.detail;
@@ -167,53 +290,30 @@ export function useLocalFolderWatch({
         return;
       }
 
-      // 忽略 dot 路径（任一段以 . 开头）：与 local-folder-scanner 的忽略规则
-      // 对齐，并抑制历史后端写 .goose/history/*.json 的自写回声触发全量重扫
+      // 与全量扫描共用忽略规则：dot / 内置忽略目录 / 用户隐藏目录都不进入增量链路。
       if (
         typeof filename === "string" &&
-        filename.split(/[\\/]/).some((seg: string) => seg.startsWith("."))
+        shouldIgnoreLocalRelativePath(
+          filename,
+          useSettings.getState().localFolderHiddenFolders,
+        )
       ) {
         return;
       }
 
-      const gooseFs = (window as any).gooseFs as GooseFs | undefined;
+      const gooseFs = window.gooseFs;
       if (!gooseFs) return;
       const filePath = `${dirPath}/${filename}`;
 
       // ── change 事件：单文件 reload ────────────────────────────────────────
       if (eventType === "change") {
-        const pages = usePages.getState().pages;
-        const target = Object.values(pages).find(
-          (p) =>
-            p.workspaceId === notebook.id &&
-            !p.isFolder &&
-            (p.localFilePath === filePath ||
-              p.localFilePath?.replace(/\\/g, "/") === filePath.replace(/\\/g, "/")),
-        );
-        if (!target) return;
-
-        // ── 自写回声抑制 ────────────────────────────────────────────────────
-        // 本应用自动保存写盘同样触发 change 事件。不抑制的话，写盘回声撞上
-        // 2s 交互窗口（打字/点侧栏切页都算交互）就会弹假冲突——uTools 真机
-        // 必现、web mock watch 不回调所以测不出。双保险：
-        // 1) 刚写过盘（时间窗）直接忽略；
-        // 2) 读盘与快照 diff，内容没真变（回声/无实质修改）不弹不重载。
-        if (wasRecentlySelfWritten(filePath)) return;
-
-        const diskContent = await readDiskContent(filePath);
-        if (diskContent === null) return;
-        if (isDiskContentMatchingSnapshot(filePath, diskContent)) return;
-
-        // 磁盘内容确实被外部改了
-        const isDirty = usePages.getState().dirtyLocalPageIds[target.id];
-        if (isDirty || wasRecentlyInteracting(2000)) {
-          // 脏页或用户刚操作过（输入尚未进入 debounce 标脏的竞态窗口）：弹冲突 toast
-          const { onKeepMine, onLoadDisk } = conflictHandlers(filePath, target.id);
-          showConflictToast(filePath, target.id, onKeepMine, onLoadDisk);
-          return;
-        }
-
-        void usePages.getState().reloadLocalPageFromDisk(target.id);
+        const existing = changeDebounceTimers.current.get(filePath);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+          changeDebounceTimers.current.delete(filePath);
+          void processChangeEvent(filePath);
+        }, 200);
+        changeDebounceTimers.current.set(filePath, timer);
         return;
       }
 
@@ -226,8 +326,15 @@ export function useLocalFolderWatch({
         const timer = setTimeout(async () => {
           renameDebounceTimers.current.delete(debounceKey);
 
-          // 自移回声抑制：本应用内发起的 fs.rename 登记了路径，跳过处理
-          if (wasRecentlySelfMoved(filePath)) return;
+          // macOS 的 fs.watch 可能把普通 writeFile 报成 rename。应用自身保存产生的
+          // 这类回声不能按“文件重新出现”处理，否则 addSingleLocalPage 会替换当前页，
+          // 让编辑器选区和滚动视角一起回到文首。
+          if (
+            wasRecentlySelfMoved(filePath) ||
+            wasRecentlySelfWritten(filePath)
+          ) {
+            return;
+          }
 
           const exists = gooseFs.existsAsync
             ? await gooseFs.existsAsync(filePath)
@@ -244,13 +351,36 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           } else {
             // 文件出现（新建 / rename 到此名）
             const isMdFile = /\.(md|markdown)$/i.test(filePath);
             if (isMdFile && notebook.id && notebook.localPath) {
+              // 延迟到达的自写 rename 事件可能已经超过时间窗。若该路径本来就在
+              // store 中，且磁盘内容仍与写后快照一致，则它只是保存回声，不应重载。
+              const existingPage = Object.values(
+                usePages.getState().pages,
+              ).find(
+                (candidate) =>
+                  candidate.workspaceId === notebook.id &&
+                  !candidate.isFolder &&
+                  candidate.localFilePath?.replace(/\\/g, "/") ===
+                    filePath.replace(/\\/g, "/"),
+              );
+              if (existingPage) {
+                const diskContent = await readDiskContent(filePath);
+                if (
+                  diskContent !== null &&
+                  isDiskContentMatchingSnapshot(filePath, diskContent)
+                ) {
+                  return;
+                }
+              }
               void usePages
                 .getState()
                 .addSingleLocalPage(notebook.id, notebook.localPath, filePath);
@@ -259,7 +389,10 @@ export function useLocalFolderWatch({
               if (notebook.id && notebook.localPath) {
                 void usePages
                   .getState()
-                  .loadLocalFolderPages(notebook.id, notebook.localPath);
+                  .loadLocalFolderPages(notebook.id, notebook.localPath)
+                  .catch((error) => {
+                    console.error("[local-folder] rescan failed", error);
+                  });
               }
             }
           }
@@ -270,8 +403,11 @@ export function useLocalFolderWatch({
     };
 
     window.addEventListener("goose-note:file-changed", handleFileChange);
+    const changeTimers = changeDebounceTimers.current;
     return () => {
       window.removeEventListener("goose-note:file-changed", handleFileChange);
+      changeTimers.forEach((timer) => clearTimeout(timer));
+      changeTimers.clear();
     };
   }, [notebook, activePageId, page]);
 
@@ -287,9 +423,15 @@ export function useLocalFolderWatch({
       showConflictToast(filePath, pageId, onKeepMine, onLoadDisk);
     };
 
-    window.addEventListener("goose-note:local-file-conflict", handlePreSaveConflict);
+    window.addEventListener(
+      "goose-note:local-file-conflict",
+      handlePreSaveConflict,
+    );
     return () => {
-      window.removeEventListener("goose-note:local-file-conflict", handlePreSaveConflict);
+      window.removeEventListener(
+        "goose-note:local-file-conflict",
+        handlePreSaveConflict,
+      );
     };
   }, []);
 
@@ -303,13 +445,20 @@ export function useLocalFolderWatch({
       };
       const fileName = filePath.replace(/^.*[\\/]/, "");
       toast.error(`「${fileName}」保存失败`, {
-        description: "检测到另一个页面已指向同一个本地文件，请重新加载本地文件夹后再试。",
+        description:
+          "检测到另一个页面已指向同一个本地文件，请重新加载本地文件夹后再试。",
       });
     };
 
-    window.addEventListener("goose-note:local-file-duplicate", handleDuplicateLocalFile);
+    window.addEventListener(
+      "goose-note:local-file-duplicate",
+      handleDuplicateLocalFile,
+    );
     return () => {
-      window.removeEventListener("goose-note:local-file-duplicate", handleDuplicateLocalFile);
+      window.removeEventListener(
+        "goose-note:local-file-duplicate",
+        handleDuplicateLocalFile,
+      );
     };
   }, []);
 
@@ -321,7 +470,7 @@ export function useLocalFolderWatch({
     void checkLocalPageFreshness(activePageId);
   }, [activePageId, notebook?.id, notebook?.source]);
 
-  // ── 主动新鲜度检查：uTools 窗口重新可见 / 聚焦时 ───────────────────────────
+  // ── 主动新鲜度检查：Electron 窗口重新可见 / 聚焦时 ───────────────────────────
   useEffect(() => {
     if (notebook?.source !== "local-folder") return;
     const check = () => {
@@ -339,12 +488,10 @@ export function useLocalFolderWatch({
 
   // ── 启动/停止目录 watcher ─────────────────────────────────────────────────
   useEffect(() => {
-    const gfs = (window as any).gooseFs as GooseFs | undefined;
-    if (
-      notebook?.source === "local-folder" &&
-      notebook.localPath &&
-      gfs
-    ) {
+    const gfs = window.gooseFs;
+    const renameTimers = renameDebounceTimers.current;
+    const changeTimers = changeDebounceTimers.current;
+    if (notebook?.source === "local-folder" && notebook.localPath && gfs) {
       // 先检查目录是否存在，避免 ENOENT
       const dirExists = gfs.exists(notebook.localPath);
       if (dirExists) {
@@ -363,12 +510,14 @@ export function useLocalFolderWatch({
 
     return () => {
       // 清理去抖计时器
-      renameDebounceTimers.current.forEach((timer) => clearTimeout(timer));
-      renameDebounceTimers.current.clear();
+      renameTimers.forEach((timer) => clearTimeout(timer));
+      renameTimers.clear();
+      changeTimers.forEach((timer) => clearTimeout(timer));
+      changeTimers.clear();
 
-      if (notebook?.localPath && (window as any).gooseFs) {
+      if (notebook?.localPath && window.gooseFs) {
         try {
-          ((window as any).gooseFs as GooseFs).unwatch(notebook.localPath!);
+          window.gooseFs.unwatch(notebook.localPath!);
         } catch {
           // ignore
         }

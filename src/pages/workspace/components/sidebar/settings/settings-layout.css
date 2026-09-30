@@ -1,0 +1,76 @@
+.settings-shell[hidden], .settings-sidebar-navigation[hidden] { display: none !important; }
+.settings-scroll { padding: 28px 36px 36px; }
+.settings-groups > div {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.settings-groups > div > * { min-width: 0; }
+.settings-groups > div > section { border: 1px solid hsl(var(--border) / .55); }
+.settings-groups > .settings-shortcuts { display: block; }
+/* ponytail: 按语义固定两列；动态卡片明显失衡时再改为按高度自动排布。 */
+.settings-card-columns,
+.settings-shortcuts-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+  align-items: start;
+  gap: 20px;
+}
+.settings-shortcuts-columns { margin-top: 24px; }
+.settings-card-columns > div,
+.settings-shortcuts-columns > div { min-width: 0; }
+.settings-card-columns section,
+.settings-shortcuts-columns section { border: 1px solid hsl(var(--border) / .55); }
+.settings-data-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 2fr) minmax(0, 3fr);
+  gap: 16px 20px;
+  align-items: start;
+}
+.settings-data-grid > div { min-width: 0; }
+.settings-data-grid > div > section { border: 1px solid hsl(var(--border) / .55); }
+.settings-shell[data-settings-tab="appearance"] .settings-scroll { overflow: hidden; padding: 0; }
+.settings-shell[data-settings-tab="appearance"] .settings-panel { height: 100%; }
+.settings-appearance-layout {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  grid-template-rows: minmax(0, 1fr);
+}
+.settings-appearance-layout [data-page-layout="standard"] .page-layout-document { max-width: min(640px, 78%); }
+.settings-appearance-layout > [aria-label="编辑器即时预览"] {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  margin: 24px 0 24px 24px;
+}
+.settings-appearance-options {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 24px 32px;
+}
+@media (max-width: 1100px) {
+  .settings-shell[data-settings-tab="appearance"] .settings-scroll { overflow-y: auto; }
+  .settings-appearance-layout { display: flex; flex-direction: column; height: auto; }
+  .settings-appearance-layout [data-page-layout="standard"] .page-layout-document { max-width: 100%; }
+  .settings-appearance-layout > [aria-label="编辑器即时预览"] { flex: none; height: 360px; margin: 0 20px 32px; }
+  .settings-appearance-options { overflow: visible; padding: 0 20px 32px; }
+}
+@media (max-width: 900px) {
+  .settings-scroll { padding: 20px; }
+  .settings-card-columns { grid-template-columns: minmax(0, 1fr); }
+  .settings-shortcuts-columns { grid-template-columns: minmax(0, 1fr); }
+  .settings-data-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .settings-scroll { padding: 16px; }
+  .settings-tabs { padding-inline: 8px; }
+  .settings-appearance-layout > [aria-label="编辑器即时预览"] { height: 330px; margin-inline: 12px; }
+  .settings-appearance-options { padding-inline: 12px; }
+  .appearance-preview-sidebar { display: none; }
+  .settings-ai-pick-row { flex-wrap: wrap; }
+  .settings-ai-pick-row > :last-child,
+  .settings-ai-pick-row button { width: 100%; min-width: 0; }
+}

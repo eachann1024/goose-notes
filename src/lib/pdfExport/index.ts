@@ -1,96 +1,87 @@
 /**
- * PDF 导出入口。
+ * PDF 渲染入口（只出 blob）。保存/有附件打 ZIP 由 export/index.exportToPDF 负责。
  *
- * - dynamic import @blocknote/xl-pdf-exporter + @react-pdf/renderer，避免拖慢首屏
- * - 默认 A4 + 中文 NotoSansSC（缺失时回退 Helvetica + warn）
- * - 通过 saveBlobAndReveal 走 uTools 保存通道，浏览器端回退到 a[download]
+ * - Electron：隐藏窗 printToPDF（系统中文字体，官方 HTML）
+ * - 失败或非 Electron：手写 react-pdf renderer，嵌入 Noto Sans SC static TTF
+ * - 两路都失败则 throw，让 PageMenu toast 报失败
  */
 
-import { toast } from "sonner";
 import type { Page } from "@/types";
-import { extractTitleFromContent } from "@/components/editor/utils/content-text-extractor";
-import { saveBlobAndReveal } from "@/lib/export/fileSave";
-import { registerPdfFonts, PDF_FONT_FAMILY } from "./fontConfig";
+import type { CustomFonts } from "@/stores/useSettings";
+import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { prepareExportBlocks } from "@/lib/export/prepareExportBlocks";
+import { registerPdfFonts } from "./fontConfig";
 import { createPdfBlockMappings } from "./blockMappings";
+import { canPrintToPdf, exportPageViaPrintToPdf } from "./printPdf";
 
-function sanitizeFileName(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, "_") || "untitled";
+/** 薄 getter：避免 fontConfig 静态绑 zustand。 */
+async function readExportCustomFonts(): Promise<CustomFonts> {
+  const { useSettings } = await import("@/stores/useSettings");
+  return useSettings.getState().customFonts;
 }
 
-async function downloadBlob(blob: Blob, filename: string): Promise<void> {
-  try {
-    const saved = await saveBlobAndReveal(blob, filename);
-    if (saved) return;
-  } catch (error) {
-    console.error("[pdfExport] saveBlobAndReveal 失败，尝试浏览器下载:", error);
-  }
-
-  // 浏览器 fallback
-  try {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    requestAnimationFrame(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-  } catch (error) {
-    throw new Error("PDF 保存失败：无法写入文件", { cause: error });
-  }
-}
-
-export async function exportToPDF(page: Page): Promise<void> {
-  const title = extractTitleFromContent(page.content) || "untitled";
-  const filename = `${sanitizeFileName(title)}.pdf`;
-
-  const task = (async () => {
-    // 1. 注册中文字体（幂等）
-    await registerPdfFonts();
-
-    // 2. dynamic import 核心依赖
-    const [{ PDFExporter }, ReactPDF, { editorSchema }, { pdfDefaultSchemaMappings }] =
-      await Promise.all([
-        import("@blocknote/xl-pdf-exporter"),
-        import("@react-pdf/renderer"),
-        import("@/components/editor/core/EditorComposer"),
-        import("@blocknote/xl-pdf-exporter"),
-      ]);
-
-    // 3. 合并 mappings：默认 inline + style，自定义 blockMapping
-    const blockMapping = await createPdfBlockMappings();
-    const mergedMappings = {
-      blockMapping: blockMapping as unknown as typeof pdfDefaultSchemaMappings.blockMapping,
-      inlineContentMapping: pdfDefaultSchemaMappings.inlineContentMapping,
-      styleMapping: pdfDefaultSchemaMappings.styleMapping,
-    };
-
-    // 4. 构造 Exporter（默认 A4，配置中文字体）
-    const exporter = new PDFExporter(editorSchema as any, mergedMappings as any, {
-      // 中文优先字体
-      // 若 NotoSansSC 注册失败，react-pdf 会自动回退到 Helvetica
-    });
-    // 覆盖 page 样式中的字体 family，让中文走 NotoSansSC
-    (exporter.styles as any).page = {
-      ...(exporter.styles as any).page,
-      fontFamily: PDF_FONT_FAMILY,
-    };
-
-    // 5. 生成 react-pdf Document → Blob
-    const blocks = (page.content as any[]) ?? [];
-    const document = await exporter.toReactPDFDocument(blocks as any);
-    const blob = await ReactPDF.pdf(document).toBlob();
-
-    // 6. 写盘
-    await downloadBlob(blob, filename);
-  })();
-
-  await toast.promise(task, {
-    loading: "正在生成 PDF…",
-    success: `已导出 ${filename}`,
-    error: (err) => `导出失败：${err?.message ?? "未知错误"}`,
+async function exportViaReactPdf(
+  page: Page,
+  blocks: BlockNoteContent,
+  customFonts?: CustomFonts,
+): Promise<Blob> {
+  const fonts = customFonts ?? (await readExportCustomFonts());
+  const registered = await registerPdfFonts({
+    fontFamily: page.fontFamily ?? "default",
+    customFonts: fonts,
   });
+  if (!registered.ready) {
+    throw new Error("未能加载中文字体，无法生成 PDF");
+  }
+
+  const [ReactPDF, { createPdfDocument }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("./renderer"),
+  ]);
+  const blockMapping = await createPdfBlockMappings({
+    pageLocalFilePath: page.localFilePath ?? null,
+  });
+  const document = await createPdfDocument(blocks, blockMapping, registered.pageFontFamily);
+  const blob = await ReactPDF.pdf(document).toBlob();
+  if (!blob || blob.size < 80) {
+    throw new Error("react-pdf 生成了空 PDF");
+  }
+  return blob;
+}
+
+/** 只渲染 PDF blob，保存/打包由 export/index 负责。 */
+export async function renderPageToPdfBlob(
+  page: Page,
+  customFonts?: CustomFonts,
+): Promise<Blob> {
+  const blocks = await prepareExportBlocks(page);
+
+  let blob: Blob | null = null;
+  let lastError: unknown;
+
+  if (canPrintToPdf()) {
+    try {
+      blob = await exportPageViaPrintToPdf(page, blocks);
+    } catch (error) {
+      lastError = error;
+      console.warn("[pdfExport] printToPDF 失败，降级 react-pdf:", error);
+    }
+  }
+
+  if (!blob) {
+    try {
+      blob = await exportViaReactPdf(page, blocks, customFonts);
+    } catch (error) {
+      lastError = error;
+      console.error("[pdfExport] react-pdf 导出失败:", error);
+    }
+  }
+
+  if (!blob) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("PDF 导出失败");
+  }
+
+  return blob;
 }

@@ -1,0 +1,211 @@
+/* Scheme A uses CSS pixels so the app's rem scale does not enlarge its spacing.
+ * Keep the footer outside this scope; sidebar font preferences still apply. */
+.workspace-shell .workspace-sidebar-pane .sidebar-design {
+  --radius-lg: 8px;
+  --sidebar-body-size: calc(var(--sidebar-font-size, 13px) + 1px);
+  --sidebar-label-size: 12px;
+  --sidebar-foreground: hsl(var(--foreground));
+  --sidebar-muted: hsl(var(--muted-foreground));
+  padding: 4px 8px 0;
+  font-family: var(--font-sidebar, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif);
+  font-size: var(--sidebar-body-size);
+  line-height: 1.5;
+}
+
+:root:not(.dark) .sidebar-design {
+  --sidebar-foreground: #242629;
+  --sidebar-muted: #696d74;
+  --sidebar-background: #f0f0f0;
+  --goose-interactive-hover: #e8e9eb;
+  --goose-interactive-hover-fg: var(--sidebar-foreground);
+  --goose-interactive-hover-border: transparent;
+  background: var(--sidebar-background);
+}
+:root:not(.dark)[data-goose-accent="amber"] .sidebar-design,
+:root:not(.dark)[data-goose-accent="mono"] .sidebar-design {
+  --sidebar-foreground: hsl(var(--foreground));
+  --sidebar-muted: hsl(var(--muted-foreground));
+  --sidebar-background: var(--goose-shell-surface);
+  --goose-interactive-hover: var(--goose-sidebar-hover);
+  --goose-interactive-hover-fg: hsl(var(--foreground));
+  --goose-interactive-hover-border: var(--goose-interactive-selected-border);
+  background: var(--goose-shell-surface);
+}
+:root:not(.dark)[data-goose-accent="ocean"] .sidebar-design {
+  --goose-interactive-selected: #e6edff;
+  --goose-interactive-selected-fg: #2554bf;
+  --goose-interactive-selected-border: #577ee8;
+}
+
+.sidebar-design .sidebar-tree-heading { margin: 0 4px 10px; }
+.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-tree-heading .sidebar-section-label {
+  height: 28px;
+  padding: 0;
+  font-size: var(--sidebar-body-size);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-section-label[data-outline-header="true"] {
+  height: 40px;
+}
+.sidebar-design .sidebar-heading-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+.sidebar-design .sidebar-heading-eyebrow {
+  color: var(--sidebar-muted);
+  font-size: 10px;
+  line-height: 12px;
+}
+.sidebar-design .sidebar-tree-heading .sidebar-heading-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 16px;
+}
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:last-child { gap: 2px; }
+.sidebar-design .sidebar-tree-heading button[aria-label="收起全部页面"],
+.sidebar-design .sidebar-tree-heading button[aria-label^="新建"] { width: 24px; height: 24px; min-width: 24px; }
+.sidebar-design[hidden],
+.sidebar-content-pane[hidden] { display: none !important; }
+.workspace-shell .workspace-stage[data-sidebar-overlay] { position: relative; }
+.workspace-shell .workspace-stage[data-sidebar-overlay] > .sidebar-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--goose-search-overlay) 50%, transparent);
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] {
+  position: absolute;
+  z-index: 30;
+  inset: 10px auto 12px var(--workspace-stage-pad-left);
+  width: min(var(--sidebar-configured-width), calc(100vw - 56px)) !important;
+  height: auto !important;
+  overflow: hidden;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] > [role="separator"] {
+  right: -24px !important;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] > [role="separator"] > div {
+  left: 0;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] > .sidebar-size-container {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.workspace-shell[data-electron-chrome] .workspace-sidebar-pane[data-sidebar-overlay] {
+  inset-block: 0;
+}
+.sidebar-rail-shell {
+  box-sizing: border-box;
+  display: flex;
+  width: var(--workspace-rail-width);
+  flex: 0 0 var(--workspace-rail-width);
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: transparent;
+}
+.sidebar-mode-rail {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidebar-mode-rail[hidden] { display: none !important; }
+.sidebar-mode-rail-button {
+  display: flex;
+  width: 48px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  line-height: 12px;
+  padding: 4px 0;
+}
+.sidebar-mode-rail-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-mode-rail-button:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
+}
+.sidebar-mode-rail-button[aria-pressed="true"] {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+.sidebar-mode-rail-button:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-selected-fg);
+}
+.sidebar-rail-footer {
+  display: flex;
+  width: 100%;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-bottom: 4px;
+}
+.sidebar-rail-footer .sidebar-footer-control {
+  box-sizing: border-box;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  flex-basis: 32px;
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-rail-footer .sidebar-footer-control:is(:hover, :focus-visible, :active, [data-active="true"]) {
+  color: var(--goose-interactive-selected-fg);
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row, .sidebar-tree-row) {
+  border-radius: 8px;
+  font-size: var(--sidebar-body-size);
+  font-weight: 400;
+  line-height: 21px;
+  padding-right: 10px;
+  color: var(--sidebar-foreground);
+}
+.sidebar-design .main-tree-row.main-tree-row {
+  height: calc(var(--main-tree-row-height) - 2px);
+  min-height: calc(var(--main-tree-row-height) - 2px);
+  margin: 0 0 2px;
+  border-block: 0 !important;
+  gap: 10px;
+}
+.sidebar-design .sidebar-tree-row.sidebar-tree-row { border-block: 0; }
+.sidebar-design .sidebar-tree-row > div:first-child { gap: 10px; }
+.sidebar-design .sidebar-tree-row > div:first-child > div:last-child { font-size: inherit; line-height: inherit; }
+.sidebar-design :is(.main-tree-row, .sidebar-tree-row) svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.6; }
+.sidebar-design .main-tree-row:not(.main-tree-row--selected):not(.main-tree-row--hovered) svg:not([class*="text-destructive"]),
+.sidebar-design .sidebar-tree-row:not(.sidebar-tree-row--selected):not(.sidebar-tree-row--hovered) svg:not([class*="text-destructive"]) { color: var(--sidebar-muted); }
+.sidebar-design .main-tree-row-icon-group :is(.main-tree-row-icon-slot, .main-tree-row-disclosure, .main-tree-row-disclosure-placeholder) { width: 18px; height: 18px; }
+.main-tree-row-icon-group .main-tree-row-disclosure::before { content: ""; position: absolute; inset: -3px; }
+.sidebar-design .sidebar-tree-row > div:first-child > .pointer-events-none { width: 18px; height: 18px; margin-right: 0; }
+.sidebar-design .sidebar-tree-row > div:first-child .goose-hidden-expand-icon { width: 24px; height: 18px; margin-right: 0; }

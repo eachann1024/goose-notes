@@ -1,21 +1,34 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { FormattingToolbarExtension } from "@blocknote/core/extensions";
 import {
   FilePanelController,
-  FormattingToolbarController,
   LinkToolbarController,
   SuggestionMenuController,
-  TableHandlesController,
   useEditorState,
   useExtensionState,
+  type FloatingUIOptions,
 } from "@blocknote/react";
+import {
+  autoUpdate as floatingAutoUpdate,
+  flip as floatingFlip,
+  offset as floatingOffset,
+  shift as floatingShift,
+  size as floatingSize,
+  type Middleware,
+} from "@floating-ui/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
-import { offset as floatingOffset, shift as floatingShift } from "@floating-ui/react";
 import {
   clonePageContent,
   getContentSignature,
-  normalizePageContent,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
 import { CustomSlashMenu } from "@/components/editor/core/CustomSlashMenu";
@@ -23,24 +36,63 @@ import {
   EditorFormattingToolbar,
   shouldRenderFormattingToolbar,
 } from "@/components/editor/toolbars/formatting";
-import { AIMenuController } from "@blocknote/xl-ai";
+import { FixedFormattingToolbarController } from "@/components/editor/toolbars/formatting/FixedFormattingToolbarController";
+import { GooseFormattingToolbarController } from "@/components/editor/toolbars/formatting/GooseFormattingToolbarController";
+import {
+  getFormattingSelectionMode,
+  isFormattingToolbarOpen,
+} from "@/components/editor/toolbars/formatting/helpers";
+import { GooseAIExtension } from "@/components/editor/ai/GooseAIExtension";
+import { GooseAIMenu } from "@/components/editor/ai/GooseAIMenu";
+import { GooseAIMenuController } from "@/components/editor/ai/GooseAIMenuController";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
+import { FormattingToolbarHoldContext } from "@/components/editor/state/formattingToolbarHold";
 import { EditorSideMenu } from "@/components/editor/core/EditorSideMenu";
 import { ImageLightbox } from "@/components/editor/image/ImageLightbox";
 import { EditorLinkToolbar } from "@/components/editor/toolbars/link/EditorLinkToolbar";
 import { FindInPageBar } from "@/components/editor/find/FindInPageBar";
+import { readEditorFindSeed } from "@/components/editor/find/findSeed";
+import {
+  isLinkShortcutClaimedByApp,
+  isPrimaryLinkShortcutEvent,
+} from "@/components/editor/extensions/linkKeyboardExtension";
 import { closeAllOverlays } from "@/lib/closeAllOverlays";
-import { useTabs } from "@/stores/useTabs";
+import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
+import { matchShortcut } from "@/lib/shortcut-match";
+import { getPageTitle } from "@/components/editor/utils/page-title";
+import { getSelectedImageUrl } from "@/components/editor/utils/selection";
+import {
+  SELECTION_QUOTE_ADD_SHORTCUT,
+  canDispatchAppendComposerSelection,
+  dispatchAppendComposerSelection,
+} from "@/components/editor/ai/composer/selectionQuote";
+import {
+  isInlineAiEmptyParagraphTriggerKey,
+  shouldOpenInlineAiOnEmptyParagraph,
+} from "@/components/editor/ai/emptyParagraphAiShortcut";
+import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
 
 // Sub-component and modular utility imports
 import { EditorFilePanel } from "@/components/editor/menus/EditorFilePanel";
-import { GooseTableHandle, GooseTableExtendButton } from "@/components/editor/menus/GooseTableHandle";
+import { GooseTableHandlesController } from "@/components/editor/menus/GooseTableHandlesController";
 import { EditorContextMenu } from "@/components/editor/menus/EditorContextMenu";
 import { editorSchema } from "@/components/editor/core/schema";
-import { shouldOpenSlashSuggestionMenu } from "@/components/editor/utils/slashMenuPolicy";
-import { getQuicknoteSlashMenuFloatingOptions } from "@/components/editor/utils/quicknoteSlashMenuFloating";
-import { LocalFileTitle } from "@/pages/workspace/components/page/LocalFileTitle";
-import { shouldUseRawEditorContent } from "@/components/editor/core/editorContentMode";
+import { getPageMentionMenuItems } from "@/components/editor/inline/pageMentionMenuItems";
+import {
+  shouldOpenPageMentionSuggestionMenu,
+  shouldOpenSlashSuggestionMenu,
+} from "@/components/editor/utils/slashMenuPolicy";
+import { getCompactSlashMenuFloatingOptions } from "@/components/editor/utils/compactSlashMenuFloating";
+import { findNonOverlappingToolbarPosition } from "@/components/editor/utils/formattingToolbarPosition";
+import { getMultiBlockToolbarEdgeRect } from "@/components/editor/utils/formattingToolbarReference";
+import {
+  EDITOR_CONTEXT_UI_GAP,
+  getScaledEditorUiPx,
+} from "@/components/editor/utils/editorContextUi";
+import {
+  useEditorPageContext,
+  useEditorSettings,
+} from "@/components/editor/platform/hostContext";
 
 // Re-exports to prevent broken imports elsewhere
 export {
@@ -57,8 +109,15 @@ export {
   isBottomEditorBlankClick,
   getSelectedPlainTextContext,
   getSelectedCellPlainText,
+  isWholeTableCellSelection,
+  getSelectedImageUrl,
   getElementFromNode,
   isInteractiveEditorTarget,
+  getActiveGooseNoteEditor,
+  getEditorSelectedBlocksForExport,
+  readLiveEditorSelectedBlocks,
+  rememberEditorSelectedBlocks,
+  clearEditorSelectedBlocksCache,
 } from "@/components/editor/utils/selection";
 
 export { editorSchema } from "@/components/editor/core/schema";
@@ -69,28 +128,35 @@ type EditorComposerProps = {
   page: any;
   editorContainerRef: RefObject<HTMLDivElement | null>;
   handleEditorBlankMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
-  handleEditorPasteCapture: (event: React.ClipboardEvent<HTMLDivElement>) => void;
+  handleEditorPasteCapture: (
+    event: React.ClipboardEvent<HTMLDivElement>,
+  ) => void;
   getSlashItems: (query: string) => Promise<any[]>;
   pageIdForUpdateRef: RefObject<string | null>;
   syncedContentSignatureRef: RefObject<string | null>;
-  debouncedUpdate: ((id: string, content: BlockNoteContent) => void) & { cancel: () => void };
+  pendingEditorChangeRef: RefObject<boolean>;
+  debouncedUpdate: ((id: string) => void) & { cancel: () => void };
   /** 自上次程序化同步（切页/外部重载）以来用户是否真实交互过（见 Editor.tsx 意图门控）。 */
   userInteractedRef: RefObject<boolean>;
   /** 静默同步 store（不标脏、不入保存队列）：用于编辑器初始化后的异步 props 补全。 */
   silentContentSync: (content: BlockNoteContent) => void;
   isEditorFullWidth: boolean;
   effectiveTheme: "light" | "dark";
-  tableEvenColumnWidth: boolean;
   searchProviders: any[];
   customActions: any[];
-  /** 是否渲染块侧边菜单（+ / ⋮⋮）。速记小窗传 false 不显示，仅主编辑器显示。 */
+  /** 是否渲染块侧边菜单（+ / ⋮⋮）；紧凑布局可关闭。 */
   showSideMenu?: boolean;
   /**
    * 为 true 时强制隐藏格式化工具栏（仅在空白区域 mousedown 期间短暂置 true 用于消闪，
    * 由 Editor.tsx 的空白点击处理器管理）。
    */
   suppressFormattingToolbar?: boolean;
+  usesRawEditorContent: boolean;
 };
+
+function getFormattingToolbarGap(): number {
+  return getScaledEditorUiPx(EDITOR_CONTEXT_UI_GAP);
+}
 
 export function EditorComposer({
   editor,
@@ -102,36 +168,148 @@ export function EditorComposer({
   getSlashItems,
   pageIdForUpdateRef,
   syncedContentSignatureRef,
+  pendingEditorChangeRef,
   debouncedUpdate,
   userInteractedRef,
   silentContentSync,
   isEditorFullWidth,
   effectiveTheme,
-  tableEvenColumnWidth,
   searchProviders,
   customActions,
   showSideMenu = true,
   suppressFormattingToolbar = false,
+  usesRawEditorContent,
 }: EditorComposerProps) {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkPopoverUrl, setLinkPopoverUrl] = useState("");
   const linkPopoverRef = useRef<HTMLDivElement | null>(null);
   const [findBarOpen, setFindBarOpen] = useState(false);
+  const [findSeedQuery, setFindSeedQuery] = useState("");
+  const [findOpenNonce, setFindOpenNonce] = useState(0);
+  const [findOpenReplace, setFindOpenReplace] = useState(false);
+  const { ai: aiSettings } = useEditorSettings();
+  const { onPromotePreview, searchPages } = useEditorPageContext();
+  const getMentionItems = useCallback(
+    async (query: string) =>
+      getPageMentionMenuItems(
+        editor,
+        searchPages(query).filter((item) => !item.isFolder),
+      ),
+    [editor, searchPages],
+  );
+
+  const handleEditorKeyDownCapture = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    const settings = useSettings.getState();
+    const isPrimaryLinkShortcut =
+      editable &&
+      isPrimaryLinkShortcutEvent(event) &&
+      !isLinkShortcutClaimedByApp([
+        ...Object.values(settings.appShortcuts),
+        settings.closeTabShortcut,
+        settings.searchPanelCloseShortcut,
+      ]) &&
+      !!target?.closest(".bn-editor");
+
+    // 不依赖 ProseMirror keymap 在模块加载时缓存的 navigator.platform。
+    // Electron 的 Windows WebView 偶尔会让 Mod-k 错配，capture 兜底直接按实际
+    // Ctrl/Meta 状态处理；已有链接仍保持“再次按下即移除”的既有行为。
+    if (isPrimaryLinkShortcut) {
+      const url = editor.getSelectedLinkUrl();
+      const selectedText = editor.getSelectedText();
+      if (url || selectedText) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (url) {
+          editor.deleteLink();
+        } else {
+          document.dispatchEvent(new CustomEvent("goose-open-link-popover"));
+        }
+        return;
+      }
+    }
+
+    if (isQuickNoteEditorPage(page)) return;
+    if (
+      !__GOOSE_EDITOR_AI__ ||
+      !isInlineAiEmptyParagraphTriggerKey(event.key)
+    ) {
+      return;
+    }
+
+    let block: any;
+    let inTable = false;
+    let selectionEmpty = true;
+    try {
+      const selection = editor.prosemirrorState?.selection;
+      selectionEmpty = selection?.empty !== false;
+      inTable = Boolean(
+        selection?.$from?.parent?.type?.isInGroup?.("tableContent"),
+      );
+      block = editor.getTextCursorPosition().block;
+    } catch {
+      block = null;
+    }
+
+    if (
+      !shouldOpenInlineAiOnEmptyParagraph({
+        key: event.key,
+        defaultPrevented: event.defaultPrevented,
+        repeat: event.repeat,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        isComposing: event.nativeEvent.isComposing,
+        editable,
+        aiEnabled: aiSettings.enabled,
+        inEditor: Boolean(target?.closest(".bn-editor")),
+        inTable,
+        selectionEmpty,
+        block,
+      })
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.nativeEvent.stopImmediatePropagation();
+    const ai = editor.getExtension(GooseAIExtension);
+    if (ai && block?.id) {
+      ai.openAIMenuAtBlock(block.id);
+    }
+  };
 
   useEffect(() => {
-    const handleOpenFind = () => {
+    const handleOpenFind = (event: Event) => {
+      if (isWorkspaceSettingsOpen()) return;
+      const findInputFocused = Boolean(
+        document.activeElement?.closest?.("[data-goose-find-in-page]"),
+      );
+      const seed = findInputFocused
+        ? ""
+        : readEditorFindSeed(editor, editorContainerRef.current);
+      const openReplace =
+        (event as CustomEvent<{ replace?: unknown }>).detail?.replace === true;
       // 先关其它弹层，再开查找栏。setTimeout 让 Escape 引发的 commit 先跑完，
       // 避免被同步的 close 路径反吃掉。
       closeAllOverlays();
+      setFindSeedQuery(seed);
+      setFindOpenReplace(openReplace);
+      setFindOpenNonce((value) => value + 1);
       setTimeout(() => setFindBarOpen(true), 0);
     };
     window.addEventListener("goose-note:editor-find-open", handleOpenFind);
     return () =>
       window.removeEventListener("goose-note:editor-find-open", handleOpenFind);
-  }, []);
+  }, [editor, editorContainerRef]);
 
   useEffect(() => {
     const handleOpen = () => {
+      if (isWorkspaceSettingsOpen()) return;
       setLinkPopoverUrl("");
       setLinkPopoverOpen(true);
     };
@@ -153,7 +331,10 @@ export function EditorComposer({
       setLinkPopoverOpen(false);
     };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (isWorkspaceSettingsOpen()) return;
+      if (event.key === "Escape" && !event.defaultPrevented && !event.isComposing && !event.repeat) {
+        event.preventDefault();
+        event.stopPropagation();
         setLinkPopoverOpen(false);
       }
     };
@@ -165,6 +346,50 @@ export function EditorComposer({
     };
   }, [linkPopoverOpen]);
 
+  useEffect(() => {
+    if (__GOOSE_EDITOR_COMPACT__ || __GOOSE_LITE__) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen() || event.defaultPrevented || event.repeat || event.isComposing) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recorder]")) return;
+      if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
+
+      if (isQuickNoteEditorPage(page)) return;
+
+      let selectedText: string;
+      try {
+        selectedText = (editor.getSelectedText() ?? "").trim();
+      } catch {
+        selectedText = "";
+      }
+      const isImageNodeSelection =
+        getSelectedImageUrl(editor.prosemirrorState) != null;
+      if (
+        !canDispatchAppendComposerSelection({
+          aiEnabled: aiSettings.enabled,
+          isCompact: isQuickNoteEditorPage(page),
+          selectedText,
+          isImageNodeSelection,
+        })
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      dispatchAppendComposerSelection({
+        pageId: page?.id ?? "",
+        pageTitle: getPageTitle(page),
+        text: selectedText,
+        animate: false,
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [aiSettings.enabled, editor, page]);
+
   const handleLinkPopoverSubmit = () => {
     const trimmed = linkPopoverUrl.trim();
     if (trimmed) {
@@ -174,44 +399,208 @@ export function EditorComposer({
     setLinkPopoverUrl("");
   };
 
-  const formattingToolbarStoreOpen = useExtensionState(FormattingToolbarExtension, { editor });
+  const formattingToolbarStoreOpen = useExtensionState(
+    FormattingToolbarExtension,
+    { editor },
+  );
   const formattingToolbarSelectionAllowed = useEditorState({
     editor,
     on: "selection",
     selector: ({ editor }) => shouldRenderFormattingToolbar(editor),
   });
-  const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active);
-  const formattingToolbarFloatingOptions = useMemo(
-    () => ({
-      useFloatingOptions: {
-        open:
-          !suppressFormattingToolbar &&
-          (formattingToolbarAiActive ||
-          (formattingToolbarStoreOpen && formattingToolbarSelectionAllowed)),
-        // 锁定在选区上方，去掉默认的 flip()：跨多行拖选时选区包围盒不断变高，
-        // flip() 会在 top/bottom 之间反复翻转导致工具栏上下抖动（BlockNote #1569）。
-        // 仅保留 offset + 受限 shift，水平方向贴边时平移、不再纵向翻转。
-        placement: "top-start" as const,
-        middleware: [
-          floatingOffset(10),
-          floatingShift({ crossAxis: false, padding: 8 }),
-        ],
+  const formattingToolbarAiActive = useFormattingToolbarAi((s) => s.active && s.owner === editor);
+  const resetFormattingToolbarAi = useFormattingToolbarAi((s) => s.reset);
+  const [holdFormattingToolbar, setHoldFormattingToolbar] = useState(false);
+  const holdFormattingToolbarRef = useRef(false);
+  const toolbarOpenForHoldRef = useRef(false);
+  useEffect(() => {
+    if (!editable) {
+      setLinkPopoverOpen(false);
+      resetFormattingToolbarAi(editor);
+    }
+  }, [editable, editor, resetFormattingToolbarAi]);
+
+  const formattingToolbarOpen = isFormattingToolbarOpen({
+    editable,
+    suppress: suppressFormattingToolbar,
+    aiActive: formattingToolbarAiActive,
+    storeOpen: formattingToolbarStoreOpen,
+    selectionAllowed: formattingToolbarSelectionAllowed,
+    holdDuringPointerSelect: holdFormattingToolbar,
+  });
+  toolbarOpenForHoldRef.current = formattingToolbarOpen;
+
+  // BlockNote 在 editor pointerdown 时关掉格式栏，pointerup 才按选区恢复。
+  // 已有选区再拖选另一行时按住工具栏，避免挡住的上一行闪一下。
+  useEffect(() => {
+    const dom = editor.domElement;
+    if (!dom) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      if (holdFormattingToolbarRef.current) return;
+      if (!toolbarOpenForHoldRef.current) return;
+      holdFormattingToolbarRef.current = true;
+      setHoldFormattingToolbar(true);
+    };
+    const endHold = () => {
+      if (!holdFormattingToolbarRef.current) return;
+      holdFormattingToolbarRef.current = false;
+      setHoldFormattingToolbar(false);
+    };
+
+    dom.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("pointerup", endHold);
+    window.addEventListener("pointercancel", endHold);
+    window.addEventListener("blur", endHold);
+    return () => {
+      dom.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("pointerup", endHold);
+      window.removeEventListener("pointercancel", endHold);
+      window.removeEventListener("blur", endHold);
+      if (!holdFormattingToolbarRef.current) return;
+      holdFormattingToolbarRef.current = false;
+      setHoldFormattingToolbar(false);
+    };
+  }, [editor, editor.domElement]);
+
+  const formattingToolbarFloatingOptions = useMemo<FloatingUIOptions>(() => {
+    const boundary = editorContainerRef.current ?? undefined;
+    const overflowOptions = { boundary, padding: 8 };
+    const avoidSelectionOverlap: Middleware = {
+      name: "gooseAvoidSelectionOverlap",
+      fn({ placement, rects, elements }) {
+        const editorRect = editorContainerRef.current?.getBoundingClientRect();
+        const viewportWidth = document.documentElement.clientWidth;
+        const viewportHeight = document.documentElement.clientHeight;
+        const padding = 8;
+        const left = Math.max(padding, editorRect?.left ?? padding);
+        const top = Math.max(padding, editorRect?.top ?? padding);
+        const right = Math.min(
+          viewportWidth - padding,
+          editorRect?.right ?? viewportWidth - padding,
+        );
+        const bottom = Math.min(
+          viewportHeight - padding,
+          editorRect?.bottom ?? viewportHeight - padding,
+        );
+        const preferredSide = placement.split("-")[0] as
+          | "top"
+          | "bottom"
+          | "left"
+          | "right";
+        let reference = {
+          top: rects.reference.y,
+          right: rects.reference.x + rects.reference.width,
+          bottom: rects.reference.y + rects.reference.height,
+          left: rects.reference.x,
+          width: rects.reference.width,
+          height: rects.reference.height,
+        };
+        // Multi-block spans are tall: collapse to a thin top/bottom edge so the
+        // toolbar can sit above/below the full selection instead of being forced
+        // sideways or hidden by avoid-overlap treating the whole bbox as forbidden.
+        if (getFormattingSelectionMode(editor) === "multiBlock") {
+          reference = getMultiBlockToolbarEdgeRect(reference, preferredSide);
+        }
+        const next = findNonOverlappingToolbarPosition({
+          reference,
+          floating: rects.floating,
+          boundary: {
+            top,
+            right,
+            bottom,
+            left,
+            width: Math.max(0, right - left),
+            height: Math.max(0, bottom - top),
+          },
+          preferredSide,
+          // 工具栏没有外投影，只保留紧凑的视觉分隔；偏移随编辑器 UI 等比缩放。
+          gap: getFormattingToolbarGap(),
+        });
+
+        if (!next) {
+          elements.floating.style.visibility = "hidden";
+          elements.floating.style.pointerEvents = "none";
+          return {};
+        }
+        elements.floating.style.visibility = "visible";
+        elements.floating.style.pointerEvents = "auto";
+        return next;
       },
-    }),
-    [
-      suppressFormattingToolbar,
-      formattingToolbarAiActive,
-      formattingToolbarSelectionAllowed,
-      formattingToolbarStoreOpen,
-    ],
-  );
+    };
+
+    return {
+      useFloatingOptions: {
+        open: formattingToolbarOpen,
+        strategy: "fixed" as const,
+        // 优先完整选区上方、水平居中；上方空间不足再翻到下方。
+        // 边界取编辑器与视口的交集，避免靠边选区溢出。
+        placement: "top" as const,
+        middleware: [
+          floatingOffset(() => getFormattingToolbarGap()),
+          floatingFlip({
+            ...overflowOptions,
+            fallbackPlacements: ["bottom"],
+          }),
+          floatingShift(overflowOptions),
+          floatingSize({
+            ...overflowOptions,
+            apply({ availableWidth, elements }) {
+              // 极窄窗口或高缩放下允许工具栏横向滚动，所有操作仍可访问。
+              // 工具栏直接使用缩放后的布局尺寸，Floating UI 与
+              // 按钮 DOMRect 共用同一套 viewport 坐标，无需再换算 CSS zoom。
+              // 旧 Electron 内核会把带 overflow 的浮层与圆角子元素合成出直角灰块。
+              const safeAvailableWidth = Math.max(0, availableWidth);
+              elements.floating.style.maxWidth = `${safeAvailableWidth}px`;
+              elements.floating.style.overflowX = "visible";
+              const toolbar = elements.floating.querySelector<HTMLElement>(
+                "[data-formatting-toolbar]",
+              );
+              if (toolbar) {
+                toolbar.style.maxWidth = `${safeAvailableWidth}px`;
+              }
+            },
+          }),
+          // 最后一层硬约束：工具栏必须完整留在编辑区/视口交集内，且不与
+          // 完整选区相交；覆盖 Windows 旧内核的多行选区坐标差异。
+          avoidSelectionOverlap,
+        ],
+        // 选区是虚拟锚点。段落对齐等事务会改变其 DOM 几何，却不会改变
+        // ProseMirror 的 from/to；逐帧检测可在同一帧布局完成后立即刷新位置。
+        // 同时覆盖滚动、缩放、窗口变化和工具栏自身尺寸变化。
+        whileElementsMounted(reference, floating, update) {
+          const cleanup = floatingAutoUpdate(reference, floating, update, {
+            animationFrame: true,
+          });
+          window.addEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+          return () => {
+            window.removeEventListener(EDITOR_UI_SCALE_CHANGE_EVENT, update);
+            cleanup();
+          };
+        },
+      },
+    };
+  }, [editor, editorContainerRef, formattingToolbarOpen]);
 
   const slashMenuFloatingOptions = useMemo(
-    () => (__GOOSE_LITE__ ? getQuicknoteSlashMenuFloatingOptions() : undefined),
+    () =>
+      __GOOSE_EDITOR_COMPACT__
+        ? getCompactSlashMenuFloatingOptions()
+        : undefined,
     [],
   );
-  const usesRawEditorContent = shouldUseRawEditorContent(page);
-
+  // 选区工具栏一出现就可见。链接工具栏 hover 等 150ms 再出现，减少划过误开；
+  // 移出立即收起。挂到 document（portalElement=null），用 --editor-ui-scale
+  // 写真实尺寸，避免 CSS zoom 在放大缩小后和图标对不齐。
+  const linkToolbarFloatingOptions = useMemo<FloatingUIOptions>(
+    () => ({
+      useHoverProps: {
+        delay: { open: 150, close: 0 },
+      },
+    }),
+    [],
+  );
   return (
     <EditorContextMenu
       editor={editor}
@@ -220,15 +609,12 @@ export function EditorComposer({
       editorContainerRef={editorContainerRef}
       handleEditorBlankMouseDown={handleEditorBlankMouseDown}
       handleEditorPasteCapture={handleEditorPasteCapture}
+      handleEditorKeyDownCapture={handleEditorKeyDownCapture}
       searchProviders={searchProviders}
       customActions={customActions}
       effectiveTheme={effectiveTheme}
       isEditorFullWidth={isEditorFullWidth}
-      tableEvenColumnWidth={tableEvenColumnWidth}
     >
-      {page?.localFilePath && (
-        <LocalFileTitle pageId={page.id} localFilePath={page.localFilePath} />
-      )}
       <BlockNoteView
         editor={editor}
         editable={editable}
@@ -242,117 +628,160 @@ export function EditorComposer({
         onChange={() => {
           const safePageId = pageIdForUpdateRef.current;
           if (!safePageId) return;
-          // local-folder 页面跳过 normalizePageContent（含 ensureFirstTitleHeading），
-          // 与 Editor.tsx 切页/commit 路径保持一致：否则 normalize 改写让签名与基线
-          // 永不一致，打开后首个 onChange 即触发非 silent 保存（打开即写盘）。
+          // raw 文档跳过 normalizePageContent（含 ensureFirstTitleHeading），
+          // 与 Editor.tsx 切页/commit 路径保持一致，避免程序化规范化误触保存。
           // 用户真实输入仍会让文档签名偏离基线，照常走 debouncedUpdate 保存。
-          // 须与 Editor.tsx 的 isLocalFolderPage 判断保持一致：草稿页(__quicknote_draft__)
-          // 同样豁免 normalize，否则 onChange 在此把首块强转 H1 并回写持久化，
-          // 导致小窗重开后首块永久变成「标题1」。
-          const isLocalPage = shouldUseRawEditorContent(page);
-          const rawContent = clonePageContent(editor.document as BlockNoteContent);
-          const nextContent = isLocalPage
-            ? rawContent
-            : normalizePageContent(rawContent);
-          const nextSig = getContentSignature(nextContent);
-          if (nextSig === syncedContentSignatureRef.current) return;
-          syncedContentSignatureRef.current = nextSig;
-          // 用户意图门控（仅 local 页面）：打开后无任何用户交互时的 onChange 来自
+          // 须与 Editor.tsx 的 contentMode 保持一致；raw 文档不执行页面级规范化。
+          const usesRawContent = usesRawEditorContent;
+          // 用户意图门控（仅 raw 文档）：打开后无任何用户交互时的 onChange 来自
           // BlockNote 异步 props 补全（折叠块/视频/带属性图片等），静默同步 store 与
           // 基线、不入保存队列。一旦用户交互过（打字/IME/点击/拖拽…），照常入队保存。
-          if (isLocalPage && !userInteractedRef.current) {
+          if (usesRawContent && !userInteractedRef.current) {
+            const nextContent = clonePageContent(
+              editor.document as BlockNoteContent,
+            );
+            const nextSig = getContentSignature(nextContent);
+            if (nextSig === syncedContentSignatureRef.current) return;
+            syncedContentSignatureRef.current = nextSig;
             silentContentSync(nextContent);
             return;
           }
-          debouncedUpdate(safePageId, nextContent);
+          pendingEditorChangeRef.current = true;
+          debouncedUpdate(safePageId);
           if (userInteractedRef.current) {
-            useTabs.getState().promotePreviewTab();
+            onPromotePreview?.();
           }
         }}
       >
-        {showSideMenu ? <EditorSideMenu /> : null}
-        <TableHandlesController
-          tableHandle={GooseTableHandle}
-          extendButton={GooseTableExtendButton}
+        {showSideMenu && editable ? <EditorSideMenu /> : null}
+        {editable ? (
+          <GooseTableHandlesController />
+        ) : null}
+        <FormattingToolbarHoldContext.Provider value={holdFormattingToolbar}>
+          {__GOOSE_EDITOR_COMPACT__ || isQuickNoteEditorPage(page) ? (
+            <FixedFormattingToolbarController
+              formattingToolbar={EditorFormattingToolbar}
+              open={formattingToolbarOpen}
+            />
+          ) : (
+            <GooseFormattingToolbarController
+              formattingToolbar={EditorFormattingToolbar}
+              floatingUIOptions={formattingToolbarFloatingOptions}
+              portalElement={null}
+            />
+          )}
+        </FormattingToolbarHoldContext.Provider>
+        <LinkToolbarController
+          linkToolbar={EditorLinkToolbar}
+          portalElement={null}
+          floatingUIOptions={linkToolbarFloatingOptions}
         />
-        <FormattingToolbarController
-          formattingToolbar={EditorFormattingToolbar}
-          floatingUIOptions={formattingToolbarFloatingOptions}
-        />
-        <LinkToolbarController linkToolbar={EditorLinkToolbar} />
-        <FilePanelController filePanel={EditorFilePanel} />
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={getSlashItems}
-          floatingUIOptions={slashMenuFloatingOptions}
-          shouldOpen={(event) =>
-            shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock:
-                usesRawEditorContent,
-            })
-          }
-          suggestionMenuComponent={CustomSlashMenu as any}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
-        <SuggestionMenuController
-          triggerCharacter="、"
-          getItems={getSlashItems}
-          floatingUIOptions={slashMenuFloatingOptions}
-          shouldOpen={(event) =>
-            shouldOpenSlashSuggestionMenu(event, editor, {
-              allowSlashMenuOnFirstBlock:
-                usesRawEditorContent,
-            })
-          }
-          suggestionMenuComponent={CustomSlashMenu as any}
-          onItemClick={(item) => {
-            if (item && "onItemClick" in item) {
-              (item as any).onItemClick();
-            }
-          }}
-        />
-        {/* 速记小窗（__GOOSE_LITE__）不挂 AI 菜单。 */}
-        {!__GOOSE_LITE__ && <AIMenuController />}
+        {editable ? <FilePanelController filePanel={EditorFilePanel} /> : null}
+        {editable ? (
+          <>
+            <SuggestionMenuController
+              triggerCharacter="/"
+              getItems={getSlashItems}
+              floatingUIOptions={slashMenuFloatingOptions}
+              shouldOpen={(event) =>
+                shouldOpenSlashSuggestionMenu(event, editor, {
+                  allowSlashMenuOnFirstBlock: usesRawEditorContent,
+                })
+              }
+              suggestionMenuComponent={CustomSlashMenu as any}
+              onItemClick={(item) => {
+                if (item && "onItemClick" in item) {
+                  (item as any).onItemClick();
+                }
+              }}
+            />
+            <SuggestionMenuController
+              triggerCharacter="、"
+              getItems={getSlashItems}
+              floatingUIOptions={slashMenuFloatingOptions}
+              shouldOpen={(event) =>
+                shouldOpenSlashSuggestionMenu(event, editor, {
+                  allowSlashMenuOnFirstBlock: usesRawEditorContent,
+                })
+              }
+              suggestionMenuComponent={CustomSlashMenu as any}
+              onItemClick={(item) => {
+                if (item && "onItemClick" in item) {
+                  (item as any).onItemClick();
+                }
+              }}
+            />
+            {__GOOSE_LITE__ || isQuickNoteEditorPage(page) ? null : (
+              <SuggestionMenuController
+                triggerCharacter="@"
+                getItems={getMentionItems}
+                floatingUIOptions={slashMenuFloatingOptions}
+                shouldOpen={(event) =>
+                  shouldOpenPageMentionSuggestionMenu(event, editor)
+                }
+                suggestionMenuComponent={CustomSlashMenu as any}
+                onItemClick={(item) => {
+                  if (item && "onItemClick" in item) {
+                    (item as any).onItemClick();
+                  }
+                }}
+              />
+            )}
+          </>
+        ) : null}
+        {/* 紧凑编辑器构建不挂 AI 菜单。 */}
+        {__GOOSE_EDITOR_AI__ &&
+          aiSettings.enabled &&
+          editable &&
+          !isQuickNoteEditorPage(page) && (
+            <GooseAIMenuController aiMenu={GooseAIMenu} />
+          )}
       </BlockNoteView>
       {linkPopoverOpen && (
         <div
           ref={linkPopoverRef}
-          className="absolute z-[20020] flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-[#2f3437]"
+          className="absolute z-[20020]"
           style={{ top: 8, left: "50%", transform: "translateX(-50%)" }}
         >
-          <input
-            value={linkPopoverUrl}
-            onChange={(e) => setLinkPopoverUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleLinkPopoverSubmit();
-              }
-              if (e.key === "Escape") {
-                setLinkPopoverOpen(false);
-              }
-            }}
-            placeholder="https://..."
-            autoFocus
-            className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm shadow-[inset_0_0_0_1px_hsl(var(--input)/0.8)] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-          />
-          <button
-            type="button"
-            onClick={handleLinkPopoverSubmit}
-            className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            确认
-          </button>
+          <div className="goose-editor-inline-context-ui flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover p-2 shadow-[0_8px_22px_rgba(15,23,42,0.1),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/15 dark:bg-popover">
+            <input
+              value={linkPopoverUrl}
+              onChange={(e) => setLinkPopoverUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleLinkPopoverSubmit();
+                }
+                if (e.key === "Escape") {
+                  setLinkPopoverOpen(false);
+                }
+              }}
+              placeholder="https://..."
+              autoFocus
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground "
+            />
+            <button
+              type="button"
+              onClick={handleLinkPopoverSubmit}
+              className="flex h-8 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-[var(--goose-primary-hover-bg)] active:bg-[var(--goose-primary-active-bg)]"
+            >
+              确认
+            </button>
+          </div>
         </div>
       )}
-      <ImageLightbox editor={editor} editorContainerRef={editorContainerRef} />
+      <ImageLightbox
+        editor={editor}
+        editorContainerRef={editorContainerRef}
+        editable={editable}
+      />
       <FindInPageBar
         editor={editor}
         open={findBarOpen}
+        seedQuery={findSeedQuery}
+        openNonce={findOpenNonce}
+        openReplace={findOpenReplace}
+        editable={editable}
         onClose={() => setFindBarOpen(false)}
       />
     </EditorContextMenu>

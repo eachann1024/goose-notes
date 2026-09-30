@@ -1,22 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
+import { describeDiskWriteError } from "@/lib/diskWriteError";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { usePages } from "@/stores/usePages";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { useSettings } from "@/stores/useSettings";
 import { resolveHistoryBackend } from "@/lib/history/backend";
+import { filterAdjacentDuplicateHistoryEntries } from "@/lib/history/dedupe";
 import {
   markMilestone,
   recordHistorySnapshot,
   unmarkMilestone,
 } from "@/lib/history/snapshot";
 import { materializeVersion } from "@/lib/history/restore";
+import { parseLocalFrontmatterBlob } from "@/lib/local-frontmatter";
 import type { HistoryIndex, HistoryIndexEntry } from "@/lib/history/types";
-import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import {
+  createEditorSafeContent,
+  extractBlockNoteTitle,
+  normalizePageContent,
+  type BlockNoteContent,
+} from "@/components/editor/utils/blocknote-content";
+import { editorSchema } from "@/components/editor/core/EditorComposer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HistoryReadOnlyEditor } from "./HistoryReadOnlyEditor";
+import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 
 const TRIGGER_LABEL: Record<HistoryIndexEntry["trigger"], string> = {
   idle: "自动",
@@ -24,11 +35,37 @@ const TRIGGER_LABEL: Record<HistoryIndexEntry["trigger"], string> = {
   "pre-op": "操作前",
 };
 
+type SelectedHistoryStatus = "idle" | "loading" | "ready" | "missing" | "error";
+
+function triggerLabel(trigger: HistoryIndexEntry["trigger"]): string {
+  return TRIGGER_LABEL[trigger] ?? "自动";
+}
+
+function createSafeHistoryContent(content: unknown): BlockNoteContent | null {
+  try {
+    return createEditorSafeContent(
+      normalizePageContent(content as any),
+      editorSchema,
+    );
+  } catch (error) {
+    console.error("[history] normalize history content failed", error);
+    return null;
+  }
+}
+
 function formatGroupLabel(ts: number, now: number): string {
   const d1 = new Date(ts);
   const d2 = new Date(now);
-  const day1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate()).getTime();
-  const day2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate()).getTime();
+  const day1 = new Date(
+    d1.getFullYear(),
+    d1.getMonth(),
+    d1.getDate(),
+  ).getTime();
+  const day2 = new Date(
+    d2.getFullYear(),
+    d2.getMonth(),
+    d2.getDate(),
+  ).getTime();
   const diffDays = Math.floor((day2 - day1) / (24 * 3600 * 1000));
   if (diffDays === 0) return "今天";
   if (diffDays === 1) return "昨天";
@@ -64,37 +101,83 @@ function useHistoryViewLogic() {
   const pageTitle = page ? extractBlockNoteTitle(page.content) || "无标题" : "";
 
   const [index, setIndex] = useState<HistoryIndex | null>(null);
-  const [selectedContent, setSelectedContent] = useState<BlockNoteContent | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
+  const [selectedContent, setSelectedContent] =
+    useState<BlockNoteContent | null>(null);
+  const [selectedStatus, setSelectedStatus] =
+    useState<SelectedHistoryStatus>("idle");
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [pendingMilestoneVersionId, setPendingMilestoneVersionId] = useState<
+    string | null
+  >(null);
 
   // 加载版本索引
   useEffect(() => {
     if (!pageId) {
       setIndex(null);
+      setIndexError(null);
       return;
     }
     let cancelled = false;
+    setIndexError(null);
     const backend = resolveHistoryBackend(pageId);
-    backend.loadIndex(pageId).then((idx) => {
-      if (!cancelled) setIndex(idx);
-    }).catch(() => {
-      if (!cancelled) setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
-    });
-    return () => { cancelled = true; };
+    backend
+      .loadIndex(pageId)
+      .then(async (idx) => {
+        const versions = await filterAdjacentDuplicateHistoryEntries(
+          pageId,
+          idx.versions,
+          backend,
+        );
+        if (!cancelled) setIndex({ ...idx, versions });
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setIndex({ pageId, versions: [], lastVersionCharCount: 0 });
+          setIndexError(describeDiskWriteError(error));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pageId, refreshTick]);
 
   // 加载选中版本内容
   useEffect(() => {
     if (!pageId || !selectedVersionId) {
       setSelectedContent(null);
+      setSelectedStatus("idle");
       return;
     }
     let cancelled = false;
-    materializeVersion(pageId, selectedVersionId).then((result) => {
-      if (!cancelled) setSelectedContent(result?.content ?? null);
-    }).catch(() => {
-      if (!cancelled) setSelectedContent(null);
-    });
-    return () => { cancelled = true; };
+    setSelectedContent(null);
+    setSelectedStatus("loading");
+    materializeVersion(pageId, selectedVersionId)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result || result.content == null) {
+          setSelectedContent(null);
+          setSelectedStatus("missing");
+          return;
+        }
+        const safeContent = createSafeHistoryContent(result.content);
+        if (!safeContent) {
+          setSelectedContent(null);
+          setSelectedStatus("error");
+          return;
+        }
+        setSelectedContent(safeContent);
+        setSelectedStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSelectedContent(null);
+          setSelectedStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pageId, selectedVersionId]);
 
   useEffect(() => {
@@ -102,7 +185,9 @@ function useHistoryViewLogic() {
     if (selectedVersionId) {
       if (index.versions.some((v) => v.versionId === selectedVersionId)) return;
     }
-    const sorted = [...index.versions].sort((a, b) => b.createdAt - a.createdAt);
+    const sorted = [...index.versions].sort(
+      (a, b) => b.createdAt - a.createdAt,
+    );
     select(sorted[0].versionId);
   }, [index, selectedVersionId, select]);
 
@@ -125,7 +210,9 @@ function useHistoryViewLogic() {
 
   const groups = useMemo(() => {
     if (!index || index.versions.length === 0) return [];
-    const sorted = [...index.versions].sort((a, b) => b.createdAt - a.createdAt);
+    const sorted = [...index.versions].sort(
+      (a, b) => b.createdAt - a.createdAt,
+    );
     const now = Date.now();
     const result: { label: string; items: HistoryIndexEntry[] }[] = [];
     let currentLabel = "";
@@ -141,20 +228,26 @@ function useHistoryViewLogic() {
   }, [index]);
 
   const selectedEntry = useMemo(
-    () => index?.versions.find((v) => v.versionId === selectedVersionId) ?? null,
+    () =>
+      index?.versions.find((v) => v.versionId === selectedVersionId) ?? null,
     [index, selectedVersionId],
   );
 
   const handleRestore = () => {
-    if (!pageId || !selectedVersionId) return;
+    if (!pageId || !selectedVersionId || isRestoring) return;
     const current = getPage(pageId);
     if (!current) return;
     const ok = window.confirm(
       "将当前内容覆盖为此版本？\n当前内容会自动保留为一次「操作前」快照，可随时撤回。",
     );
     if (!ok) return;
+    setIsRestoring(true);
 
-    try { flushEditorContent(true); } catch { /* ignore */ }
+    try {
+      flushEditorContent(true);
+    } catch {
+      /* ignore */
+    }
 
     const latest = getPage(pageId);
     if (!latest) return;
@@ -166,35 +259,94 @@ function useHistoryViewLogic() {
       trigger: "pre-op",
     }).catch((err) => console.error("[history] pre-op snapshot failed:", err));
 
-    materializeVersion(pageId, selectedVersionId).then((result) => {
-      if (!result) {
-        toast.error("无法读取该版本");
-        return;
-      }
-      const updates: Parameters<typeof updatePage>[1] = { content: result.content };
-      if (result.localFrontmatter !== undefined) {
-        updates.localFrontmatter = result.localFrontmatter;
-      }
-      updatePage(pageId, updates);
-      toast.success("已还原，当前内容已保留为「操作前」版本");
-      exit();
-    }).catch(() => {
-      toast.error("无法读取该版本");
+    materializeVersion(pageId, selectedVersionId)
+      .then((result) => {
+        if (!result || result.content == null) {
+          toast.error("无法读取该版本", {
+            description:
+              "版本文件为空或无法读取。若仓库在云盘上，请先恢复云盘登录。",
+          });
+          setIsRestoring(false);
+          return;
+        }
+        const safeContent = createSafeHistoryContent(result.content);
+        if (!safeContent) {
+          toast.error("该历史版本格式异常，无法还原");
+          setIsRestoring(false);
+          return;
+        }
+        const updates: Parameters<typeof updatePage>[1] = {
+          content: safeContent,
+        };
+        if (latest.localFilePath || result.localFrontmatter !== undefined) {
+          updates.localFrontmatter = result.localFrontmatter;
+          // 还原 frontmatter 时同步 goose 设置，避免随后写盘用当前内存设置覆盖
+          const fm = parseLocalFrontmatterBlob(result.localFrontmatter);
+          if (!fm.ok) {
+            toast.error("历史版本 YAML 格式异常，未还原");
+            setIsRestoring(false);
+            return;
+          }
+          updates.fontFamily = fm.settings.fontFamily;
+          updates.pageLayout = fm.settings.pageLayout;
+          updates.isLocked = fm.settings.isLocked;
+        }
+        updatePage(pageId, updates);
+        toast.success("已还原，当前内容已保留为「操作前」版本");
+        setIsRestoring(false);
+        exit();
+      })
+      .catch((error) => {
+        toast.error("无法读取该版本", {
+          description: describeDiskWriteError(error),
+        });
+        setIsRestoring(false);
+      });
+  };
+
+  const applyMilestoneLocally = (versionId: string, willBe: boolean) => {
+    setIndex((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        versions: prev.versions.map((entry) =>
+          entry.versionId === versionId
+            ? { ...entry, isMilestone: willBe }
+            : entry,
+        ),
+      };
     });
   };
 
   const handleToggleMilestone = (versionId: string, willBe: boolean) => {
-    if (!pageId) return;
-    if (willBe) {
-      markMilestone(pageId, versionId).then(() => {
-        toast.success("已标记为里程碑");
-        bumpRefresh();
-      }).catch((err) => console.error("[history] markMilestone failed:", err));
-    } else {
-      unmarkMilestone(pageId, versionId).then(() => {
-        bumpRefresh();
-      }).catch((err) => console.error("[history] unmarkMilestone failed:", err));
+    if (!pageId || pendingMilestoneVersionId) return;
+    if (!willBe) {
+      const ok = window.confirm(
+        "取消后该版本不再受保护，历史数量超限时可能被自动清理。确定取消里程碑？",
+      );
+      if (!ok) return;
     }
+    setPendingMilestoneVersionId(versionId);
+    applyMilestoneLocally(versionId, willBe);
+    const op = willBe
+      ? markMilestone(pageId, versionId)
+      : unmarkMilestone(pageId, versionId);
+    op.then(() => {
+      if (willBe) toast.success("已标记为里程碑，清理历史时会保留此版本");
+      else toast.success("已取消里程碑");
+      bumpRefresh();
+    })
+      .catch((err) => {
+        console.error(
+          `[history] ${willBe ? "markMilestone" : "unmarkMilestone"} failed:`,
+          err,
+        );
+        applyMilestoneLocally(versionId, !willBe);
+        toast.error(willBe ? "标记失败" : "取消标记失败", {
+          description: describeDiskWriteError(err),
+        });
+      })
+      .finally(() => setPendingMilestoneVersionId(null));
   };
 
   return {
@@ -203,9 +355,13 @@ function useHistoryViewLogic() {
     pageTitle,
     groups,
     isEmpty: groups.length === 0,
+    indexError,
     selectedVersionId,
     selectedEntry,
     selectedContent,
+    selectedStatus,
+    isRestoring,
+    pendingMilestoneVersionId,
     exit,
     select,
     handleRestore,
@@ -214,128 +370,193 @@ function useHistoryViewLogic() {
 }
 
 /**
- * 版本列表（嵌入 Sidebar 中段，临时替换页面树/大纲）。
+ * 页面历史模块（历史模式下占据整块侧栏主体，替换笔记本头 + 页面树/大纲）。
  * 不自带宽度/背景/边框——靠 Sidebar 父容器提供（Sidebar 已是 shell-bg）。
- * 顶部带一个与 SidebarSectionHeader 同款节奏的小标题"页面历史"，
  * 退出按钮在主区 HistoryToolbar 上，这里不重复放。
  */
 export function HistoryVersionList() {
   const {
     groups,
     isEmpty,
+    indexError,
     selectedVersionId,
+    pendingMilestoneVersionId,
     select,
     handleToggleMilestone,
   } = useHistoryViewLogic();
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col" aria-label="历史版本列表">
-      <div className="mt-1 shrink-0 px-3 py-2 flex items-center gap-1.5">
-        <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground/70" />
-        <span className="text-[11px] text-muted-foreground/80 font-medium">
-          页面历史
-        </span>
+    <div className="flex-1 min-h-0 flex flex-col" aria-label="页面历史">
+      <div className="shrink-0 px-3 pt-3 pb-2">
+        <div className="flex items-center gap-1.5">
+          <LucideIcons.History className="h-3.5 w-3.5 text-[var(--goose-interactive-selected-fg)]" />
+          <span className="text-[12px] font-medium text-foreground">
+            页面历史
+          </span>
+        </div>
+        {!isEmpty && (
+          <p className="mt-1 truncate whitespace-nowrap text-[11px] leading-none text-muted-foreground">
+            选择时间点预览后还原
+          </p>
+        )}
       </div>
       {isEmpty ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
-          <LucideIcons.History className="h-10 w-10 text-muted-foreground/20" />
-          <p className="text-xs text-muted-foreground/60">暂无历史版本</p>
-          <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
-            停笔 15 秒或心跳 30 秒自动保存
-            <br />
-            仅空白/换行变化不计入
-          </p>
-        </div>
+        <p className="px-3 pt-2 text-xs text-muted-foreground">
+          {indexError ?? "暂无历史版本"}
+        </p>
       ) : (
         <ScrollArea className="flex-1">
-          <div className="py-2">
+          <div className="py-1 pb-4">
             {groups.map((group) => (
-              <div key={group.label}>
-                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider px-3 py-1.5">
+              <div key={group.label} className="mb-1">
+                <div className="px-3 py-1.5 text-[10px] tracking-wider text-muted-foreground/55">
                   {group.label}
                 </div>
-                <div className="px-2 flex flex-col gap-0.5">
-                  {group.items.map((v) => {
+                <div className="px-2">
+                  {group.items.map((v, index) => {
                     const isSelected = selectedVersionId === v.versionId;
+                    const isMilestonePending =
+                      pendingMilestoneVersionId === v.versionId;
+                    const isFirst = index === 0;
+                    const isLast = index === group.items.length - 1;
                     const delta = v.charDelta;
                     const deltaText =
                       delta === 0 ? null : delta > 0 ? `+${delta}` : `${delta}`;
+                    const detailTitle = [
+                      new Date(v.createdAt).toLocaleString("zh-CN"),
+                      triggerLabel(v.trigger),
+                      `${v.charCount} 字`,
+                      deltaText ? `变化 ${deltaText}` : null,
+                      v.label || null,
+                      v.isMilestone ? "里程碑" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+
                     return (
                       <div
                         key={v.versionId}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => select(v.versionId)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            select(v.versionId);
-                          }
-                        }}
+                        data-selected={isSelected ? "true" : "false"}
                         className={cn(
-                          "w-full text-left rounded-[10px] px-3 py-2 transition-colors duration-150 cursor-pointer group",
+                          "history-version-item group relative flex items-center rounded-[10px] transition-colors duration-150",
                           isSelected
-                            ? "bg-[hsl(var(--goose-selected-bg))]"
-                            : "hover:bg-[hsl(var(--goose-selected-bg))]/60",
+                            ? "bg-[var(--goose-interactive-selected)]"
+                            : "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs">{formatTime(v.createdAt)}</span>
-                            {v.label && (
-                              <span className="text-[11px] text-muted-foreground/70 truncate">
+                        {/* 绝对定位轨道：覆盖整行高度（含 padding），相邻项首尾相接不断线 */}
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute bottom-0 left-1.5 top-0 z-[1] flex w-4 items-center justify-center"
+                        >
+                          {!isFirst ? (
+                            <span className="absolute bottom-1/2 left-1/2 top-0 w-px -translate-x-1/2 bg-border/70" />
+                          ) : null}
+                          {!isLast ? (
+                            <span className="absolute bottom-0 left-1/2 top-1/2 w-px -translate-x-1/2 bg-border/70" />
+                          ) : null}
+                          <span
+                            className={cn(
+                              "relative z-[1] h-2 w-2 rounded-full border",
+                              isSelected
+                                ? "border-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected-fg)]"
+                                : "border-border bg-[hsl(var(--goose-shell-bg))]",
+                            )}
+                          />
+                        </span>
+                        <button
+                          type="button"
+                          title={detailTitle}
+                          aria-current={isSelected ? "true" : undefined}
+                          data-selected={isSelected ? "true" : "false"}
+                          aria-label={`查看 ${group.label} ${formatTime(v.createdAt)} 的历史版本`}
+                          onClick={() => {
+                            closeNotebookAiIfFullscreen();
+                            select(v.versionId);
+                          }}
+                          className="history-version-row flex min-h-8 w-full min-w-0 cursor-pointer items-start py-1.5 pl-8 pr-8 text-left transition-colors duration-150 "
+                        >
+                          <span
+                            className={cn(
+                              "min-w-0 text-xs leading-snug",
+                              isSelected
+                                ? "font-medium text-[var(--goose-interactive-selected-fg)]"
+                                : "text-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
+                            )}
+                          >
+                            <span className="tabular-nums">
+                              {formatTime(v.createdAt)}
+                            </span>
+                            {v.label ? (
+                              <span
+                                className={cn(
+                                  "ml-1.5 font-normal",
+                                  isSelected
+                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
+                                    : "text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
+                                )}
+                              >
                                 {v.label}
                               </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {deltaText && (
+                            ) : null}
+                            {deltaText ? (
                               <span
-                                className={
-                                  delta > 0
-                                    ? "text-[10px] text-foreground/60"
-                                    : "text-[10px] text-muted-foreground/50"
-                                }
+                                className={cn(
+                                  "ml-1.5 text-[10px] tabular-nums",
+                                  isSelected
+                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-55"
+                                    : "text-muted-foreground/55 group-hover:text-[var(--goose-interactive-hover-fg)]",
+                                )}
                               >
                                 {deltaText}
                               </span>
-                            )}
-                            {v.isMilestone && (
-                              <LucideIcons.Pin className="h-3 w-3 text-foreground/70" />
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="text-[10px] text-muted-foreground/50">
-                            {TRIGGER_LABEL[v.trigger]} · {v.charCount} 字
+                            ) : null}
                           </span>
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            aria-label={v.isMilestone ? "取消里程碑" : "标记里程碑"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleMilestone(v.versionId, !v.isMilestone);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                handleToggleMilestone(v.versionId, !v.isMilestone);
-                              }
-                            }}
-                            className="text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground cursor-pointer select-none"
-                          >
-                            {v.isMilestone ? "取消" : "标记"}
-                          </span>
-                        </div>
+                        </button>
+                        <button
+                          type="button"
+                          data-marked={v.isMilestone ? "true" : "false"}
+                          aria-busy={isMilestonePending || undefined}
+                          aria-pressed={v.isMilestone}
+                          aria-label={
+                            isMilestonePending
+                              ? v.isMilestone
+                                ? "正在取消标记此版本"
+                                : "正在标记此版本"
+                              : v.isMilestone
+                                ? "取消标记此版本"
+                                : "标记此版本"
+                          }
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                            if (event.button !== 0) return;
+                            event.preventDefault();
+                            handleToggleMilestone(v.versionId, !v.isMilestone);
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (event.detail !== 0) return;
+                            handleToggleMilestone(v.versionId, !v.isMilestone);
+                          }}
+                          className={cn(
+                            "history-star-control group/star absolute right-0.5 top-1/2 z-[2] flex h-7 w-7 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-[8px] transition-[background-color,color] duration-150 hover:bg-[var(--goose-interactive-hover)] dark:hover:bg-[var(--goose-interactive-hover)] active:bg-[var(--goose-interactive-selected)]",
+                            "",
+                          )}
+                        >
+                          <LucideIcons.Star
+                            className={cn(
+                              "h-4 w-4 text-muted-foreground transition-colors group-hover/star:text-foreground",
+                              v.isMilestone &&
+                                "fill-[var(--goose-interactive-selected-fg)] text-[var(--goose-interactive-selected-fg)] group-hover/star:text-[var(--goose-interactive-selected-fg)]",
+                            )}
+                          />
+                        </button>
                       </div>
                     );
                   })}
                 </div>
               </div>
             ))}
-            <div className="h-4" />
           </div>
         </ScrollArea>
       )}
@@ -343,65 +564,98 @@ export function HistoryVersionList() {
   );
 }
 
-/**
- * 历史模式顶栏：替代 PageHeader。
- * 高度 h-11 与 PageHeader 节奏对齐。
- */
 export function HistoryToolbar() {
-  const { pageTitle, selectedEntry, selectedVersionId, exit, handleRestore } =
-    useHistoryViewLogic();
+  const {
+    pageTitle,
+    isEmpty,
+    selectedVersionId,
+    selectedStatus,
+    isRestoring,
+    exit,
+    handleRestore,
+  } = useHistoryViewLogic();
 
   return (
-    <header className="h-11 px-3 flex items-center gap-3 border-b border-border/50 shrink-0 bg-[hsl(var(--goose-shell-bg))]">
+    <header className="h-11 px-3 flex items-center gap-3 shrink-0 bg-[hsl(var(--goose-editor-bg))]">
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
-        className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+        aria-label="返回编辑页面"
+        className="history-secondary-control h-8 px-3 text-xs gap-1.5 text-foreground shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
         onClick={exit}
       >
         <LucideIcons.ArrowLeft className="h-3.5 w-3.5" />
         返回
       </Button>
 
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <LucideIcons.History className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs text-muted-foreground/70 shrink-0">历史 ·</span>
-        <span className="text-sm font-medium truncate">{pageTitle}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="truncate text-sm font-medium">{pageTitle}</span>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {selectedEntry && (
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
-            <span className="hidden md:inline">
-              {new Date(selectedEntry.createdAt).toLocaleString("zh-CN")}
-            </span>
-            <span className="px-1.5 py-0.5 rounded-[10px] bg-[hsl(var(--goose-selected-bg))] text-foreground/60">
-              {TRIGGER_LABEL[selectedEntry.trigger]}
-            </span>
-            {selectedEntry.charDelta !== 0 && (
-              <span
-                className={
-                  selectedEntry.charDelta > 0
-                    ? "text-foreground/60"
-                    : "text-muted-foreground/50"
-                }
-              >
-                {selectedEntry.charDelta > 0 ? "+" : ""}
-                {selectedEntry.charDelta}
-              </span>
-            )}
-          </div>
-        )}
+      {!isEmpty && (
         <Button
           size="sm"
-          className="h-7 px-3 text-xs"
-          disabled={!selectedVersionId}
+          aria-label={
+            isRestoring
+              ? "正在还原此版本"
+              : selectedStatus === "loading"
+                ? "正在读取历史版本"
+                : "还原此版本"
+          }
+          aria-busy={isRestoring || selectedStatus === "loading" || undefined}
+          className="history-primary-control h-7 shrink-0 px-3 text-xs transition-[background-color,box-shadow,transform] hover:bg-[var(--goose-primary-hover-bg)] active:translate-y-px active:bg-[var(--goose-primary-active-bg)] active:shadow-none"
+          disabled={
+            !selectedVersionId || selectedStatus !== "ready" || isRestoring
+          }
           onClick={handleRestore}
         >
-          还原此版本
+          {isRestoring || selectedStatus === "loading" ? (
+            <>
+              <LucideIcons.LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              {isRestoring ? "正在还原" : "正在读取"}
+            </>
+          ) : (
+            "还原此版本"
+          )}
         </Button>
-      </div>
+      )}
     </header>
+  );
+}
+
+function HistoryReaderState({
+  icon: Icon,
+  title,
+  description,
+  spinning = false,
+  action,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  spinning?: boolean;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="h-full min-h-[280px] flex items-center justify-center px-6 text-center">
+      <div className="flex max-w-sm flex-col items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--goose-interactive-hover)] text-muted-foreground">
+          <Icon
+            className={cn("h-5 w-5", spinning && "animate-spin")}
+            strokeWidth={1.75}
+          />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">{title}</p>
+          {description && (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
+        {action}
+      </div>
+    </div>
   );
 }
 
@@ -410,20 +664,95 @@ export function HistoryToolbar() {
  * 复用与主 Editor 完全一致的滚动容器和 max-w-4xl 包裹。
  */
 export function HistoryReader() {
-  const { selectedContent, selectedVersionId, isEmpty } = useHistoryViewLogic();
+  const {
+    selectedContent,
+    selectedVersionId,
+    selectedStatus,
+    isEmpty,
+    indexError,
+  } = useHistoryViewLogic();
+
+  if (selectedStatus === "loading") {
+    return (
+      <HistoryReaderState
+        icon={LucideIcons.LoaderCircle}
+        title="正在读取历史版本"
+        description="稍等片刻，正在准备只读预览。"
+        spinning
+      />
+    );
+  }
+
+  if (isEmpty) {
+    return (
+      <HistoryReaderState
+        icon={indexError ? LucideIcons.FileWarning : LucideIcons.History}
+        title={indexError ? "历史列表无法读取" : "暂无历史版本"}
+        description={
+          indexError ??
+          "停笔一段时间后，鹅的笔记会自动保存可回看的历史。"
+        }
+      />
+    );
+  }
+
+  if (selectedStatus === "missing") {
+    return (
+      <HistoryReaderState
+        icon={LucideIcons.FileQuestion}
+        title="此历史版本不可读取"
+        description="版本文件为空或无法读取。若仓库在云盘上，请先恢复云盘登录后再打开历史。"
+      />
+    );
+  }
+
+  if (selectedStatus === "error") {
+    return (
+      <HistoryReaderState
+        icon={LucideIcons.FileWarning}
+        title="此历史版本格式异常"
+        description="这条记录可能来自旧版格式或包含脏数据，已跳过渲染以避免白屏。"
+      />
+    );
+  }
 
   if (!(selectedContent && selectedVersionId)) {
     return (
-      <div className="h-full flex items-center justify-center text-xs text-muted-foreground/40">
-        {isEmpty ? "暂无历史版本可显示" : "选择左侧版本查看内容"}
-      </div>
+      <HistoryReaderState
+        icon={LucideIcons.MousePointerClick}
+        title="选择一个历史版本"
+        description="从左侧列表选择时间点后，这里会显示只读预览。"
+      />
     );
   }
 
   return (
-    <HistoryReadOnlyEditor
-      content={selectedContent}
-      versionKey={selectedVersionId}
-    />
+    <ErrorBoundary
+      resetKey={selectedVersionId}
+      fallback={(_, reset) => (
+        <HistoryReaderState
+          icon={LucideIcons.FileWarning}
+          title="此历史版本渲染失败"
+          description="已阻止历史视图白屏。可以重试，或切换左侧其他历史版本。"
+          action={
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="history-secondary-control mt-1 h-8 gap-1.5 rounded-[10px] text-xs shadow-none transition-[background-color,color,transform] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:translate-y-px active:bg-[var(--goose-interactive-selected)] active:text-[var(--goose-interactive-selected-fg)]"
+              onClick={reset}
+            >
+              <LucideIcons.RotateCcw className="h-3.5 w-3.5" />
+              重试
+            </Button>
+          }
+        />
+      )}
+    >
+      <HistoryReadOnlyEditor
+        content={selectedContent}
+        versionKey={selectedVersionId}
+      />
+    </ErrorBoundary>
   );
 }

@@ -1,0 +1,32 @@
+# 自动构建与下载
+
+每月奇数日（北京时间 07:00）检查 `main`：应用代码有新提交时构建安装包；也可在 Actions 中手动运行 **Desktop installers**。推送本身不触发构建；所有任务共用该次运行的固定提交。全部平台构建和源码归档完成后，安装包、对应源码、产品视频及校验值直接发布到 [goose-notes Releases](https://github.com/eachann1024/goose-notes/releases/latest)，Homebrew Cask 和更新信息也在此仓库维护。已发布的同一提交保持原附件；只改变更新信息或 Cask 的提交不会触发下一次定时重建。不向 AUR 发布。
+
+优先进入 https://github.com/eachann1024/goose-notes/releases ，在开发预发布版本的 **Assets** 直接下载安装包。每个版本固定对应提交，不覆盖稳定版本。也可进入 https://github.com/eachann1024/goose-notes/actions/workflows/desktop-build.yml ，打开成功的运行，在 **Artifacts** 下载。需要仓库访问权限；Actions 产物保留 30 天，Release 附件不使用此到期策略；过期后可从固定提交重新构建。下载的 Actions ZIP 是外层归档，请先解压。
+
+| 系统 | CPU | 安装包 |
+| --- | --- | --- |
+| Windows | x64 | NSIS `.exe` |
+| macOS | Apple Silicon arm64 | `.dmg`、应用 `.zip` |
+| macOS | Intel x64 | `.dmg`、应用 `.zip` |
+| Linux | x64 | `.AppImage`、`.deb`、`.rpm` |
+| Arch Linux / 兼容发行版 | x86_64 | `.pacman`（electron-builder 26 生成的 pacman 包） |
+
+Arch 指 Linux 发行版。解压下载归档后执行 `sudo pacman -U ./goose-note-app-*.pacman`；包管理器解析并安装依赖。CI 在 Arch 官方容器中实际安装包、检查安装记录和应用资源。此检查不代替图形桌面启动和功能验收。AppImage 可作为另一种 Linux 分发方式，部分系统需安装 FUSE。
+
+这些是未签名的开发测试构建；macOS 未公证，Windows 未做 Authenticode 签名。系统可能提示未知开发者。只对确认来源的构建按操作系统提示操作。应用版本来自 package.json；提交 SHA 和运行 ID 用于区分同版本不同构建，不应当作新的稳定发布版本。
+
+每个平台归档包含 `BUILD.json`、`SHA256SUMS.txt`、MIT 许可和第三方声明。同一运行的 `source-<SHA>` 包含 `git archive` 生成的准确项目源码、锁文件、构建脚本及声明，不包含未提交的本地工作。项目源码归档不等同于已完成全部依赖的对应源码交付；公开分发前仍须按 SOURCE-CODE.md 补齐必要的依赖源码、核对第三方声明和字体来源。
+
+## 复现
+
+使用对应操作系统、Node.js 22、Bun 1.3.14。Linux 安装 `rpm` 和 `libarchive-tools`；macOS 安装 Xcode Command Line Tools。
+
+```sh
+bun install --frozen-lockfile
+bun run build:electron
+node scripts/build-ci-installers.mjs mac arm64
+# 其他组合：mac x64、win x64、linux x64
+```
+
+安装包和校验清单位于 `dist-desktop/ci/`。CI 使用冻结锁文件，不依赖本机未提交修改。打包检查包括所需格式是否齐全、Arch 包可安装；不表示所有桌面交互已经验收。现有 `aiPanelFocus.ts` 类型检查问题不作为此打包流水线的通过依据，类型检查需单独处理。

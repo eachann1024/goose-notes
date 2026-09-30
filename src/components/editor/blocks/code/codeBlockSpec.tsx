@@ -1,9 +1,15 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
-import { createHighlightPlugin, type Parser } from "@/components/editor/find/highlightPlugin";
+import {
+  createHighlightPlugin,
+  type Parser,
+} from "@/components/editor/find/highlightPlugin";
 import { createParser as createLowlightParser } from "prosemirror-highlight/lowlight";
 import { Decoration } from "prosemirror-view";
+import { Fragment } from "prosemirror-model";
+import { Plugin, TextSelection } from "prosemirror-state";
 import { common, createLowlight } from "lowlight";
 import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +19,27 @@ import { CodeBlockToolbar } from "./CodeBlockToolbar";
 import { MathView } from "@/components/editor/blocks/math/MathView";
 import { MermaidView } from "@/components/editor/blocks/mermaid/MermaidView";
 import { useEditorSettings } from "@/components/editor/platform/hostContext";
+import { useEditorPlatform } from "@/components/editor/platform/context";
+import { renderMermaidSvgForExport } from "@/lib/imageExport/mermaid";
+import {
+  captureElementAsPngBlob,
+  svgMarkupToPngBlob,
+} from "@/lib/imageExport/svgToPng";
+import {
+  blobToBase64,
+  convertImageBlobToPng,
+} from "@/lib/imageProcessor";
+import { toast } from "@/components/ui/sonner";
+import { FullscreenPreview } from "@/components/preview/FullscreenPreview";
+import {
+  openPreviewInSystem,
+  type PreviewContent,
+} from "@/lib/preview/previewAction";
+import { indentCodeSelection } from "./codeBlockIndent";
+import { gooseCodeBlockActiveLineExtension } from "./codeBlockActiveLine";
+import { saveBlobAndReveal } from "@/lib/export/fileSave";
 
-// 主应用与速记小窗均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
+// 所有宿主均以 highlight.js common（~37 种常用语言）作为代码高亮基线，
 // 把语法包从 ~1MB（all 全量）降到 ~300KB（vendor-markdown 1257KB→530KB）。
 // 注意：不做小众语言运行时按需加载——vite/rolldown 对 node_modules 既无法 code-split
 // 裸包模板字符串，import.meta.glob 又会把全部 192 种语言 eager 内联进首屏（体积反弹到
@@ -43,6 +68,8 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   math: "latex",
   // YAML
   yml: "yaml",
+  "yaml-frontmatter": "yaml",
+  frontmatter: "yaml",
   // Markdown
   md: "markdown",
   mkdown: "markdown",
@@ -73,16 +100,9 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   docker: "dockerfile",
 };
 
-const SKIP_HIGHLIGHT_LANGUAGES = new Set([
-  "none",
-]);
+const SKIP_HIGHLIGHT_LANGUAGES = new Set(["none"]);
 
-const AUTO_HIGHLIGHT_LANGUAGES = new Set([
-  "plain",
-  "plaintext",
-  "text",
-  "txt",
-]);
+const AUTO_HIGHLIGHT_LANGUAGES = new Set(["plain", "plaintext", "text", "txt"]);
 
 function normalizeHighlightLanguage(language: string | undefined) {
   const normalized = (language || "text").trim().toLowerCase();
@@ -100,9 +120,13 @@ function createRegexDecorations(
     for (const match of content.matchAll(regex)) {
       if (match.index === undefined || !match[0]) continue;
       decorations.push(
-        Decoration.inline(pos + 1 + match.index, pos + 1 + match.index + match[0].length, {
-          class: className,
-        }),
+        Decoration.inline(
+          pos + 1 + match.index,
+          pos + 1 + match.index + match[0].length,
+          {
+            class: className,
+          },
+        ),
       );
     }
   });
@@ -139,7 +163,8 @@ function createRegexCaptureDecorations(
 const mermaidParser: Parser = ({ content, pos }) =>
   createRegexDecorations(content, pos, [
     {
-      regex: /\b(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|subgraph|end|participant|actor|as|loop|alt|else|opt|par|and|rect|note|over|title|section)\b/g,
+      regex:
+        /\b(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|gitGraph|mindmap|subgraph|end|participant|actor|as|loop|alt|else|opt|par|and|rect|note|over|title|section)\b/g,
       className: "hljs-keyword",
     },
     {
@@ -152,12 +177,7 @@ const mermaidParser: Parser = ({ content, pos }) =>
     },
   ]);
 
-const SHELL_HIGHLIGHT_LANGUAGES = new Set([
-  "bash",
-  "shell",
-  "sh",
-  "zsh",
-]);
+const SHELL_HIGHLIGHT_LANGUAGES = new Set(["bash", "shell", "sh", "zsh"]);
 
 const shellCommandParser: Parser = ({ content, pos }) =>
   createRegexCaptureDecorations(content, pos, [
@@ -203,7 +223,8 @@ const codeBlockHighlightParser: Parser = (options) => {
 
   try {
     const useLanguage =
-      !AUTO_HIGHLIGHT_LANGUAGES.has(language) && loadedLanguagesSet.has(language)
+      !AUTO_HIGHLIGHT_LANGUAGES.has(language) &&
+      loadedLanguagesSet.has(language)
         ? language
         : undefined;
 
@@ -240,6 +261,67 @@ const codeBlockHighlightExtension = createExtension({
   ],
 });
 
+const codeBlockTabIndentExtension = createExtension(({ editor }) => ({
+  key: "goose-code-block-tab-indent",
+  runsBefore: ["code-block-keyboard-shortcuts"],
+  mount: ({ dom, root, signal }) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
+      if (event.key !== "Tab" || event.isComposing) return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection) return;
+      const { block } = editor.getTextCursorPosition();
+      if (block.type !== "codeBlock") return;
+
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
+      editor.updateBlock(block.id, { content: next.text } as any);
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    const target = root instanceof Document ? root : dom.ownerDocument;
+    target.addEventListener("keydown", handleKeyDown, {
+      capture: true,
+      signal,
+    });
+  },
+  keyboardShortcuts: {
+    Tab: ({ editor }) =>
+      editor.transact((tr) => applyCodeBlockIndentTransaction(tr, false)),
+    "Shift-Tab": ({ editor }) =>
+      editor.transact((tr) => applyCodeBlockIndentTransaction(tr, true)),
+  },
+  prosemirrorPlugins: [
+    new Plugin({
+      props: {
+        handleKeyDown(view, event) {
+          if (event.key !== "Tab" || event.isComposing || !view.editable) {
+            return false;
+          }
+
+          const { state, dispatch } = view;
+          const tr = state.tr;
+          if (!applyCodeBlockIndentTransaction(tr, event.shiftKey)) {
+            return false;
+          }
+
+          event.preventDefault();
+          dispatch(tr);
+          return true;
+        },
+      },
+    }),
+  ],
+}))();
+
 const LATEX_SNIPPETS = [
   { label: "分数", code: "\\frac{a}{b}" },
   { label: "上标", code: "x^{n}" },
@@ -261,6 +343,203 @@ const LATEX_SNIPPETS = [
   { label: "n次根", code: "\\sqrt[n]{x}" },
 ];
 
+type CodePreviewMode = "code" | "preview";
+
+function isDarkTheme(theme: string | undefined): boolean {
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
+function codeTextToInlineFragment(schema: any, text: string) {
+  if (!text) return Fragment.empty;
+  const hardBreakType = schema.nodes.hardBreak;
+  const nodes: any[] = [];
+
+  text.split("\n").forEach((line, index) => {
+    if (index > 0 && hardBreakType) nodes.push(hardBreakType.create());
+    if (line) nodes.push(schema.text(line));
+  });
+
+  return nodes.length > 0 ? Fragment.fromArray(nodes) : Fragment.empty;
+}
+
+function getClosestElement(node: Node | null) {
+  if (!node) return null;
+  return node instanceof HTMLElement ? node : node.parentElement;
+}
+
+function nodeListToCodeText(nodes: ChildNode[]) {
+  let text = "";
+  nodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent ?? "";
+      return;
+    }
+    if (node instanceof HTMLBRElement) {
+      text += "\n";
+      return;
+    }
+    text += nodeListToCodeText(Array.from(node.childNodes));
+  });
+  return text;
+}
+
+function getCodeDomSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  const codeElement =
+    getClosestElement(range.commonAncestorContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    ) ??
+    getClosestElement(range.startContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    ) ??
+    getClosestElement(range.endContainer)?.closest<HTMLElement>(
+      ".goose-code-content",
+    );
+
+  if (!codeElement) return null;
+
+  if (
+    !codeElement.contains(range.startContainer) ||
+    !codeElement.contains(range.endContainer)
+  ) {
+    return null;
+  }
+
+  const beforeStart = document.createRange();
+  beforeStart.selectNodeContents(codeElement);
+  beforeStart.setEnd(range.startContainer, range.startOffset);
+
+  const beforeEnd = document.createRange();
+  beforeEnd.selectNodeContents(codeElement);
+  beforeEnd.setEnd(range.endContainer, range.endOffset);
+
+  return {
+    codeElement,
+    text: nodeListToCodeText(Array.from(codeElement.childNodes)),
+    start: nodeListToCodeText(
+      Array.from(beforeStart.cloneContents().childNodes),
+    ).length,
+    end: nodeListToCodeText(Array.from(beforeEnd.cloneContents().childNodes))
+      .length,
+  };
+}
+
+function isComposingKeyboardEvent(event: KeyboardEvent | React.KeyboardEvent) {
+  return Boolean(
+    (event as KeyboardEvent).isComposing ||
+    (event as React.KeyboardEvent).nativeEvent?.isComposing,
+  );
+}
+
+function setCodeDomSelectionOffsets(
+  codeElement: HTMLElement,
+  start: number,
+  end: number,
+) {
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  let position = 0;
+
+  const findBoundary = (
+    parent: Node,
+    target: number,
+  ): { node: Node; offset: number } | null => {
+    const childNodes = Array.from(parent.childNodes);
+    for (let index = 0; index < childNodes.length; index += 1) {
+      const child = childNodes[index];
+      if (child.nodeType === Node.TEXT_NODE) {
+        const length = child.textContent?.length ?? 0;
+        if (target <= position + length) {
+          return { node: child, offset: Math.max(0, target - position) };
+        }
+        position += length;
+        continue;
+      }
+      if (child instanceof HTMLBRElement) {
+        if (target <= position + 1) {
+          return { node: parent, offset: index + 1 };
+        }
+        position += 1;
+        continue;
+      }
+      const nested = findBoundary(child, target);
+      if (nested) return nested;
+    }
+    return null;
+  };
+
+  const startBoundary = findBoundary(codeElement, start) ?? {
+    node: codeElement,
+    offset: codeElement.childNodes.length,
+  };
+  position = 0;
+  const endBoundary = findBoundary(codeElement, end) ?? {
+    node: codeElement,
+    offset: codeElement.childNodes.length,
+  };
+
+  const range = document.createRange();
+  range.setStart(startBoundary.node, startBoundary.offset);
+  range.setEnd(endBoundary.node, endBoundary.offset);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function findCodeBlockDepth($pos: any) {
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    if ($pos.node(depth)?.type?.name === "codeBlock") return depth;
+  }
+  return null;
+}
+
+function applyCodeBlockIndentTransaction(tr: any, outdent: boolean) {
+  const { $from, $to } = tr.selection;
+  const fromCodeDepth = findCodeBlockDepth($from);
+  const toCodeDepth = findCodeBlockDepth($to);
+  if (
+    fromCodeDepth == null ||
+    toCodeDepth == null ||
+    $from.before(fromCodeDepth) !== $to.before(toCodeDepth)
+  ) {
+    return false;
+  }
+
+  const codeBlockNode = $from.node(fromCodeDepth);
+  const contentStart = $from.start(fromCodeDepth);
+  const domSelection = getCodeDomSelection();
+  const currentText =
+    domSelection?.text ??
+    codeBlockNode.textBetween(0, codeBlockNode.content.size, "\n", "\n");
+  const selectionStart = domSelection?.start ?? $from.pos - contentStart;
+  const selectionEnd = domSelection?.end ?? $to.pos - contentStart;
+  const next = indentCodeSelection(currentText, selectionStart, selectionEnd, {
+    outdent,
+  });
+  const replacement = codeTextToInlineFragment(tr.doc.type.schema, next.text);
+
+  tr.replaceWith(
+    contentStart,
+    contentStart + codeBlockNode.content.size,
+    replacement,
+  );
+  tr.setSelection(
+    TextSelection.create(
+      tr.doc,
+      contentStart + next.selectionStart,
+      contentStart + next.selectionEnd,
+    ),
+  );
+  return true;
+}
+
 function CodeBlockComponent({
   block,
   contentRef,
@@ -270,20 +549,27 @@ function CodeBlockComponent({
   contentRef: any;
   editor: any;
 }) {
-  const { onDefaultCodeBlockWrapChange } = useEditorSettings();
+  const { onDefaultCodeBlockWrapChange, theme } = useEditorSettings();
+  const platform = useEditorPlatform();
   const language = (block.props.language as string) || "text";
   const wrap = block.props.wrap === true;
   const collapsed = block.props.collapsed === true;
-  const summary = typeof block.props.summary === "string" ? block.props.summary : "";
+  const summary =
+    typeof block.props.summary === "string" ? block.props.summary : "";
   const isEditable = editor.isEditable;
 
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
   const summaryInputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [showLatexHint, setShowLatexHint] = useState(false);
+  const [previewMode, setPreviewMode] = useState<CodePreviewMode>("code");
+  const [previewContent, setPreviewContent] = useState<PreviewContent | null>(
+    null,
+  );
 
   const getCodeContent = useCallback(() => {
-    let text = "";
     const content = block.content;
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
@@ -363,13 +649,279 @@ function CodeBlockComponent({
     [insertTextAtCursor],
   );
 
+  useEffect(() => {
+    if (!isEditable) return;
+
+    const applyTabIndent = (event: KeyboardEvent | React.KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
+      if (event.key !== "Tab" || isComposingKeyboardEvent(event)) return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement))
+        return;
+
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
+      event.preventDefault();
+      event.stopPropagation();
+      editor.updateBlock(block.id, { content: next.text });
+      window.requestAnimationFrame(() => {
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(
+          ".goose-code-content",
+        );
+        if (codeElement) {
+          setCodeDomSelectionOffsets(
+            codeElement,
+            next.selectionStart,
+            next.selectionEnd,
+          );
+        }
+      });
+      if ("stopImmediatePropagation" in event) {
+        event.stopImmediatePropagation();
+      }
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      applyTabIndent(event);
+    };
+
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      applyTabIndent(event);
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown, true);
+    document.addEventListener("keydown", handleDocumentKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown, true);
+      document.removeEventListener("keydown", handleDocumentKeyDown, true);
+    };
+  }, [block.id, editor, isEditable]);
+
+  const handleCodeKeyDownCapture = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Tab" || isComposingKeyboardEvent(event) || !isEditable)
+        return;
+      const domSelection = getCodeDomSelection();
+      if (!domSelection || !rootRef.current?.contains(domSelection.codeElement))
+        return;
+
+      const next = indentCodeSelection(
+        domSelection.text,
+        domSelection.start,
+        domSelection.end,
+        {
+          outdent: event.shiftKey,
+        },
+      );
+      event.preventDefault();
+      event.stopPropagation();
+      editor.updateBlock(block.id, { content: next.text });
+      window.requestAnimationFrame(() => {
+        const codeElement = rootRef.current?.querySelector<HTMLElement>(
+          ".goose-code-content",
+        );
+        if (codeElement) {
+          setCodeDomSelectionOffsets(
+            codeElement,
+            next.selectionStart,
+            next.selectionEnd,
+          );
+        }
+      });
+    },
+    [block.id, editor, isEditable],
+  );
+
+  const resolvePreviewPngBlob = useCallback(async (): Promise<Blob> => {
+    const text = getCodeContent().trim();
+    if (!text || typeof document === "undefined") {
+      throw new Error("无可导出内容");
+    }
+
+    if (language === "mermaid") {
+      const svg = await renderMermaidSvgForExport(
+        text,
+        isDarkTheme(theme) ? "dark" : "light",
+      );
+      return svgMarkupToPngBlob(svg);
+    }
+
+    if (language === "math") {
+      if (previewRef.current) {
+        try {
+          const captured = await captureElementAsPngBlob(previewRef.current);
+          return convertImageBlobToPng(captured);
+        } catch {
+          // 预览节点截图失败时走离屏渲染
+        }
+      }
+
+      const { default: katex } = await import("katex");
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = [
+        "position:fixed",
+        "left:-99999px",
+        "top:0",
+        "z-index:-1",
+        "padding:16px 24px",
+        `color:${isDarkTheme(theme) ? "#e5e7eb" : "#111827"}`,
+        "background:transparent",
+        "font-size:18px",
+        "line-height:1.4",
+        "display:inline-block",
+      ].join(";");
+      katex.render(text, wrapper, {
+        displayMode: true,
+        throwOnError: false,
+      });
+      document.body.appendChild(wrapper);
+      try {
+        const blob = await captureElementAsPngBlob(wrapper);
+        return convertImageBlobToPng(blob);
+      } finally {
+        document.body.removeChild(wrapper);
+      }
+    }
+
+    throw new Error("当前类型不支持导出图片");
+  }, [getCodeContent, language, theme]);
+
+  const handleDownloadPreview = useCallback(async () => {
+    const text = getCodeContent().trim();
+    if (!text || typeof document === "undefined") return;
+
+    try {
+      if (language === "mermaid" || language === "math") {
+        const pngBlob = await resolvePreviewPngBlob();
+        const filename =
+          language === "math"
+            ? `formula-${Date.now()}.png`
+            : `mermaid-${Date.now()}.png`;
+        const saved = await saveBlobAndReveal(pngBlob, filename);
+        if (saved) toast.success("图片已保存到下载文件夹");
+        else toast.error("保存失败");
+        return;
+      }
+
+      const saved = await saveBlobAndReveal(
+        new Blob([text], { type: "text/plain;charset=utf-8" }),
+        "code.txt",
+      );
+      if (saved) toast.success("已保存到下载文件夹");
+      else toast.error("保存失败");
+    } catch (err) {
+      toast.error(
+        `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+    }
+  }, [getCodeContent, language, resolvePreviewPngBlob]);
+
+  const handleCopyPreview = useCallback(async () => {
+    try {
+      const pngBlob = await resolvePreviewPngBlob();
+      const dataUrl = await blobToBase64(pngBlob);
+      await platform.clipboard.copyImage(dataUrl);
+      toast.success("已复制到剪贴板");
+    } catch (err) {
+      toast.error(
+        `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+      throw err;
+    }
+  }, [platform, resolvePreviewPngBlob]);
+
+  const handleSystemPreview = useCallback(async () => {
+    try {
+      const text = getCodeContent().trim();
+      if (!text) throw new Error("无可预览内容");
+
+      if (language === "mermaid") {
+        const svg = await renderMermaidSvgForExport(
+          text,
+          isDarkTheme(theme) ? "dark" : "light",
+        );
+        await openPreviewInSystem({
+          kind: "svg",
+          markup: svg,
+          fileName: "mermaid.svg",
+          background: isDarkTheme(theme) ? "#1F1E1C" : "#ffffff",
+        });
+        return;
+      }
+
+      if (language === "math") {
+        await openPreviewInSystem({
+          kind: "math",
+          source: text,
+          fileName: "formula.html",
+        });
+        return;
+      }
+
+      throw new Error("当前代码块不支持系统预览");
+    } catch (err) {
+      toast.error(
+        `系统预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+    }
+  }, [getCodeContent, language, theme]);
+
+  const handleInternalPreview = useCallback(async () => {
+    try {
+      const text = getCodeContent().trim();
+      if (!text) throw new Error("无可预览内容");
+
+      if (language === "mermaid") {
+        const svg = await renderMermaidSvgForExport(
+          text,
+          isDarkTheme(theme) ? "dark" : "light",
+        );
+        setPreviewContent({
+          kind: "svg",
+          markup: svg,
+          fileName: "mermaid.svg",
+          background: isDarkTheme(theme) ? "#1F1E1C" : "#ffffff",
+        });
+        return;
+      }
+
+      if (language === "math") {
+        setPreviewContent({
+          kind: "math",
+          source: text,
+          fileName: "formula.html",
+        });
+        return;
+      }
+
+      throw new Error("当前代码块不支持预览");
+    } catch (err) {
+      toast.error(
+        `预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+      );
+    }
+  }, [getCodeContent, language, theme]);
+
   const textContent = getCodeContent();
   const lineCount = textContent.split("\n").length;
-  // 速记小窗精简构建（__GOOSE_LITE__）不渲染 math/mermaid 预览——退化为纯代码块
-  // （源码可见、带行号），以甩掉 katex / mermaid 重型依赖。主应用恒为 false，行为不变。
+  // yaml-frontmatter 是可编辑的普通代码块，不做表格预览；
+  // math/mermaid 才走视觉预览（紧凑编辑器构建退化为可编辑源码）。
   const isMathOrMermaid =
-    !__GOOSE_LITE__ && (language === "math" || language === "mermaid");
-  const showLineNumbers = !isMathOrMermaid && !wrap;
+    !__GOOSE_EDITOR_COMPACT__ &&
+    (language === "math" || language === "mermaid");
+  const isVisualBlock = isMathOrMermaid;
+  const canPreview = isMathOrMermaid && textContent.trim().length > 0;
+  const shouldShowPreview = canPreview && previewMode === "preview";
+  const shouldShowSource =
+    !isVisualBlock || previewMode === "code" || !canPreview;
+  const showLineNumbers = !isVisualBlock && !wrap;
+  const visualTitle = language === "math" ? "Math" : "Mermaid";
 
   useEffect(() => {
     if (!isEditingSummary) return;
@@ -380,93 +932,132 @@ function CodeBlockComponent({
     return () => clearTimeout(timer);
   }, [isEditingSummary]);
 
+  useEffect(() => {
+    // yaml-frontmatter 是普通可编辑代码块，不支持预览，永远是源码态。
+    // 仅 math/mermaid 这类以渲染图为主的块自动切到预览。
+    if (!isVisualBlock) {
+      setPreviewMode("code");
+      setPreviewContent(null);
+      return;
+    }
+    if (!canPreview) {
+      setPreviewMode("code");
+      setPreviewContent(null);
+      return;
+    }
+    setPreviewMode((current) => (current === "code" ? "preview" : current));
+  }, [isVisualBlock, canPreview]);
+
   return (
     <div
+      ref={rootRef}
       className="goose-code-block-node relative"
       data-collapsed={collapsed ? "true" : "false"}
+      data-visual-preview={isVisualBlock ? "true" : undefined}
+      onKeyDownCapture={handleCodeKeyDownCapture}
     >
       {/* Toolbar row */}
-      <div className="goose-code-toolbar-row" contentEditable={false}>
+      <div
+        className="goose-code-toolbar-row"
+        contentEditable={false}
+      >
         <div className="goose-code-toolbar-left flex items-center gap-0.5 min-w-0 flex-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label={collapsed ? "展开代码块" : "折叠代码块"}
-            onClick={handleCollapsedChange}
-            className={cn(
-              "h-6 w-6 p-0 shrink-0 rounded-md transition-transform",
-              collapsed && "-rotate-90",
-            )}
-          >
-            <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
-          </Button>
-          <Input
-            ref={summaryInputRef}
-            value={isEditingSummary ? summaryDraft : summary}
-            readOnly={!isEditable || !isEditingSummary}
-            placeholder="添加代码说明"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              if (!isEditable) return;
-              if (!isEditingSummary) setSummaryDraft(summary);
-            }}
-            onFocus={() => {
-              if (!isEditable) return;
-              if (!isEditingSummary) {
-                setSummaryDraft(summary);
-                setIsEditingSummary(true);
-              }
-            }}
-            onChange={(e) => {
-              if (!isEditingSummary) return;
-              setSummaryDraft(e.target.value);
-            }}
-            onBlur={() => {
-              if (!isEditingSummary) return;
-              handleSummaryCommit();
-            }}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return;
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (isEditingSummary) handleSummaryCommit();
-                summaryInputRef.current?.blur();
-                return;
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setSummaryDraft(summary);
-                setIsEditingSummary(false);
-                summaryInputRef.current?.blur();
-                return;
-              }
-              e.stopPropagation();
-            }}
-            className={cn(
-              "h-6 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-xs shadow-none",
-              "placeholder:text-muted-foreground/50",
-              "focus-visible:ring-0 focus-visible:ring-offset-0",
-              !isEditingSummary && !summary && "opacity-50",
-              !isEditingSummary && summary && "opacity-70",
-            )}
-          />
+          {isVisualBlock ? (
+            <div className="goose-code-visual-title">{visualTitle}</div>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={collapsed ? "展开代码块" : "折叠代码块"}
+                onClick={handleCollapsedChange}
+                className={cn(
+                  "h-6 w-6 p-0 shrink-0 rounded-md transition-transform",
+                  collapsed && "-rotate-90",
+                )}
+              >
+                <LucideIcons.ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+              <Input
+                ref={summaryInputRef}
+                value={isEditingSummary ? summaryDraft : summary}
+                readOnly={!isEditable || !isEditingSummary}
+                placeholder="添加代码说明"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (!isEditable) return;
+                  if (!isEditingSummary) setSummaryDraft(summary);
+                }}
+                onFocus={() => {
+                  if (!isEditable) return;
+                  if (!isEditingSummary) {
+                    setSummaryDraft(summary);
+                    setIsEditingSummary(true);
+                  }
+                }}
+                onChange={(e) => {
+                  if (!isEditingSummary) return;
+                  setSummaryDraft(e.target.value);
+                }}
+                onBlur={() => {
+                  if (!isEditingSummary) return;
+                  handleSummaryCommit();
+                }}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (isEditingSummary) handleSummaryCommit();
+                    summaryInputRef.current?.blur();
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setSummaryDraft(summary);
+                    setIsEditingSummary(false);
+                    summaryInputRef.current?.blur();
+                    return;
+                  }
+                  e.stopPropagation();
+                }}
+                className={cn(
+                  "h-6 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-xs shadow-none",
+                  "placeholder:text-muted-foreground/50",
+                  "",
+                  !isEditingSummary && !summary && "opacity-50",
+                  !isEditingSummary && summary && "opacity-70",
+                )}
+              />
+            </>
+          )}
         </div>
         <CodeBlockToolbar
           language={language}
           onLanguageChange={handleLanguageChange}
           getCodeContent={getCodeContent}
-          onFormat={__GOOSE_LITE__ ? undefined : handleFormat}
+          onFormat={__GOOSE_EDITOR_COMPACT__ ? undefined : handleFormat}
           wrap={wrap}
           onWrapChange={handleWrapChange}
           editable={isEditable}
+          previewMode={previewMode}
+          onPreviewModeChange={setPreviewMode}
+          onOpenPreview={() => {
+            if (canPreview) void handleInternalPreview();
+          }}
+          onSystemPreview={() => {
+            if (canPreview) void handleSystemPreview();
+          }}
+          onDownloadPreview={handleDownloadPreview}
+          onCopyPreview={handleCopyPreview}
+          canPreview={canPreview}
         />
       </div>
 
       {/* Code content */}
-      {!collapsed && (
+      {(!collapsed || isVisualBlock) && (
         <div className="goose-code-content-wrapper">
-          {showLineNumbers && (
+          {showLineNumbers && shouldShowSource && (
             <div className="goose-code-line-numbers" contentEditable={false}>
               {Array.from({ length: lineCount }).map((_, i) => (
                 <div key={i}>{i + 1}</div>
@@ -477,27 +1068,50 @@ function CodeBlockComponent({
             className={cn(
               "goose-code-pre",
               wrap && "goose-code-pre-wrap",
-              isMathOrMermaid && "goose-code-pre-source",
+              isVisualBlock && "goose-code-pre-source",
+              !shouldShowSource && "goose-code-pre-hidden",
             )}
+            aria-hidden={!shouldShowSource}
             onPaste={handlePaste}
           >
             <code
               ref={contentRef}
               className="goose-code-content hljs"
-              style={wrap ? { whiteSpace: "break-spaces", wordBreak: "break-word", overflowWrap: "anywhere" } : undefined}
+              style={
+                wrap
+                  ? {
+                      whiteSpace: "break-spaces",
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere",
+                    }
+                  : undefined
+              }
             />
           </pre>
-          {isMathOrMermaid && textContent && (
+          {shouldShowPreview && (
             <div
+              ref={previewRef}
               contentEditable={false}
-              className="goose-code-preview select-none cursor-pointer bg-transparent"
+              className={cn("goose-code-preview select-none bg-transparent cursor-pointer")}
+              onDoubleClick={() => {
+                if (canPreview) void handleInternalPreview();
+              }}
             >
-              {language === "math" && <MathView value={textContent} displayMode={true} />}
+              {language === "math" && (
+                <MathView value={textContent} displayMode={true} />
+              )}
               {language === "mermaid" && <MermaidView value={textContent} />}
             </div>
           )}
         </div>
       )}
+
+      <FullscreenPreview
+        open={Boolean(previewContent)}
+        content={previewContent}
+        title={language === "math" ? "公式预览" : "Mermaid"}
+        onClose={() => setPreviewContent(null)}
+      />
 
       {/* LaTeX hint panel */}
       {!collapsed && language === "math" && isEditable && (
@@ -522,7 +1136,7 @@ function CodeBlockComponent({
                 <button
                   type="button"
                   onClick={() => setShowLatexHint(false)}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 >
                   <LucideIcons.X className="h-3.5 w-3.5" />
                 </button>
@@ -534,10 +1148,14 @@ function CodeBlockComponent({
                       key={i}
                       type="button"
                       onClick={() => setShowLatexHint(false)}
-                      className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)]"
+                      className="flex flex-col items-start gap-1 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-2 py-1.5 text-left hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                     >
-                      <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
-                      <code className="text-[11px] font-mono text-foreground break-all">{s.code}</code>
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {s.label}
+                      </span>
+                      <code className="text-[11px] font-mono text-foreground break-all">
+                        {s.code}
+                      </code>
                     </button>
                   ))}
                 </div>
@@ -563,8 +1181,13 @@ export const codeBlockSpec = createReactBlockSpec(
     content: "inline",
   },
   {
+    meta: { isolating: false },
     render: ({ block, contentRef, editor }) => (
-      <CodeBlockComponent block={block} contentRef={contentRef} editor={editor} />
+      <CodeBlockComponent
+        block={block}
+        contentRef={contentRef}
+        editor={editor}
+      />
     ),
     // 粘贴/导入识别 <pre><code> → 还原为代码块(否则自定义 spec 覆盖了默认 codeBlock 的
     // 解析规则,从网页/富文本复制的代码块会因无 parse 而降级成普通段落)。
@@ -587,7 +1210,8 @@ export const codeBlockSpec = createReactBlockSpec(
         if (m) language = m[1];
       }
       const normalized = language
-        ? LANGUAGE_ALIASES[language.trim().toLowerCase()] ?? language.trim().toLowerCase()
+        ? (LANGUAGE_ALIASES[language.trim().toLowerCase()] ??
+          language.trim().toLowerCase())
         : "text";
       return { language: normalized };
     },
@@ -595,10 +1219,17 @@ export const codeBlockSpec = createReactBlockSpec(
       const lang = (block.props?.language || "text").trim();
       return (
         <pre>
-          <code ref={contentRef} className={lang ? `language-${lang}` : undefined} />
+          <code
+            ref={contentRef}
+            className={lang ? `language-${lang}` : undefined}
+          />
         </pre>
       );
     },
   },
-  [codeBlockHighlightExtension],
+  [
+    codeBlockHighlightExtension,
+    codeBlockTabIndentExtension,
+    gooseCodeBlockActiveLineExtension,
+  ],
 )();

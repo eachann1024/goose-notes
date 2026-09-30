@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as echarts from "echarts";
+import type { EChartsOption } from "echarts";
+import { echarts } from "./registerEcharts";
 
 interface UseEchartsLifecycleOptions {
   isDark: boolean;
-  option: echarts.EChartsOption | null;
+  option: EChartsOption | null;
   chartHeight: number;
   contentWidth: number;
   editorScale: number;
@@ -65,8 +66,10 @@ export function useEchartsLifecycle({
     if (!el) return;
 
     try {
-      chartRef.current = echarts.init(el, isDark ? "dark" : undefined, {
-        renderer: "canvas",
+      // 不使用 ECharts 内置 dark 主题，避免覆盖自定义色板/tooltip/轴线
+      // SVG 渲染：文字可选中复制；导出仍走 getDataURL（内部转 PNG）
+      chartRef.current = echarts.init(el, undefined, {
+        renderer: "svg",
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "图表渲染失败");
@@ -93,8 +96,8 @@ export function useEchartsLifecycle({
     try {
       const instance =
         chartRef.current ??
-        echarts.init(el, isDark ? "dark" : undefined, {
-          renderer: "canvas",
+        echarts.init(el, undefined, {
+          renderer: "svg",
         });
       chartRef.current = instance;
       instance.setOption(option, {
