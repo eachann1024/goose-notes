@@ -128,13 +128,13 @@
 .sidebar-mode-rail[hidden] { display: none !important; }
 .sidebar-mode-rail-button {
   display: flex;
-  width: 40px;
+  width: 48px;
   min-height: 44px;
-  flex: 0 0 44px;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 4px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -143,10 +143,17 @@
   font: inherit;
   font-size: 10px;
   line-height: 12px;
+  padding: 4px 0;
+}
+.sidebar-mode-rail-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sidebar-mode-rail-button:hover {
   background: var(--goose-interactive-hover);
-  color: var(--goose-interactive-hover-fg);
+  color: var(--goose-interactive-selected-fg);
 }
 .sidebar-mode-rail-button[aria-pressed="true"] {
   background: var(--goose-interactive-selected);
@@ -173,6 +180,9 @@
   height: 32px;
   min-height: 32px;
   flex-basis: 32px;
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-rail-footer .sidebar-footer-control:is(:hover, :focus-visible, :active, [data-active="true"]) {
+  color: var(--goose-interactive-selected-fg);
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row, .sidebar-tree-row) {
   border-radius: 8px;

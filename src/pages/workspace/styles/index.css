@@ -40,7 +40,7 @@
   --workspace-stage-pad-bottom: 8px;
   --workspace-sidebar-gap: 0px;
   --workspace-sidebar-width: 240px;
-  --workspace-rail-width: 48px;
+  --workspace-rail-width: 56px;
   --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
   --workspace-resize-line: linear-gradient(
     180deg,
@@ -133,6 +133,9 @@
   z-index: 3;
   border: 1px solid var(--workspace-divider);
   transition: left var(--workspace-sidebar-motion);
+}
+.workspace-shell .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) {
+  --workspace-stage-pad-left: 0px;
 }
 .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) > .workspace-content-frame {
   left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
