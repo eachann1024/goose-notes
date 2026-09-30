@@ -77,7 +77,7 @@ export function PlaceholderRow({
       <div className="flex items-center h-full pl-1 pr-2 rounded-md">
         <div
           style={{ paddingLeft: depth * TREE_INDENT + 24 }}
-          className="text-muted-foreground/45 italic truncate"
+          className="text-muted-foreground italic truncate"
         >
           {name}
         </div>
@@ -383,7 +383,7 @@ export function SortablePageRow({
                   <GooseIcons.ChevronRight
                     aria-hidden="true"
                     className={cn(
-                      "h-3.5 w-3.5 transition-transform duration-150 ease-out",
+                      "h-3 w-3 transition-transform duration-150 ease-out",
                       item.isOpen && "rotate-90",
                     )}
                   />

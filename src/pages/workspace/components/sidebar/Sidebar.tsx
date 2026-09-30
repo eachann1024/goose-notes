@@ -1,3 +1,4 @@
+import * as GooseIcons from "@/components/ui/icons";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarMainTree } from "./main-tree/SidebarMainTree";
 import { SettingsDialog } from "./SettingsDialog";
@@ -94,6 +95,7 @@ export function Sidebar({
   const sidebarOverlay = forceCollapseLeft && (settingsOpen ? settingsSidebarExpanded : leftExpandOverride) && !sidebarCollapsed;
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const sidebarModeRailRef = useRef<HTMLElement>(null);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
   // Electron 仅本地模式：没有仓库时不露出「新建页面」入口与内置本语义
@@ -130,6 +132,13 @@ export function Sidebar({
     if (searchSessionOpen) setCurrentView("search");
     else if (currentView === "search") setCurrentView("pages");
   }, [searchSessionOpen, currentView]);
+  useLayoutEffect(() => {
+    const rail = sidebarModeRailRef.current;
+    if (!rail?.contains(document.activeElement)) return;
+    // 焦点已在窄栏内时跟随当前视图，保留编辑器或搜索框里的焦点。
+    rail.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
+      ?.focus({ preventScroll: true });
+  }, [currentView, settingsOpen]);
   const openSearchSession = useSearchSession((s) => s.openSearch);
   const searchShortcut = useSettings((state) =>
     state.appShortcuts.openSearch
@@ -402,6 +411,7 @@ export function Sidebar({
           <div className="sidebar-rail-shell">
             <TooltipProvider delayDuration={600}>
               <nav
+                ref={sidebarModeRailRef}
                 className="sidebar-mode-rail"
                 aria-label="侧栏视图"
                 hidden={inHistoryMode && !settingsOpen}
