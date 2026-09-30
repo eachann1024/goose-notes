@@ -2,20 +2,19 @@ import { expect, test } from "playwright/test";
 import { readFileSync } from "node:fs";
 import {
   AI_MENU_MAX_WIDTH_PX,
-  AI_MENU_MIN_WIDTH_PX,
   computeAiMenuFloatingWidth,
 } from "../../src/components/editor/ai/aiMenuFloatingWidth";
 
-test("大屏窄块仍保持 468 舒适下限", () => {
+test("分屏可用宽度不足时不强制最小宽", () => {
   expect(
     computeAiMenuFloatingWidth({
       viewportWidth: 1440,
       availableWidth: 200,
     }),
-  ).toBe(AI_MENU_MIN_WIDTH_PX);
+  ).toBe(192);
 });
 
-test("大屏足够空间时取 91vw 并封顶 1248", () => {
+test("大屏浮卡封顶 420", () => {
   expect(
     computeAiMenuFloatingWidth({
       viewportWidth: 2000,
@@ -27,7 +26,7 @@ test("大屏足够空间时取 91vw 并封顶 1248", () => {
       viewportWidth: 800,
       availableWidth: 800,
     }),
-  ).toBe(728);
+  ).toBe(AI_MENU_MAX_WIDTH_PX);
 });
 
 test("速记小窗默认 480 与最小 320 不超出视口", () => {
@@ -72,6 +71,6 @@ test("AI 菜单 CSS 下限可随视口收缩", () => {
     "utf8",
   );
   expect(css).toContain("min-width: min(468px, 100%)");
-  expect(css).toContain("min-width: min(468px, 91vw, calc(100vw - 16px))");
+  expect(css).toContain("max-width: min(420px, calc(100vw - 16px))");
   expect(css).not.toMatch(/\.bn-combobox\s*\{[^}]*min-width:\s*468px;/);
 });

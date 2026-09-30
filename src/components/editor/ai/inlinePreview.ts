@@ -1,5 +1,6 @@
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
+import { createInlinePreviewOutline } from "./inlinePreviewOutline";
 
 export interface InlinePreviewPart {
   from: number;
@@ -28,6 +29,7 @@ export function createInlinePreviewPlugin() {
   const key = new PluginKey<InlinePreviewPart[]>("goose-inline-ai-preview");
   const plugin = new Plugin<InlinePreviewPart[]>({
     key,
+    view: (view) => createInlinePreviewOutline(view, key),
     state: {
       init: () => [],
       apply(tr, value) {

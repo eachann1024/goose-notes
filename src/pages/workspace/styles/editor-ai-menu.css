@@ -25,12 +25,12 @@
 }
 
 /* Floating UI 外层：JS size 中间件会覆写 width/maxWidth，这里是兜底
-   在原 70vw / 960px 上提高 30% → 91vw / 1248px；窄窗按视口收缩。 */
+   紧凑浮卡不铺满正文；窄窗按视口收缩。 */
 .goose-ai-menu-floating {
   box-sizing: border-box;
-  width: min(91vw, 1248px);
-  min-width: min(468px, 91vw, calc(100vw - 16px));
-  max-width: min(91vw, 1248px, calc(100vw - 16px));
+  width: min(420px, calc(100vw - 16px));
+  min-width: 0;
+  max-width: min(420px, calc(100vw - 16px));
 }
 
 /* 选区包装层不占盒，避免小窗里多出一层把输入框和 tag 挤扁。 */

@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Plus } from "@/components/ui/icons";
+import { ArrowUp, ChevronDown, Settings } from "@/components/ui/icons";
 
 export type GooseAiMenuTag = {
   key: string;
@@ -30,7 +30,9 @@ export type GoosePromptSuggestionMenuProps = {
   busyTickerText?: string;
   /** 可换行 tag 行；为空则不渲染。 */
   tags?: GooseAiMenuTag[];
-  /** tag 行末尾的 ➕（打开 AI 设置），仅 idle 传入。 */
+  actionMenus?: { label: string; actions: GooseAiMenuTag[] }[];
+  showSubmit?: boolean;
+  /** 打开 AI 设置，仅 idle 传入。 */
   showPlus?: boolean;
   onOpenAiPanel?: () => void;
   /** 自动增高上限（px），超出后内部滚动。默认约 6 行。 */
@@ -146,7 +148,11 @@ export function GoosePromptSuggestionMenu(
 
   const hasRightSection = props.rightSection != null;
   const tags = props.tags ?? [];
-  const showTagRow = tags.length > 0 || (props.showPlus && props.onOpenAiPanel);
+  const showTagRow =
+    tags.length > 0 ||
+    props.actionMenus?.length ||
+    props.showSubmit ||
+    (props.showPlus && props.onOpenAiPanel);
 
   return (
     <div className="bn-combobox goose-ai-prompt-menu">
@@ -162,16 +168,13 @@ export function GoosePromptSuggestionMenu(
         {props.icon != null && (
           <div className="goose-ai-prompt-field__icon" aria-hidden>
             {props.icon}
-            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--a" />
-            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--b" />
-            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--c" />
-            <span className="goose-ai-sparkle-bit goose-ai-sparkle-bit--d" />
           </div>
         )}
         <textarea
           ref={textareaRef}
           className="goose-ai-prompt-field__textarea bn-combobox-input"
           name="ai-prompt"
+          aria-label="AI 改写要求"
           rows={1}
           value={promptTextToUse || ""}
           placeholder={props.busy ? "" : props.placeholder}
@@ -207,7 +210,7 @@ export function GoosePromptSuggestionMenu(
             <button
               key={tag.key}
               type="button"
-              className="goose-ai-tag"
+              className={`goose-ai-tag${tag.key === "accept" ? " goose-inline-ai-primary" : ""}`}
               onMouseDown={(event) => {
                 // 避免 mousedown 抢走 textarea 焦点导致浮层抖动
                 event.preventDefault();
@@ -220,6 +223,47 @@ export function GoosePromptSuggestionMenu(
             >
               {tag.label}
             </button>
+          ))}
+          {props.actionMenus?.map((menu) => (
+            <details
+              className="goose-inline-ai-actions-menu"
+              key={menu.label}
+              onToggle={(event) => {
+                if (!event.currentTarget.open) return;
+                event.currentTarget.parentElement?.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((other) => {
+                  if (other !== event.currentTarget) other.open = false;
+                });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.removeAttribute("open");
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}
+            >
+              <summary>
+                {menu.label}
+                <ChevronDown aria-hidden className="h-3 w-3" />
+              </summary>
+              <div className="goose-inline-ai-actions-list">
+                {menu.actions.map((action) => (
+                  <button
+                    type="button"
+                    key={action.key}
+                    onClick={(event) => {
+                      event.currentTarget
+                        .closest("details")
+                        ?.removeAttribute("open");
+                      action.onClick();
+                    }}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </details>
           ))}
           {props.showPlus && props.onOpenAiPanel && (
             <button
@@ -236,7 +280,24 @@ export function GoosePromptSuggestionMenu(
                 props.onOpenAiPanel?.();
               }}
             >
-              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <Settings className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          )}
+          {props.showSubmit && (
+            <button
+              type="button"
+              className={`goose-inline-ai-send${tags.some((tag) => tag.key === "accept") ? "" : " goose-inline-ai-primary"}`}
+              disabled={disabled || !promptTextToUse.trim()}
+              aria-label="发送改写要求"
+              title="发送（回车）"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                if (promptTextToUse.trim())
+                  onManualPromptSubmit(promptTextToUse);
+              }}
+            >
+              发送
+              <ArrowUp aria-hidden className="h-3.5 w-3.5" />
             </button>
           )}
         </div>

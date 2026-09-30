@@ -1,7 +1,7 @@
-/** 大屏行内 AI 菜单的舒适下限；窄窗（速记小窗）不得超过视口。 */
-export const AI_MENU_MIN_WIDTH_PX = 468;
-export const AI_MENU_MAX_WIDTH_PX = 1248;
-export const AI_MENU_VIEWPORT_RATIO = 0.91;
+/** 行内 AI 紧凑浮卡；窄窗和分屏不得超过可用空间。 */
+export const AI_MENU_MIN_WIDTH_PX = 280;
+export const AI_MENU_MAX_WIDTH_PX = 420;
+export const AI_MENU_VIEWPORT_RATIO = 1;
 export const AI_MENU_VIEWPORT_PAD_PX = 8;
 
 export type AiMenuFloatingWidthInput = {
@@ -11,7 +11,7 @@ export type AiMenuFloatingWidthInput = {
 };
 
 /**
- * 行内 AI 浮层宽度：大屏保持 91vw（上限 1248、下限 468），
+ * 行内 AI 浮层宽度：最大宽 420px，
  * 小窗按视口与 Floating UI 可用宽度收缩，避免撑破 320–480 速记窗。
  */
 export function computeAiMenuFloatingWidth({
@@ -33,8 +33,5 @@ export function computeAiMenuFloatingWidth({
     Number.isFinite(available) && available > 0 ? available : desired,
     viewportCap,
   );
-  if (viewportCap >= AI_MENU_MIN_WIDTH_PX) {
-    return Math.max(AI_MENU_MIN_WIDTH_PX, fitted);
-  }
   return Math.max(0, fitted);
 }

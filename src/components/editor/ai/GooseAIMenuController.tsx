@@ -127,15 +127,13 @@ export function GooseAIMenuController({
       flip({
         fallbackPlacements: ["top-start", "bottom-end", "top-end"],
         padding: pad,
-        boundary: editor.domElement ?? undefined,
       }),
       shift({
         padding: pad,
-        crossAxis: true,
-        boundary: editor.domElement ?? undefined,
+        crossAxis: false,
       }),
       size({
-        apply({ availableWidth, elements }) {
+        apply({ availableWidth, availableHeight, elements }) {
           const maxW = computeAiMenuFloatingWidth({
             viewportWidth:
               typeof window !== "undefined" ? window.innerWidth : 1248,
@@ -145,6 +143,8 @@ export function GooseAIMenuController({
           Object.assign(elements.floating.style, {
             width: `${maxW}px`,
             maxWidth: `${maxW}px`,
+            maxHeight: `${Math.max(100, availableHeight)}px`,
+            overflowY: "auto",
           });
         },
         padding: pad,

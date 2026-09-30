@@ -1,8 +1,29 @@
 .bn-editor .goose-ai-preview-target {
-  outline: 1px dashed hsl(var(--ring)) !important;
-  outline-offset: 2px;
-  border-radius: var(--radius-lg, var(--radius));
-  background: hsl(var(--accent) / 0.45);
+  outline: none !important;
+}
+.goose-ai-range-host {
+  position: relative;
+}
+.goose-ai-range-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.goose-ai-range-outline {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed hsl(var(--ring) / 0.7);
+  border-radius: 10px;
+  pointer-events: none;
+  animation: goose-ai-range-enter 150ms ease-out;
+}
+@keyframes goose-ai-range-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goose-ai-range-outline { animation: none; }
 }
 .bn-editor .goose-ai-preview-deletion,
 .bn-editor .goose-ai-preview-deletion * {
@@ -17,31 +38,6 @@
   text-decoration: none;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-.goose-ai-menu-selection.goose-ai-review-surface {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  min-width: 0;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg, var(--radius));
-  background: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-}
-.goose-ai-review-surface .goose-ai-preview-summary {
-  margin: 0;
-  padding: 8px 12px;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  line-height: 20px;
-}
-.goose-ai-preview-summary del {
-  color: var(--goose-interactive-danger-fg);
-  background: var(--goose-interactive-danger);
-}
-.goose-ai-preview-summary ins {
-  color: var(--goose-interactive-success-fg);
-  background: var(--goose-interactive-success);
 }
 .bn-editor .goose-ai-preview-format-change {
   display: inline-block;

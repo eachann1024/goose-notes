@@ -1,6 +1,6 @@
 import { useExtension, useExtensionState } from "@blocknote/react";
-import { Square } from "@/components/ui/icons";
-import { RiSparkling2Fill } from "react-icons/ri";
+import { Sparkles, Square, X } from "@/components/ui/icons";
+import "./inlineAiSurface.css";
 import { SelectionActions } from "@/pages/workspace/components/notebook-ai/beautiful-ui/SelectionActions";
 import { GooseAIExtension } from "./GooseAIExtension";
 import {
@@ -18,7 +18,7 @@ const ACTIONS = [
   },
   {
     key: "simplify",
-    label: "精简表达",
+    label: "精简",
     prompt: "精简给定片段，保留关键信息。",
   },
   { key: "english", label: "翻译成英文", prompt: "将给定片段翻译成英文。" },
@@ -51,9 +51,9 @@ export function GooseAIMenu() {
     ? []
     : state.status === "user-reviewing"
       ? [
-          { key: "accept", label: "接受全部", onClick: ai.acceptChanges },
+          { key: "accept", label: "应用修改", onClick: ai.acceptChanges },
           { key: "reject", label: "放弃", onClick: ai.rejectChanges },
-          { key: "retry", label: "重试", onClick: () => void ai.retry() },
+          { key: "retry", label: "重新生成", onClick: () => void ai.retry() },
         ]
       : state.status === "error"
         ? [
@@ -66,22 +66,50 @@ export function GooseAIMenu() {
                   },
                 ]
               : []),
-            { key: "cancel", label: "关闭", onClick: ai.closeAIMenu },
           ]
-        : [...ACTIONS.map((action) => ({
-            ...action,
-            onClick: () => void ai.submit(action.prompt),
-          })), { key: "cancel", label: "关闭", onClick: ai.closeAIMenu }];
+        : [
+            ...ACTIONS.filter((action) =>
+              ["polish", "simplify"].includes(action.key),
+            ).map((action) => ({
+              ...action,
+              onClick: () => void ai.submit(action.prompt),
+            })),
+          ];
 
   return (
-    <SelectionActions busy={busy} className={`goose-ai-menu-selection${state.status === "user-reviewing" ? " goose-ai-review-surface" : ""}`}>
+    <SelectionActions
+      busy={busy}
+      className="goose-ai-menu-selection goose-inline-ai-surface"
+    >
+      <div className="goose-inline-ai-header">
+        <span>
+          <Sparkles className="h-4 w-4" aria-hidden />
+          {busy
+            ? "正在改写"
+            : state.status === "user-reviewing"
+              ? "审阅修改"
+              : state.status === "error"
+                ? "改写未完成"
+                : "编辑所选内容"}
+        </span>
+        <button
+          type="button"
+          className="goose-inline-ai-close"
+          aria-label="关闭 AI 编辑"
+          title="关闭"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={ai.closeAIMenu}
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
       {state.status === "user-reviewing" && (
         <p className="goose-ai-preview-summary" role="status">
-          原位预览 · <del>删除</del> / <ins>新增</ins> · 接受后写入
+          <del>删除</del> <ins>新增</ins>
         </p>
       )}
       {state.status === "error" && (
-        <p role="alert" className="p-3 text-sm text-danger">
+        <p role="alert" className="goose-inline-ai-error">
           {formatAiMenuError(state.error) || "改写失败，内容未修改。"}
         </p>
       )}
@@ -93,13 +121,40 @@ export function GooseAIMenu() {
           busy
             ? "思考中"
             : state.status === "user-reviewing"
-              ? "输入新要求重新生成，或接受草稿"
+              ? "继续调整，例如：再自然一点"
               : "你想如何改写这段内容？"
         }
         disabled={busy}
         busy={busy}
         busyTickerText={state.ticker}
         tags={tags}
+        showSubmit={!busy && state.status !== "error"}
+        actionMenus={
+          state.status === "user-input"
+            ? [
+                {
+                  label: "翻译",
+                  actions: ACTIONS.filter((action) =>
+                    ["english", "chinese"].includes(action.key),
+                  ).map((action) => ({
+                    ...action,
+                    onClick: () => void ai.submit(action.prompt),
+                  })),
+                },
+                {
+                  label: "更多",
+                  actions: ACTIONS.filter((action) =>
+                    ["jargon", "colloquial", "list", "tasks"].includes(
+                      action.key,
+                    ),
+                  ).map((action) => ({
+                    ...action,
+                    onClick: () => void ai.submit(action.prompt),
+                  })),
+                },
+              ]
+            : undefined
+        }
         showPlus={state.status === "user-input"}
         onOpenAiPanel={() => {
           ai.closeAIMenu();
@@ -109,11 +164,6 @@ export function GooseAIMenu() {
             }),
           );
         }}
-        icon={
-          <div className="bn-combobox-icon">
-            <RiSparkling2Fill />
-          </div>
-        }
         rightSection={
           busy ? (
             <div className="goose-ai-menu-busy-actions bn-combobox-right-section">
@@ -129,7 +179,8 @@ export function GooseAIMenu() {
                   ai.abort();
                 }}
               >
-                <Square className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <Square className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+                停止
               </button>
             </div>
           ) : undefined

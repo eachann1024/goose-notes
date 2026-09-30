@@ -1,0 +1,273 @@
+/* One compact surface for every inline AI state. All overrides stay local. */
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  height: auto;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  animation: goose-inline-ai-appear 150ms ease-out;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-header
+  > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-header
+  svg {
+  flex-shrink: 0;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-menu.bn-combobox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-field {
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-field:focus-within,
+.goose-inline-ai-surface
+  .goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover {
+  background: transparent;
+  box-shadow: none;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-field__textarea {
+  padding: 6px 2px !important;
+  font-size: 13px !important;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-think-ticker {
+  left: 0;
+  padding: 8px 2px;
+  color: hsl(var(--muted-foreground));
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-think-ticker__scroller {
+  animation: none;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-tags {
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-wrap: wrap;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-tag,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-send,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-menu-stop,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-menu
+  summary,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-list
+  button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--popover-foreground));
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-tag--plus {
+  width: 30px;
+  padding: 0;
+  border: 0;
+  color: hsl(var(--muted-foreground));
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-send {
+  margin-inline-start: auto;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-primary {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  padding-inline: 12px;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-primary:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-menu-stop {
+  width: auto;
+  height: 30px;
+  margin: 3px 0;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-field__right {
+  align-items: center;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-menu {
+  position: relative;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-menu
+  summary {
+  list-style: none;
+}
+.goose-inline-ai-surface
+  .goose-inline-ai-actions-menu
+  summary::-webkit-details-marker {
+  display: none;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin-block-start: 4px;
+  padding: 4px;
+  background: hsl(var(--muted));
+  border-radius: 6px;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-menu[open] {
+  flex-basis: 100%;
+  order: 2;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-actions-list
+  button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  white-space: nowrap;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-preview-summary {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 20px;
+  color: hsl(var(--muted-foreground));
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-preview-summary
+  del {
+  padding: 1px 3px;
+  background: var(--goose-interactive-danger);
+  color: var(--goose-interactive-danger-fg);
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-preview-summary
+  ins {
+  padding: 1px 3px;
+  background: var(--goose-interactive-success);
+  color: var(--goose-interactive-success-fg);
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-inline-ai-error {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--goose-interactive-danger-fg);
+  overflow-wrap: anywhere;
+}
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  button:focus-visible,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  summary:focus-visible,
+.goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+  .goose-ai-prompt-field__textarea:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+    button:not(:disabled):hover,
+  .goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+    summary:hover {
+    background: var(--goose-interactive-hover);
+    color: var(--goose-interactive-hover-fg);
+  }
+  .goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface
+    .goose-inline-ai-primary:not(:disabled):hover {
+    background: var(--goose-interactive-selected);
+    color: var(--goose-interactive-selected-fg);
+  }
+}
+@keyframes goose-inline-ai-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goose-inline-ai-surface,
+  .goose-ai-menu-selection.bui-select-actions.goose-inline-ai-surface * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
