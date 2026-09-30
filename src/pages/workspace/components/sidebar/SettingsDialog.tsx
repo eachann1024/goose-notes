@@ -61,7 +61,7 @@ interface SettingsDialogProps {
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "appearance", label: "外观与主题", icon: GooseIcons.Laptop },
-  { id: "general", label: "通用设置", icon: GooseIcons.Settings },
+  { id: "general", label: "常规设置", icon: GooseIcons.Settings },
   { id: "shortcuts", label: "快捷键", icon: GooseIcons.Keyboard },
   { id: "local-folder", label: "本地文件夹", icon: GooseIcons.FolderOpen },
   { id: "git-sync", label: "Git 同步", icon: GooseIcons.GitBranch },
