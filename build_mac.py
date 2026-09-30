@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -16,8 +17,11 @@ INSTALLED_APP = Path("/Applications") / f"{APP_NAME}.app"
 
 
 def is_app_running() -> bool:
+    executable = INSTALLED_APP / "Contents" / "MacOS" / APP_NAME
     return subprocess.run(
-        ["pgrep", "-x", APP_NAME], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        ["pgrep", "-f", f"^{re.escape(str(executable))}($| )"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     ).returncode == 0
 
 
