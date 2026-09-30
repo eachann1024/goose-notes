@@ -5,7 +5,7 @@ import path from "node:path";
 import { normalizedGitRemote, unknownGitVisibility, validateGitRepository, validateRepositoryId, type GitRepositoryConfig, type GitRepositoryInput, type GitSyncState, type GitSyncStatus, type GitVisibilityCheck } from "../../src/lib/git-sync-contract";
 import { assertAllowed, findVaultRootContaining, normalizePath } from "./allowlist";
 import { broadcast, lookupWindowContext } from "./windows";
-import { syncGitRepository } from "./gitRepositoryEngine";
+import { syncGitRepository, validateGitSyncFolder } from "./gitRepositoryEngine";
 import { lockGitSyncPath } from "./gitSyncLock";
 import { GitSyncSerialQueue, migrateGitSyncState, type GitMappingHistory } from "./gitSyncStore";
 import { checkGitVisibility } from "./gitSyncVisibility";
@@ -161,9 +161,13 @@ async function save(raw: GitRepositoryInput) {
   if (previous && (normalizedGitRemote(input) !== normalizedGitRemote(previous) || input.branch !== previous.branch || input.layout !== previous.layout)) throw new Error("已保存仓库的地址、分支和布局不可修改；请新建配置");
   if (!previous && input.layout === "legacy-root") throw new Error("新仓库必须使用子目录布局");
   if ([...configs.values()].some((other) => other.id !== input.id && normalizedGitRemote(other) === normalizedGitRemote(input) && other.branch === input.branch)) throw new Error("此仓库分支已有同步配置");
+  const addsFolder = input.folders.some((folder) => !previous?.folders.some((old) => old.notebookId === folder.notebookId));
   const history = mappingHistory[input.id] ?? [];
   for (const folder of input.folders) {
-    folder.localPath = await checkedRoot(folder.localPath);
+    if (addsFolder) {
+      folder.localPath = await checkedRoot(folder.localPath);
+      await validateGitSyncFolder(folder.localPath);
+    }
     const old = history.find((entry) => entry.notebookId === folder.notebookId || normalizePath(entry.localPath).toLowerCase() === normalizePath(folder.localPath).toLowerCase());
     if (old) {
       if (old.notebookId !== folder.notebookId || normalizePath(old.localPath) !== normalizePath(folder.localPath)) throw new Error("原文件夹身份或路径已变化，请创建新的映射");
@@ -227,6 +231,17 @@ async function visibility(request: GitVisibilityCheck) {
 }
 
 export function registerGitSyncIpc() {
+  ipcMain.handle("git-sync:check-folder", async (event, localPath: unknown) => {
+    assertWorkspace(event);
+    try {
+      if (typeof localPath !== "string") throw new Error("文件夹路径无效");
+      await validateGitSyncFolder(await checkedRoot(localPath));
+      return { error: null };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      return { error: code === "ENOENT" ? "文件夹或文件已不存在，请重新打开记事本" : code === "EACCES" || code === "EPERM" ? "没有读取文件夹的权限，请检查权限" : messageOf(error) };
+    }
+  });
   ipcMain.on("git-sync:prepare-reply", (event, requestId: string, error: string | null) => {
     if (typeof requestId !== "string") return;
     const pending = pendingReplies.get(requestId);

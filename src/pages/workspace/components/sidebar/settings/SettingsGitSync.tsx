@@ -54,6 +54,8 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   const locks = useRef(new Set<string>());
   const mappings = useRef(new Map<string, GitRepositoryFolder>());
   const [removeConfirmation, setRemoveConfirmation] = useState("");
+  const [folderChecks, setFolderChecks] = useState<Record<string, { error: string | null }>>({});
+  const [checkRevision, setCheckRevision] = useState(0);
 
   useEffect(() => {
     if (!bridge || !visible) return;
@@ -69,6 +71,21 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   }, [state.configs]);
 
   const config = adding ? undefined : state.configs.find((item) => item.id === selectedId) ?? state.configs[0];
+  useEffect(() => {
+    if (!bridge || !visible || !config) return;
+    let active = true;
+    setFolderChecks({});
+    const paths = new Set([...localNotebooks.map((notebook) => notebook.localPath!), ...config.folders.map((folder) => folder.localPath)]);
+    void (async () => {
+      for (const localPath of paths) {
+        const result = await bridge.checkFolder(localPath).catch((error: unknown) => ({ error: messageOf(error) }));
+        if (!active) return;
+        setFolderChecks((current) => ({ ...current, [localPath]: result }));
+      }
+    })();
+    return () => { active = false; };
+  }, [bridge, visible, config, localNotebooks, checkRevision]);
+
   const id = config?.id ?? newId;
   const draft = drafts[id] ?? config ?? emptyDraft();
   const dirty = Boolean(drafts[id]);
@@ -108,7 +125,7 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   }
 
   function toggleFolder(folder: GitRepositoryFolder, checked: boolean) {
-    if (!bridge || !config || disabled) return;
+    if (!bridge || !config || disabled || (checked && (!folderChecks[folder.localPath] || folderChecks[folder.localPath].error))) return;
     const folders = checked ? [...config.folders, folder] : config.folders.filter((item) => item.notebookId !== folder.notebookId);
     // Use saved settings, so a checkbox never silently commits the repository form.
     void run(id, checked ? "保存选择并同步" : "保存选择", () => bridge.save(validate({ ...config, folders })));
@@ -127,11 +144,15 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   });
   for (const folder of config?.folders ?? []) if (!rows.some((row) => row.notebookId === folder.notebookId)) rows.push(folder);
 
+  const selectedFolderError = config?.folders.some((folder) => Boolean(folderChecks[folder.localPath]?.error));
+  const nameCounts = new Map<string, number>();
+  for (const folder of rows) nameCounts.set(folder.name, (nameCounts.get(folder.name) ?? 0) + 1);
+
   return <div className="min-w-0 space-y-5">
     <div><h3 className="text-xl font-semibold tracking-tight text-foreground">Git 同步</h3><p className="mt-1 text-sm text-muted-foreground">添加 GitHub 或 Gitee 仓库，为每个仓库选择多个本地记事本。</p></div>
     {!bridge ? <SettingsSectionCard><p className="text-sm text-muted-foreground">Git 同步仅在桌面版应用中可用。</p></SettingsSectionCard> : <>
       {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{spinner}正在读取同步配置…</p>}
-      {loadError && <div role="alert" className="space-y-2 text-sm"><p className="break-words text-destructive">读取配置失败：{loadError}</p><Button variant="outline" onClick={() => { setLoadError(""); setLoading(true); setReload((value) => value + 1); }}>重新读取</Button></div>}
+      {loadError && <div role="alert" className="space-y-2 text-sm"><p className="git-sync-error">读取配置失败：{loadError}</p><Button variant="outline" onClick={() => { setLoadError(""); setLoading(true); setReload((value) => value + 1); }}>重新读取</Button></div>}
       <SettingsSectionCard title="仓库" description="建议使用私有仓库，避免笔记被公开。">
         <div className="space-y-2">
           {state.configs.map((item) => <Button key={item.id} variant={config?.id === item.id ? "secondary" : "outline"} aria-pressed={config?.id === item.id} onClick={() => { setSelectedId(item.id); setAdding(false); setRemoveConfirmation(""); }} className="h-auto w-full min-w-0 flex-wrap justify-start gap-2 p-3 text-left">
@@ -142,15 +163,16 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
         </div>
         <Button variant="outline" disabled={loading || Boolean(loadError) || adding || (!config && dirty)} onClick={() => { setAdding(true); setRemoveConfirmation(""); }}>添加仓库</Button>
       </SettingsSectionCard>
-      <SettingsSectionCard title={config ? "仓库设置" : "添加仓库"}>
+      {adding && !loading && !loadError && <SettingsSectionCard title="添加仓库">
         <div className="space-y-2"><Label htmlFor="git-sync-provider">Git 平台</Label><DropdownMenu><DropdownMenuTrigger asChild><Button id="git-sync-provider" variant="outline" disabled={disabled || Boolean(config)} className="w-full justify-between font-normal"><span>{draft.provider === "github" ? "GitHub" : "Gitee"}</span><ChevronDown aria-hidden="true" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" aria-label="Git 平台" className="min-w-[var(--trigger-width)]"><DropdownMenuRadioGroup value={draft.provider} onValueChange={(value) => updateDraft("provider", value as Draft["provider"])}><DropdownMenuRadioItem hideIndicator value="github">GitHub</DropdownMenuRadioItem><DropdownMenuRadioItem hideIndicator value="gitee">Gitee</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu></div>
         <div className="space-y-2"><Label htmlFor="git-sync-remote">SSH 仓库地址</Label><Input id="git-sync-remote" value={draft.remoteUrl} disabled={disabled || Boolean(config)} onChange={(event) => updateDraft("remoteUrl", event.target.value)} placeholder={`git@${draft.provider === "github" ? "github.com" : "gitee.com"}:用户名/仓库.git`} autoComplete="off" /></div>
         <div className="space-y-2"><Label htmlFor="git-sync-branch">分支</Label><Input id="git-sync-branch" value={draft.branch} disabled={disabled || Boolean(config)} onChange={(event) => updateDraft("branch", event.target.value)} /></div>
-        {config && <p className="text-xs text-muted-foreground">地址、分支和目录布局已固定；需要更换时请添加新仓库配置。</p>}
+        </SettingsSectionCard>}
+      {(config || (adding && !loading && !loadError)) && <SettingsSectionCard title="自动同步">
         <div className="space-y-2"><Label htmlFor="git-sync-interval">自动同步间隔（分钟）</Label><Input id="git-sync-interval" type="number" min={1} max={1440} step={1} value={draft.intervalMinutes} disabled={disabled} onChange={(event) => updateDraft("intervalMinutes", Number(event.target.value))} /></div>
         <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 p-4"><div><Label htmlFor="git-sync-enabled">自动同步</Label><p className="mt-1 text-xs text-muted-foreground">应用运行期间定时同步；新增勾选始终立即同步一次。</p></div><Switch id="git-sync-enabled" checked={draft.enabled} disabled={disabled} onCheckedChange={(checked) => updateDraft("enabled", checked)} /></div>
-        <div className="flex flex-wrap items-center gap-2"><Button onClick={save} disabled={disabled || (Boolean(config) && !dirty)}>保存仓库设置</Button>{dirty && <><span className="text-xs text-muted-foreground">有未保存的设置</span><Button variant="ghost" disabled={disabled} onClick={() => setDrafts((current) => { const next = { ...current }; delete next[id]; return next; })}>撤销编辑</Button></>}</div>
-      </SettingsSectionCard>
+        <div className="flex flex-wrap items-center gap-2"><Button onClick={save} disabled={disabled || (Boolean(config) && !dirty)}>{config ? "保存同步设置" : "添加仓库"}</Button>{adding && state.configs.length > 0 && <Button variant="outline" disabled={disabled} onClick={() => setAdding(false)}>取消添加</Button>}{dirty && <><span className="text-xs text-muted-foreground">有未保存的设置</span><Button variant="ghost" disabled={disabled} onClick={() => setDrafts((current) => { const next = { ...current }; delete next[id]; return next; })}>撤销编辑</Button></>}</div>
+      </SettingsSectionCard>}
       {config && <>
         <SettingsSectionCard title="仓库可见性">
           <div className="flex flex-wrap items-center gap-2"><VisibilityBadge config={config} checking={checking(config)} />{config.visibility.checkedAt && <span className="text-xs text-muted-foreground">检查于 {new Date(config.visibility.checkedAt).toLocaleString()}</span>}</div>
@@ -158,10 +180,10 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
           <div className="space-y-2"><Label htmlFor="git-sync-token">API Token（可选，仅用于检查可见性）</Label><Input id="git-sync-token" type="password" autoComplete="off" spellCheck={false} value={tokens[id] ?? ""} disabled={disabled} onChange={(event) => setTokens((current) => ({ ...current, [id]: event.target.value }))} placeholder={config.hasToken ? "已安全保存凭据，留空可复用" : "私有仓库可能需要读取仓库元数据的权限"} /><p className="text-xs text-muted-foreground">Token 仅用于查询仓库是否私有，会由系统加密保存，不用于传输笔记；文件始终通过 SSH 同步。检查后输入框清空，不显示已保存的 Token。</p></div>
           <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled} onClick={() => checkVisibility()}>{checking(config) ? spinner : null}{checking(config) ? "检查中…" : "重新检查可见性"}</Button>{config.hasToken && <Button variant="ghost" disabled={disabled} onClick={() => checkVisibility(true)}>清除凭据并重新检查</Button>}</div>
         </SettingsSectionCard>
-        <SettingsSectionCard title="同步文件夹" description="每次新增勾选立即保存并同步一次，无需点击保存。取消勾选只停止该文件夹同步，不删除文件。">
+        <SettingsSectionCard title="同步文件夹" description="勾选后立即保存并同步；取消勾选不会删除文件。" contentClassName="space-y-2" actions={<Button variant="ghost" size="sm" disabled={disabled} onClick={() => setCheckRevision((value) => value + 1)}>重新检查</Button>}>
           {config.layout === "legacy-root" && <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">这是旧版根目录布局，仅支持原来的一个文件夹，远端路径保持仓库根目录。要同步多个文件夹，请添加另一个仓库的配置；不会自动迁移旧布局。</p>}
           {!rows.length && <p className="text-sm text-muted-foreground">尚无本地文件夹记事本，请先在侧栏添加本地记事本。</p>}
-          <div className="space-y-2">{rows.map((folder) => {
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-2">{rows.map((folder) => {
             const selected = config.folders.some((item) => item.notebookId === folder.notebookId);
             const available = localNotebooks.some((item) => item.id === folder.notebookId);
             const check = folderChecks[folder.localPath];
@@ -172,10 +194,11 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
               const mapping = mappings.current.get(key) ?? { ...folder, remotePath: config.layout === "legacy-root" ? "" : newRemotePath(folder.name) };
               mappings.current.set(key, mapping);
               toggleFolder(mapping, checked);
-            }}><Checkbox.Control className="shrink-0"><Checkbox.Indicator /></Checkbox.Control><span className="min-w-0 flex-1"><span className="block break-words text-sm font-medium">{folder.name}{!available ? "（记事本未打开）" : ""}</span><span className="block break-all text-xs text-muted-foreground">{folder.localPath}</span><span className="mt-1 block break-all text-xs text-muted-foreground">远端：{config.layout === "legacy-root" ? "仓库根目录 /" : selected ? `${folder.remotePath}/` : remembered ? `${remembered.remotePath}/（重新勾选时沿用）` : "首次勾选按名称生成唯一子目录；已有映射沿用原路径"}</span></span></Checkbox></div>;
+            }}><Checkbox.Control className="shrink-0"><Checkbox.Indicator /></Checkbox.Control><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium" title={folder.name}>{folder.name}</span>{duplicateName && <span className="block truncate text-xs text-muted-foreground" title={folder.localPath}>{folder.localPath}</span>}{folderError ? <span className="mt-1 block text-xs text-danger" title={folderError}>{folderError.split("\n")[0]}{selected ? " 请取消勾选。" : ""}</span> : !check ? <span className="mt-1 block text-xs text-muted-foreground">检查中…</span> : null}</span></Checkbox></div>;
           })}</div>
         </SettingsSectionCard>
         <SettingsSectionCard title="同步状态">
+          {selectedFolderError && <p className="text-sm text-danger">已选文件夹有错误，请修复后重新检查，或取消勾选后再同步。</p>}
           <div role="status" aria-live="polite" className="space-y-2 text-sm"><p className="flex items-center gap-2">{(pending || syncing) && spinner}{syncing ? "正在同步所选文件夹…" : pending ? `${pending}…` : status?.phase === "error" ? "同步失败" : "等待同步"}</p><p className="text-muted-foreground">上次成功：{status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "尚无记录"}</p></div>
           {status?.error && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{status.error}</p>}
           <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled || !config.folders.length || selectedFolderError} onClick={() => void run(id, "同步", () => bridge.syncNow(id))}>{status?.phase === "error" ? "重试同步" : "立即同步"}</Button><Button variant="ghost" disabled={disabled} onClick={() => setRemoveConfirmation(id)}>移除配置</Button></div>

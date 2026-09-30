@@ -96,7 +96,13 @@ describe("isolated repository sync", () => {
     await mkdir(join(f.a, "nested", ".git"), { recursive: true }); await writeFile(join(f.a, "nested", ".git", "config"), "secret");
     await mkdir(join(f.a, ".cache")); await writeFile(join(f.a, ".cache", "cache"), "cache"); await syncGitRepository(f.config, f.options);
     expect(await git(f.remote, "ls-tree", "-r", "--name-only", "main")).toBe("folder-a/note.md");
-    await symlink(f.b, join(f.a, "unsafe")); await expect(syncGitRepository(f.config, f.options)).rejects.toThrow("符号链接"); await rm(join(f.a, "unsafe"));
+    await symlink(f.b, join(f.a, "unsafe"));
+    await expect(syncGitRepository(f.config, f.options)).rejects.toThrow(`发现符号链接，已停止本次同步。\n路径：${join(f.a, "unsafe")}`);
+    await rm(join(f.a, "unsafe"));
+    await writeFile(join(f.a, "note:invalid.md"), "keep");
+    await expect(syncGitRepository(f.config, f.options)).rejects.toThrow(`文件名不符合跨平台同步规则，已停止本次同步。\n路径：${join(f.a, "note:invalid.md")}`);
+    expect(await readFile(join(f.a, "note:invalid.md"), "utf8")).toBe("keep");
+    await rm(join(f.a, "note:invalid.md"));
     await rm(f.b, { recursive: true }); await expect(syncGitRepository(f.config, f.options)).rejects.toThrow();
     expect(await git(f.remote, "show", "main:folder-a/note.md")).toBe("keep");
     await mkdir(f.b);

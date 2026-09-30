@@ -58,6 +58,7 @@ export interface GitSyncState {
 
 export interface GitSyncBridge {
   getState: () => Promise<GitSyncState>;
+  checkFolder: (localPath: string) => Promise<{ error: string | null }>;
   save: (config: GitRepositoryInput) => Promise<GitSyncState>;
   remove: (repositoryId: string) => Promise<GitSyncState>;
   syncNow: (repositoryId: string) => Promise<GitSyncState>;

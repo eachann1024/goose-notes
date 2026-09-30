@@ -75,3 +75,13 @@
   .settings-ai-pick-row > :last-child,
   .settings-ai-pick-row button { width: 100%; min-width: 0; }
 }
+
+/* Error text uses the theme's readable foreground, separate from destructive buttons. */
+.git-sync-error {
+  color: var(--goose-interactive-danger-fg);
+  background-color: var(--goose-interactive-danger);
+  border-color: var(--goose-interactive-danger-border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
