@@ -26,6 +26,15 @@
 
 <br />
 
+## 演示视频
+
+https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
+
+<p align="center">
+  <a href="https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74"><img src="docs/showcase/goose-notes-demo-poster.jpg" width="480" alt="Goose Note 演示视频封面，点击观看" /></a><br />
+  <sub>75 秒看完 Goose Note。播放器未显示时，点击封面观看。</sub>
+</p>
+
 [![Goose Note：笔记编辑与 AI 助手并排，原文和整理结果随时对照](docs/showcase/01-writing-ai.png)](docs/showcase/01-writing-ai.png)
 
 <p align="center"><sub>写下想法，慢慢理清。macOS 开发版实拍，点击查看原图。</sub></p>
