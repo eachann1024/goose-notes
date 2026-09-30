@@ -1,3 +1,5 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
+import { OPEN_ESCAPE_LAYER_SELECTOR } from "@/lib/escape-close";
 import {
   Popover,
   PopoverTrigger,
@@ -308,7 +310,10 @@ export function NotebookAiPanel({
   // 已打开时重复触发「打开」走 goose-note:focus-ai-composer
   useEffect(() => {
     if (unavailableReason || !bodyReady) return;
-    const focusComposer = () => composerRef.current?.focus();
+    const focusComposer = () => {
+      // Explicit AI activation can close settings in the same event turn.
+      window.requestAnimationFrame(() => { if (!isWorkspaceSettingsOpen()) composerRef.current?.focus(); });
+    };
     const timer = window.setTimeout(focusComposer, 50);
     window.addEventListener(FOCUS_AI_COMPOSER_EVENT, focusComposer);
     return () => {
@@ -319,6 +324,7 @@ export function NotebookAiPanel({
 
   const handlePanelKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
+      if (isWorkspaceSettingsOpen()) return;
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.stopPropagation();
       onClose();
@@ -331,12 +337,13 @@ export function NotebookAiPanel({
   useEffect(() => {
     if (!isFullscreen) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
       if (event.key !== "Escape" || event.defaultPrevented) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isImeKeyboardEvent(event)) return;
       if (
         document.querySelector(
-          '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+          OPEN_ESCAPE_LAYER_SELECTOR,
         )
       ) {
         return;

@@ -41,13 +41,8 @@ import { useNotebooks } from "@/stores/useNotebooks";
 import { useSettings } from "@/stores/useSettings";
 import { effectiveSingleTabMode } from "@/lib/tabMode";
 import { useTabs } from "@/stores/useTabs";
-import {
-  getModifierOnlyShortcut,
-  matchMouseShortcut,
-  matchModifierOnlyShortcutKey,
-  matchModifierOnlyShortcutKeyDown,
-  matchShortcut,
-} from "@/lib/shortcut-match";
+import { FIXED_SPLIT_SHORTCUTS } from "@/lib/fixed-app-shortcuts";
+import { shouldSkipAppHotkeyEvent } from "@/hooks/useImeInput";
 import { toast } from "@/components/ui/sonner";
 import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
 import { tryShowPageInFocusedSplit } from "@/lib/editor-split/commands";
@@ -82,9 +77,7 @@ export function CommandPalette() {
     setSearchAllNotebooks,
     showRecentInSearch,
     setShowRecentInSearch,
-    searchPanelCloseShortcut,
     singleTabMode: singleTabModeSetting,
-    appShortcuts,
   } = useSettings();
   const singleTabMode = effectiveSingleTabMode(singleTabModeSetting);
   const {
@@ -216,39 +209,9 @@ export function CommandPalette() {
   }, [setShowRecentInSearch]);
 
   useEffect(() => {
-    let pendingModifierOnlyClose = false;
-
+    // Escape is handled by the dialog after its child controls, never a configurable capture key.
     const down = (e: KeyboardEvent) => {
-      if (
-        open &&
-        getModifierOnlyShortcut(searchPanelCloseShortcut) &&
-        matchModifierOnlyShortcutKeyDown(e, searchPanelCloseShortcut)
-      ) {
-        pendingModifierOnlyClose = true;
-        return;
-      }
-      if (pendingModifierOnlyClose) {
-        pendingModifierOnlyClose = false;
-      }
-
-      const eventForMatching =
-        e.key === " "
-          ? ({
-              key: "Space",
-              code: e.code,
-              ctrlKey: e.ctrlKey,
-              metaKey: e.metaKey,
-              altKey: e.altKey,
-              shiftKey: e.shiftKey,
-            } as KeyboardEvent)
-          : e;
-      if (open && matchShortcut(eventForMatching, searchPanelCloseShortcut)) {
-        e.preventDefault();
-        e.stopPropagation();
-        setOpen(false);
-        return;
-      }
-
+      if (e.defaultPrevented || shouldSkipAppHotkeyEvent(e)) return;
       if (open && e.key === "Tab") {
         e.preventDefault();
         e.stopPropagation();
@@ -259,52 +222,23 @@ export function CommandPalette() {
       }
     };
 
-    const up = (e: KeyboardEvent) => {
-      const shouldClose =
-        open &&
-        pendingModifierOnlyClose &&
-        matchModifierOnlyShortcutKey(e, searchPanelCloseShortcut);
-      pendingModifierOnlyClose = false;
-      if (!shouldClose) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setOpen(false);
-    };
-
-    const handleMouseShortcut = (event: MouseEvent) => {
-      pendingModifierOnlyClose = false;
-      if (!open || !matchMouseShortcut(event, searchPanelCloseShortcut)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(false);
-    };
-
     document.addEventListener("keydown", down, true);
-    document.addEventListener("keyup", up, true);
-    document.addEventListener("mousedown", handleMouseShortcut, true);
     const handleOpenSearch = (event: Event) => {
-      const detail = (
-        event as CustomEvent<{ resetQuery?: boolean; openInNewTab?: boolean }>
-      ).detail;
-      if (detail?.resetQuery) {
-        setSearchQuery("");
-      }
+      const detail = (event as CustomEvent<{ resetQuery?: boolean; openInNewTab?: boolean }>).detail;
+      if (detail?.resetQuery) setSearchQuery("");
       openInNewTabRef.current = !singleTabMode && detail?.openInNewTab === true;
       trackSearchOpened("programmatic");
-      setOpen(true);
+      setOpen(false);
     };
     window.addEventListener("goose-note:open-search", handleOpenSearch);
     return () => {
       document.removeEventListener("keydown", down, true);
-      document.removeEventListener("keyup", up, true);
-      document.removeEventListener("mousedown", handleMouseShortcut, true);
       window.removeEventListener("goose-note:open-search", handleOpenSearch);
     };
   }, [
     open,
     searchAllNotebooks,
     scopedNotebookId,
-    searchPanelCloseShortcut,
     setSearchAllNotebooks,
     singleTabMode,
   ]);
@@ -457,7 +391,7 @@ export function CommandPalette() {
             {splitActions.length > 0 && (
               <Command.Group heading="分屏">
                 {splitActions.map((action) => {
-                  const shortcut = appShortcuts[action.shortcutId];
+                  const shortcut = FIXED_SPLIT_SHORTCUTS[action.shortcutId];
                   const Icon =
                     action.id === "split-right"
                       ? Columns2

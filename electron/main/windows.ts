@@ -398,6 +398,7 @@ function bindCloseTabAccelerator(win: BrowserWindow): void {
     if (win.webContents.isDevToolsFocused()) return;
     if (!isPrimaryModW(input)) return;
     event.preventDefault();
+    if (input.isAutoRepeat || input.isComposing) return;
     requestCloseActiveTab(win);
   });
 }

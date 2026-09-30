@@ -8,7 +8,7 @@ import {
     DEFAULT_HOTKEY_STATUS,
     normalizeDesktopHotkeyStatus,
 } from '../types'
-import { NON_CUSTOMIZABLE_APP_SHORTCUT_IDS } from '@/lib/fixed-app-shortcuts'
+import { FIXED_SPLIT_SHORTCUTS, isReservedCloseOrSplitShortcut, NON_CUSTOMIZABLE_APP_SHORTCUT_IDS } from '@/lib/fixed-app-shortcuts'
 
 export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     toggleSidebar: 'Alt+B',
@@ -18,16 +18,48 @@ export const DEFAULT_APP_SHORTCUTS: Record<string, string> = {
     navBack: 'Mod+[',
     navForward: 'Mod+]',
     newTab: 'Mod+T',
-    splitRight: 'Mod+D',
-    splitDown: 'Mod+Shift+D',
-    splitFocusLeft: 'Mod+Alt+ArrowLeft',
-    splitFocusRight: 'Mod+Alt+ArrowRight',
-    splitFocusUp: 'Mod+Alt+ArrowUp',
-    splitFocusDown: 'Mod+Alt+ArrowDown',
-    splitFocusPrevious: 'Mod+Alt+[',
-    splitFocusNext: 'Mod+Alt+]',
-    splitZoom: 'Mod+Shift+Enter',
-    closeSplitPane: '',
+    ...FIXED_SPLIT_SHORTCUTS,
+}
+
+/** 同版本恢复/导入也执行：固定值覆盖旧值，迁走占用固定键的自定义动作。 */
+export function normalizeAppShortcuts(stored: unknown): Record<string, string> {
+    const result = { ...DEFAULT_APP_SHORTCUTS }
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return result
+    for (const [id, value] of Object.entries(stored)) {
+        if (NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id) || typeof value !== 'string') continue
+        result[id] = isReservedCloseOrSplitShortcut(value)
+            ? (DEFAULT_APP_SHORTCUTS[id] ?? '')
+            : value.trim()
+    }
+    return result
+}
+
+export function normalizeFixedShortcutSettings<T extends {
+    appShortcuts?: unknown
+    closeTabShortcut?: unknown
+    searchPanelCloseShortcut?: unknown
+    desktop?: unknown
+}>(state: T) {
+    const desktop = state.desktop && typeof state.desktop === 'object'
+        ? { ...state.desktop } as Record<string, unknown> : undefined
+    if (desktop) {
+        for (const [key, fallback] of [
+            ['wakeHotkey', DEFAULT_WAKE_HOTKEY],
+            ['searchHotkey', DEFAULT_SEARCH_HOTKEY],
+            ['quicknoteHotkey', DEFAULT_QUICKNOTE_HOTKEY],
+        ]) {
+            if (typeof desktop[key] === 'string' && isReservedCloseOrSplitShortcut(desktop[key])) {
+                desktop[key] = fallback
+            }
+        }
+    }
+    return {
+        ...state,
+        closeTabShortcut: DEFAULT_CLOSE_TAB_SHORTCUT,
+        searchPanelCloseShortcut: DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
+        appShortcuts: normalizeAppShortcuts(state.appShortcuts),
+        ...(desktop ? { desktop } : {}),
+    }
 }
 
 export interface ShortcutsSliceState {
@@ -81,7 +113,7 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
             set((state) => ({
                 desktop: {
                     ...state.desktop,
-                    wakeHotkey: hotkey,
+                    wakeHotkey: isReservedCloseOrSplitShortcut(hotkey) ? state.desktop.wakeHotkey : hotkey,
                     wakeHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                 },
             })),
@@ -100,7 +132,7 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
             set((state) => ({
                 desktop: {
                     ...state.desktop,
-                    searchHotkey: hotkey,
+                    searchHotkey: isReservedCloseOrSplitShortcut(hotkey) ? state.desktop.searchHotkey : hotkey,
                     searchHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                 },
             })),
@@ -119,7 +151,7 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
             set((state) => ({
                 desktop: {
                     ...state.desktop,
-                    quicknoteHotkey: hotkey,
+                    quicknoteHotkey: isReservedCloseOrSplitShortcut(hotkey) ? state.desktop.quicknoteHotkey : hotkey,
                     quicknoteHotkeyStatus: DEFAULT_HOTKEY_STATUS,
                 },
             })),
@@ -155,10 +187,10 @@ export function createShortcutsSlice(set: SetFn): ShortcutsSlice {
                     quicknoteHotkeyStatus: normalizeDesktopHotkeyStatus(status),
                 },
             })),
-        setCloseTabShortcut: (shortcut) => set({ closeTabShortcut: shortcut }),
-        setSearchPanelCloseShortcut: (shortcut) => set({ searchPanelCloseShortcut: shortcut }),
+        setCloseTabShortcut: () => set({ closeTabShortcut: DEFAULT_CLOSE_TAB_SHORTCUT }),
+        setSearchPanelCloseShortcut: () => set({ searchPanelCloseShortcut: DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT }),
         setAppShortcut: (id, shortcut) => {
-            if (NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id)) return
+            if (NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id) || isReservedCloseOrSplitShortcut(shortcut)) return
             set((state) => ({
                 appShortcuts: { ...state.appShortcuts, [id]: shortcut },
             }))

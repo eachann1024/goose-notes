@@ -1,6 +1,6 @@
 import type { PartialBlock } from "@blocknote/core";
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
-import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
+import { FIXED_SPLIT_SHORTCUTS, getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
 import { formatShortcut } from "@/lib/utils";
 
 const WELCOME_IMAGE =
@@ -170,9 +170,9 @@ const shortcutSections: ShortcutSection[] = [
         note: "在当前记事本与全部记事本之间切换。",
       },
       {
-        shortcut: "自定义关闭键",
+        shortcut: shortcutLabel("Escape"),
         action: "关闭搜索面板",
-        note: "默认未设置，可在设置中自定义。",
+        note: "固定按 Escape 关闭，不会同时关闭笔记。",
       },
       {
         shortcut: shortcutLabel("Mod+F"),
@@ -342,6 +342,7 @@ export const onboardingPageContent: BlockNoteContent = [
     "本地文件夹模式下，页面会和你的磁盘文件联动，适合管理现有 Markdown 文件。",
   ]),
   heading(2, "极简工作区"),
+  paragraph(`按 ${formatShortcut(FIXED_SPLIT_SHORTCUTS.splitRight)} 快速分屏。`),
   table(
     ["能力", "怎么用", "结果"],
     [
@@ -410,7 +411,7 @@ export const onboardingPageContent: BlockNoteContent = [
       text: "先建立 2 到 3 层页面结构，不要一上来把所有内容塞进一页。",
     },
     { checked: false, text: "给常用页面加收藏或置顶，减少每天来回翻找。" },
-    { checked: false, text: "把搜索面板退出键改成顺手的组合。" },
+    { checked: false, text: "搜索完成后，按 Escape 关闭搜索面板。" },
     {
       checked: false,
       text: "经常写技术笔记的话，顺手试试代码块、Mermaid 和数学公式。",

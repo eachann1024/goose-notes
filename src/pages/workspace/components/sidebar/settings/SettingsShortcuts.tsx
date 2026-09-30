@@ -21,7 +21,7 @@ import {
 import type { DesktopHotkeyStatus } from "@/stores/settings/types"
 import { SettingsSectionCard } from "./SettingsSectionCard"
 import { ShortcutField } from "./ShortcutField"
-import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
+import { FIXED_CLOSE_SHORTCUT, FIXED_SPLIT_SHORTCUTS, NON_CUSTOMIZABLE_APP_SHORTCUT_IDS, getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts"
 import { LOCAL_FOLDER_FILE_SHORTCUTS } from "@/lib/local-folder-file-actions"
 
 // Electron 桌面端（仅本地模式）：设置-快捷键页多出「桌面全局快捷键」分区；Electron 不出现。
@@ -50,6 +50,8 @@ const TAB_ONLY_APP_SHORTCUT_IDS = new Set([
 ])
 
 const ALWAYS_FIXED_SHORTCUT_VALUES = [
+  FIXED_CLOSE_SHORTCUT,
+  ...Object.values(FIXED_SPLIT_SHORTCUTS).filter(Boolean),
   FIXED_APP_SHORTCUTS.openSettings,
   FIXED_APP_SHORTCUTS.editorFindOpen,
   "Mod+Alt+F",
@@ -63,6 +65,9 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
   "Shift+F3",
   // 浏览器/编辑器固定行为不可被自定义动作覆盖。
   "Mod+S",
+  "Mod+1",
+  "Mod+2",
+  "Mod+3",
   "Mod+A",
   "Mod+Z",
   "Mod+Shift+Z",
@@ -78,8 +83,9 @@ const ALWAYS_FIXED_SHORTCUT_VALUES = [
 
 /** 仅多标签模式生效的固定快捷键。 */
 const TAB_ONLY_FIXED_SHORTCUT_VALUES = [
+  "Mod+W",
   FIXED_APP_SHORTCUTS.reopenTab,
-  ...Array.from({ length: 9 }, (_, index) => `Mod+${index + 1}`),
+  ...Array.from({ length: 6 }, (_, index) => `Mod+${index + 4}`),
   "Ctrl+Tab",
   "Ctrl+Shift+Tab",
 ]
@@ -95,8 +101,8 @@ export { normalizeShortcutForConflict } from "@/lib/shortcut-platform"
 // eslint-disable-next-line react-refresh/only-export-components
 export function getAllConfiguredShortcuts(
   appShortcuts: Record<string, string>,
-  closeTabShortcut: string,
-  searchPanelCloseShortcut: string,
+  _closeTabShortcut: string,
+  _searchPanelCloseShortcut: string,
   excludeId: string,
   isMac: PlatformKind | boolean = isMacPlatform(),
   singleTabMode = false,
@@ -113,17 +119,10 @@ export function getAllConfiguredShortcuts(
     normalizeShortcutForConflict(shortcut, isMac),
   )
   for (const [id, s] of Object.entries(appShortcuts)) {
-    if (id === excludeId || !s) continue
+    if (id === excludeId || !s || NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id)) continue
     // 单标签模式下这些动作不注册热键，也不应占用可配置位。
     if (singleTabMode && TAB_ONLY_APP_SHORTCUT_IDS.has(id)) continue
     shortcuts.push(normalizeShortcutForConflict(s, isMac))
-  }
-  // 单标签模式隐藏「关闭标签」配置，其值不参与冲突。
-  if (!singleTabMode && excludeId !== "close-tab" && closeTabShortcut) {
-    shortcuts.push(normalizeShortcutForConflict(closeTabShortcut, isMac))
-  }
-  if (excludeId !== "search-panel-close" && searchPanelCloseShortcut) {
-    shortcuts.push(normalizeShortcutForConflict(searchPanelCloseShortcut, isMac))
   }
   // 桌面全局快捷键（Electron）也参与冲突占用。
   if (excludeId !== "wake-hotkey" && desktopHotkeys?.wakeHotkey) {
@@ -177,41 +176,6 @@ function makeAppShortcutSetter(
   }
 }
 
-function makeCloseSetter(
-  excludeId: string,
-  setter: (s: string) => void,
-  appShortcuts: Record<string, string>,
-  closeTabShortcut: string,
-  searchPanelCloseShortcut: string,
-  singleTabMode: boolean,
-  desktopHotkeys?: {
-    wakeHotkey?: string
-    quicknoteHotkey?: string
-    searchHotkey?: string
-  },
-) {
-  return (shortcut: string) => {
-    if (shortcut) {
-      const existing = getAllConfiguredShortcuts(
-        appShortcuts,
-        closeTabShortcut,
-        searchPanelCloseShortcut,
-        excludeId,
-        isMacPlatform(),
-        singleTabMode,
-        desktopHotkeys,
-      )
-      if (existing.includes(normalizeShortcutForConflict(shortcut))) {
-        toast.warning("快捷键冲突", {
-          description: `${formatShortcut(shortcut)} 已被其他操作占用，请选择其他快捷键。`,
-        })
-        return
-      }
-    }
-    setter(shortcut)
-  }
-}
-
 const FIXED_SHORTCUTS: Array<{
   label: string
   shortcut: string
@@ -223,12 +187,13 @@ const FIXED_SHORTCUTS: Array<{
   { label: "新建窗口", shortcut: "Mod+Shift+N", desktopOnly: true },
   { label: "页内查找", shortcut: FIXED_APP_SHORTCUTS.editorFindOpen },
   { label: "页内替换", shortcut: "Mod+Alt+F" },
-  { label: "收起侧栏其它文件夹（当前选中笔记保持可见）", shortcut: "Escape" },
-  { label: "恢复最近关闭的标签页（Chrome 逻辑）", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
+  { label: "侧栏聚焦时收起其它文件夹（优先于关闭笔记）", shortcut: "Escape" },
+  { label: "恢复最近关闭的标签页", shortcut: FIXED_APP_SHORTCUTS.reopenTab, tabOnly: true },
   { label: "按关闭顺序关闭当前内容（桌面）", shortcut: "Mod+W", desktopOnly: true },
   { label: "关闭窗口（macOS）", shortcut: "Mod+Shift+W", desktopOnly: true, platforms: ["mac"] },
   { label: "打开设置", shortcut: FIXED_APP_SHORTCUTS.openSettings },
-  { label: "切换标签页（1~8 对应序号，9 到最后）", shortcut: "Mod+1~9", tabOnly: true },
+  { label: "切换侧栏视图（本地 / 大纲 / 搜索）", shortcut: "Mod+1~3" },
+  { label: "切换标签页（4~8 对应序号，9 到最后）", shortcut: "Mod+4~9", tabOnly: true },
   { label: "循环切换标签页", shortcut: "Ctrl+Tab", tabOnly: true },
   { label: "反向循环切换标签页", shortcut: "Ctrl+Shift+Tab", tabOnly: true },
   { label: "查找下一处", shortcut: "Mod+G" },
@@ -573,25 +538,6 @@ export function SettingsShortcuts({
       desktopHotkeys,
     )
 
-  const safeSetCloseTab = makeCloseSetter(
-    "close-tab",
-    setCloseTabShortcut,
-    appShortcuts,
-    closeTabShortcut,
-    searchPanelCloseShortcut,
-    singleTabMode,
-    desktopHotkeys,
-  )
-  const safeSetSearchPanelClose = makeCloseSetter(
-    "search-panel-close",
-    setSearchPanelCloseShortcut,
-    appShortcuts,
-    closeTabShortcut,
-    searchPanelCloseShortcut,
-    singleTabMode,
-    desktopHotkeys,
-  )
-
   return (
     <div className="settings-shortcuts">
       <div className="flex items-center justify-between gap-4">
@@ -693,127 +639,39 @@ export function SettingsShortcuts({
         </>}
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="分屏">
-        <ShortcutField
-          id="shortcut-split-right"
-          title="向右分屏"
-          description="在当前格右侧打开新格。编辑区较窄时会改为向下分。"
-          value={appShortcuts.splitRight ?? DEFAULT_APP_SHORTCUTS.splitRight}
-          onChange={safeSetAppShortcut("splitRight")}
-          resetValue={DEFAULT_APP_SHORTCUTS.splitRight}
-        />
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-down"
-            title="向下分屏"
-            description="在当前格下方打开新格。"
-            value={appShortcuts.splitDown ?? DEFAULT_APP_SHORTCUTS.splitDown}
-            onChange={safeSetAppShortcut("splitDown")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitDown}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-left"
-            title="焦点移到左格"
-            description="把键盘焦点移到几何相邻的左侧格子。"
-            value={appShortcuts.splitFocusLeft ?? DEFAULT_APP_SHORTCUTS.splitFocusLeft}
-            onChange={safeSetAppShortcut("splitFocusLeft")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusLeft}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-right"
-            title="焦点移到右格"
-            description="把键盘焦点移到几何相邻的右侧格子。"
-            value={appShortcuts.splitFocusRight ?? DEFAULT_APP_SHORTCUTS.splitFocusRight}
-            onChange={safeSetAppShortcut("splitFocusRight")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusRight}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-up"
-            title="焦点移到上格"
-            description="把键盘焦点移到几何相邻的上方格子。"
-            value={appShortcuts.splitFocusUp ?? DEFAULT_APP_SHORTCUTS.splitFocusUp}
-            onChange={safeSetAppShortcut("splitFocusUp")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusUp}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-down"
-            title="焦点移到下格"
-            description="把键盘焦点移到几何相邻的下方格子。"
-            value={appShortcuts.splitFocusDown ?? DEFAULT_APP_SHORTCUTS.splitFocusDown}
-            onChange={safeSetAppShortcut("splitFocusDown")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusDown}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-previous"
-            title="切换到上一个分屏格"
-            description="按视觉顺序循环到上一个分屏格；不会占用笔记历史的 ⌘[ / ⌘]。"
-            value={appShortcuts.splitFocusPrevious ?? DEFAULT_APP_SHORTCUTS.splitFocusPrevious}
-            onChange={safeSetAppShortcut("splitFocusPrevious")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusPrevious}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-focus-next"
-            title="切换到下一个分屏格"
-            description="按视觉顺序循环到下一个分屏格；不会占用笔记历史的 ⌘[ / ⌘]。"
-            value={appShortcuts.splitFocusNext ?? DEFAULT_APP_SHORTCUTS.splitFocusNext}
-            onChange={safeSetAppShortcut("splitFocusNext")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitFocusNext}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-split-zoom"
-            title="最大化分屏格"
-            description="让当前格占满编辑区，再按一次恢复。"
-            value={appShortcuts.splitZoom ?? DEFAULT_APP_SHORTCUTS.splitZoom}
-            onChange={safeSetAppShortcut("splitZoom")}
-            resetValue={DEFAULT_APP_SHORTCUTS.splitZoom}
-          />
-        </div>
-        <div className="mt-2">
-          <ShortcutField
-            id="shortcut-close-split-pane"
-            title="关闭分屏格"
-            description="可选。仅在已分屏时关闭当前格，不会关闭标签页。默认留空，避免和关闭标签抢同一个键。"
-            value={appShortcuts.closeSplitPane ?? DEFAULT_APP_SHORTCUTS.closeSplitPane}
-            onChange={safeSetAppShortcut("closeSplitPane")}
-            resetValue={DEFAULT_APP_SHORTCUTS.closeSplitPane}
-          />
+      <SettingsSectionCard title="分屏快捷键（固定）">
+        <p className="mb-3 text-xs text-muted-foreground">
+          分屏快捷键不可修改。向右分屏在编辑区较窄时会改为向下分屏。
+        </p>
+        <div className="space-y-1">
+          {([
+            ["向右分屏", FIXED_SPLIT_SHORTCUTS.splitRight],
+            ["向下分屏", FIXED_SPLIT_SHORTCUTS.splitDown],
+            ["焦点移到左格", FIXED_SPLIT_SHORTCUTS.splitFocusLeft],
+            ["焦点移到右格", FIXED_SPLIT_SHORTCUTS.splitFocusRight],
+            ["焦点移到上格", FIXED_SPLIT_SHORTCUTS.splitFocusUp],
+            ["焦点移到下格", FIXED_SPLIT_SHORTCUTS.splitFocusDown],
+            ["切换到上一个分屏格", FIXED_SPLIT_SHORTCUTS.splitFocusPrevious],
+            ["切换到下一个分屏格", FIXED_SPLIT_SHORTCUTS.splitFocusNext],
+            ["最大化 / 恢复分屏格", FIXED_SPLIT_SHORTCUTS.splitZoom],
+            ["按关闭顺序关闭当前分屏格", FIXED_CLOSE_SHORTCUT],
+          ]).map(([label, shortcut]) => (
+            <FixedShortcutRow key={label} label={label} shortcut={shortcut} platform={getPlatformKind()} />
+          ))}
         </div>
       </SettingsSectionCard>
 
         </div>
         <div className="space-y-5">
-      <SettingsSectionCard title={singleTabMode ? "面板关闭" : "关闭行为"}>
-        {!singleTabMode && <ShortcutField
-          id="close-tab-shortcut"
-          title="关闭快捷键"
-          description="默认留空。设置后，按一次依次关闭：通知 → 弹窗 → 当前分屏格（如有）→ 当前标签页。桌面端 ⌘W / Ctrl+W 同样按此顺序。"
-          value={closeTabShortcut}
-          onChange={safeSetCloseTab}
-          resetValue={DEFAULT_CLOSE_TAB_SHORTCUT}
-        />}
-        <div className={singleTabMode ? "" : "mt-2"}>
-          <ShortcutField
-            id="search-panel-close-shortcut"
-            title="关闭搜索面板"
-            description="在搜索面板打开时按下此键关闭搜索面板。"
-            value={searchPanelCloseShortcut}
-            onChange={safeSetSearchPanelClose}
-            resetValue={DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT}
-          />
+      <SettingsSectionCard title="关闭行为（固定）">
+        <p className="mb-3 text-xs text-muted-foreground">
+          按一次依次关闭：通知 → 弹窗 → 当前分屏格（如有）→ 当前标签页。
+          搜索面板打开时先关闭面板，不会同时关闭笔记；编辑器内部操作优先消费 Escape。
+          桌面端 {formatShortcut("Mod+W")} 保留相同关闭顺序。
+        </p>
+        <div className="space-y-1">
+          <FixedShortcutRow label="关闭当前内容" shortcut={FIXED_CLOSE_SHORTCUT} platform={getPlatformKind()} />
+          <FixedShortcutRow label="关闭搜索面板" shortcut={FIXED_CLOSE_SHORTCUT} platform={getPlatformKind()} />
         </div>
       </SettingsSectionCard>
 

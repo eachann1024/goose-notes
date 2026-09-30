@@ -1,3 +1,4 @@
+import { OPEN_ESCAPE_LAYER_SELECTOR, OPEN_TOAST_SELECTOR } from "@/lib/escape-close";
 import { usePages } from "@/stores/usePages";
 import { useSidebarView } from "@/stores/useSidebarView";
 
@@ -12,11 +13,7 @@ export const SIDEBAR_PAGE_LIST_SELECTOR = [
 const SIDEBAR_LIST_EDITABLE_SELECTOR =
   "input, textarea, select, [contenteditable='true'], [data-shortcut-recorder]";
 
-const SIDEBAR_LIST_OVERLAY_SELECTORS = [
-  '[role="dialog"][data-state="open"]',
-  '[role="alertdialog"][data-state="open"]',
-  '[role="menu"][data-state="open"]',
-] as const;
+const SIDEBAR_LIST_OVERLAY_SELECTORS = [OPEN_ESCAPE_LAYER_SELECTOR, OPEN_TOAST_SELECTOR] as const;
 
 let sidebarListArmed = false;
 
@@ -81,9 +78,10 @@ export function shouldCollapseSidebarListOnEscape(event: {
     return false;
   }
   if (hasSidebarListEscapeOverlay()) return false;
-  return (
-    sidebarListArmed || isSidebarPageListTarget(event.target)
-  );
+  // A remembered sidebar click must not steal Escape after keyboard focus enters the editor.
+  const target = asClosestNode(event.target);
+  if (target?.closest(SIDEBAR_LIST_EDITABLE_SELECTOR + ", .bn-editor")) return false;
+  return sidebarListArmed || isSidebarPageListTarget(event.target);
 }
 
 export type SidebarCollapsePage = {

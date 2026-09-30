@@ -1,3 +1,4 @@
+import { normalizeFixedShortcutSettings } from "./slices/shortcutsSlice";
 import {
   DEFAULT_QUICKNOTE_HOTKEY,
   DEFAULT_SEARCH_HOTKEY,
@@ -124,5 +125,5 @@ export function migrateSettingsPersistedState(
     }
   }
 
-  return state;
+  return normalizeFixedShortcutSettings(state);
 }

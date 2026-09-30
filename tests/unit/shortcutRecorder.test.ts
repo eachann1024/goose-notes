@@ -185,7 +185,9 @@ test("single-tab mode ignores inactive tab-only shortcuts for conflict detection
   expect(singleTab).toContain(normalizeShortcutForConflict("Mod+]", isMac));
   expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+T", isMac));
   expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+W", isMac));
-  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+1", isMac));
+  // 1~3 切侧栏视图，单标签下仍然生效。
+  expect(singleTab).toContain(normalizeShortcutForConflict("Mod+1", isMac));
+  expect(singleTab).not.toContain(normalizeShortcutForConflict("Mod+4", isMac));
   expect(singleTab).not.toContain(
     normalizeShortcutForConflict("Mod+Shift+T", isMac),
   );

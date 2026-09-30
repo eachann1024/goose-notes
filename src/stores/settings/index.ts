@@ -23,8 +23,6 @@ import {
   mergeDesktopSettings,
   mergeSearchProvidersWithDefaults,
   normalizeCustomActions,
-  DEFAULT_CLOSE_TAB_SHORTCUT,
-  DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT,
 } from "./types";
 
 import { createAISlice, type AISlice } from "./slices/aiSlice";
@@ -35,9 +33,8 @@ import {
 import {
   createShortcutsSlice,
   type ShortcutsSlice,
-  DEFAULT_APP_SHORTCUTS,
+  normalizeFixedShortcutSettings,
 } from "./slices/shortcutsSlice";
-import { NON_CUSTOMIZABLE_APP_SHORTCUT_IDS } from "@/lib/fixed-app-shortcuts";
 import {
   createSearchProvidersSlice,
   type SearchProvidersSlice,
@@ -135,7 +132,11 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
-      version: 9,
+      version: 10,
+      merge: (persisted, current) => ({
+        ...current,
+        ...normalizeFixedShortcutSettings((persisted ?? {}) as Partial<SettingsState>),
+      }) as SettingsState,
       migrate: (persistedState, version) =>
         migrateSettingsPersistedState(persistedState, version),
       storage: createJSONStorage(() => localStorageAdapter),
@@ -257,25 +258,6 @@ export const useSettings = create<SettingsState>()(
             useSettings.setState({ privacy: normalizedPrivacy });
           }
 
-          const normalizedCloseTabShortcut =
-            typeof state.closeTabShortcut === "string"
-              ? state.closeTabShortcut.trim()
-              : DEFAULT_CLOSE_TAB_SHORTCUT;
-          const normalizedSearchPanelCloseShortcut =
-            typeof state.searchPanelCloseShortcut === "string"
-              ? state.searchPanelCloseShortcut.trim()
-              : DEFAULT_SEARCH_PANEL_CLOSE_SHORTCUT;
-          if (
-            state.closeTabShortcut !== normalizedCloseTabShortcut ||
-            state.searchPanelCloseShortcut !==
-              normalizedSearchPanelCloseShortcut
-          ) {
-            useSettings.setState({
-              closeTabShortcut: normalizedCloseTabShortcut,
-              searchPanelCloseShortcut: normalizedSearchPanelCloseShortcut,
-            });
-          }
-
           const mergedProviders = mergeSearchProvidersWithDefaults(
             state.searchProviders,
           );
@@ -294,25 +276,6 @@ export const useSettings = create<SettingsState>()(
             JSON.stringify(normalizedCustomActions)
           ) {
             useSettings.setState({ customActions: normalizedCustomActions });
-          }
-
-          // 只恢复可自定义快捷键。固定动作按当前系统即时计算，不从云端配置继承。
-          const storedAppShortcuts =
-            (state as { appShortcuts?: Record<string, string> }).appShortcuts ??
-            {};
-          const mergedAppShortcuts: Record<string, string> = {
-            ...DEFAULT_APP_SHORTCUTS,
-            ...Object.fromEntries(
-              Object.entries(storedAppShortcuts).filter(
-                ([id]) => !NON_CUSTOMIZABLE_APP_SHORTCUT_IDS.has(id),
-              ),
-            ),
-          };
-          if (
-            JSON.stringify(state.appShortcuts) !==
-            JSON.stringify(mergedAppShortcuts)
-          ) {
-            useSettings.setState({ appShortcuts: mergedAppShortcuts });
           }
 
           const storedDesktop = state.desktop as

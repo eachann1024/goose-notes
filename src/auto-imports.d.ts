@@ -88,6 +88,8 @@ declare global {
   const FILE_NAV_AI_PANEL: typeof import('./stores/useFileNavHistory').FILE_NAV_AI_PANEL
   const FILE_NAV_WELCOME: typeof import('./stores/useFileNavHistory').FILE_NAV_WELCOME
   const FIXED_APP_SHORTCUT_IDS: typeof import('./lib/fixed-app-shortcuts').FIXED_APP_SHORTCUT_IDS
+  const FIXED_CLOSE_SHORTCUT: typeof import('./lib/fixed-app-shortcuts').FIXED_CLOSE_SHORTCUT
+  const FIXED_SPLIT_SHORTCUTS: typeof import('./lib/fixed-app-shortcuts').FIXED_SPLIT_SHORTCUTS
   const FLOATING_MENU_CLOSE_MS: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_CLOSE_MS
   const FLOATING_MENU_EASE_IN: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_EASE_IN
   const FLOATING_MENU_EASE_OUT: typeof import('./components/ui/floating-menu-motion').FLOATING_MENU_EASE_OUT
@@ -133,6 +135,9 @@ declare global {
   const ONBOARDING_PAGE_CONTENT: typeof import('./lib/onboarding').ONBOARDING_PAGE_CONTENT
   const ONBOARDING_SECOND_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_SECOND_CHILD_CONTENT
   const ONBOARDING_THIRD_CHILD_CONTENT: typeof import('./lib/onboarding').ONBOARDING_THIRD_CHILD_CONTENT
+  const OPEN_DIALOG_SELECTOR: typeof import('./lib/escape-close').OPEN_DIALOG_SELECTOR
+  const OPEN_ESCAPE_LAYER_SELECTOR: typeof import('./lib/escape-close').OPEN_ESCAPE_LAYER_SELECTOR
+  const OPEN_TOAST_SELECTOR: typeof import('./lib/escape-close').OPEN_TOAST_SELECTOR
   const ORB_PHASE_HOLD_MS: typeof import('./components/ui/ai-motion').ORB_PHASE_HOLD_MS
   const ORB_VISIBLE_MIN_MS: typeof import('./components/ui/ai-motion').ORB_VISIBLE_MIN_MS
   const PUBLIC_RELEASES_API_URL: typeof import('./lib/appUpdateRelease').PUBLIC_RELEASES_API_URL
