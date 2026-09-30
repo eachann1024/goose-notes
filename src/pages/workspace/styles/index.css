@@ -86,8 +86,8 @@
   --workspace-drag-line-glow: var(--goose-accent-drag-glow);
 }
 
-/* 晨橙：正文使用暖纸色，次级页面略暖；输入框留白，布局不变。 */
-:root[data-goose-accent="amber"] :is(
+/* 完整主题：正文使用暖纸色，次级页面略暖，布局不变。 */
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) :is(
   .workspace-page-empty,
   .workspace-folder-home,
   .notebook-ai-shell,
@@ -100,7 +100,7 @@
   background: var(--goose-secondary-surface);
 }
 
-:root[data-goose-accent="amber"] .settings-shell :is([data-slot="input"], textarea, select) {
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .settings-shell :is([data-slot="input"], textarea, select) {
   background: var(--goose-input-surface);
 }
 
@@ -430,8 +430,12 @@ html[data-sidebar-collapsed] .bn-side-menu {
 /* 顶边必须不透底：同一条细线跨越深浅不同的三栏，避免正文看似高出一像素。 */
 .workspace-shell[data-electron-chrome] .workspace-content-frame {
   border-top-color: var(--workspace-top-edge);
-  /* 只裁掉顶部阴影，保留侧边和底部共用的外沿。 */
-  clip-path: inset(0 -16px -16px);
+  /* 留出极轻的顶部环境阴影，让整板从外层留白中浮起。 */
+  clip-path: inset(-10px -16px -16px);
+}
+
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .workspace-shell {
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 4.5%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
 }
 
 .workspace-shell .workspace-sidebar-pane[data-sidebar-resizing] {

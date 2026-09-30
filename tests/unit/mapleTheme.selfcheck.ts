@@ -1,34 +1,28 @@
-// Run: bun tests/unit/mapleTheme.selfcheck.ts (static contract check, not visual acceptance).
+// Run: bun tests/unit/mapleTheme.selfcheck.ts (palette/contrast contract; browser QA is separate).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { normalizeAccentColor } from "../../src/stores/settings/types";
+import { resolveAccentRuntimeTokens } from "../../src/lib/accentColor";
 
-const read = (path: string) =>
-  readFileSync(new URL(path, import.meta.url), "utf8");
-const appearance = read("../../src/pages/workspace/components/sidebar/SettingsAppearance.tsx");
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const css = read("../../src/styles/goose-accent-colors.css");
-const workspace = read("../../src/pages/workspace/styles/index.css");
-const baseCss = read("../../src/index.css");
-const types = read("../../src/stores/settings/types.ts");
-const runtime = read("../../src/lib/accentColor.ts");
-
-const rule = (source: string, selector: string) => {
+const appearance = read("../../src/pages/workspace/components/sidebar/SettingsAppearance.tsx");
+const rule = (selector: string) => {
   const marker = `${selector} {`;
   const bodies: string[] = [];
   let offset = 0;
   while (true) {
-    const start = source.indexOf(marker, offset);
+    const start = css.indexOf(marker, offset);
     if (start < 0) break;
-    const bodyStart = start + marker.length;
-    const end = source.indexOf("}", bodyStart);
-    assert.ok(end >= 0, `Unclosed rule: ${selector}`);
-    bodies.push(source.slice(bodyStart, end));
+    const end = css.indexOf("}", start);
+    bodies.push(css.slice(start + marker.length, end));
     offset = end + 1;
   }
-  assert.ok(bodies.length > 0, `Missing rule: ${selector}`);
+  assert.ok(bodies.length, `Missing ${selector}`);
   return bodies.join("\n");
 };
 const value = (source: string, name: string) => {
-  const found = source.match(new RegExp(`--${name}:\\s*([^;]+)`));
+  const found = [...source.matchAll(new RegExp(`--${name}:\\s*([^;]+)`, "g"))].at(-1);
   assert.ok(found, `Missing --${name}`);
   return found[1].trim();
 };
@@ -57,54 +51,38 @@ const stops = (gradient: string) => {
   assert.ok(colors.length >= 2, `Expected gradient stops: ${gradient}`);
   return colors;
 };
-const backgrounds = [
-  ...stops(value(amberSurface, "goose-sidebar-surface")),
-  ...stops(value(amberSurface, "goose-ai-surface")),
-  ...stops(value(amberSurface, "goose-editor-surface")),
-  toRgb(value(amberSurface, "goose-input-surface")),
-];
-for (const foreground of [value(amberSurface, "foreground"), value(amberSurface, "muted-foreground")].map(toRgb)) {
-  for (const background of backgrounds) assert.ok(contrast(foreground, background) >= 4.5, "Amber small-text contrast must be at least 4.5:1");
-}
-const focus = toRgb(value(amberAccent, "goose-accent-focus"));
-for (const background of backgrounds) assert.ok(contrast(focus, background) >= 3, "Amber focus contrast must be at least 3:1");
-const lightRing = value(amberSurface, "ring") === "var(--primary)"
-  ? toRgb(value(amberSurface, "primary"))
-  : toRgb(value(amberSurface, "ring"));
-for (const background of backgrounds) assert.ok(contrast(lightRing, background) >= 3, "Light --ring contrast must be at least 3:1");
 
-for (const declarations of [amberAccent, darkAccent]) {
-  for (const state of ["selected", "hover"]) {
-    assert.ok(contrast(toRgb(value(declarations, `goose-interactive-${state}-fg`)), toRgb(value(declarations, `goose-interactive-${state}`))) >= 4.5, `${state} text contrast`);
+for (const [key, label] of [["amber", "浅秋"], ["wheat", "麦笺"]] as const) {
+  assert.equal(normalizeAccentColor(key), key, "Saved theme survives normalization");
+  assert.match(appearance, new RegExp(`value: "${key}",[\\s\\S]*?label: "${label}"`));
+  for (const dark of [false, true]) {
+    const accent = rule(`:root${dark ? ".dark" : ""}[data-goose-accent="${key}"]`);
+    const surface = dark ? accent : rule(`:root:not(.dark)[data-goose-accent="${key}"]`);
+    const runtime = resolveAccentRuntimeTokens(key, dark);
+    for (const [name, color] of Object.entries(runtime)) {
+      if (name === "--goose-icon-chip-on-selected") continue;
+      assert.equal(value(accent, name.slice(2)), color, `${key} runtime/CSS parity: ${name}`);
+      assert.ok(!name.includes("surface"), "Surface overrides must not persist inline after changing theme");
+    }
+    const backgrounds = [
+      ...stops(value(surface, "goose-sidebar-surface")),
+      ...stops(value(surface, "goose-editor-surface")),
+      ...stops(value(surface, "goose-ai-surface")),
+    ];
+    for (const name of ["foreground", "muted-foreground"]) {
+      for (const bg of backgrounds) {
+        assert.ok(contrast(toRgb(value(surface, name)), bg) >= 4.5, `${key}/${dark}/${name}: small-text contrast`);
+      }
+    }
+    for (const state of ["selected", "hover"]) {
+      assert.ok(contrast(toRgb(runtime[`--goose-interactive-${state}-fg`]), toRgb(runtime[`--goose-interactive-${state}`])) >= 4.5, `${key}/${dark}/${state}: readable interaction text`);
+    }
+    for (const bg of backgrounds) {
+      assert.ok(contrast(toRgb(value(accent, "goose-accent-focus")), bg) >= 3, `${key}/${dark}: visible focus`);
+    }
   }
 }
-
-const darkBackgrounds = [
-  ...stops(value(amberDarkSurface, "goose-sidebar-surface")),
-  toRgb(value(rule(baseCss, ".dark"), "goose-editor-bg")),
-  toRgb(value(darkAccent, "goose-interactive-selected")),
-];
-const darkFocus = toRgb(value(darkAccent, "goose-accent-focus"));
-const darkRing = toRgb(value(darkAccent, "ring"));
-for (const background of darkBackgrounds) {
-  assert.ok(contrast(darkFocus, background) >= 3, "Dark --goose-accent-focus contrast must be at least 3:1");
-  assert.ok(contrast(darkRing, background) >= 3, "Dark --ring contrast must be at least 3:1");
-}
-
-const lightSurface = toRgb(preview("lightSurface"));
-const lightForeground = toRgb(preview("lightForeground"));
-assert.ok(contrast(lightForeground, lightSurface) >= 4.5, "Light selected text contrast must be at least 4.5:1");
-assert.ok(contrast(lightForeground, lightSurface) >= 3, "Light keyboard focus contrast must be at least 3:1");
-const darkForeground = toRgb(preview("darkForeground"));
-const darkSurface = preview("darkSurface").match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/);
-assert.ok(darkSurface, "Expected translucent orange dark preview surface");
-const darkBase = toRgb(value(darkAccent, "goose-interactive-selected"));
-const darkBackground = darkBase.map((channel, index) =>
-  Number(darkSurface[index + 1]) * Number(darkSurface[4]) + channel * (1 - Number(darkSurface[4])),
-) as [number, number, number];
-assert.ok(contrast(darkForeground, darkBackground) >= 4.5, "Dark selected text contrast must be at least 4.5:1");
-assert.ok(contrast(darkForeground, darkBackground) >= 3, "Dark keyboard focus contrast must be at least 3:1");
-
-assert.match(css, /\.goose-accent-option:focus-visible\s*\{[^}]*var\(--goose-accent-option-light-fg\)/);
-assert.match(css, /\.dark \.goose-accent-option:focus-visible\s*\{[^}]*var\(--goose-accent-option-dark-fg\)/);
-console.log("PASS orange label/key, fixed preview geometry, amber surface scope, no-residue cascade, and text/focus contrast (static; visual acceptance remains separate)");
+assert.equal(normalizeAccentColor("unknown-theme"), "mono");
+assert.match(appearance, /完整主题/);
+assert.match(appearance, /功能图标的铅笔描边/);
+console.log("PASS saved themes, CSS/runtime parity, light/dark text and focus contrast");

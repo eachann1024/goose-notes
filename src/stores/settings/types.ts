@@ -24,6 +24,7 @@ export const ACCENT_COLORS = [
   "ocean",
   "pine",
   "amber",
+  "wheat",
   "coral",
   "rose",
   "grape",

@@ -17,6 +17,7 @@ import {
   releaseStartupSettlingAfterPaint,
 } from "@/lib/appearance";
 import { shouldPreserveStartupSelection } from "@/lib/workspaceStartup";
+import { PencilIconDefinitions } from "@/components/theme/PencilIconDefinitions";
 
 // Appearance changes update CSS without re-rendering the whole workspace.
 function AppearanceSync() {
@@ -142,6 +143,7 @@ function App() {
   return (
     <>
       <AppearanceSync />
+      <PencilIconDefinitions />
       {mountWorkspace && (
         <div hidden={showSetupGuide} inert={showSetupGuide} className="h-full">
           {/* Keep an existing editor mounted when reopening the guide. */}

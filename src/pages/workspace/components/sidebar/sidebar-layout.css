@@ -22,6 +22,7 @@
   background: var(--sidebar-background);
 }
 :root:not(.dark)[data-goose-accent="amber"] .sidebar-design,
+:root:not(.dark)[data-goose-accent="wheat"] .sidebar-design,
 :root:not(.dark)[data-goose-accent="mono"] .sidebar-design {
   --sidebar-foreground: hsl(var(--foreground));
   --sidebar-muted: hsl(var(--muted-foreground));
