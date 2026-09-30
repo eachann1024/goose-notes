@@ -51,7 +51,7 @@ test("inline styles, safe links, line breaks and mentions survive", () => {
     fontWeight: 700,
     fontStyle: "italic",
     textDecoration: "underline line-through",
-    color: "#dc2626",
+    color: "#b42318",
     backgroundColor: "#fef9c3",
   });
   expect(

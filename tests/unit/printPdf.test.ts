@@ -64,7 +64,7 @@ test("打印 HTML 用系统中文字体栈和 hex 颜色，不含 hsl(var)", asy
   expect(html).toContain("Noto Sans SC");
   expect(html).toContain("<h1>标题</h1>");
   expect(html).toContain("<p>正文</p>");
-  expect(html).toContain("#1f2329");
+  expect(html).toContain("#20242c");
   expect(html).toContain("#ffffff");
   expect(html.includes("hsl(var(")).toBeFalsy();
   expect(html).toContain("__GOOSE_PRINT_READY__");

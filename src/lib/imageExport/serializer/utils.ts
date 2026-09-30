@@ -1,3 +1,4 @@
+import { documentTextColors } from "@/lib/textColors";
 const OBJECT_REPLACEMENT_CHARACTER = /\uFFFC/g;
 
 /**
@@ -16,17 +17,7 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export const BLOCKNOTE_TEXT_COLORS: Record<string, string> = {
-  gray: "#9b9a97",
-  brown: "#64473a",
-  red: "#e03e3e",
-  orange: "#d9730d",
-  yellow: "#dfab01",
-  green: "#4d6461",
-  blue: "#0b6e99",
-  purple: "#6940a5",
-  pink: "#ad1a72",
-};
+export const BLOCKNOTE_TEXT_COLORS: Record<string, string> = documentTextColors("light");
 
 export const BLOCKNOTE_BACKGROUND_COLORS: Record<string, string> = {
   gray: "#ebeced",
@@ -45,17 +36,7 @@ export const BLOCKNOTE_BACKGROUND_COLORS: Record<string, string> = {
  * 高明度文字 + 低明度同色表面，保证同色叠加仍清晰可读。
  * tests/unit/editorDarkExportColors.test.ts 会校验此处与编辑器 CSS 令牌同步。
  */
-export const BLOCKNOTE_TEXT_COLORS_DARK: Record<string, string> = {
-  gray: "#d6d4cf",
-  brown: "#e7c1ad",
-  red: "#ffb4b8",
-  orange: "#ffc38f",
-  yellow: "#f0d77d",
-  green: "#9ddfba",
-  blue: "#9bd5f3",
-  purple: "#d0baf8",
-  pink: "#f1b6d7",
-};
+export const BLOCKNOTE_TEXT_COLORS_DARK: Record<string, string> = documentTextColors("dark");
 
 export const BLOCKNOTE_BACKGROUND_COLORS_DARK: Record<string, string> = {
   gray: "#3d3d3a",

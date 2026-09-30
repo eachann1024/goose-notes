@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 /**
  * Word 导出视觉令牌。数值对齐 HTML 预览 / 编辑器浅色导出：
  * 16px 正文、标题 3em/2em/1.3em、行高 1.7、标注与高亮色带。
@@ -24,9 +25,9 @@ export const DOCX_HEADING_SIZES: Record<number, number> = {
 };
 
 export const DOCX_COLORS = {
-  text: "1F2329",
-  muted: "57606A",
-  quote: "7D797A",
+  text: hexNoHash(TEXT_COLORS.light.primary),
+  muted: hexNoHash(TEXT_COLORS.light.secondary),
+  quote: hexNoHash(TEXT_COLORS.light.secondary),
   quoteBorder: "7D797A",
   divider: "7D797A",
   calloutBg: "F7F6F3",
@@ -35,10 +36,10 @@ export const DOCX_COLORS = {
   codeBg: "F3F2F1",
   codeBorder: "E8E7E5",
   inlineCodeBg: "EEF2FF",
-  inlineCodeFg: "4F46E5",
+  inlineCodeFg: hexNoHash(TEXT_COLORS.light.info),
   tableHeader: "F4F4F4",
   tableBorder: "E8E7E5",
-  mention: "4F46E5",
+  mention: hexNoHash(TEXT_COLORS.light.info),
   fileBg: "F3F2F1",
 } as const;
 

@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 import {
   getEditorFontFamilies,
   SYSTEM_FONT_STACK,
@@ -76,15 +77,15 @@ export const NOTEBOOK_THEME: CardTheme = {
   bodyLetterSpacing: "0",
   background: "#ffffff",
   cardBg: "#ffffff",
-  textColor: "#1f1f1f",
-  secondaryText: "#6e6e6e",
+  textColor: TEXT_COLORS.light.primary,
+  secondaryText: TEXT_COLORS.light.secondary,
   accent: "#2563eb",
   codeBg: "#f3f2f1",
   quoteBorder: "#e8e7e5",
   calloutBg: "#f7f6f3",
   tableBorder: "#e8e7e5",
   divider: "#e9e9e7",
-  watermark: "#d4d4d4",
+  watermark: TEXT_COLORS.light.secondary,
   containerPaddingX: 28,
   containerPaddingY: 28,
   cardPaddingX: 40,
@@ -138,14 +139,9 @@ export function buildNotebookCardTheme(
     "--goose-block-subtle-border",
     isDark ? "#363636" : "#e8e7e5",
   );
-  const textColor = cssColor(
-    readCssVar("--foreground", isDark ? "0 0% 90%" : "0 0% 12%"),
-    isDark ? "#e6e6e6" : "#1f1f1f",
-  );
-  const secondaryText = cssColor(
-    readCssVar("--muted-foreground", isDark ? "0 0% 66%" : "0 0% 43%"),
-    isDark ? "#a8a8a8" : "#6e6e6e",
-  );
+  const textPalette = TEXT_COLORS[isDark ? "dark" : "light"];
+  const textColor = cssColor(readCssVar("--goose-text-primary", textPalette.primary), textPalette.primary);
+  const secondaryText = cssColor(readCssVar("--goose-text-secondary", textPalette.secondary), textPalette.secondary);
   const background = isDark
     ? cssColor(readCssVar("--goose-editor-bg", "60 2.2% 18%"), "#2f2f2e")
     : "#ffffff";
@@ -168,7 +164,7 @@ export function buildNotebookCardTheme(
     calloutBg,
     tableBorder: subtleBorder,
     divider: calloutBorder,
-    watermark: isDark ? "#6e6e6e" : "#d4d4d4",
+    watermark: secondaryText,
     cardBorder: `1px solid ${calloutBorder}`,
     cardShadow: isDark ? "none" : NOTEBOOK_THEME.cardShadow,
   };

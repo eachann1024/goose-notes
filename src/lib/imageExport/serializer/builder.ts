@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 import type { CardTheme } from "../themes";
 import type { WatermarkConfig } from "../watermark";
 import { getWatermarkHTML, normalizeWatermarkConfig } from "../watermark";
@@ -514,7 +515,7 @@ ${decoStyle}
 .gooseshot-content em { font-style: italic; }
 .gooseshot-content del { text-decoration: line-through; }
 .gooseshot-content a {
-  color: ${t.accent};
+  color: ${TEXT_COLORS[t.mode].info};
   text-decoration: none;
 }
 .gooseshot-content a:hover { text-decoration: underline; }

@@ -18,6 +18,7 @@ import { renderMathBlocksAsImages } from "./math";
 import { toast } from "@/components/ui/sonner";
 import { cloneExportBlocks } from "@/lib/export/prepareExportBlocks";
 import { splitImageExportTitle } from "./titleLift";
+import { TEXT_COLORS } from "@/lib/textColors";
 
 export { getSelectionBlocksToRender } from "./titleLift";
 
@@ -171,7 +172,7 @@ async function renderPngBlobWithFallback(element: HTMLElement): Promise<Blob> {
             encodeURIComponent(
               '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">' +
                 '<rect width="200" height="80" rx="6" fill="#f3f4f6"/>' +
-                '<text x="100" y="44" font-family="sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">图片加载失败</text>' +
+                `<text x="100" y="44" font-family="sans-serif" font-size="13" fill="${TEXT_COLORS.light.secondary}" text-anchor="middle">图片加载失败</text>` +
                 "</svg>",
             ),
         }),

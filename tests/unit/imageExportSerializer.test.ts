@@ -553,15 +553,15 @@ test("块级 backgroundColor / textColor 输出 style", () => {
   expect(html).toContain("color:");
 });
 
-test("主题字体与水印微调生效", () => {
+test("主题字体保留，水印统一使用清晰的辅助文字色", () => {
   expect(getCardTheme("medium").titleFont).toContain("Noto Serif SC");
   expect(getCardTheme("medium").codeFont).toContain("JetBrains Mono");
   expect(getCardTheme("typewriter").bodyFont).toContain("Noto Serif SC");
-  expect(getCardTheme("vercel-dark").watermark).toBe("#8b8b93");
-  expect(getCardTheme("tokyo-night").watermark).toBe("#7a83b0");
-  expect(getCardTheme("poster").watermark).toContain("0.45");
-  expect(getCardTheme("synthwave").watermark).toContain("255,120,220");
-  expect(getCardTheme("github-dark").secondaryText).toBe("#8b949e");
+  expect(getCardTheme("vercel-dark").watermark).toBe("#bac3d0");
+  expect(getCardTheme("tokyo-night").watermark).toBe("#bac3d0");
+  expect(getCardTheme("poster").watermark).toBe("#bac3d0");
+  expect(getCardTheme("synthwave").watermark).toBe("#bac3d0");
+  expect(getCardTheme("github-dark").secondaryText).toBe("#bac3d0");
 });
 
 test("已删除主题会迁移到保留的代表主题", () => {

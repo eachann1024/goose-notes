@@ -32,7 +32,7 @@ body {
   margin: 0 auto;
   padding: 2rem;
   line-height: 1.65;
-  color: #1f2329;
+  color: var(--goose-text-primary);
   background: #ffffff;
 }
 #export-content > h1 {
@@ -45,13 +45,13 @@ img, video { max-width: 100%; height: auto; }
 .katex-display { overflow-x: auto; overflow-y: hidden; }
 .export-toc { position: fixed; z-index: 1; top: 1rem; left: 1rem; width: min(17rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; box-sizing: border-box; padding: 0.45rem; border: 1px solid #d8dee4; border-radius: 8px; background: #ffffff; box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12); font-size: 0.875rem; }
 .export-toc__header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.export-toc__title { margin: 0; color: #1f2329; font-size: 0.875rem; font-weight: 600; }
-.export-toc__toggle { appearance: none; border: 0; border-radius: 5px; padding: 0.25rem 0.45rem; background: #f2f3f5; color: #1f2329; cursor: pointer; font: inherit; line-height: 1.25; }
+.export-toc__title { margin: 0; color: var(--goose-text-primary); font-size: 0.875rem; font-weight: 600; }
+.export-toc__toggle { appearance: none; border: 0; border-radius: 5px; padding: 0.25rem 0.45rem; background: #f2f3f5; color: var(--goose-text-primary); cursor: pointer; font: inherit; line-height: 1.25; }
 .export-toc__toggle:hover { background: #e8eaed; }
 .export-toc__list { margin: 0.4rem 0 0; padding: 0; list-style: none; }
 .export-toc__item + .export-toc__item { margin-top: 0.15rem; }
-.export-toc__link { display: block; overflow: hidden; padding: 0.18rem 0.35rem; border-radius: 4px; color: #57606a; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
-.export-toc__link:hover { background: #f2f3f5; color: #1f2329; }
+.export-toc__link { display: block; overflow: hidden; padding: 0.18rem 0.35rem; border-radius: 4px; color: var(--goose-text-secondary); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.export-toc__link:hover { background: #f2f3f5; color: var(--goose-text-primary); }
 .export-toc__item--h2 { padding-left: 0.75rem; }
 .export-toc__item--h3 { padding-left: 1.5rem; }
 .export-toc__item--h4 { padding-left: 2.25rem; }

@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 /**
  * PDF 导出 block mapping。
  *
@@ -97,7 +98,7 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
       >
         <Image src={src} style={{ width: widthPercent, maxHeight: 650, objectFit: "contain" }} />
         {caption ? (
-          <Text style={{ fontSize: FONT_SIZE * 0.8 * PIXELS_PER_POINT, color: "#6b7280" }}>
+          <Text style={{ fontSize: FONT_SIZE * 0.8 * PIXELS_PER_POINT, color: TEXT_COLORS.light.secondary }}>
             {caption}
           </Text>
         ) : null}

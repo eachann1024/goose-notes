@@ -1,3 +1,4 @@
+import { TEXT_COLORS } from "@/lib/textColors";
 /**
  * PDF 导出用的可视资源：把 mermaid/math 渲成 PNG data URL，
  * 把本地 / 插件 / 远程图片收成 react-pdf 能吃的栅格 data URL。
@@ -18,7 +19,7 @@ export const PDF_RASTER_DATA_URL_RE =
   /^data:image\/(png|jpe?g|gif|webp|bmp)(;|$)/i;
 
 const PDF_LIGHT_MATH = {
-  color: "#111827",
+  color: TEXT_COLORS.light.primary,
   background: "#ffffff",
 } as const;
 

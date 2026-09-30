@@ -1,3 +1,4 @@
+import { TEXT_COLORS, documentTextColors } from "@/lib/textColors";
 import { Document, Page, Text, View, Link } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import type { Style } from "@react-pdf/types";
@@ -21,23 +22,25 @@ export type PdfBlockMapping = (
   ordinal?: number,
 ) => ReactNode | Promise<ReactNode>;
 
-const colors: Record<string, [string, string]> = {
-  gray: ["#6b7280", "#f3f4f6"],
-  brown: ["#92400e", "#f5ebe0"],
-  red: ["#dc2626", "#fee2e2"],
-  orange: ["#ea580c", "#ffedd5"],
-  yellow: ["#a16207", "#fef9c3"],
-  green: ["#15803d", "#dcfce7"],
-  blue: ["#2563eb", "#dbeafe"],
-  purple: ["#9333ea", "#f3e8ff"],
-  pink: ["#db2777", "#fce7f3"],
+const textColors = documentTextColors("light");
+const backgroundColors: Record<string, string> = {
+  gray: "#f3f4f6",
+  brown: "#f5ebe0",
+  red: "#fee2e2",
+  orange: "#ffedd5",
+  yellow: "#fef9c3",
+  green: "#dcfce7",
+  blue: "#dbeafe",
+  purple: "#f3e8ff",
+  pink: "#fce7f3",
 };
 export function pdfColor(
   value: unknown,
   background = false,
 ): string | undefined {
   if (typeof value !== "string" || value === "default") return undefined;
-  if (colors[value]) return colors[value][background ? 1 : 0];
+  const palette = background ? backgroundColors : textColors;
+  if (palette[value]) return palette[value];
   return /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\)|black|white|transparent)$/i.test(
     value,
   )
@@ -348,7 +351,7 @@ export async function createPdfDocument(
           fontFamily,
           fontSize: 12,
           lineHeight: 1.5,
-          color: "#111827",
+          color: TEXT_COLORS.light.primary,
         }}
       >
         {await renderBlocks(blocks, 0)}

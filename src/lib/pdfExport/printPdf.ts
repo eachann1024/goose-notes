@@ -109,7 +109,7 @@ ${EXPORT_HTML_HEAD_ASSETS}
 @page { size: A4; margin: 16mm; }
 html, body {
   background: #ffffff;
-  color: #1f2329;
+  color: var(--goose-text-primary);
 }
 body {
   font-family: ${PRINT_FONT_STACK};

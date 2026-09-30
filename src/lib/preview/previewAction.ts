@@ -2,6 +2,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { blobToBase64, getExtensionFromMimeType } from "@/lib/imageStorage/utils";
 import { fs } from "@/lib/electron-platform/fs";
 import { shell } from "@/lib/electron-platform/shell";
+import { TEXT_COLORS } from "@/lib/textColors";
 
 /** 所有「打开来看」预览按钮的统一文案 */
 export const PREVIEW_ACTION_TOOLTIP = "预览（左键全屏 / 右键系统）";
@@ -105,7 +106,7 @@ export function wrapSvgAsHtml(
   options?: { title?: string; background?: string; color?: string },
 ): string {
   const background = options?.background ?? "#ffffff";
-  const color = options?.color ?? "#111111";
+  const color = options?.color ?? TEXT_COLORS.light.primary;
   const title = escapeHtml(options?.title ?? "预览");
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -136,7 +137,7 @@ export function wrapHtmlDocument(
     return body;
   }
   const background = options?.background ?? "#ffffff";
-  const color = options?.color ?? "#111111";
+  const color = options?.color ?? TEXT_COLORS.light.primary;
   const title = escapeHtml(options?.title ?? "预览");
   const extraHead = options?.extraHead ?? "";
   return `<!DOCTYPE html>

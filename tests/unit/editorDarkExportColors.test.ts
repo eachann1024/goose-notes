@@ -16,6 +16,7 @@ const editorColorCss = readFileSync(
   "src/pages/workspace/styles/block-background.css",
   "utf8",
 );
+const textPaletteCss = readFileSync("src/styles/goose-text-palette.css", "utf8");
 const colorNames = [
   "gray",
   "brown",
@@ -29,6 +30,12 @@ const colorNames = [
 ] as const;
 
 function readEditorDarkToken(name: string, role: "text" | "bg") {
+  if (role === "text") {
+    const dark = textPaletteCss.match(/\.dark,[^{]+\{([\s\S]*?)\n\}/)![1];
+    const value = dark.match(new RegExp(`--goose-editor-highlight-${name}-text: ([^;]+);`))![1];
+    const alias = value.match(/var\((--[^)]+)\)/)?.[1];
+    return alias ? dark.match(new RegExp(`${alias}: (#[0-9a-f]{6});`))![1] : value;
+  }
   const darkBlock = editorColorCss.match(/\.dark\s*\{(?<body>[\s\S]*?)\n\}/)
     ?.groups?.body;
   return darkBlock?.match(
@@ -103,12 +110,12 @@ test("深色导出的块级与行内颜色都使用同步色板", () => {
   );
 
   for (const html of [blockHtml, inlineHtml]) {
-    expect(html).toContain("color:#9bd5f3");
+    expect(html).toContain("color:#a8c8ff");
     expect(html).toContain("background-color:#223f52");
   }
 });
 
-test("浅色导出仍使用原浅色色板", () => {
+test("浅色导出使用全局浅色文字色板", () => {
   const lightTheme = CARD_THEMES.find((theme) => theme.mode === "light")!;
   const html = renderInline(
     [

@@ -1,3 +1,4 @@
+import { TEXT_COLORS, textColorVariables } from "@/lib/textColors";
 /**
  * 独立 HTML / printToPDF 共用的编辑器样式。
  * Node 单测走磁盘；浏览器走 Vite `?raw` 异步块，避免 markdown 导出把 CSS 打进主包。
@@ -21,6 +22,7 @@ function readCssResolvingLocalImports(file: string): string {
 const EXPORT_LIGHT_TOKENS = `
 :root {
   color-scheme: light;
+  ${textColorVariables("light")}
   --editor-font-size: 16px;
   --editor-scale: 1;
   --editor-module-sm-font-size: 14px;
@@ -28,36 +30,27 @@ const EXPORT_LIGHT_TOKENS = `
   --font-mono: ui-monospace, "DM Mono", Menlo, Consolas,
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
     monospace;
-  --foreground: 0 0% 12%;
+  --foreground: var(--goose-text-primary-channels);
   --muted: 60 2% 96%;
-  --muted-foreground: 0 0% 43%;
+  --muted-foreground: var(--goose-text-secondary-channels);
   --border: 0 0% 86%;
   --goose-interactive-selected: #e0e7ff;
-  --goose-interactive-selected-fg: #4f46e5;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
   --goose-callout-accent: #6366f1;
   --goose-callout-bg: #f7f6f3;
   --goose-callout-border: #e9e9e7;
   --goose-block-subtle-bg: #f3f2f1;
   --goose-block-subtle-border: #e8e7e5;
   --goose-inline-code-bg: #eef2ff;
-  --goose-inline-code-fg: #4f46e5;
-  --goose-editor-highlight-gray-text: #9b9a97;
+  --goose-inline-code-fg: var(--goose-text-info);
   --goose-editor-highlight-gray-bg: #ebeced;
-  --goose-editor-highlight-brown-text: #64473a;
   --goose-editor-highlight-brown-bg: #e9e5e3;
-  --goose-editor-highlight-red-text: #e03e3e;
   --goose-editor-highlight-red-bg: #fbe4e4;
-  --goose-editor-highlight-orange-text: #d9730d;
   --goose-editor-highlight-orange-bg: #f6e9d9;
-  --goose-editor-highlight-yellow-text: #dfab01;
   --goose-editor-highlight-yellow-bg: #fbf3db;
-  --goose-editor-highlight-green-text: #4d6461;
   --goose-editor-highlight-green-bg: #ddedea;
-  --goose-editor-highlight-blue-text: #0b6e99;
   --goose-editor-highlight-blue-bg: #ddebf1;
-  --goose-editor-highlight-purple-text: #6940a5;
   --goose-editor-highlight-purple-bg: #eae4f2;
-  --goose-editor-highlight-pink-text: #ad1a72;
   --goose-editor-highlight-pink-bg: #f4dfeb;
 }
 .bn-root {
@@ -154,7 +147,7 @@ const EXPORT_FALLBACK_CSS = `
   gap: 10px;
   min-width: 0;
   flex: 1;
-  color: #1f2329;
+  color: var(--goose-text-primary);
 }
 .goose-video-block-shell {
   display: block;
@@ -176,7 +169,7 @@ const EXPORT_FALLBACK_CSS = `
 .workspace-editor-surface
   .bn-block-content[data-content-type="checkListItem"][data-checked="true"]
   .bn-inline-content {
-  color: #57606a;
+  color: var(--goose-text-secondary);
 }
 `;
 
@@ -226,5 +219,5 @@ export function sanitizePrintCss(css: string): string {
   return css
     .replace(/[^{};]+:[^;{}]*hsl\(\s*var\([^;{}]*;/g, "")
     .replace(/hsl\(\s*var\([^)]*\)\s*\/\s*[^)]+\)/g, "transparent")
-    .replace(/hsl\(\s*var\([^)]*\)\)/g, "#1f2329");
+    .replace(/hsl\(\s*var\([^)]*\)\)/g, TEXT_COLORS.light.primary);
 }

@@ -1,4 +1,5 @@
 import type { CardTheme } from "../themes";
+import { TEXT_COLORS } from "@/lib/textColors";
 import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
 import {
@@ -411,7 +412,8 @@ export function renderInline(content: unknown, theme?: CardTheme): string {
             ? item.props.title.trim()
             : "未命名";
         const label = title.startsWith("@") ? title : `@${title}`;
-        return `<span style="display:inline-flex;align-items:center;vertical-align:middle;margin:0 0.25em;padding:0 8px;border-radius:6px;background-color:#e0e7ff;color:#4f46e5;font-size:0.85em;line-height:1.25em;">${escapeHtml(label)}</span>`;
+        const color = TEXT_COLORS[theme?.mode === "dark" ? "dark" : "light"].info;
+        return `<span style="display:inline-flex;align-items:center;vertical-align:middle;margin:0 0.25em;padding:0 8px;border-radius:6px;background-color:${bgPalette(theme).blue};color:${color};font-size:0.85em;line-height:1.25em;">${escapeHtml(label)}</span>`;
       }
 
       if (item.type === "image" && item.attrs?.src) {

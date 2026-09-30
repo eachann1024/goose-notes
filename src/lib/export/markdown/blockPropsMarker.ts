@@ -1,4 +1,5 @@
 import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+import { documentTextColors } from "@/lib/textColors";
 
 type MarkdownBlock = {
   type?: string;
@@ -38,7 +39,9 @@ const LOCAL_WRAPPABLE_BLOCK_TYPES = new Set(
   [...INLINE_BLOCK_TYPES].filter((type) => type !== "toggleListItem"),
 );
 export const LOCAL_BLOCK_PROPS_WRAPPER_STYLE = "__gooseLocalBlockPropsWrapperStyle";
-const LOCAL_TEXT_COLOR_CSS: Record<string, string> = {
+const LOCAL_TEXT_COLOR_CSS = documentTextColors("light");
+// 仅用于识别旧文档的 canonical wrapper，生成新文档始终使用全局文字色表。
+const LEGACY_LOCAL_TEXT_COLOR_CSS: Record<string, string> = {
   gray: "#9b9a97", brown: "#64473a", red: "#e03e3e", orange: "#d9730d",
   yellow: "#dfab01", green: "#4d6461", blue: "#0b6e99", purple: "#6940a5", pink: "#ad1a72",
 };
@@ -151,18 +154,19 @@ function localCssColor(color: string, palette: Record<string, string>) {
   return palette[color] ?? color;
 }
 
-function localColorName(color: string, palette: Record<string, string>) {
-  const match = Object.entries(palette).find(([, css]) => css.toLowerCase() === color.toLowerCase());
+function localColorName(color: string, palette: Record<string, string>, legacyPalette: Record<string, string> = {}) {
+  const match = [...Object.entries(palette), ...Object.entries(legacyPalette)]
+    .find(([, css]) => css.toLowerCase() === color.toLowerCase());
   return match?.[0] ?? sanitizeCssColor(color);
 }
 
-function localWrapperStyle(metadata: PersistedBlockProps): string {
+function localWrapperStyle(metadata: PersistedBlockProps, textPalette = LOCAL_TEXT_COLOR_CSS): string {
   const styles = ["display:block"];
   if (metadata.textAlignment === "center" || metadata.textAlignment === "right") {
     styles.push(`text-align:${metadata.textAlignment}`);
   }
   if (metadata.textColor && metadata.textColor !== "default") {
-    styles.push(`color:${localCssColor(metadata.textColor, LOCAL_TEXT_COLOR_CSS)}`);
+    styles.push(`color:${localCssColor(metadata.textColor, textPalette)}`);
   }
   if (metadata.backgroundColor && metadata.backgroundColor !== "default") {
     styles.push(`background-color:${localCssColor(metadata.backgroundColor, LOCAL_BG_COLOR_CSS)}`);
@@ -234,12 +238,15 @@ function parseLocalWrapperStyle(style: string): PersistedBlockProps | null {
     const [name, value, ...rest] = token.split(":");
     if (rest.length > 0 || !value) return null;
     if (name === "text-align") raw.textAlignment = value;
-    else if (name === "color") raw.textColor = localColorName(value, LOCAL_TEXT_COLOR_CSS);
+    else if (name === "color") raw.textColor = localColorName(value, LOCAL_TEXT_COLOR_CSS, LEGACY_LOCAL_TEXT_COLOR_CSS);
     else if (name === "background-color") raw.backgroundColor = localColorName(value, LOCAL_BG_COLOR_CSS);
     else return null;
   }
   const metadata = pickPersistedBlockProps(raw);
-  return Object.keys(metadata).length > 0 && localWrapperStyle(metadata) === style
+  return Object.keys(metadata).length > 0 && (
+    localWrapperStyle(metadata) === style ||
+    localWrapperStyle(metadata, LEGACY_LOCAL_TEXT_COLOR_CSS) === style
+  )
     ? metadata
     : null;
 }
