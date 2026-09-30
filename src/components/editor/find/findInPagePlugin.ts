@@ -27,7 +27,7 @@ type FindMeta =
 
 export const findInPageKey = new PluginKey<FindState>("goose-find-in-page");
 
-function collectMatches(
+export function collectMatches(
   doc: import("prosemirror-model").Node,
   query: string,
   caseSensitive: boolean,
@@ -36,15 +36,32 @@ function collectMatches(
   const needle = caseSensitive ? query : query.toLowerCase();
   const matches: FindMatch[] = [];
   doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return;
-    const haystack = caseSensitive ? node.text : node.text.toLowerCase();
+    if (!node.isTextblock) return;
+    let text = "";
+    const positions: number[] = [];
+    node.forEach((child, offset) => {
+      if (!child.isText || !child.text) {
+        // hardBreaks and inline atoms deliberately split searchable text runs.
+        text += "\u0000";
+        positions.push(-1);
+        return;
+      }
+      for (let i = 0; i < child.text.length; i++) {
+        text += child.text[i];
+        positions.push(pos + 1 + offset + i);
+      }
+    });
+    const haystack = caseSensitive ? text : text.toLowerCase();
     let from = 0;
     while (from <= haystack.length - needle.length) {
       const idx = haystack.indexOf(needle, from);
       if (idx === -1) break;
-      matches.push({ from: pos + idx, to: pos + idx + needle.length });
+      const start = positions[idx];
+      const end = positions[idx + needle.length - 1];
+      if (start >= 0 && end >= start) matches.push({ from: start, to: end + 1 });
       from = idx + Math.max(needle.length, 1);
     }
+    return false;
   });
   return matches;
 }

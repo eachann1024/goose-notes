@@ -11,6 +11,7 @@ import { useScrollRestoration } from "@/pages/workspace/hooks/useScrollRestorati
 import { usePages } from "@/stores/usePages";
 import { useEditorPaneRegistry } from "./editorPaneRegistry";
 import { useSettings } from "@/stores/useSettings";
+import { SearchEditorBridge } from "../sidebar/SearchEditorBridge";
 import { normalizePageLayout } from "@/lib/local-frontmatter";
 
 function SplitPaneCloseButton({
@@ -116,7 +117,7 @@ export function SplitEditorPane({
 
   return (
     <div
-      className="flex h-full min-h-0 min-w-0 flex-col"
+      className="relative flex h-full min-h-0 min-w-0 flex-col"
       data-font-family={page.fontFamily ?? "default"}
       data-page-layout={normalizePageLayout(page.pageLayout ?? defaultLayout)}
       data-local-file-page={isLocalFilePage ? "true" : undefined}
@@ -146,6 +147,7 @@ export function SplitEditorPane({
             scrollElRef.current = el;
             if (el) registry.register(leaf.id, leaf.pageId, editorRef, el);
           }}
+          tabIndex={-1}
           className="page-scroll-container h-full min-h-0 min-w-0 flex-1 overflow-y-auto [background:var(--goose-editor-surface)]"
         >
           <div className="page-layout-document flex min-h-full flex-col">
@@ -174,6 +176,7 @@ export function SplitEditorPane({
         </div>
         </div>
       </EditorHostBridge>
+      <SearchEditorBridge pageId={leaf.pageId} focused={focused} editorRef={editorRef} scrollRef={scrollElRef} />
     </div>
   );
 }

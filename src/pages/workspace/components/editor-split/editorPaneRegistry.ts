@@ -30,6 +30,7 @@ export type EditorPaneRegistry = {
   subscribe: (listener: () => void) => () => void;
   getVersion: () => number;
   getFocusedEntry: () => FocusedPaneSnapshot | null;
+  getAllEntries: () => FocusedPaneSnapshot[];
   getScrollElements: () => HTMLDivElement[];
 };
 
@@ -114,6 +115,14 @@ export function createEditorPaneRegistry(): EditorPaneRegistry {
         editor: entry.editorRef.current?.editor ?? null,
         scrollEl: entry.scrollEl,
       };
+    },
+    getAllEntries() {
+      return [...panes.values()].map((entry) => ({
+        paneId: entry.paneId,
+        pageId: entry.pageId,
+        editor: entry.editorRef.current?.editor ?? null,
+        scrollEl: entry.scrollEl,
+      }));
     },
     getScrollElements() {
       const elements: HTMLDivElement[] = [];

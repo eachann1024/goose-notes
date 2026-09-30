@@ -113,6 +113,7 @@ import { gooseActiveLineExtension } from "@/components/editor/extensions/activeL
 import { gooseFakeSelectionExtension } from "@/components/editor/extensions/fakeSelectionExtension";
 import { ArrowInputRuleExtension } from "@/components/editor/inputrules/arrowInputRule";
 import { gooseFindInPageExtension } from "@/components/editor/find/findInPagePlugin";
+import { gooseSearchSessionHighlightExtension } from "@/components/editor/find/searchSessionHighlightPlugin";
 import { createGooseSlashMenuReconcileExtension } from "@/components/editor/extensions/gooseSlashMenuReconcileExtension";
 import {
   reconcilePageMentionSuggestionMenu,
@@ -404,6 +405,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         gooseFakeSelectionExtension,
         ArrowInputRuleExtension,
         gooseFindInPageExtension,
+        gooseSearchSessionHighlightExtension,
         gooseDividerInputRuleExtension(),
         // 紧凑编辑器构建不挂 AI 扩展，避免加载不需要的模型依赖。
         ...(!__GOOSE_EDITOR_AI__

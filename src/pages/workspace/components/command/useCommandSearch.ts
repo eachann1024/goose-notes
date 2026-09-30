@@ -12,20 +12,33 @@ import {
   syncSearchCatalog,
 } from "./pageSearchCatalog";
 
-// 模块级文本缓存：key = page.id，存储 updatedAt 与解析后纯文本
+import { getContentSnippet, countLiteralMatches } from "./commandSearchText";
+export { getContentSnippet, countLiteralMatches } from "./commandSearchText";
+
 const textCache = new Map<string, { updatedAt: number; text: string }>();
 
 export function getCachedText(page: Page): string {
   const hit = textCache.get(page.id);
   if (hit && hit.updatedAt === page.updatedAt) return hit.text;
-  const text = extractTextFromContent(page.content);
+  const content = page.content;
+  const body = Array.isArray(content) && content[0]?.type === "heading" &&
+    extractTextFromContent([content[0]]).trim() === getPageTitle(page).trim()
+    ? content.slice(1) : content;
+  const text = extractTextFromContent(body);
   textCache.set(page.id, { updatedAt: page.updatedAt, text });
   return text;
+}
+
+export function getSearchBodyText(page: Page): string {
+  return getCachedText(page);
 }
 
 export interface SearchResultPage extends Page {
   contentSnippet?: string;
   snippetMatchIndex?: number;
+  literalBodyMatchCount?: number;
+  titleMatchCount?: number;
+  matchKind?: "literal" | "token" | "pinyin" | "title";
 }
 
 export interface SearchResults {
@@ -39,52 +52,6 @@ export interface SearchResults {
 
 /** 首屏与每次追加加载条数 */
 export const SEARCH_RESULT_PAGE_SIZE = 30;
-
-/**
- * 从内容中提取包含搜索关键词的上下文片段
- * @param contentText 完整的内容文本
- * @param query 搜索关键词
- * @param contextLength 关键词前后显示的字符数
- * @returns 包含关键词的上下文片段，或 undefined
- */
-function getContentSnippet(
-  contentText: string,
-  query: string,
-  contextLength: number = 30
-): { snippet: string; matchIndex: number } | undefined {
-  if (!query || !contentText) return undefined;
-
-  const lowerContent = contentText.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  let matchIndex = lowerContent.indexOf(lowerQuery);
-
-  // CJK 逐字 token AND 命中时原文无连续子串，用 query 首字符兜底定位
-  if (matchIndex === -1) {
-    const firstChar = lowerQuery[0];
-    if (firstChar) {
-      matchIndex = lowerContent.indexOf(firstChar);
-    }
-    if (matchIndex === -1) return undefined;
-  }
-
-  // 计算片段的起始和结束位置
-  const start = Math.max(0, matchIndex - contextLength);
-  const end = Math.min(contentText.length, matchIndex + query.length + contextLength);
-
-  let snippet = contentText.slice(start, end);
-
-  // 如果不是从头开始，添加省略号
-  if (start > 0) {
-    snippet = "..." + snippet;
-  }
-
-  // 如果不是到结尾，添加省略号
-  if (end < contentText.length) {
-    snippet = snippet + "...";
-  }
-
-  return { snippet, matchIndex: start > 0 ? matchIndex - start + 3 : matchIndex };
-}
 
 interface CommandSearchState {
   pages: Record<string, Page>;
@@ -199,7 +166,15 @@ export function useCommandSearch({
 
     // 倒排索引查询，返回按相关度排序的 id 列表
     const indexHitOrder = searchIndex(deferredQuery.trim());
-    const indexHitIds = new Set(indexHitOrder);
+    const exactHitIds = new Set<string>();
+    for (const [id, page] of filteredSet) {
+      const title = getPageTitle(page);
+      if (countLiteralMatches(title, query) > 0 || countLiteralMatches(getSearchBodyText(page), query) > 0) exactHitIds.add(id);
+    }
+    // Exact literal fallback preserves punctuation queries MiniSearch tokenization can discard.
+    const indexedIds = new Set(indexHitOrder);
+    const orderedHitIds: string[] = [...indexHitOrder, ...[...exactHitIds].filter((id) => !indexedIds.has(id))];
+    const indexHitIds = new Set<string>(orderedHitIds);
 
     // pinyin 补充命中（倒排索引不含拼音，需额外一轮）
     const pinyinHitIds = new Set<string>();
@@ -218,15 +193,23 @@ export function useCommandSearch({
     const matched: SearchResultPage[] = [];
 
     // 先按索引相关度顺序添加
-    for (const id of indexHitOrder) {
+    for (const id of orderedHitIds) {
       const page = filteredSet.get(id);
       if (!page) continue;
       const resultPage: SearchResultPage = { ...page };
-      const contentText = getCachedText(page);
+      const contentText = getSearchBodyText(page);
+      const title = getPageTitle(page);
       const snippetResult = getContentSnippet(contentText, query);
+      const titleSnippet = getContentSnippet(title, query);
+      resultPage.literalBodyMatchCount = countLiteralMatches(contentText, query);
+      resultPage.titleMatchCount = countLiteralMatches(title, query);
+      resultPage.matchKind = snippetResult ? "literal" : titleSnippet ? "title" : "token";
       if (snippetResult) {
         resultPage.contentSnippet = snippetResult.snippet;
         resultPage.snippetMatchIndex = snippetResult.matchIndex;
+      } else if (titleSnippet) {
+        resultPage.contentSnippet = titleSnippet.snippet;
+        resultPage.snippetMatchIndex = titleSnippet.matchIndex;
       } else {
         resultPage.contentSnippet = contentText.slice(0, 100);
       }
@@ -237,7 +220,17 @@ export function useCommandSearch({
     for (const id of pinyinHitIds) {
       const page = filteredSet.get(id);
       if (!page) continue;
-      matched.push({ ...page, contentSnippet: getCachedText(page).slice(0, 100) });
+      const pageTitle = getPageTitle(page);
+      const contentText = getSearchBodyText(page);
+      const snippetResult = getContentSnippet(contentText, query);
+      matched.push({
+        ...page,
+        contentSnippet: snippetResult?.snippet ?? contentText.slice(0, 100),
+        snippetMatchIndex: snippetResult?.matchIndex,
+        literalBodyMatchCount: countLiteralMatches(contentText, query),
+        titleMatchCount: countLiteralMatches(pageTitle, query),
+        matchKind: snippetResult ? "literal" : "pinyin",
+      });
     }
 
     const recent = matched
@@ -266,6 +259,7 @@ export function useCommandSearch({
     pageIdsWithChildren: catalog.pageIdsWithChildren,
     getPageBreadcrumb,
     searchQuery,
+    deferredQuery,
     setSearchQuery,
     removeRecent,
     loadMoreResults,

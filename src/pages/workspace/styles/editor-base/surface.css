@@ -1,18 +1,20 @@
-/* 页内搜索高亮、工作区编辑器表面与块间距基线。
- * 被 editor-base.css 按序 @import。
- * 依赖 --goose-find-match 字面色；表面背景走透明以继承工作区 token。
- */
-
-.goose-find-match {
-  background-color: rgba(250, 204, 21, 0.45);
+/* 独立于 Cmd+F 的工作区全局搜索标记，不使用定时淡出；强调色由当前 accent token 提供。 */
+.goose-search-session-match {
+  background-color: color-mix(in srgb, var(--goose-accent-focus) 16%, transparent);
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.35);
-  transition:
-    background-color 0.6s ease,
-    box-shadow 0.6s ease;
 }
 
-/* 搜索定位高亮淡出：到点后加此 class，背景与描边过渡到透明 */
+.goose-search-session-match--current {
+  background-color: color-mix(in srgb, var(--goose-accent-focus) 28%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--goose-accent-focus) 72%, transparent);
+}
+
+.goose-find-match {
+  background-color: hsl(var(--primary) / 0.2);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3);
+}
+
 .goose-find-match--fading,
 .goose-find-match--fading.goose-find-match--current {
   background-color: transparent;
@@ -20,22 +22,9 @@
 }
 
 .goose-find-match--current {
-  background-color: rgba(249, 115, 22, 0.7);
-  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.85);
+  background-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.78);
   color: inherit;
-  transition:
-    background-color 0.6s ease,
-    box-shadow 0.6s ease;
-}
-
-.dark .goose-find-match {
-  background-color: rgba(250, 204, 21, 0.32);
-  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45);
-}
-
-.dark .goose-find-match--current {
-  background-color: rgba(249, 115, 22, 0.6);
-  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.85);
 }
 
 .workspace-editor-surface .bn-container,
