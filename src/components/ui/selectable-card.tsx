@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const selectableCardVariants = cva(
-  "goose-interactive w-full rounded-lg border text-left transition-all duration-200 ring-offset-background disabled:pointer-events-none disabled:text-disabled",
+  "goose-interactive w-full rounded-lg border text-left transition-all duration-200 ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       selected: {

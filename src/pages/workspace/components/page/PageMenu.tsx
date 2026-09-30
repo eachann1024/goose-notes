@@ -415,7 +415,7 @@ export function PageMenu() {
             size="icon"
             aria-label="更多操作"
             onPointerDownCapture={captureSelectedBlocks}
-            className="h-8 w-8 rounded-[8px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+            className="h-8 w-8 rounded-[8px] text-muted-foreground/70 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           >
             <GooseIcons.MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">更多操作</span>

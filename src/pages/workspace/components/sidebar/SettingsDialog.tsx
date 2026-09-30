@@ -651,7 +651,7 @@ export function SettingsDialog({
               <button
                 type="button"
                 onClick={handleCloseAppsBanner}
-                className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label="关闭鹅的全家桶"
               >
                 <GooseIcons.X className="h-3 w-3" />

@@ -194,11 +194,11 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
               const mapping = mappings.current.get(key) ?? { ...folder, remotePath: config.layout === "legacy-root" ? "" : newRemotePath(folder.name) };
               mappings.current.set(key, mapping);
               toggleFolder(mapping, checked);
-            }}><Checkbox.Control className="shrink-0"><Checkbox.Indicator /></Checkbox.Control><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium" title={folder.name}>{folder.name}</span>{duplicateName && <span className="block truncate text-xs text-muted-foreground" title={folder.localPath}>{folder.localPath}</span>}{folderError ? <span className="mt-1 block text-xs text-danger" title={folderError}>{folderError.split("\n")[0]}{selected ? " 请取消勾选。" : ""}</span> : !check ? <span className="mt-1 block text-xs text-muted-foreground">检查中…</span> : null}</span></Checkbox></div>;
+            }}><Checkbox.Control className="shrink-0"><Checkbox.Indicator /></Checkbox.Control><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium" title={folder.name}>{folder.name}</span>{duplicateName && <span className="block truncate text-xs text-muted-foreground" title={folder.localPath}>{folder.localPath}</span>}{folderError ? <span className="mt-1 block text-xs text-destructive" title={folderError}>{folderError.split("\n")[0]}{selected ? " 请取消勾选。" : ""}</span> : !check ? <span className="mt-1 block text-xs text-muted-foreground">检查中…</span> : null}</span></Checkbox></div>;
           })}</div>
         </SettingsSectionCard>
         <SettingsSectionCard title="同步状态">
-          {selectedFolderError && <p className="text-sm text-danger">已选文件夹有错误，请修复后重新检查，或取消勾选后再同步。</p>}
+          {selectedFolderError && <p className="text-sm text-destructive">已选文件夹有错误，请修复后重新检查，或取消勾选后再同步。</p>}
           <div role="status" aria-live="polite" className="space-y-2 text-sm"><p className="flex items-center gap-2">{(pending || syncing) && spinner}{syncing ? "正在同步所选文件夹…" : pending ? `${pending}…` : status?.phase === "error" ? "同步失败" : "等待同步"}</p><p className="text-muted-foreground">上次成功：{status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "尚无记录"}</p></div>
           {status?.error && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{status.error}</p>}
           <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled || !config.folders.length || selectedFolderError} onClick={() => void run(id, "同步", () => bridge.syncNow(id))}>{status?.phase === "error" ? "重试同步" : "立即同步"}</Button><Button variant="ghost" disabled={disabled} onClick={() => setRemoveConfirmation(id)}>移除配置</Button></div>

@@ -62,7 +62,7 @@ export function DialogShell({
           <DialogClose
             type="button"
             className={cn(
-              "goose-interactive absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors",
+              "goose-interactive absolute z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground/70 transition-colors",
               isFullscreen ? "top-4 right-4" : "top-4 right-4",
             )}
             aria-label="关闭"

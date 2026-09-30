@@ -758,7 +758,7 @@ export function EditorComposer({
               }}
               placeholder="https://..."
               autoFocus
-              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-placeholder "
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground "
             />
             <button
               type="button"

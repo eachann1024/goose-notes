@@ -127,7 +127,7 @@ function AssetMaintenanceApp() {
       <Button variant="secondary" disabled={busy || loading} onClick={() => { clearScan(); setNotebookId(""); void loadNotebooks(); }}>刷新列表</Button>
       <Button disabled={!notebookId || busy || loading} onClick={() => void runScan()}><ScanSearch />{busy ? "正在处理…" : "扫描资源"}</Button>
     </div>
-    {error && <p role="alert" className="rounded-lg bg-muted p-3 text-sm text-danger">{error}</p>}
+    {error && <p role="alert" className="rounded-lg bg-muted p-3 text-sm text-destructive">{error}</p>}
     {message && <p role="status" className="text-sm">{message}</p>}
     <div className="flex min-h-0 flex-1 gap-4">
       <section aria-label="未引用资源列表" className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">

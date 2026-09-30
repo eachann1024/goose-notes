@@ -77,7 +77,7 @@ export function PlaceholderRow({
       <div className="flex items-center h-full pl-1 pr-2 rounded-md">
         <div
           style={{ paddingLeft: depth * TREE_INDENT + 24 }}
-          className="text-muted-foreground italic truncate"
+          className="text-muted-foreground/45 italic truncate"
         >
           {name}
         </div>
@@ -367,7 +367,7 @@ export function SortablePageRow({
                   type="button"
                   aria-label={item.isOpen ? "折叠子项" : "展开子项"}
                   aria-expanded={item.isOpen}
-                  className="goose-hidden-expand-icon goose-tree-disclosure group/hidden-toggle relative z-10 flex h-[18px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] (var(--ring))]"
+                  className="goose-hidden-expand-icon goose-tree-disclosure group/hidden-toggle relative z-10 flex h-[18px] shrink-0 items-center justify-center rounded-md text-muted-foreground/80 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:bg-[var(--goose-interactive-selected)] focus-visible:text-[var(--goose-interactive-selected-fg)] (var(--ring))]"
                   style={{ width: TREE_INDENT }}
                   onPointerDown={handleHiddenArrowPointerDown}
                   onClick={handleHiddenArrowClick}
@@ -441,7 +441,7 @@ export function SortablePageRow({
               )}
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 onClick={handleAddChild}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}

@@ -205,7 +205,7 @@ export function StreamingDatavizText({
             <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
             <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
             <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
-            {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground">{streamPhaseLabel}</span>}
+            {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground/70">{streamPhaseLabel}</span>}
           </div>
         )}
       </>
@@ -253,7 +253,7 @@ export function StreamingDatavizText({
           <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
           <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
           <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
-          {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground">{streamPhaseLabel}</span>}
+          {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground/70">{streamPhaseLabel}</span>}
         </div>
       )}
     </div>
