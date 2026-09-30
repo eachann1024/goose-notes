@@ -1,0 +1,102 @@
+/**
+ * notebook-ai.css — 笔记本 AI 聊天面板的 markdown 预览样式
+ *
+ * Streamdown 输出带 data-streamdown="..." 属性，借此精准覆盖默认样式，
+ * 让预览与应用排版契合：8px 圆角、紧凑行距、currentColor 链接、
+ * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
+ */
+
+.ai-md {
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+/* 标题在聊天窄栏里收敛字号（默认 text-3xl/2xl/xl 过大） */
+.ai-md [data-streamdown="heading-1"] {
+  font-size: 1.25em;
+  margin-top: 1rem;
+  margin-bottom: 0.375rem;
+}
+
+.ai-md [data-streamdown="heading-2"] {
+  font-size: 1.15em;
+  margin-top: 1rem;
+  margin-bottom: 0.375rem;
+}
+
+.ai-md [data-streamdown="heading-3"],
+.ai-md [data-streamdown="heading-4"],
+.ai-md [data-streamdown="heading-5"],
+.ai-md [data-streamdown="heading-6"] {
+  font-size: 1.05em;
+  margin-top: 0.875rem;
+  margin-bottom: 0.375rem;
+}
+
+/* 列表行距收紧（默认 py-1 在 text-sm 下过松） */
+.ai-md [data-streamdown="list-item"] {
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+/* ── 任务列表 ─────────────────────────────────────────── */
+
+/* 自绘勾选框已携带状态，去掉 bullet 双标记 */
+.ai-md [data-streamdown="list-item"]:has(.ai-md-checkbox) {
+  list-style: none;
+}
+
+.ai-md-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-right: 0.5rem;
+  vertical-align: -2px;
+  border-radius: 4px;
+  border: 1.5px solid hsl(var(--muted-foreground) / 0.45);
+  color: transparent;
+}
+
+.ai-md-checkbox[data-checked="true"] {
+  background: hsl(var(--muted-foreground));
+  border-color: hsl(var(--muted-foreground));
+  color: hsl(var(--background));
+}
+
+.ai-md-checkbox svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* 已完成项文字置灰（与编辑器一致：灰字、无删除线） */
+.ai-md [data-streamdown="list-item"]:has(.ai-md-checkbox[data-checked="true"]) {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── 代码 ────────────────────────────────────────────── */
+
+.ai-md [data-streamdown="code-block"] {
+  border-radius: 8px;
+}
+
+.ai-md [data-streamdown="code-block"] pre {
+  background: var(--goose-interactive-hover);
+}
+
+.ai-md [data-streamdown="inline-code"] {
+  background: var(--goose-interactive-hover);
+  padding: 0.125rem 0.375rem;
+}
+
+/* ── 链接：currentColor + 灰下划线 ───────────────────── */
+
+.ai-md [data-streamdown="link"] {
+  color: currentColor;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--border));
+  text-underline-offset: 2px;
+}

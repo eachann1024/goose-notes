@@ -1,0 +1,46 @@
+
+.sidebar-drop-target {
+  background: hsl(var(--primary) / 0.08);
+  border: 1px dashed hsl(var(--primary));
+  border-radius: 6px;
+  animation: none;
+}
+
+.sidebar-drop-parent-target {
+  border: 1px solid hsl(var(--primary) / 0.58);
+  background: hsl(var(--primary) / 0.16);
+  box-shadow: 0 0 0 1px hsl(var(--background) / 0.52) inset;
+  transition: background-color 100ms ease, border-color 100ms ease, box-shadow 100ms ease;
+}
+
+.sidebar-drop-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-drop-line {
+  flex: 1;
+  height: 2px;
+  background: var(--workspace-drag-line-color, hsl(var(--primary)));
+  border-radius: 9999px;
+  box-shadow: var(--workspace-drag-line-glow, 0 0 8px hsl(var(--primary) / 0.4));
+  position: relative;
+}
+
+/* Circle head for the line */
+.sidebar-drop-line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: var(--workspace-drag-line-color, hsl(var(--primary)));
+  border: 2px solid hsl(var(--background));
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--workspace-drag-line-color, hsl(var(--primary)));
+}
