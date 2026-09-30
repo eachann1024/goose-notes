@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { NotebookCreateDialog } from "./NotebookCreateDialog";
 import { NotebookEditDialog } from "./NotebookEditDialog";
 import { isElectronHost } from "@/lib/local-vault";
+import { activateWorkspace } from "@/lib/settings-navigation";
 import { activateNotebook } from "@/lib/notebookNavigation";
 import { dialogs } from "@/lib/electron-platform/dialogs";
 import {
@@ -259,6 +260,7 @@ export function NotebookSwitcher({
       createDialog.name.trim(),
       createDialog.icon,
     );
+    activateWorkspace();
     void activateNotebook(notebookId);
     setCreateDialog({ open: false, name: "", icon: "BookOpen", error: "" });
   };
@@ -267,6 +269,7 @@ export function NotebookSwitcher({
     try {
       const path = await dialogs.selectDirectory();
       if (path) {
+        activateWorkspace();
         const folderName = path.split(/[\\/]/).pop() || "Unknown";
         const notebookId = createLocalFolderNotebook(folderName, path);
         await usePages.getState().loadLocalFolderPages(notebookId, path, {
@@ -438,6 +441,7 @@ export function NotebookSwitcher({
                     isActive={activeNotebookId === notebook.id}
                     canDeleteNotebook={canDeleteNotebook}
                     onActivate={(id) => {
+                      activateWorkspace();
                       void activateNotebook(id);
                       setIsOpen(false);
                     }}

@@ -49,6 +49,7 @@ declare global {
   const DEFAULT_CLAUDE_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_CLAUDE_BASE_URL
   const DEFAULT_CLOSE_TAB_SHORTCUT: typeof import('./stores/settings/index').DEFAULT_CLOSE_TAB_SHORTCUT
   const DEFAULT_FONT_NAMES: typeof import('./lib/fontLoader').DEFAULT_FONT_NAMES
+  const DEFAULT_GIT_SYNC_INTERVAL: typeof import('./lib/git-sync-contract').DEFAULT_GIT_SYNC_INTERVAL
   const DEFAULT_NOTEBOOK: typeof import('./stores/useNotebooks').DEFAULT_NOTEBOOK
   const DEFAULT_OPENAI_BASE_URL: typeof import('./lib/ai-provider/index').DEFAULT_OPENAI_BASE_URL
   const DEFAULT_QUICKNOTE_HOTKEY: typeof import('./stores/settings/index').DEFAULT_QUICKNOTE_HOTKEY
@@ -102,6 +103,7 @@ declare global {
   const GOOSE_LAYOUT_KEY: typeof import('./lib/local-frontmatter').GOOSE_LAYOUT_KEY
   const GOOSE_LOCKED_KEY: typeof import('./lib/local-frontmatter').GOOSE_LOCKED_KEY
   const GOOSE_PINNED_KEY: typeof import('./lib/local-frontmatter').GOOSE_PINNED_KEY
+  const GitSyncPreparation: typeof import('./lib/git-sync-preparation').GitSyncPreparation
   const IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH: typeof import('./lib/imageExport/index').IMAGE_EXPORT_LIVE_PREVIEW_MIN_WIDTH
   const IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH: typeof import('./lib/imageExport/index').IMAGE_EXPORT_OPTIONS_CORNER_MIN_WIDTH
   const INTERNAL_ASSET_REF_PREFIXES: typeof import('./lib/internalAssetRef').INTERNAL_ASSET_REF_PREFIXES
@@ -200,6 +202,7 @@ declare global {
   const WORKSPACE_MIN_WINDOW_HEIGHT: typeof import('./lib/workspaceViewport').WORKSPACE_MIN_WINDOW_HEIGHT
   const WORKSPACE_MIN_WINDOW_WIDTH: typeof import('./lib/workspaceViewport').WORKSPACE_MIN_WINDOW_WIDTH
   const activateNotebook: typeof import('./lib/notebookNavigation').activateNotebook
+  const activateWorkspace: typeof import('./lib/settings-navigation').activateWorkspace
   const appendLocalFolderOrderEntries: typeof import('./stores/localFolderOrder').appendLocalFolderOrderEntries
   const applyAccentColor: typeof import('./lib/accentColor').applyAccentColor
   const applyAppearanceScaleVariables: typeof import('./lib/appearance').applyAppearanceScaleVariables
@@ -377,6 +380,7 @@ declare global {
   const getFixedAppShortcuts: typeof import('./lib/fixed-app-shortcuts').getFixedAppShortcuts
   const getFormattingToolbarReferenceRect: typeof import('./components/editor/utils/formattingToolbarReference').getFormattingToolbarReferenceRect
   const getImageFromClipboard: typeof import('./lib/imageProcessor').getImageFromClipboard
+  const getLocalAssetKind: typeof import('./lib/local-folder-asset-maintenance').getLocalAssetKind
   const getLocalFolderFileDropTarget: typeof import('./lib/local-folder-file-drop-target').getLocalFolderFileDropTarget
   const getLocalFolderOrders: typeof import('./stores/localFolderOrder').getLocalFolderOrders
   const getLocalMdSnapshot: typeof import('./lib/local-md-snapshot').getLocalMdSnapshot
@@ -407,6 +411,7 @@ declare global {
   const hasStyledSoftWrapItems: typeof import('./components/editor/utils/softWrapPaste').hasStyledSoftWrapItems
   const hasValidSetupGuideAIResponse: typeof import('./lib/setupGuideAI').hasValidSetupGuideAIResponse
   const hasWholePageBlockTypeTransformScope: typeof import('./lib/ai-write/index').hasWholePageBlockTypeTransformScope
+  const holdGitSyncWrites: typeof import('./lib/git-sync-write-barrier').holdGitSyncWrites
   const htmlHasInlineFormatting: typeof import('./components/editor/utils/softWrapPaste').htmlHasInlineFormatting
   const htmlHasNonDefaultGooseBlockAttrs: typeof import('./components/editor/utils/clipboard').htmlHasNonDefaultGooseBlockAttrs
   const htmlHasNonTextPasteBlocks: typeof import('./components/editor/utils/multilinePaste').htmlHasNonTextPasteBlocks
@@ -426,6 +431,8 @@ declare global {
   const insertSoftWrappedLines: typeof import('./components/editor/utils/softWrapPaste').insertSoftWrappedLines
   const inspectNotebookImportZip: typeof import('./lib/export/index').inspectNotebookImportZip
   const inspectPasteContainer: typeof import('./components/editor/utils/multilinePaste').inspectPasteContainer
+  const installAssetMaintenanceSnapshotResponder: typeof import('./lib/asset-maintenance-snapshot').installAssetMaintenanceSnapshotResponder
+  const installGitSyncResponder: typeof import('./lib/git-sync-responder').installGitSyncResponder
   const isAIProviderId: typeof import('./lib/ai-provider/index').isAIProviderId
   const isBackupFileName: typeof import('./lib/webdavSync').isBackupFileName
   const isBlockNoteContent: typeof import('./components/editor/utils/blocknote-content/index').isBlockNoteContent
@@ -444,6 +451,7 @@ declare global {
   const isExternalFileDrag: typeof import('./lib/local-folder-target').isExternalFileDrag
   const isGithubDownloadUrl: typeof import('./lib/appUpdateRelease').isGithubDownloadUrl
   const isGooseFrontmatterKey: typeof import('./lib/local-frontmatter').isGooseFrontmatterKey
+  const isHotkeyAllowedInSettings: typeof import('./lib/settings-navigation').isHotkeyAllowedInSettings
   const isImageUploadFile: typeof import('./components/editor/utils/pasteClipboardImage').isImageUploadFile
   const isImeKeyboardEvent: typeof import('./hooks/useImeInput').isImeKeyboardEvent
   const isInsideToggle: typeof import('./components/editor/utils/toggleNesting').isInsideToggle
@@ -467,6 +475,8 @@ declare global {
   const isPlatformPrimaryModifierEvent: typeof import('./lib/shortcut-platform').isPlatformPrimaryModifierEvent
   const isQuickNoteDraftEmpty: typeof import('./stores/useQuickNote').isQuickNoteDraftEmpty
   const isRandomPageIcon: typeof import('./lib/randomPageIcon').isRandomPageIcon
+  const isReservedCloseOrSplitShortcut: typeof import('./lib/fixed-app-shortcuts').isReservedCloseOrSplitShortcut
+  const isSettingsTab: typeof import('./lib/settings-navigation').isSettingsTab
   const isSetupGuideAIRequestCurrent: typeof import('./lib/setupGuideAI').isSetupGuideAIRequestCurrent
   const isSetupGuideVisible: typeof import('./lib/setupGuide').isSetupGuideVisible
   const isSidebarListCollapseArmed: typeof import('./lib/sidebarListCollapse').isSidebarListCollapseArmed
@@ -482,6 +492,8 @@ declare global {
   const isVideoUploadFile: typeof import('./lib/videoProcessor').isVideoUploadFile
   const isWholeTableCellSelection: typeof import('./components/editor/utils/selection').isWholeTableCellSelection
   const isWikiMediaTarget: typeof import('./lib/wikiLink').isWikiMediaTarget
+  const isWorkspaceNavigationHotkey: typeof import('./lib/settings-navigation').isWorkspaceNavigationHotkey
+  const isWorkspaceSettingsOpen: typeof import('./lib/settings-navigation').isWorkspaceSettingsOpen
   const jsonContentToMarkdown: typeof import('./lib/export/index').jsonContentToMarkdown
   const lazy: typeof import('react').lazy
   const listWebdavBackups: typeof import('./lib/webdavSync').listWebdavBackups
@@ -532,6 +544,7 @@ declare global {
   const normalizeShortcutToken: typeof import('./lib/shortcut-platform').normalizeShortcutToken
   const normalizeWatermarkConfig: typeof import('./lib/imageExport/index').normalizeWatermarkConfig
   const normalizeWikiPath: typeof import('./lib/wikiLink').normalizeWikiPath
+  const normalizedGitRemote: typeof import('./lib/git-sync-contract').normalizedGitRemote
   const onboardingChildPageContent: typeof import('./lib/onboardingContent').onboardingChildPageContent
   const onboardingPageContent: typeof import('./lib/onboardingContent').onboardingPageContent
   const onboardingSecondChildContent: typeof import('./lib/onboardingContent').onboardingSecondChildContent
@@ -578,6 +591,8 @@ declare global {
   const reconcileSlashSuggestionMenu: typeof import('./components/editor/utils/slashMenuPolicy').reconcileSlashSuggestionMenu
   const recoverQuickNoteDrafts: typeof import('./stores/useQuickNote').recoverQuickNoteDrafts
   const redactSetupGuideAIError: typeof import('./lib/setupGuideAI').redactSetupGuideAIError
+  const registerEscapeClose: typeof import('./lib/escape-close').registerEscapeClose
+  const releaseGitSyncWrites: typeof import('./lib/git-sync-write-barrier').releaseGitSyncWrites
   const releaseStartupSettlingAfterPaint: typeof import('./lib/appearance').releaseStartupSettlingAfterPaint
   const rememberDiskWriteFailure: typeof import('./lib/diskWriteError').rememberDiskWriteFailure
   const rememberEditorSelectedBlocks: typeof import('./components/editor/utils/selection').rememberEditorSelectedBlocks
@@ -690,6 +705,7 @@ declare global {
   const tryCollapseSidebarListOnEscape: typeof import('./lib/sidebarListCollapse').tryCollapseSidebarListOnEscape
   const tryPasteGooseMarkdownFragment: typeof import('./components/editor/hooks/useEditorPaste').tryPasteGooseMarkdownFragment
   const undoLocalTrash: typeof import('./lib/page-delete-actions').undoLocalTrash
+  const unknownGitVisibility: typeof import('./lib/git-sync-contract').unknownGitVisibility
   const updateQuickNoteSlotName: typeof import('./stores/useQuickNote').updateQuickNoteSlotName
   const updateSnapshotAfterWrite: typeof import('./lib/local-md-snapshot').updateSnapshotAfterWrite
   const updateSnapshotStat: typeof import('./lib/local-md-snapshot').updateSnapshotStat
@@ -755,8 +771,12 @@ declare global {
   const useWorkspaceViewport: typeof import('./stores/useWorkspaceViewport').useWorkspaceViewport
   const useWorkspaceViewportCollapse: typeof import('./hooks/useWorkspaceViewportCollapse').useWorkspaceViewportCollapse
   const validateGeneratedBlockStructure: typeof import('./lib/ai-write/index').validateGeneratedBlockStructure
+  const validateGitRepository: typeof import('./lib/git-sync-contract').validateGitRepository
+  const validateGitSyncConfig: typeof import('./lib/git-sync-contract').validateGitSyncConfig
+  const validateRepositoryId: typeof import('./lib/git-sync-contract').validateRepositoryId
   const videoStorage: typeof import('./lib/videoStorage').videoStorage
   const waitForFonts: typeof import('./lib/fontLoader').waitForFonts
+  const waitForGitSyncWrites: typeof import('./lib/git-sync-write-barrier').waitForGitSyncWrites
   const wasRecentlyInteracting: typeof import('./lib/editor-interaction-signal').wasRecentlyInteracting
   const wasRecentlySelfWritten: typeof import('./lib/local-md-snapshot').wasRecentlySelfWritten
   const wikiKeysForLocalPath: typeof import('./lib/wikiLink').wikiKeysForLocalPath
@@ -816,16 +836,25 @@ declare global {
   export type { GithubReleaseAsset, ParsedReleaseVersion } from './lib/appUpdateRelease'
   import('./lib/appUpdateRelease')
   // @ts-ignore
+  export type { AssetAppearance, AssetNotebook, AssetWorkspaceSnapshot, AssetScan, AssetMaintenanceBridge } from './lib/asset-maintenance-contract'
+  import('./lib/asset-maintenance-contract')
+  // @ts-ignore
   export type { DiskWriteError } from './lib/diskWriteError'
   import('./lib/diskWriteError')
   // @ts-ignore
   export type { FixedAppShortcutId } from './lib/fixed-app-shortcuts'
   import('./lib/fixed-app-shortcuts')
   // @ts-ignore
+  export type { GitSyncProvider, GitSyncConfig, GitSyncStatus, GitRepositoryFolder, GitRepositoryVisibility, GitRepositoryConfig, GitRepositoryInput, GitVisibilityCheck, GitSyncState, GitSyncBridge } from './lib/git-sync-contract'
+  import('./lib/git-sync-contract')
+  // @ts-ignore
+  export type { GitSyncPreparation, GitSyncPreparationRequest } from './lib/git-sync-preparation'
+  import('./lib/git-sync-preparation')
+  // @ts-ignore
   export type { CardTheme, CardThemeId, NotebookCardThemeContext, WatermarkConfig } from './lib/imageExport/index'
   import('./lib/imageExport/index')
   // @ts-ignore
-  export type { UnreferencedLocalAsset, RestoreMissingLocalAssetsResult } from './lib/local-folder-asset-maintenance'
+  export type { UnreferencedLocalAsset, RestoreMissingLocalAssetsResult, AssetMaintenanceFs } from './lib/local-folder-asset-maintenance'
   import('./lib/local-folder-asset-maintenance')
   // @ts-ignore
   export type { LocalFolderOpenAppKind, LocalFolderOpenAppCandidate } from './lib/local-folder-open-apps'

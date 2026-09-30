@@ -1,3 +1,4 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import {
   forwardRef,
   useCallback,
@@ -228,6 +229,7 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
 
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
+        if (isWorkspaceSettingsOpen()) return;
         if (!containerRef.current || !containerRef.current.isConnected) return;
         const target = e.target as HTMLElement | null;
         const inEditorScope = !!target?.closest(

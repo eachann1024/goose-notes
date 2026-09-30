@@ -15,19 +15,29 @@ import { SidebarResizeEdge } from "./SidebarResizeEdge";
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { SidebarOutline } from "./SidebarOutline";
 import { shouldDismissSidebarOverlay } from "./sidebarOverlayEscape";
+import { SidebarSearch } from "./SidebarSearch";
+import { useSearchSession } from "./useSearchSession";
 import { HistoryVersionList } from "../history/HistoryView";
 import { useHistoryView } from "@/stores/useHistoryView";
 import { closeNotebookAiIfFullscreen } from "../notebook-ai/useNotebookAiPanel";
 import { isElectronHost } from "@/lib/local-vault";
-import * as LucideIcons from "lucide-react";
+import type { SettingsTab } from "./settings/types";
+import { activateWorkspace } from "@/lib/settings-navigation";
 import "./sidebar-layout.css";
 
-type SidebarView = "pages" | "outline";
+type SidebarView = "pages" | "outline" | "search";
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   disableResize?: boolean;
   selectedPageId?: string | null;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  settingsOpen: boolean;
+  settingsSidebarExpanded: boolean;
+  onSettingsSidebarExpandedChange: (expanded: boolean) => void;
+  onSettingsOpenChange: (open: boolean) => void;
+  settingsTab: SettingsTab;
+  onSettingsTabChange: (tab: SettingsTab) => void;
+  settingsMainHost: HTMLElement | null;
 }
 
 export function Sidebar({
@@ -35,6 +45,13 @@ export function Sidebar({
   disableResize = false,
   selectedPageId,
   scrollContainerRef,
+  settingsOpen,
+  settingsSidebarExpanded,
+  onSettingsSidebarExpandedChange,
+  onSettingsOpenChange,
+  settingsTab,
+  onSettingsTabChange,
+  settingsMainHost,
 }: SidebarProps) {
   const activePageId = usePages((s) => s.activePageId);
   const createPage = usePages((s) => s.createPage);
@@ -69,13 +86,14 @@ export function Sidebar({
     outlinePageId ? s.pages[outlinePageId] : undefined,
   );
   const setExpanded = useSidebarView((s) => s.setExpanded);
-  const sidebarCollapsed = useEffectiveSidebarCollapsed();
+  const workspaceSidebarCollapsed = useEffectiveSidebarCollapsed();
+  const sidebarCollapsed = settingsOpen ? !settingsSidebarExpanded : workspaceSidebarCollapsed;
   const forceCollapseLeft = useWorkspaceViewport((s) => s.forceCollapseLeft);
   const leftExpandOverride = useWorkspaceViewport((s) => s.leftExpandOverride);
   const setLeftExpandOverride = useWorkspaceViewport((s) => s.setLeftExpandOverride);
-  const sidebarOverlay = forceCollapseLeft && leftExpandOverride && !sidebarCollapsed;
+  const sidebarOverlay = forceCollapseLeft && (settingsOpen ? settingsSidebarExpanded : leftExpandOverride) && !sidebarCollapsed;
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
-  const [sidebarObservedWidth, setSidebarObservedWidth] = useState<number | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const activeNotebook = activeNotebookId ? notebooks[activeNotebookId] : null;
   const isLocalFolder = activeNotebook?.source === "local-folder";
   // Electron 仅本地模式：没有仓库时不露出「新建页面」入口与内置本语义
@@ -84,27 +102,41 @@ export function Sidebar({
   const itemHeight = useSidebarItemHeight() + 4;
   const rowHeight = itemHeight + 2;
 
-  const { width, minWidth, maxWidth, isResizing, handleResizeMouseDown, handleResizePointerDown, handleResizeKeyDown } =
+  const previewSidebarWidth = useCallback((nextWidth: number) => {
+    const sidebar = sidebarRef.current;
+    sidebar?.style.setProperty("--sidebar-configured-width", `${nextWidth}px`);
+    const shell = sidebar?.closest(".workspace-shell");
+    if (shell instanceof HTMLElement) {
+      shell.style.setProperty(
+        "--workspace-sidebar-width",
+        `${sidebarCollapsed || sidebarOverlay ? 0 : nextWidth}px`,
+      );
+    }
+  }, [sidebarCollapsed, sidebarOverlay]);
+
+  const { width, minWidth, maxWidth, isResizing, handleResizePointerDown, handleResizeKeyDown } =
     useSidebarResize({
-      disableResize,
+      disableResize: disableResize || sidebarCollapsed,
+      onWidthPreview: previewSidebarWidth,
       maxWidth: sidebarOverlay
         ? resolveSidebarOverlayWidth(SIDEBAR_MAX_WIDTH, viewportWidth)
         : SIDEBAR_MAX_WIDTH,
     });
-  const contentWidth =
-    (sidebarOverlay && sidebarObservedWidth && sidebarObservedWidth > 0
-      ? sidebarObservedWidth
-      : width) -
-    48 -
-    16;
 
-  const [showSettings, setShowSettings] = useState(false);
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
+  const [settingsSidebarHost, setSettingsSidebarHost] = useState<HTMLDivElement | null>(null);
+  const searchSessionOpen = useSearchSession((state) => state.open);
+  useEffect(() => {
+    if (searchSessionOpen) setCurrentView("search");
+    else if (currentView === "search") setCurrentView("pages");
+  }, [searchSessionOpen, currentView]);
+  const openSearchSession = useSearchSession((s) => s.openSearch);
   const searchShortcut = useSettings((state) =>
     state.appShortcuts.openSearch
       ? formatShortcut(state.appShortcuts.openSearch)
       : "",
   );
+  const sidebarViewShortcut = (digit: 1 | 2 | 3) => formatShortcut(`Mod+${digit}`);
 
   // 历史模式暂时隐藏窄轨和页面树，但保留当前模式与 Footer；退出后回到原侧栏状态。
   const historyActivePageId = useHistoryView((s) => s.active);
@@ -112,7 +144,6 @@ export function Sidebar({
   const inHistoryMode =
     !!historyActivePageId && historyActivePageId === activePageId;
 
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const restoreSidebarFocusRef = useRef(false);
   const [scrollAreaNode, setScrollAreaNode] = useState<HTMLDivElement | null>(null);
   const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
@@ -123,12 +154,52 @@ export function Sidebar({
       !!sidebarRef.current?.contains(active) ||
       active === sidebarRef.current?.previousElementSibling
     );
-    setLeftExpandOverride(false);
-  }, [setLeftExpandOverride]);
+    if (settingsOpen) onSettingsSidebarExpandedChange(false);
+    else setLeftExpandOverride(false);
+  }, [settingsOpen, onSettingsSidebarExpandedChange, setLeftExpandOverride]);
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      activateWorkspace();
+      const detail = (event as CustomEvent<{ resetQuery?: boolean }>).detail;
+      if (detail?.resetQuery) useSearchSession.getState().setQuery("");
+      setCurrentView("search");
+      if (workspaceSidebarCollapsed && !forceCollapseLeft) useSidebarView.getState().setSidebarCollapsed(false);
+      if (forceCollapseLeft) setLeftExpandOverride(true);
+      if (inHistoryMode) exitHistoryView();
+      closeNotebookAiIfFullscreen();
+      openSearchSession(activeNotebookId, activePageId, scrollContainerRef?.current?.scrollTop ?? 0);
+    };
+    const onSwitchSidebarView = (event: Event) => {
+      const view = (event as CustomEvent<{ view?: SidebarView }>).detail?.view;
+      if (view === "search") onOpen(event);
+      else if (view === "pages" || view === "outline") {
+        activateWorkspace();
+        if (useSearchSession.getState().open) useSearchSession.getState().closeSearch();
+        if (view === "outline") closeNotebookAiIfFullscreen();
+        setCurrentView(view);
+        if (forceCollapseLeft) setLeftExpandOverride(true);
+        if (inHistoryMode) exitHistoryView();
+      }
+    };
+    const onWorkspaceActivate = () => onSettingsOpenChange(false);
+    const onCloseSettings = () => onSettingsOpenChange(false);
+    window.addEventListener("goose-note:open-search", onOpen);
+    window.addEventListener("goose-note:switch-sidebar-view", onSwitchSidebarView);
+    window.addEventListener("goose-note:workspace-activate", onWorkspaceActivate);
+    window.addEventListener("goose-note:close-settings", onCloseSettings);
+    return () => {
+      window.removeEventListener("goose-note:open-search", onOpen);
+      window.removeEventListener("goose-note:switch-sidebar-view", onSwitchSidebarView);
+      window.removeEventListener("goose-note:workspace-activate", onWorkspaceActivate);
+      window.removeEventListener("goose-note:close-settings", onCloseSettings);
+    };
+  }, [activeNotebookId, activePageId, forceCollapseLeft, inHistoryMode, scrollContainerRef, openSearchSession, setLeftExpandOverride, exitHistoryView, onSettingsOpenChange, workspaceSidebarCollapsed]);
 
   useEffect(() => {
     if (!sidebarOverlay) return;
     const onEscape = (event: KeyboardEvent) => {
+      if (settingsOpen || useSearchSession.getState().open) return;
       if (!shouldDismissSidebarOverlay(event, document)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -136,20 +207,23 @@ export function Sidebar({
     };
     document.addEventListener("keydown", onEscape);
     return () => document.removeEventListener("keydown", onEscape);
-  }, [sidebarOverlay, closeSidebarOverlay]);
+  }, [sidebarOverlay, settingsOpen, closeSidebarOverlay]);
 
   useSidebarEffects({
     activePageId,
     activeNotebookId,
     currentView,
-    onOpenSettings: () => setShowSettings(true),
+    onSettingsTabChange,
+    onOpenSettings: (tab) => {
+      if (tab) onSettingsTabChange(tab);
+      onSettingsOpenChange(true);
+    },
   });
 
   const previousNotebookIdRef = useRef<string | null | undefined>(undefined);
   const resetSidebarAfterNotebookChange = useCallback(
     (options: { exitHistory: boolean }) => {
       setCurrentView("pages");
-      setShowSettings(false);
       if (options.exitHistory) exitHistoryView();
     },
     [exitHistoryView],
@@ -160,6 +234,7 @@ export function Sidebar({
     previousNotebookIdRef.current = activeNotebookId;
     if (previousNotebookId === activeNotebookId) return;
     if (previousNotebookId === undefined && !isLocalFolder) return;
+    if (useSearchSession.getState().open) return;
 
     resetSidebarAfterNotebookChange({
       exitHistory: inHistoryMode,
@@ -191,14 +266,8 @@ export function Sidebar({
   }, [sidebarCollapsed, sidebarOverlay]);
 
   useLayoutEffect(() => {
-    sidebarRef.current?.style.setProperty("--sidebar-configured-width", `${width}px`);
-    const shell = sidebarRef.current?.closest(".workspace-shell");
-    if (!(shell instanceof HTMLElement)) return;
-    shell.style.setProperty(
-      "--workspace-sidebar-width",
-      `${sidebarCollapsed || sidebarOverlay ? 0 : width}px`,
-    );
-  }, [sidebarCollapsed, sidebarOverlay, width]);
+    previewSidebarWidth(width);
+  }, [previewSidebarWidth, width]);
 
   useLayoutEffect(() => {
     if (sidebarOverlay || !restoreSidebarFocusRef.current) return;
@@ -209,15 +278,9 @@ export function Sidebar({
   }, [sidebarOverlay]);
 
   useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === sidebar) setSidebarObservedWidth(entry.contentRect.width);
-        if (entry.target === document.documentElement) setViewportWidth(window.innerWidth);
-      }
+    const observer = new ResizeObserver(() => {
+      setViewportWidth(window.innerWidth);
     });
-    observer.observe(sidebar);
     observer.observe(document.documentElement);
     return () => observer.disconnect();
   }, []);
@@ -227,8 +290,12 @@ export function Sidebar({
       setScrollAreaHeight(0);
       return;
     }
+    let lastHeight = -1;
     const updateHeight = () => {
-      setScrollAreaHeight(scrollAreaNode.clientHeight);
+      const height = scrollAreaNode.clientHeight;
+      if (height === lastHeight) return;
+      lastHeight = height;
+      setScrollAreaHeight(height);
     };
     updateHeight();
     const observer = new ResizeObserver(updateHeight);
@@ -238,6 +305,7 @@ export function Sidebar({
 
   const handleCreatePage = () => {
     if (!activeNotebookId) return;
+    activateWorkspace();
     closeNotebookAiIfFullscreen();
     // 在当前所处页面的同级创建：取当前页的 parentId 作为新页的父级
     const basePageId = selectedPageId ?? activePageId;
@@ -258,25 +326,31 @@ export function Sidebar({
     if (siblingParentId) setExpandPageId(newPageId);
   };
 
-  const handleSearch = () => {
-    window.dispatchEvent(new CustomEvent("goose-note:open-search"));
+  const handleOpenSearch = () => {
+    activateWorkspace();
+    setCurrentView("search");
+    if (workspaceSidebarCollapsed && !forceCollapseLeft) useSidebarView.getState().setSidebarCollapsed(false);
+    if (forceCollapseLeft) setLeftExpandOverride(true);
+    if (inHistoryMode) exitHistoryView();
+    closeNotebookAiIfFullscreen();
+    openSearchSession(activeNotebookId, activePageId, scrollContainerRef?.current?.scrollTop ?? 0);
   };
 
   const switchSidebarView = (view: SidebarView) => {
+    activateWorkspace();
+    if (forceCollapseLeft) setLeftExpandOverride(true);
+    if (inHistoryMode) exitHistoryView();
+    if (view !== "search") useSearchSession.getState().closeSearch();
     if (view === "outline") closeNotebookAiIfFullscreen();
     setCurrentView(view);
   };
 
   const headerTitle =
-    currentView === "outline"
-      ? outlinePage
-        ? getPageTitle(outlinePage)
-        : "大纲"
-      : isLocalFolder
-        ? "本地"
-        : electronNoVault
-          ? "仓库"
-          : "页面";
+    currentView === "search"
+      ? "搜索"
+      : currentView === "outline"
+        ? outlinePage ? getPageTitle(outlinePage) : "大纲"
+        : isLocalFolder ? "本地" : electronNoVault ? "仓库" : "页面";
 
   return <>
     {sidebarOverlay && (
@@ -297,7 +371,7 @@ export function Sidebar({
       )}
       data-sidebar-resizing={isResizing || undefined}
       style={{
-        width: sidebarCollapsed ? 0 : width,
+        width: sidebarCollapsed ? 0 : "var(--sidebar-configured-width)",
         minWidth: 0,
         opacity: sidebarCollapsed ? 0 : 1,
         transform: sidebarCollapsed ? "translateX(-8px)" : "translateX(0)",
@@ -312,7 +386,6 @@ export function Sidebar({
           minWidth={minWidth}
           maxWidth={maxWidth}
           isResizing={isResizing}
-          onMouseDown={handleResizeMouseDown}
           onPointerDown={handleResizePointerDown}
           onKeyDown={handleResizeKeyDown}
         />
@@ -321,8 +394,8 @@ export function Sidebar({
       <div
         className="sidebar-size-container flex h-full min-h-0 flex-col"
         style={{
-          width: sidebarOverlay ? "100%" : width,
-          minWidth: sidebarOverlay ? 0 : width,
+          width: sidebarOverlay ? "100%" : "var(--sidebar-configured-width)",
+          minWidth: sidebarOverlay ? 0 : "var(--sidebar-configured-width)",
         }}
       >
         <div className="flex min-h-0 flex-1">
@@ -331,9 +404,9 @@ export function Sidebar({
               <nav
                 className="sidebar-mode-rail"
                 aria-label="侧栏视图"
-                hidden={inHistoryMode}
-                inert={inHistoryMode}
-                aria-hidden={inHistoryMode}
+                hidden={inHistoryMode && !settingsOpen}
+                inert={inHistoryMode && !settingsOpen}
+                aria-hidden={inHistoryMode && !settingsOpen}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -341,13 +414,19 @@ export function Sidebar({
                       type="button"
                       className="sidebar-mode-rail-button"
                       aria-label="本地"
-                      aria-pressed={currentView === "pages"}
+                      aria-pressed={!settingsOpen && currentView === "pages"}
                       onClick={() => switchSidebarView("pages")}
                     >
                       <LucideIcons.FolderOpen aria-hidden="true" className="h-4 w-4" />
+                      <span className="sidebar-mode-rail-label">本地</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">本地页面</TooltipContent>
+                  <TooltipContent side="right">
+                    <div className="flex items-center gap-2">
+                      <span>本地页面</span>
+                      <span className="text-[11px] text-muted-foreground">{sidebarViewShortcut(1)}</span>
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -355,13 +434,19 @@ export function Sidebar({
                       type="button"
                       className="sidebar-mode-rail-button"
                       aria-label="大纲"
-                      aria-pressed={currentView === "outline"}
+                      aria-pressed={!settingsOpen && currentView === "outline"}
                       onClick={() => switchSidebarView("outline")}
                     >
                       <LucideIcons.ListTree aria-hidden="true" className="h-4 w-4" />
+                      <span className="sidebar-mode-rail-label">大纲</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">当前文档大纲</TooltipContent>
+                  <TooltipContent side="right">
+                    <div className="flex items-center gap-2">
+                      <span>当前文档大纲</span>
+                      <span className="text-[11px] text-muted-foreground">{sidebarViewShortcut(2)}</span>
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -369,14 +454,17 @@ export function Sidebar({
                       type="button"
                       className="sidebar-mode-rail-button"
                       aria-label="搜索"
-                      onClick={handleSearch}
+                      aria-pressed={!settingsOpen && currentView === "search"}
+                      onClick={handleOpenSearch}
                     >
                       <LucideIcons.Search aria-hidden="true" className="h-4 w-4" />
+                      <span className="sidebar-mode-rail-label">搜索</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     <div className="flex items-center gap-2">
                       <span>搜索</span>
+                      <span className="text-[11px] text-muted-foreground">{sidebarViewShortcut(3)}</span>
                       {searchShortcut && (
                         <span className="text-[11px] text-muted-foreground">
                           {searchShortcut}
@@ -388,32 +476,32 @@ export function Sidebar({
               </nav>
             </TooltipProvider>
             <SidebarFooter
-              isSettingsOpen={showSettings}
+              isSettingsOpen={settingsOpen}
               onOpenSettings={() => {
                 if (inHistoryMode) exitHistoryView();
-                setShowSettings(true);
+                onSettingsOpenChange(true);
               }}
             />
           </div>
-          <div className="sidebar-content-surface flex min-h-0 min-w-0 flex-1 flex-col">
-            {inHistoryMode && (
+          <div ref={setSettingsSidebarHost} className="sidebar-content-surface relative flex min-h-0 min-w-0 flex-1 flex-col">
+            {inHistoryMode && !settingsOpen && (
               <div className="min-h-0 flex-1 overflow-hidden rounded-[inherit]">
                 <HistoryVersionList />
               </div>
             )}
             <div
               className="sidebar-design flex min-h-0 flex-1 flex-col"
-              hidden={inHistoryMode}
-              inert={inHistoryMode}
-              aria-hidden={inHistoryMode}
+              hidden={inHistoryMode || settingsOpen}
+              inert={inHistoryMode || settingsOpen}
+              aria-hidden={inHistoryMode || settingsOpen}
             >
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
                 <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="sidebar-tree-heading shrink-0">
+                  <div className="sidebar-tree-heading shrink-0" hidden={currentView === "search"}>
                     <SidebarSectionHeader
-                      title={headerTitle}
+                      title={currentView === "search" ? "搜索" : headerTitle}
                       eyebrow={currentView === "outline" ? "文档大纲" : undefined}
-                      onCreate={electronNoVault ? undefined : handleCreatePage}
+                      onCreate={currentView === "search" || electronNoVault ? undefined : handleCreatePage}
                       createTitle={isLocalFolder ? "新建文件" : "新建页面"}
                       onCollapseAll={
                         currentView === "pages" && activeNotebookId
@@ -433,13 +521,13 @@ export function Sidebar({
                     <SidebarMainTree
                       activeNotebookId={activeNotebookId}
                       selectedPageId={selectedPageId}
-                      width={contentWidth}
                       rowHeight={rowHeight}
                       itemHeight={rowHeight}
                       viewportHeight={scrollAreaHeight}
                       onCreatePage={handleCreatePage}
                     />
                   </div>
+                  <SidebarSearch />
                   {currentView === "outline" && (
                     <div className="flex min-h-0 flex-1 overflow-hidden pr-2">
                       <SidebarOutline
@@ -455,7 +543,14 @@ export function Sidebar({
             </div>
           </div>
         </div>
-        <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={onSettingsOpenChange}
+          activeTab={settingsTab}
+          onTabChange={onSettingsTabChange}
+          sidebarContainer={settingsSidebarHost}
+          mainContainer={settingsMainHost}
+        />
       </div>
     </div>
   </>;

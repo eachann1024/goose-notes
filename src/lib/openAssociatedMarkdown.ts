@@ -1,3 +1,4 @@
+import { activateWorkspace } from "@/lib/settings-navigation";
 import { toast } from "@/components/ui/sonner";
 import {
   comparisonLocalPath,
@@ -60,6 +61,7 @@ async function openPageInNotebook(
   notebookId: string,
   pageId: string,
 ): Promise<void> {
+  activateWorkspace();
   closeNotebookAiIfFullscreen();
   await activateNotebook(notebookId);
   useTabs.getState().openTab(pageId);

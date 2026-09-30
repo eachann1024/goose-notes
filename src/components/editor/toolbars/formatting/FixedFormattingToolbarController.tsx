@@ -1,3 +1,4 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import { type FC, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFormattingToolbarAi } from "@/components/editor/state/formattingToolbarAi";
@@ -35,6 +36,8 @@ export function FixedFormattingToolbarController({
       if (inlineAiActive) return;
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || event.repeat) return;
       if (!open && !hovered) return;
+      event.preventDefault();
+      event.stopPropagation();
       formattingToolbar.store.setState(false);
       editor.focus();
     };

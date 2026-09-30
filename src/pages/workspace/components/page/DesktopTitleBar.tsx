@@ -45,6 +45,9 @@ import { TabRail } from "./TabRail";
 
 interface DesktopTitleBarProps {
   page?: Page;
+  settingsOpen?: boolean;
+  sidebarCollapsedOverride?: boolean;
+  onToggleSidebar?: () => void;
   isWelcomeTab: boolean;
   inHistoryMode: boolean;
   onOpenSearch: () => void;
@@ -62,6 +65,9 @@ const actionButtonClass =
 
 export function DesktopTitleBar({
   page,
+  settingsOpen = false,
+  sidebarCollapsedOverride,
+  onToggleSidebar,
   isWelcomeTab: _isWelcomeTab,
   inHistoryMode,
   onOpenSearch,
@@ -73,7 +79,8 @@ export function DesktopTitleBar({
   onToggleAiPanel,
 }: DesktopTitleBarProps) {
   const activePageId = usePages((s) => s.activePageId);
-  const sidebarCollapsed = useEffectiveSidebarCollapsed();
+  const workspaceSidebarCollapsed = useEffectiveSidebarCollapsed();
+  const sidebarCollapsed = sidebarCollapsedOverride ?? workspaceSidebarCollapsed;
   const toggleSidebarCollapsed = useSidebarView(
     (s) => s.toggleSidebarCollapsed,
   );
@@ -105,8 +112,8 @@ export function DesktopTitleBar({
     >
       <TooltipProvider delayDuration={600}>
         {[
-          { label: "后退", Icon: LucideIcons.ArrowLeft, disabled: !canGoBack, onClick: () => useTabs.getState().goBackTabHistory() },
-          { label: "前进", Icon: LucideIcons.ArrowRight, disabled: !canGoForward, onClick: () => useTabs.getState().goForwardTabHistory() },
+          { label: "后退", Icon: LucideIcons.ArrowLeft, disabled: !canGoBack, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goBackTabHistory(); } },
+          { label: "前进", Icon: LucideIcons.ArrowRight, disabled: !canGoForward, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goForwardTabHistory(); } },
         ].map(({ label, Icon, disabled, onClick }) => (
           <Tooltip key={label}>
             <TooltipTrigger asChild>
@@ -122,7 +129,7 @@ export function DesktopTitleBar({
             <button
               type="button"
               className={actionButtonClass}
-              onClick={toggleSidebarCollapsed}
+              onClick={onToggleSidebar ?? toggleSidebarCollapsed}
               aria-label={sidebarCollapsed ? "展开侧栏" : "收起侧栏"}
               aria-pressed={sidebarCollapsed}
             >
@@ -185,6 +192,7 @@ export function DesktopTitleBar({
         ) : (
           <TabRail
             variant="electron-titlebar"
+            settingsOpen={settingsOpen}
             page={page}
             onOpenSearch={onOpenSearch}
             onBeforeActivateTab={onBeforeActivateTab}
@@ -277,7 +285,7 @@ export function DesktopTitleBar({
           </>
         )}
 
-        {aiFullscreenOpen ? (
+        {settingsOpen ? null : aiFullscreenOpen ? (
           aiHeaderActions
         ) : showPageActions && page && activePageId ? (
           <PageMenu />

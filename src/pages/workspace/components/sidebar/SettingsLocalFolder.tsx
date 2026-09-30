@@ -49,6 +49,7 @@ function listLegacyInternalPages(): Page[] {
 }
 
 interface SettingsLocalFolderProps {
+  visible?: boolean;
   localFolderFileManager: string;
   setLocalFolderFileManager: (value: string) => void;
   localFolderExternalEditor: string;
@@ -177,7 +178,7 @@ function OpenAppField({
               className="h-4 w-4 shrink-0 text-muted-foreground"
               strokeWidth={1.75}
             />
-            <Label htmlFor={`${id}-custom`} className="cursor-pointer">
+            <Label id={`${id}-label`} htmlFor={id} className="cursor-pointer">
               {title}
             </Label>
           </div>
@@ -187,16 +188,20 @@ function OpenAppField({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
+              id={id}
               type="button"
-              className="flex h-9 min-w-36 max-w-56 shrink-0 items-center justify-between gap-2 rounded-[10px] bg-[hsl(var(--background))] px-3 text-left text-sm text-foreground shadow-[inset_0_0_0_1px_hsl(var(--input))] transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus:bg-[var(--goose-interactive-selected)] data-[state=open]:bg-[var(--goose-interactive-hover)]"
+              variant="outline"
+              size="sm"
+              aria-labelledby={`${id}-label ${id}-value`}
+              className="min-w-36 max-w-56 shrink-0 justify-between rounded-[10px] text-left font-normal"
             >
               <span className="flex min-w-0 items-center gap-2">
                 {appIcon(selectedIcon)}
-                <span className="truncate">{selectedLabel}</span>
+                <span id={`${id}-value`} className="truncate">{selectedLabel}</span>
               </span>
               <LucideIcons.ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuRadioGroup
@@ -226,6 +231,7 @@ function OpenAppField({
         <div className="pl-7">
           <Input
             id={`${id}-custom`}
+            aria-label={`${title}名称`}
             value={trimmedValue}
             onChange={(event) => onChange(event.target.value)}
             onBlur={(event) => onChange(event.target.value.trim())}
@@ -316,7 +322,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
                   <button
                     type="button"
                     onClick={() => removeFolder(folder)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] "
                     aria-label={`移除 ${folder}`}
                   >
                     <LucideIcons.X className="h-4 w-4" />
@@ -327,7 +333,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
           })}
         </div>
         <details className="group border-t border-border/70">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-primary hover:bg-[var(--goose-interactive-hover)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-primary hover:bg-[var(--goose-interactive-hover)] [&::-webkit-details-marker]:hidden">
             <LucideIcons.Plus className="h-4 w-4" /> 添加文件夹
           </summary>
           <form
@@ -449,6 +455,7 @@ function LegacyInternalPagesExportCard() {
 }
 
 export function SettingsLocalFolder({
+  visible = true,
   localFolderFileManager,
   setLocalFolderFileManager,
   localFolderExternalEditor,
@@ -543,6 +550,7 @@ export function SettingsLocalFolder({
   };
 
   useEffect(() => {
+    if (!visible) return;
     let cancelled = false;
 
     const applyAvailableApps = (
@@ -588,7 +596,7 @@ export function SettingsLocalFolder({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [visible]);
 
   return (
     <div className="space-y-6">

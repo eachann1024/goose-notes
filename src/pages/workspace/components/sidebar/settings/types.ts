@@ -5,9 +5,9 @@ export type SettingsTab =
   | "general"
   | "shortcuts"
   | "local-folder"
+  | "git-sync"
   | "ai"
-  | "data"
-  | "about";
+  | "data";
 
 export interface SettingsTabConfig {
   id: SettingsTab;

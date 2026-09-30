@@ -6,18 +6,22 @@ import {
 } from "@/lib/sidebarListCollapse";
 import { usePages } from "@/stores/usePages";
 import { useSidebarView } from "@/stores/useSidebarView";
+import type { SettingsTab } from "../settings/types";
+import { isSettingsTab, isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 
 interface UseSidebarEffectsOptions {
   activePageId?: string | null | undefined;
   activeNotebookId?: string | null | undefined;
   currentView: string;
-  onOpenSettings: (tab?: "general" | "appearance" | "ai" | "data") => void;
+  onOpenSettings: (tab?: SettingsTab) => void;
+  onSettingsTabChange: (tab: SettingsTab) => void;
 }
 
 export function useSidebarEffects({
   activeNotebookId,
   currentView,
   onOpenSettings,
+  onSettingsTabChange,
 }: UseSidebarEffectsOptions) {
   const resolveDeleteTargetPageId = useCallback(
     (target: Element | null) => {
@@ -47,6 +51,7 @@ export function useSidebarEffects({
 
   const handleDeleteShortcut = useCallback(
     (e: KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen() || e.defaultPrevented || e.repeat || isImeKeyboardEvent(e)) return;
       const target = e.target instanceof Element ? e.target : null;
       const isInEditor =
         (target instanceof HTMLElement && target.isContentEditable) ||
@@ -68,7 +73,7 @@ export function useSidebarEffects({
 
   const handleSidebarListEscape = useCallback(
     (event: KeyboardEvent) => {
-      if (isImeKeyboardEvent(event)) return;
+      if (isWorkspaceSettingsOpen() || isImeKeyboardEvent(event)) return;
       if (currentView !== "pages") return;
       if (
         !tryCollapseSidebarListOnEscape(event, activeNotebookId)
@@ -87,30 +92,28 @@ export function useSidebarEffects({
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", handleDeleteShortcut);
-    document.addEventListener("keydown", handleSidebarListEscape, true);
+    document.addEventListener("keydown", handleSidebarListEscape);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("keydown", handleDeleteShortcut);
-      document.removeEventListener("keydown", handleSidebarListEscape, true);
+      document.removeEventListener("keydown", handleSidebarListEscape);
     };
   }, [handleDeleteShortcut, handleSidebarListEscape]);
 
   useEffect(() => {
     const handleOpenSettings = (event: Event) => {
-      const customEvent = event as CustomEvent<{ tab?: "general" | "appearance" | "ai" | "data" }>;
-      onOpenSettings(customEvent.detail?.tab);
-      if (customEvent.detail?.tab) {
-        window.dispatchEvent(
-          new CustomEvent("goose-note:settings-tab-change", {
-            detail: { tab: customEvent.detail.tab },
-          }),
-        );
-      }
+      const tab = (event as CustomEvent<{ tab?: unknown }>).detail?.tab;
+      onOpenSettings(isSettingsTab(tab) ? tab : undefined);
     };
-
+    const handleTabChange = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: unknown }>).detail?.tab;
+      if (isSettingsTab(tab)) onSettingsTabChange(tab);
+    };
     window.addEventListener("goose-note:open-settings", handleOpenSettings);
+    window.addEventListener("goose-note:settings-tab-change", handleTabChange);
     return () => {
       window.removeEventListener("goose-note:open-settings", handleOpenSettings);
+      window.removeEventListener("goose-note:settings-tab-change", handleTabChange);
     };
-  }, [onOpenSettings]);
+  }, [onOpenSettings, onSettingsTabChange]);
 }

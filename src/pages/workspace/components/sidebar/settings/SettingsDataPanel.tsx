@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Download, FileText, Globe, RotateCcw, Upload, Cloud, CloudOff, RefreshCw, ChevronRight, Trash2 } from "lucide-react";
 import type { ExportOptions } from "@/lib/export";
 import { SelectableCard } from "@/components/ui/selectable-card";
@@ -27,6 +27,7 @@ interface NotebookOption {
 }
 
 interface SettingsDataPanelProps {
+  active: boolean;
   importing: boolean;
   onImport: () => void;
   selectedIds: string[];
@@ -62,6 +63,7 @@ function formatRemoteTime(value: string | null | undefined): string {
 }
 
 export function SettingsDataPanel({
+  active,
   importing,
   onImport,
   selectedIds,
@@ -121,6 +123,23 @@ export function SettingsDataPanel({
     onConfirm: () => void | Promise<void>;
     onCancel?: () => void;
   } | null>(null);
+
+  const activationRef = useRef({ active, epoch: 0 });
+  useLayoutEffect(() => {
+    const activation = activationRef.current;
+    activation.active = active;
+    activation.epoch += 1;
+    if (!active) {
+      setConfirmConfig(null);
+      setSyncingLatest(false);
+    }
+    return () => {
+      activation.active = false;
+      activation.epoch += 1;
+    };
+  }, [active]);
+  const isCurrentActivation = (epoch: number) =>
+    activationRef.current.active && activationRef.current.epoch === epoch;
 
   useEffect(() => {
     setTempUrl(webdavUrl);
@@ -216,6 +235,8 @@ export function SettingsDataPanel({
   };
 
   const handleUploadNow = async () => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setUploading(true);
     try {
       const notebookIds = notebookList.map((n) => n.id);
@@ -225,6 +246,7 @@ export function SettingsDataPanel({
         return;
       }
       const zipBlob = await generateExportZip({ format: "md", notebookIds }, notebooks, Object.values(pages));
+      if (!isCurrentActivation(epoch)) return;
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
       const fileName = `goose-note-export-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.zip`;
@@ -259,9 +281,12 @@ export function SettingsDataPanel({
   };
 
   const handleSyncLatest = async () => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setSyncingLatest(true);
     try {
       const list = await listWebdavBackups(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir);
+      if (!isCurrentActivation(epoch)) return;
       setRemoteFiles(list);
       if (list.length === 0) {
         toast.error("云端未发现可用的备份文件");
@@ -275,9 +300,11 @@ export function SettingsDataPanel({
         description: `确认拉取最新的远端备份 ${latest.basename} 并同步到本地？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
         isDestructive: true,
         onConfirm: async () => {
+          if (!isCurrentActivation(epoch)) return;
           setSyncingLatest(true);
           try {
             const blob = await downloadWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, latest.basename);
+            if (!isCurrentActivation(epoch)) return;
             if (onResetAndImport) {
               await onResetAndImport(blob);
               updateWebdavSettings({
@@ -286,17 +313,19 @@ export function SettingsDataPanel({
               });
             }
           } catch (err: any) {
+            if (!isCurrentActivation(epoch)) return;
             console.error(err);
             toast.error("同步失败", { description: err.message || String(err) });
           } finally {
-            setSyncingLatest(false);
+            if (isCurrentActivation(epoch)) setSyncingLatest(false);
           }
         },
         onCancel: () => {
-          setSyncingLatest(false);
+          if (isCurrentActivation(epoch)) setSyncingLatest(false);
         }
       });
     } catch (err: any) {
+      if (!isCurrentActivation(epoch)) return;
       console.error(err);
       toast.error("同步失败", { description: err.message || String(err) });
       setSyncingLatest(false);
@@ -312,15 +341,19 @@ export function SettingsDataPanel({
   };
 
   const handleRestore = async (file: WebdavBackupFile) => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
       title: "恢复备份",
       description: `确认从远端备份 ${file.basename} 恢复数据？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
       isDestructive: true,
       onConfirm: async () => {
+        if (!isCurrentActivation(epoch)) return;
         setRestoringFile(file.basename);
         try {
           const blob = await downloadWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, file.basename);
+          if (!isCurrentActivation(epoch)) return;
           if (onResetAndImport) {
             await onResetAndImport(blob);
             updateWebdavSettings({
@@ -339,12 +372,15 @@ export function SettingsDataPanel({
   };
 
   const handleDelete = async (file: WebdavBackupFile) => {
+    if (!activationRef.current.active) return;
+    const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
       title: "删除备份",
       description: `确认删除远端备份 ${file.basename}？该操作无法撤销。`,
       isDestructive: true,
       onConfirm: async () => {
+        if (!isCurrentActivation(epoch)) return;
         setDeletingFile(file.basename);
         try {
           await deleteWebdavBackup(webdavUrl, webdavUsername, webdavPassword, webdavRemoteDir, file.basename);
@@ -414,7 +450,7 @@ export function SettingsDataPanel({
                       onClick={() => onToggleNotebook(notebook.id)}
                       className={cn(
                         "flex items-center gap-2 rounded-[12px] border px-3 py-2.5 text-left transition-all duration-200",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        "",
                         isSelected
                           ? "border-transparent bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)]"
                           : DATA_UNSELECTED_CARD_CLASS,
@@ -504,7 +540,7 @@ export function SettingsDataPanel({
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-foreground/80">服务地址</Label>
                 <input
-                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   value={tempUrl}
                   disabled={busy}
                   onChange={(e) => setTempUrl(e.target.value)}
@@ -519,7 +555,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">账号</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempUsername}
                     disabled={busy}
                     onChange={(e) => setTempUsername(e.target.value)}
@@ -529,7 +565,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">远端目录</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempRemoteDir}
                     disabled={busy}
                     onChange={(e) => setTempRemoteDir(e.target.value)}
@@ -543,7 +579,7 @@ export function SettingsDataPanel({
                   <Label className="text-xs font-medium text-foreground/80">应用密码</Label>
                   <input
                     type="password"
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempPassword}
                     disabled={busy}
                     onChange={(e) => setTempPassword(e.target.value)}
@@ -556,7 +592,7 @@ export function SettingsDataPanel({
                     type="number"
                     min={1}
                     max={365}
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     value={tempRetentionDays}
                     disabled={busy}
                     onChange={(e) => setTempRetentionDays(parseInt(e.target.value) || 30)}
@@ -627,7 +663,7 @@ export function SettingsDataPanel({
             title={
               <button
                 type="button"
-                className="flex items-center gap-2 text-left focus:outline-none"
+                className="flex items-center gap-2 text-left "
                 onClick={toggleRemoteList}
               >
                 <ChevronRight
@@ -743,7 +779,7 @@ export function SettingsDataPanel({
       </div>
 
       <DialogShell
-        open={confirmConfig?.open || false}
+        open={active && (confirmConfig?.open || false)}
         onOpenChange={(open) => {
           if (!open) {
             confirmConfig?.onCancel?.();
@@ -771,6 +807,7 @@ export function SettingsDataPanel({
               variant={confirmConfig?.isDestructive ? "destructive" : "default"}
               className="rounded-[10px]"
               onClick={async () => {
+                if (!activationRef.current.active) return;
                 const onConfirm = confirmConfig?.onConfirm;
                 setConfirmConfig(null);
                 if (onConfirm) {

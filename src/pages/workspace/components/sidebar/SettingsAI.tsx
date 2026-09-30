@@ -55,6 +55,7 @@ import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { cn } from "@/lib/utils";
 
 interface SettingsAIProps {
+  visible?: boolean;
   mode?: "settings" | "onboarding";
   onSetupStateChange?: (status: SetupGuideAIStatus) => void;
   ai: AISettings;
@@ -156,6 +157,7 @@ function readStoredBaseURL(
 }
 
 export function SettingsAI({
+  visible = true,
   mode = "settings",
   onSetupStateChange,
   ai,
@@ -388,7 +390,7 @@ export function SettingsAI({
   ]);
 
   useEffect(() => {
-    if (customModels.length === 0) {
+    if (!visible || customModels.length === 0) {
       return;
     }
 
@@ -398,7 +400,7 @@ export function SettingsAI({
     ) {
       setSelectedModelId(customModels[0].id);
     }
-  }, [customModels, selectedModelId, setSelectedModelId]);
+  }, [customModels, selectedModelId, setSelectedModelId, visible]);
 
   const currentModel =
     customModels.find((item) => item.id === selectedModelId) ?? null;

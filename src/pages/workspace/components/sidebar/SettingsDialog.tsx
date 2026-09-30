@@ -1,8 +1,8 @@
 import { SettingsAppearance } from "./SettingsAppearance";
-import { SettingsAbout } from "./settings/SettingsAbout";
 import { SettingsGeneral } from "./SettingsGeneral";
 import { SettingsShortcuts } from "./settings/SettingsShortcuts";
 import { SettingsLocalFolder } from "./SettingsLocalFolder";
+import { SettingsGitSync } from "./settings/SettingsGitSync";
 import { SettingsDataPanel } from "./settings/SettingsDataPanel";
 import { SettingsAI } from "./SettingsAI";
 import { SettingsScaffold } from "./settings/SettingsScaffold";
@@ -53,6 +53,10 @@ import { toast } from "@/components/ui/sonner";
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  activeTab: SettingsTab;
+  onTabChange: (tab: SettingsTab) => void;
+  sidebarContainer: HTMLElement | null;
+  mainContainer: HTMLElement | null;
 }
 
 const SETTINGS_TABS: SettingsTabConfig[] = [
@@ -60,9 +64,9 @@ const SETTINGS_TABS: SettingsTabConfig[] = [
   { id: "general", label: "通用设置", icon: LucideIcons.Settings },
   { id: "shortcuts", label: "快捷键", icon: LucideIcons.Keyboard },
   { id: "local-folder", label: "本地文件夹", icon: LucideIcons.FolderOpen },
+  { id: "git-sync", label: "Git 同步", icon: LucideIcons.GitBranch },
   { id: "ai", label: "AI 助手", icon: LucideIcons.Sparkles },
   { id: "data", label: "数据管理", icon: LucideIcons.Database },
-  { id: "about", label: "关于与许可", icon: LucideIcons.Info },
 ];
 
 // 设置侧栏鹅应用：图标使用各应用随包提供的 logo.png
@@ -125,14 +129,16 @@ const recordPreOverwriteHistory = async (id: string | undefined) => {
   }
 };
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  useEffect(() => {
-    document.body.toggleAttribute("data-goose-settings-open", open);
-
-    return () => {
-      document.body.removeAttribute("data-goose-settings-open");
-    };
-  }, [open]);
+export function SettingsDialog({
+  open,
+  onOpenChange,
+  activeTab,
+  onTabChange,
+  sidebarContainer,
+  mainContainer,
+}: SettingsDialogProps) {
+  const [hasOpened, setHasOpened] = useState(open);
+  useEffect(() => { if (open) setHasOpened(true); }, [open]);
 
   const {
     theme,
@@ -227,24 +233,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     useShallow((s) => ({ notebooks: s.notebooks })),
   );
   const { pages } = usePages(useShallow((s) => ({ pages: s.pages })));
-  const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
-
-  useEffect(() => {
-    const handleTabChange = (event: Event) => {
-      const customEvent = event as CustomEvent<{ tab?: SettingsTab }>;
-      if (customEvent.detail?.tab) {
-        setActiveTab(customEvent.detail.tab);
-      }
-    };
-
-    window.addEventListener("goose-note:settings-tab-change", handleTabChange);
-    return () => {
-      window.removeEventListener(
-        "goose-note:settings-tab-change",
-        handleTabChange,
-      );
-    };
-  }, []);
 
   // 数据管理状态
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -370,10 +358,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   useEffect(() => {
-    if (!resetDialogOpen) {
+    if (!open) setResetDialogOpen(false);
+    if (!open || !resetDialogOpen) {
       setResetInput("");
     }
-  }, [resetDialogOpen]);
+  }, [open, resetDialogOpen]);
 
   const clearCurrentContent = async (options?: {
     preserveLocalFolders?: boolean;
@@ -643,61 +632,58 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     HostAdapter.openUrl(app.url, false);
   };
 
+  if (!open && !hasOpened) return null;
+
   return (
     <>
-      <DialogShell
-        open={open}
-        onOpenChange={onOpenChange}
-        layout="fullscreen"
-        hideClose
-        contentClassName="!gap-0 bg-[hsl(var(--goose-shell-bg))]"
-        bodyClassName="h-full min-h-0 overflow-hidden"
-      >
-        <SettingsScaffold
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onClose={() => onOpenChange(false)}
-          tabs={SETTINGS_TABS}
-          feedbackBanner={null}
-          appsBanner={
-            appsBannerVisible && !isElectronHost ? (
-              <div className="relative rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
-                <button
-                  type="button"
-                  onClick={handleCloseAppsBanner}
-                  className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] hover:bg-[var(--goose-interactive-hover)]"
-                  aria-label="关闭鹅的全家桶"
-                >
-                  <LucideIcons.X className="h-3 w-3" />
-                </button>
-                <p className="mb-2 pr-4 text-xs font-medium text-muted-foreground">
-                  鹅的全家桶
-                </p>
-                <div className="space-y-1">
-                  {GOOSE_APPS.map((app) => (
-                    <Button
-                      key={app.id}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenApp(app)}
-                      className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-                    >
-                      <img
-                        src={app.icon}
-                        alt=""
-                        className="h-4 w-4 shrink-0 rounded-[4px] object-cover"
-                      />
-                      <span className="flex-1 truncate">{app.name}</span>
-                      <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  ))}
-                </div>
+      <SettingsScaffold
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        onClose={() => onOpenChange(false)}
+        tabs={SETTINGS_TABS}
+        sidebarContainer={sidebarContainer}
+        mainContainer={mainContainer}
+        visible={open}
+        feedbackBanner={null}
+        appsBanner={
+          appsBannerVisible && !isElectronHost ? (
+            <div className="relative rounded-[10px] bg-[hsl(var(--goose-selected-bg)/0.62)] p-3">
+              <button
+                type="button"
+                onClick={handleCloseAppsBanner}
+                className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                aria-label="关闭鹅的全家桶"
+              >
+                <LucideIcons.X className="h-3 w-3" />
+              </button>
+              <p className="mb-2 pr-4 text-xs font-medium text-muted-foreground">
+                鹅的全家桶
+              </p>
+              <div className="space-y-1">
+                {GOOSE_APPS.map((app) => (
+                  <Button
+                    key={app.id}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenApp(app)}
+                    className="h-auto w-full justify-start gap-2 rounded-[10px] px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                  >
+                    <img
+                      src={app.icon}
+                      alt=""
+                      className="h-4 w-4 shrink-0 rounded-[4px] object-cover"
+                    />
+                    <span className="flex-1 truncate">{app.name}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                ))}
               </div>
-            ) : null
-          }
-        >
-          {activeTab === "general" && (
+            </div>
+          ) : null
+        }
+      >
+        {activeTab === "general" && (
             <div className="settings-groups">
               <SettingsGeneral
                 autoOpenLastNote={privacy.autoOpenLastNote}
@@ -728,6 +714,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "local-folder" && (
             <div className="settings-groups">
               <SettingsLocalFolder
+                visible={open}
                 localFolderFileManager={localFolderFileManager}
                 setLocalFolderFileManager={setLocalFolderFileManager}
                 localFolderExternalEditor={localFolderExternalEditor}
@@ -762,6 +749,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {activeTab === "ai" && (
             <div className="settings-groups">
               <SettingsAI
+                visible={open}
                 ai={ai}
                 enabled={ai.enabled}
                 setEnabled={setAIEnabled}
@@ -774,15 +762,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           )}
 
-          {activeTab === "about" && (
-            <div className="settings-groups">
-              <SettingsAbout />
-            </div>
-          )}
+          {activeTab === "git-sync" && <SettingsGitSync visible={open} />}
 
           {activeTab === "data" && (
             <div className="settings-groups">
               <SettingsDataPanel
+                active={open}
                 importing={importing}
                 onImport={handleImport}
                 selectedIds={selectedIds}
@@ -802,11 +787,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               />
             </div>
           )}
-        </SettingsScaffold>
-      </DialogShell>
+      </SettingsScaffold>
 
       <DialogShell
-        open={resetDialogOpen}
+        open={open && resetDialogOpen}
         onOpenChange={setResetDialogOpen}
         layout="fullscreen"
         contentClassName="bg-[hsl(var(--goose-shell-bg))]"

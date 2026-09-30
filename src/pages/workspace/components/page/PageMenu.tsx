@@ -1,3 +1,4 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import { useSettings } from "@/stores/useSettings";
 import {
   Popover,
@@ -144,6 +145,7 @@ function PageExportSubmenu({
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
       if (event.key !== "Escape") return;
       event.stopPropagation();
       closeNow();

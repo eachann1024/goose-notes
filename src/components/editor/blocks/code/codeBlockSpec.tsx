@@ -1,3 +1,4 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
 import { createExtension, defaultProps } from "@blocknote/core";
@@ -265,6 +266,7 @@ const codeBlockTabIndentExtension = createExtension(({ editor }) => ({
   runsBefore: ["code-block-keyboard-shortcuts"],
   mount: ({ dom, root, signal }) => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
       if (event.key !== "Tab" || event.isComposing) return;
       const domSelection = getCodeDomSelection();
       if (!domSelection) return;
@@ -651,6 +653,7 @@ function CodeBlockComponent({
     if (!isEditable) return;
 
     const applyTabIndent = (event: KeyboardEvent | React.KeyboardEvent) => {
+      if (isWorkspaceSettingsOpen()) return;
       if (event.key !== "Tab" || isComposingKeyboardEvent(event)) return;
       const domSelection = getCodeDomSelection();
       if (!domSelection || !rootRef.current?.contains(domSelection.codeElement))
@@ -1021,7 +1024,7 @@ function CodeBlockComponent({
                 className={cn(
                   "h-6 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-xs shadow-none",
                   "placeholder:text-muted-foreground/50",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0",
+                  "",
                   !isEditingSummary && !summary && "opacity-50",
                   !isEditingSummary && summary && "opacity-70",
                 )}

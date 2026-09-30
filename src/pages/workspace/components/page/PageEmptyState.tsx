@@ -1,3 +1,5 @@
+import { activateWorkspace } from "@/lib/settings-navigation";
+import { isImeKeyboardEvent } from "@/hooks/useImeInput";
 import { Search, Plus, Sparkles, FolderOpen, type LucideIcon } from "lucide-react";
 import { usePages } from "@/stores/usePages";
 import { useNotebooks } from "@/stores/useNotebooks";
@@ -254,9 +256,12 @@ export function PageEmptyState() {
   // 全局快捷键监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.repeat || isImeKeyboardEvent(e)) return;
+      if ((e.target as HTMLElement | null)?.closest?.("[data-shortcut-recorder]")) return;
       // Cmd+Option+P: 新建页面
       if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === "p") {
         e.preventDefault();
+        activateWorkspace();
         onCreatePage();
       }
     };
@@ -378,7 +383,7 @@ export function PageEmptyState() {
                   onPointerMove={isAi ? aiTilt.onPointerMove : undefined}
                   onPointerLeave={isAi ? aiTilt.onPointerLeave : undefined}
                   className={cn(
-                    "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--border))] hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-[hsl(var(--border))] dark:bg-[hsl(var(--goose-selected-bg))] dark:shadow-[0_10px_28px_rgba(2,6,23,0.35)] dark:hover:bg-[var(--goose-interactive-hover)] dark:hover:border-[var(--goose-interactive-hover-border)] dark:hover:shadow-[0_16px_34px_rgba(2,6,23,0.55)]",
+                    "group relative cursor-pointer rounded-[12px] md:rounded-[14px] border border-transparent bg-[hsl(var(--goose-editor-bg))] p-4 sm:p-5 md:p-6 text-left shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--goose-interactive-hover)] hover:border-[hsl(var(--border))] hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] dark:border-[hsl(var(--border))] dark:bg-[hsl(var(--goose-selected-bg))] dark:shadow-[0_10px_28px_rgba(2,6,23,0.35)] dark:hover:bg-[var(--goose-interactive-hover)] dark:hover:border-[var(--goose-interactive-hover-border)] dark:hover:shadow-[0_16px_34px_rgba(2,6,23,0.55)]",
                     isAi && "page-empty-ai-card",
                   )}
                   style={isAi ? aiTilt.tiltStyle : undefined}

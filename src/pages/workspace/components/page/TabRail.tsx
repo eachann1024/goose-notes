@@ -1,3 +1,4 @@
+import { activateWorkspace } from "@/lib/settings-navigation";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -338,6 +339,7 @@ interface TabRailProps {
   page?: Page;
   onOpenSearch: () => void;
   onBeforeActivateTab?: () => void;
+  settingsOpen?: boolean;
   aiPanelOpen?: boolean;
   aiLayoutMode?: NotebookAiLayoutMode;
 }
@@ -347,6 +349,7 @@ export function TabRail({
   page,
   onOpenSearch,
   onBeforeActivateTab,
+  settingsOpen = false,
   aiPanelOpen,
   aiLayoutMode = "fullscreen",
 }: TabRailProps) {
@@ -365,6 +368,7 @@ export function TabRail({
   const setExpandPageId = usePages((s) => s.setExpandPageId);
   const setSidebarCollapsedView = useSidebarView((s) => s.setSidebarCollapsed);
   const locateInTree = (pageId: string) => {
+    activateWorkspace();
     setSidebarCollapsedView(false);
     syncNotebookForPage(pageId);
     setExpandPageId(pageId);
@@ -431,6 +435,7 @@ export function TabRail({
     cursor.clientX <= window.innerWidth + 8 &&
     cursor.clientY <= window.innerHeight + 8;
   const handleTabDragStart = (event: DragStartEvent) => {
+    activateWorkspace();
     updateDragCursor(event);
     const pointer = readDragPointer(event.activatorEvent);
     const el = document.querySelector<HTMLElement>(
@@ -506,7 +511,7 @@ export function TabRail({
       ? formatShortcut("Mod+W")
       : "";
   const canOpenInNewWindow = isElectronRuntime();
-  const editTitleInPill = shouldEditTitleInTabPill(visibleTabs);
+  const editTitleInPill = !settingsOpen && shouldEditTitleInTabPill(visibleTabs);
 
   useEffect(() => {
     const scroller = tabsScrollerRef.current;
@@ -553,6 +558,7 @@ export function TabRail({
   };
 
   const openTabInNewWindow = async (tab: TabItem) => {
+    activateWorkspace();
     const created = await createDesktopWindow({
       mode: "currentTab",
       tab: {
@@ -594,18 +600,21 @@ export function TabRail({
               onBeforeActivateTab?.();
               setActiveTab(tab.id);
             }}
-            onClose={() => closeTab(tab.id)}
+            onClose={() => { activateWorkspace(); closeTab(tab.id); }}
             onCloseOthers={() => {
+              activateWorkspace();
               visibleTabs
                 .filter((item) => item.id !== tab.id)
                 .forEach((item) => closeTab(item.id));
             }}
             onCloseLeft={() => {
+              activateWorkspace();
               visibleTabs
                 .slice(0, visibleIndex)
                 .forEach((item) => closeTab(item.id));
             }}
             onCloseRight={() => {
+              activateWorkspace();
               visibleTabs
                 .slice(visibleIndex + 1)
                 .forEach((item) => closeTab(item.id));

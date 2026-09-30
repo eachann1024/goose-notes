@@ -1,6 +1,5 @@
+.settings-shell[hidden], .settings-sidebar-navigation[hidden] { display: none !important; }
 .settings-scroll { padding: 28px 36px 36px; }
-html.is-electron:not(.is-win) .settings-shell > header { padding-left: var(--electron-traffic-inset, 96px); -webkit-app-region: drag; }
-html.is-electron:not(.is-win) .settings-shell > header button { -webkit-app-region: no-drag; }
 .settings-groups > div {
   max-width: 1120px;
   margin: 0 auto;

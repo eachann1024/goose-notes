@@ -1,3 +1,4 @@
+import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
 import {
   useCallback,
   useEffect,
@@ -284,6 +285,7 @@ export function EditorComposer({
 
   useEffect(() => {
     const handleOpenFind = (event: Event) => {
+      if (isWorkspaceSettingsOpen()) return;
       const findInputFocused = Boolean(
         document.activeElement?.closest?.("[data-goose-find-in-page]"),
       );
@@ -307,6 +309,7 @@ export function EditorComposer({
 
   useEffect(() => {
     const handleOpen = () => {
+      if (isWorkspaceSettingsOpen()) return;
       setLinkPopoverUrl("");
       setLinkPopoverOpen(true);
     };
@@ -328,7 +331,10 @@ export function EditorComposer({
       setLinkPopoverOpen(false);
     };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (isWorkspaceSettingsOpen()) return;
+      if (event.key === "Escape" && !event.defaultPrevented && !event.isComposing && !event.repeat) {
+        event.preventDefault();
+        event.stopPropagation();
         setLinkPopoverOpen(false);
       }
     };
@@ -344,7 +350,7 @@ export function EditorComposer({
     if (__GOOSE_EDITOR_COMPACT__ || __GOOSE_LITE__) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || event.isComposing) return;
+      if (isWorkspaceSettingsOpen() || event.defaultPrevented || event.repeat || event.isComposing) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest?.("[data-shortcut-recorder]")) return;
       if (!matchShortcut(event, SELECTION_QUOTE_ADD_SHORTCUT)) return;
@@ -752,7 +758,7 @@ export function EditorComposer({
               }}
               placeholder="https://..."
               autoFocus
-              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="h-8 w-56 rounded-md border border-transparent bg-background px-2.5 text-sm outline-none placeholder:text-muted-foreground "
             />
             <button
               type="button"
