@@ -331,7 +331,7 @@ export function CommandPalette() {
                   ? "搜索所有记事本..."
                   : `搜索 "${scopedNotebookId ? notebooks[scopedNotebookId].name : currentNotebookName}"...`
               }
-              className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
+              className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -409,7 +409,7 @@ export function CommandPalette() {
                           action.run();
                         });
                       }}
-                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:text-disabled"
+                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
                     >
                       <span className="mr-2 flex h-4 w-4 shrink-0 items-center justify-center">
                         <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]" />

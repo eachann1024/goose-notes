@@ -46,7 +46,7 @@ const TabsTrigger = React.forwardRef<
     isDisabled={disabled}
     ref={ref}
     className={cn(
-      "goose-interactive inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground ring-offset-background data-[disabled]:pointer-events-none data-[disabled]:text-disabled",
+      "goose-interactive inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground ring-offset-background data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
   />

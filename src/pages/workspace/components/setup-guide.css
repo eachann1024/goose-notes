@@ -106,6 +106,10 @@
   line-height: 1.25;
 }
 
+.setup-guide-heading h1:focus {
+  outline: none;
+}
+
 .setup-guide-heading h1:focus-visible {
   color: var(--goose-interactive-selected-fg);
 }

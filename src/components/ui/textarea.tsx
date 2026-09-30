@@ -15,7 +15,7 @@ const Textarea = React.forwardRef<
     <HeroTextArea
       data-slot="textarea"
       className={cn(
-        "goose-interactive flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled md:text-sm",
+        "goose-interactive flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
         className
       )}
       ref={ref}

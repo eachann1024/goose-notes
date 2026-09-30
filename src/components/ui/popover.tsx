@@ -442,7 +442,7 @@ function PopoverAction({
       {...props}
       type="button"
       className={cn(
-        "goose-interactive relative flex w-full cursor-default select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left text-[13px] outline-none transition-colors disabled:pointer-events-none disabled:text-disabled",
+        "goose-interactive relative flex w-full cursor-default select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left text-[13px] outline-none transition-colors disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       onClick={(event) => {

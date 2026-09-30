@@ -546,7 +546,7 @@ export function renderItem({
       {children}
       {showEmptyFolderPlaceholder ? (
         <div
-          className="flex items-center text-[13px] text-muted-foreground"
+          className="flex items-center text-[13px] text-muted-foreground/70"
           style={{
             paddingLeft: (depth + 1) * INDENT + ROW_PADDING_LEFT + CHILD_TITLE_OFFSET,
             minHeight: "var(--main-tree-row-height)",

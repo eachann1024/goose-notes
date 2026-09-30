@@ -158,7 +158,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
             type="button"
             onClick={() => void handleCreateFolder()}
             disabled={creating !== null}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-55"
           >
             {creating === "folder" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -171,7 +171,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
             type="button"
             onClick={() => void handleCreateFile()}
             disabled={creating !== null}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-55"
           >
             {creating === "file" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -199,7 +199,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
                 type="button"
                 onClick={() => void handleCreateFile()}
                 disabled={creating !== null}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-55"
               >
                 <FilePlus2 className="h-3.5 w-3.5" />
                 新建文件
@@ -208,7 +208,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
                 type="button"
                 onClick={() => void handleCreateFolder()}
                 disabled={creating !== null}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-55"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
                 新建子文件夹
