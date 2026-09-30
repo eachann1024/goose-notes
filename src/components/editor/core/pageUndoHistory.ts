@@ -1,5 +1,5 @@
 import { closeHistory, history } from "@tiptap/pm/history";
-import { EditorState, Plugin, Selection } from "@tiptap/pm/state";
+import { EditorState, Plugin } from "@tiptap/pm/state";
 import { Step } from "@tiptap/pm/transform";
 import type { Schema } from "@tiptap/pm/model";
 
@@ -78,7 +78,8 @@ export class PageUndoHistory {
       });
       const state = EditorState.create({
         doc,
-        selection: Selection.fromJSON(doc, snapshot.state.selection.toJSON()),
+        // Bookmarks resolve against the destination schema without invoking custom JSON decoders.
+        selection: snapshot.state.selection.getBookmark().resolve(doc),
         plugins: current.plugins.map((entry) => entry === plugin ? restoredPlugin : entry),
       }).reconfigure({ plugins: current.plugins });
       // 返回后继续输入，应形成新的撤销组。

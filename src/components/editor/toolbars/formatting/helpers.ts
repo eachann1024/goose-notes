@@ -8,7 +8,8 @@ import {
   type TableContent,
 } from "@blocknote/core";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
-import { Selection, TextSelection } from "prosemirror-state";
+import { Selection, TextSelection, type SelectionBookmark } from "prosemirror-state";
+import type { Node as ProseMirrorNode } from "prosemirror-model";
 import { CellSelection } from "prosemirror-tables";
 
 export const NON_FORMATTABLE_TYPES = new Set([
@@ -845,24 +846,31 @@ function applyAlignmentToSelection(
 }
 
 export function snapshotCurrentSelection(editor: BlockNoteEditor<any, any, any>) {
-  return { json: editor.prosemirrorState.selection.toJSON() };
+  const { selection } = editor.prosemirrorState;
+  return { json: selection.toJSON(), bookmark: selection.getBookmark() };
 }
 
 export function restoreSelectionAfterFormat(
   editor: BlockNoteEditor<any, any, any>,
-  snapshot: { json: any },
+  snapshot: { json: any; bookmark?: SelectionBookmark },
 ) {
+  // BlockNote's multiple-node class inherits Selection.fromJSON recursively.
+  const resolve = (doc: ProseMirrorNode) => snapshot.json.type === "multiple-node"
+    ? snapshot.bookmark?.resolve(doc) ?? TextSelection.between(
+      doc.resolve(snapshot.json.anchor), doc.resolve(snapshot.json.head),
+    )
+    : Selection.fromJSON(doc, snapshot.json);
   try {
     const view = editor.prosemirrorView;
     if (view) {
-      const sel = Selection.fromJSON(view.state.doc, snapshot.json);
+      const sel = resolve(view.state.doc);
       if (!view.state.selection.eq(sel)) {
         view.dispatch(view.state.tr.setSelection(sel));
       }
       return;
     }
     editor.transact((tr) => {
-      tr.setSelection(Selection.fromJSON(tr.doc, snapshot.json));
+      tr.setSelection(resolve(tr.doc));
     });
   } catch {
     /* 文档结构变了就保持当前选区 */
