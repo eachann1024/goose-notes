@@ -1,16 +1,17 @@
 /**
  * PDF 导出 block mapping。
  *
- * 在 pdfDefaultSchemaMappings.blockMapping 之上覆盖项目自定义 / 视觉块：
+ * 在项目手写默认映射之上提供自定义 / 视觉块：
  *   - callout      —— 浅色导出：左侧强调色 + 笔记页同色背景 + emoji icon
  *   - file/video/audio —— 可读占位（文件名），不把本地/data URL 丢给 react-pdf 去 fetch
  *   - codeBlock    —— mermaid/math/latex 渲成 PNG；失败才回退源码
  *   - image        —— 任意本地/插件/远程 URL 先转栅格 data URL 再嵌入
- *   - heading      —— 折叠标题加 ▾，子块仍由 exporter 缩进输出
+ *   - heading      —— 折叠标题加 ▾，子块由 renderer 缩进输出
  */
 
 import type { Text } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
+import type { PdfBlockMapping } from "./renderer";
 import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";
 import {
   isRasterPdfImageSrc,
@@ -45,20 +46,11 @@ function isHttpUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-/**
- * 用工厂返回 mapping。这样可以在内部 await dynamic-import @react-pdf/renderer
- * 与 @blocknote/xl-pdf-exporter 默认 mapping，避免在模块顶层引入。
- */
+/** 延迟加载 PDF primitive，不加载编辑器或第三方默认映射。 */
 export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
-  const [{ View, Text, Link, Image }, { pdfDefaultSchemaMappings }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("@blocknote/xl-pdf-exporter"),
-  ]);
-
-  const defaultBlockMapping = pdfDefaultSchemaMappings.blockMapping as Record<
-    string,
-    (...args: any[]) => any
-  >;
+  const { View, Text, Link, Image } = await import("@react-pdf/renderer");
+  const { createDefaultPdfBlockMappings } = await import("./renderer");
+  const defaultBlockMapping = createDefaultPdfBlockMappings();
 
   const monoFontSize = FONT_SIZE * PIXELS_PER_POINT;
   const pageLocalFilePath = options?.pageLocalFilePath ?? null;
@@ -73,7 +65,6 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
     const label = language === "math" ? "ƒ Math" : "📊 Mermaid";
     return (
       <View
-        wrap={false}
         key={language + block.id}
         style={{
           padding: 12 * PIXELS_PER_POINT,
@@ -104,7 +95,7 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
         key={keyPrefix + block.id}
         style={{ alignItems: "center", paddingVertical: 4 * PIXELS_PER_POINT }}
       >
-        <Image src={src} style={{ width: widthPercent }} />
+        <Image src={src} style={{ width: widthPercent, maxHeight: 650, objectFit: "contain" }} />
         {caption ? (
           <Text style={{ fontSize: FONT_SIZE * 0.8 * PIXELS_PER_POINT, color: "#6b7280" }}>
             {caption}
@@ -146,7 +137,6 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
     const icon = resolveCalloutIcon(block.props?.icon as string | undefined);
     return (
       <View
-        wrap={false}
         key={"callout" + block.id}
         style={{
           flexDirection: "row",
@@ -194,41 +184,7 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
     return placeholderView(block, "audio", "♪", name, url);
   };
 
-  const headingMapping = (
-    block: any,
-    exporter: any,
-    nestingLevel: number,
-    numberedListIndex?: number,
-    children?: any,
-  ) => {
-    if (typeof defaultBlockMapping.heading !== "function") {
-      return (
-        <Text key={"heading" + block.id}>
-          {exporter.transformInlineContent(Array.isArray(block.content) ? block.content : [])}
-        </Text>
-      );
-    }
-    if (block.props?.isToggleable) {
-      const content = Array.isArray(block.content) ? block.content : [];
-      return defaultBlockMapping.heading(
-        {
-          ...block,
-          content: [{ type: "text", text: "▾ ", styles: {} }, ...content],
-        },
-        exporter,
-        nestingLevel,
-        numberedListIndex,
-        children,
-      );
-    }
-    return defaultBlockMapping.heading(
-      block,
-      exporter,
-      nestingLevel,
-      numberedListIndex,
-      children,
-    );
-  };
+  const headingMapping = defaultBlockMapping.heading;
 
   const codeBlockMapping = async (
     block: any,
@@ -260,32 +216,7 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
       return sourceFallback(block, visual.language, visual.text);
     }
 
-    if (typeof defaultBlockMapping.codeBlock === "function") {
-      return defaultBlockMapping.codeBlock(
-        block,
-        exporter,
-        nestingLevel,
-        numberedListIndex,
-        children,
-      );
-    }
-
-    const textContent = Array.isArray(block.content)
-      ? (block.content as Array<{ text?: string }>).map((it) => it.text || "").join("")
-      : "";
-    return (
-      <View
-        wrap={false}
-        key={"codeBlock" + block.id}
-        style={{
-          padding: 12 * PIXELS_PER_POINT,
-          border: "1px solid #ddd",
-          borderRadius: 4,
-        }}
-      >
-        <Text style={{ fontSize: monoFontSize }}>{textContent}</Text>
-      </View>
-    ) as unknown as ReactElement<typeof Text>;
+    return defaultBlockMapping.codeBlock(block, exporter, nestingLevel, numberedListIndex);
   };
 
   const imageMapping = async (
@@ -305,16 +236,6 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
         console.error("[pdfExport] image resolve failed:", url, error);
         src = null;
       }
-    }
-
-    if (src && isRasterPdfImageSrc(src) && typeof defaultBlockMapping.image === "function") {
-      return defaultBlockMapping.image(
-        { ...block, props: { ...block.props, url: src } },
-        exporter,
-        nestingLevel,
-        numberedListIndex,
-        children,
-      );
     }
 
     if (src && isRasterPdfImageSrc(src)) {
@@ -337,5 +258,5 @@ export async function createPdfBlockMappings(options?: PdfBlockMappingOptions) {
     heading: headingMapping,
     codeBlock: codeBlockMapping,
     image: imageMapping,
-  };
+  } as Record<string, PdfBlockMapping>;
 }
