@@ -105,7 +105,7 @@
   width: 56px;
   height: 56px;
   padding: 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   color: #f7f7f7;
   background: rgba(20, 20, 20, 0.55);
   box-shadow:
@@ -181,7 +181,7 @@
   position: relative;
   width: 100%;
   height: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: rgba(255, 255, 255, 0.22);
   transition: height 120ms ease;
 }
@@ -197,7 +197,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: #f3f3f3;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
@@ -207,7 +207,7 @@
   top: 50%;
   width: 12px;
   height: 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: hsl(var(--background));
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translate(-50%, -50%) scale(0.6);

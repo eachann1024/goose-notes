@@ -773,7 +773,7 @@ export function FormattingToolbarColorPicker({
           />
           {lastColorBar ? (
             <span
-              className="absolute inset-x-0.5 bottom-0 h-0.5 rounded-full"
+              className="absolute inset-x-0.5 bottom-0 h-0.5 rounded-marker"
               style={{ background: lastColorBar }}
             />
           ) : null}

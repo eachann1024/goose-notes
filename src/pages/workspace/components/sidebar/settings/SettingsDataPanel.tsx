@@ -44,7 +44,7 @@ interface SettingsDataPanelProps {
 }
 
 const DATA_BADGE_CLASS =
-  "rounded-full bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75 dark:bg-[hsl(var(--foreground)/0.1)]";
+  "rounded-control bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-muted-foreground dark:bg-[hsl(var(--foreground)/0.1)]";
 
 const DATA_UNSELECTED_CARD_CLASS =
   "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:bg-[hsl(var(--foreground)/0.08)]";
@@ -433,7 +433,7 @@ export function SettingsDataPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onSelectAll}
-                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                    className="h-8 rounded-[10px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
                     {selectedCount === totalCount ? "取消全选" : "全选"}
                   </Button>
@@ -540,7 +540,7 @@ export function SettingsDataPanel({
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-foreground/80">服务地址</Label>
                 <input
-                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                   value={tempUrl}
                   disabled={busy}
                   onChange={(e) => setTempUrl(e.target.value)}
@@ -555,7 +555,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">账号</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempUsername}
                     disabled={busy}
                     onChange={(e) => setTempUsername(e.target.value)}
@@ -565,7 +565,7 @@ export function SettingsDataPanel({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-foreground/80">远端目录</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempRemoteDir}
                     disabled={busy}
                     onChange={(e) => setTempRemoteDir(e.target.value)}
@@ -579,7 +579,7 @@ export function SettingsDataPanel({
                   <Label className="text-xs font-medium text-foreground/80">应用密码</Label>
                   <input
                     type="password"
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempPassword}
                     disabled={busy}
                     onChange={(e) => setTempPassword(e.target.value)}
@@ -592,7 +592,7 @@ export function SettingsDataPanel({
                     type="number"
                     min={1}
                     max={365}
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempRetentionDays}
                     disabled={busy}
                     onChange={(e) => setTempRetentionDays(parseInt(e.target.value) || 30)}
@@ -614,7 +614,7 @@ export function SettingsDataPanel({
                 />
               </div>
 
-              <div className="rounded-[12px] border border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] p-3 text-xs text-foreground/80 dark:bg-[hsl(var(--foreground)/0.08)]">
+              <div className="rounded-[12px] border border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] p-3 text-xs text-foreground dark:bg-[hsl(var(--foreground)/0.08)]">
                 <div className="flex flex-col gap-1.5">
                   <div>
                     <strong>最近上传：</strong>

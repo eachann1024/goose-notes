@@ -122,7 +122,7 @@ function PortalHoverTip({
         ? createPortal(
             <div
               role="tooltip"
-              className="pointer-events-none fixed z-[30000] max-w-xs select-none whitespace-normal break-words rounded-[14px] border border-border/80 bg-popover px-2.5 py-1.5 text-[12px] font-medium leading-snug text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:border-white/20"
+              className="pointer-events-none fixed z-[30000] max-w-xs select-none whitespace-normal break-words rounded-control border border-border/80 bg-popover px-2.5 py-1.5 text-[12px] font-medium leading-snug text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:border-white/20"
               style={{ top: tip.top, left: tip.left }}
             >
               {content}
@@ -325,7 +325,7 @@ export function ConversationHistoryPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-[var(--goose-interactive-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)] disabled:pointer-events-none disabled:text-disabled data-[state=open]:bg-[var(--goose-interactive-selected)] dark:data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
           aria-label="历史会话"
           title="历史会话"
           disabled={disabled}

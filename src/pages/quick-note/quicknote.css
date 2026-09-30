@@ -278,7 +278,7 @@ body,
   max-width: calc(100% - 168px);
   padding: 3px 4px 3px 8px;
   border: 1px solid var(--goose-interactive-selected-border);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--goose-interactive-selected);
   color: var(--goose-interactive-selected-fg);
   box-shadow: none;
@@ -295,7 +295,7 @@ body,
   flex: 0 0 auto;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-marker);
   background: currentColor;
   box-shadow: 0 0 0 3px var(--goose-interactive-hover);
 }
@@ -315,7 +315,7 @@ body,
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--goose-interactive-hover);
   color: currentColor;
   font-size: 10px;
@@ -333,7 +333,7 @@ body,
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   background: transparent;
   color: currentColor;
   cursor: pointer;

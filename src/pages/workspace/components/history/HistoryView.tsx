@@ -457,7 +457,7 @@ export function HistoryVersionList() {
                           ) : null}
                           <span
                             className={cn(
-                              "relative z-[1] h-2 w-2 rounded-full border",
+                              "relative z-[1] h-2 w-2 rounded-marker border",
                               isSelected
                                 ? "border-[var(--goose-interactive-selected-fg)] bg-[var(--goose-interactive-selected-fg)]"
                                 : "border-border bg-[hsl(var(--goose-shell-bg))]",

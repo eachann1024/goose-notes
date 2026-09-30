@@ -202,10 +202,10 @@ export function StreamingDatavizText({
         <div className="whitespace-pre-wrap break-words text-sm leading-7">{cleanedText}</div>
         {streaming && (
           <div className="mt-2.5 flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
-            {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground/70">{streamPhaseLabel}</span>}
+            <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
+            {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground">{streamPhaseLabel}</span>}
           </div>
         )}
       </>
@@ -250,10 +250,10 @@ export function StreamingDatavizText({
       <DatavizSegmentList segments={segments} trailing={streamingHtmlTrailing} />
       {streaming && !leading && (
         <div className="mt-2.5 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
-          {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground/70">{streamPhaseLabel}</span>}
+          <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-marker bg-muted-foreground/50" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
+          {streamPhaseLabel && <span className="ml-1 text-xs text-muted-foreground">{streamPhaseLabel}</span>}
         </div>
       )}
     </div>

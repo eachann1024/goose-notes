@@ -164,8 +164,10 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
           <div className="space-y-2">{rows.map((folder) => {
             const selected = config.folders.some((item) => item.notebookId === folder.notebookId);
             const available = localNotebooks.some((item) => item.id === folder.notebookId);
-            const remembered = mappings.current.get(`${id}:${folder.notebookId}`);
-            return <div key={folder.notebookId} className="rounded-lg border border-border p-3"><Checkbox className="min-h-6 w-full min-w-0 items-start gap-3" aria-label={`同步 ${folder.name}`} isSelected={selected} isDisabled={disabled || (!available && !selected) || (config.layout === "legacy-root" && !selected && config.folders.length > 0)} onChange={(checked) => {
+            const check = folderChecks[folder.localPath];
+            const folderError = !available ? "记事本未打开" : check?.error;
+            const duplicateName = (nameCounts.get(folder.name) ?? 0) > 1;
+            return <div key={folder.notebookId} className="min-w-0 rounded-lg bg-muted/50 p-3"><Checkbox className="min-h-6 w-full min-w-0 items-center gap-2" aria-label={`同步 ${folder.name}${duplicateName ? ` ${folder.localPath}` : ""}`} isSelected={selected} isDisabled={disabled || (!selected && (!available || !check || Boolean(folderError))) || (config.layout === "legacy-root" && !selected && config.folders.length > 0)} onChange={(checked) => {
               const key = `${id}:${folder.notebookId}`;
               const mapping = mappings.current.get(key) ?? { ...folder, remotePath: config.layout === "legacy-root" ? "" : newRemotePath(folder.name) };
               mappings.current.set(key, mapping);
@@ -175,12 +177,12 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
         </SettingsSectionCard>
         <SettingsSectionCard title="同步状态">
           <div role="status" aria-live="polite" className="space-y-2 text-sm"><p className="flex items-center gap-2">{(pending || syncing) && spinner}{syncing ? "正在同步所选文件夹…" : pending ? `${pending}…` : status?.phase === "error" ? "同步失败" : "等待同步"}</p><p className="text-muted-foreground">上次成功：{status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "尚无记录"}</p></div>
-          {status?.error && <p role="alert" className="break-words text-sm text-destructive">{status.error} 请检查文件夹、SSH 权限和网络后重试。</p>}
-          <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled || !config.folders.length} onClick={() => void run(id, "同步", () => bridge.syncNow(id))}>{status?.phase === "error" ? "重试同步" : "立即同步"}</Button><Button variant="ghost" disabled={disabled} onClick={() => setRemoveConfirmation(id)}>移除配置</Button></div>
+          {status?.error && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{status.error}</p>}
+          <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled || !config.folders.length || selectedFolderError} onClick={() => void run(id, "同步", () => bridge.syncNow(id))}>{status?.phase === "error" ? "重试同步" : "立即同步"}</Button><Button variant="ghost" disabled={disabled} onClick={() => setRemoveConfirmation(id)}>移除配置</Button></div>
           {removeConfirmation === id && <div className="space-y-2 rounded-lg border border-border p-3"><p className="text-sm text-muted-foreground">仅移除本应用的同步配置和检查凭据，保留本地与远端文件。</p><div className="flex flex-wrap gap-2"><Button variant="destructive" disabled={disabled} onClick={() => void run(id, "移除配置", () => bridge.remove(id), () => { setRemoveConfirmation(""); setSelectedId(""); setNewId(crypto.randomUUID()); })}>确认移除</Button><Button variant="outline" disabled={disabled} onClick={() => setRemoveConfirmation("")}>取消</Button></div></div>}
         </SettingsSectionCard>
       </>}
-      {errors[id] && <p role="alert" className="break-words text-sm text-destructive">{errors[id]} 请修正后重新执行。</p>}
+      {errors[id] && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{errors[id]}</p>}
     </>}
     <SettingsSectionCard title="连接说明"><ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground"><li>需要本机安装 Git，并将 SSH 公钥添加到 GitHub 或 Gitee。</li><li>首次连接平台请先在终端完成 SSH 主机信任确认；加密私钥需要由 SSH agent 解锁。</li><li>成功同步不会弹出通知，异常可在同步状态中查看并重试。</li></ul></SettingsSectionCard>
   </div>;

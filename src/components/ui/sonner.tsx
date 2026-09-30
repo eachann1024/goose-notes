@@ -27,7 +27,7 @@ const defaultToastClassNames = {
   // 轻量关闭：无粗边框，默认细 X，hover 才淡底高亮
   // hover 背景必须用 rgba，禁止 foreground/8 —— 旧内核会退化成实心黑圆
   closeButton:
-    "goose-interactive goose-toast-close !absolute !left-auto !right-1.5 !top-2 !transform-none !translate-x-0 !translate-y-0 !h-[22px] !w-[22px] !rounded-full !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
+    "goose-interactive goose-toast-close !absolute !left-auto !right-1.5 !top-2 !transform-none !translate-x-0 !translate-y-0 !h-[22px] !w-[22px] !rounded-control !border-0 !bg-transparent !opacity-55 hover:!opacity-100 !text-muted-foreground !transition-all !duration-150 !cursor-pointer !shadow-none",
   error:
     "goose-toast-error !border-[rgba(200,25,46,0.18)] dark:!border-[rgba(255,109,125,0.18)]",
   success: "goose-toast-success",

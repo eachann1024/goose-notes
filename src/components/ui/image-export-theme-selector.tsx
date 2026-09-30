@@ -224,7 +224,7 @@ export function ImageExportThemeSelector({
             {notebookTheme && (
               <section className="mb-5">
                 <header className="flex items-center gap-2 mb-2.5 px-0.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-marker bg-primary" />
                   <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
                     当前
                   </span>
@@ -249,7 +249,7 @@ export function ImageExportThemeSelector({
                 <section key={group} className="mb-5 last:mb-1">
                   <header className="flex items-center gap-2 mb-2.5 px-0.5">
                     <span
-                      className={`inline-block h-1.5 w-1.5 rounded-full ${group === "light" ? "bg-foreground/40" : "bg-foreground"}`}
+                      className={`inline-block h-1.5 w-1.5 rounded-marker ${group === "light" ? "bg-foreground/40" : "bg-foreground"}`}
                     />
                     <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
                       {group === "light" ? "浅色" : "深色"}
@@ -650,7 +650,7 @@ function ThemePreviewCard({
           </div>
         )}
         {selected && (
-          <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-[0_2px_6px_rgba(15,23,42,0.18)]">
+          <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-control bg-primary shadow-[0_2px_6px_rgba(15,23,42,0.18)]">
             <GooseIcons.Check
               className="h-3 w-3 text-primary-foreground"
               strokeWidth={3}

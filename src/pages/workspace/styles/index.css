@@ -141,6 +141,11 @@
   left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
 }
 
+/* 浅色外框增强区域分隔，独立于内部细分隔线，保留主题色与圆角。 */
+:root:not(.dark) .workspace-shell .workspace-content-frame {
+  border-color: hsl(var(--foreground) / 0.12);
+}
+
 /* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。 */
 .dark .workspace-shell .workspace-content-frame {
   border-color: var(--workspace-top-edge);

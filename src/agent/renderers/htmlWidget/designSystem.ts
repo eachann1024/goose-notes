@@ -282,7 +282,7 @@ ${colorVarsCss}
   --border-radius-md: 8px;
   --border-radius-lg: 10px;
   --border-radius-xl: 12px;
-  --border-radius-full: 9999px;
+  --border-radius-full: var(--border-radius-md);
   --border-width-regular: 0.5px;
   --shadow-hairline: 0 1px 2px 0 rgba(0,0,0,0.05);
   --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
@@ -371,7 +371,7 @@ input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-md);
   background: var(--color-background-primary);
   border: 1px solid var(--color-border-secondary);
   cursor: pointer;
@@ -381,7 +381,7 @@ input[type=range]:hover::-webkit-slider-thumb { border-color: var(--color-border
 input[type=range]::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-md);
   background: var(--color-background-primary);
   border: 1px solid var(--color-border-secondary);
   cursor: pointer;
@@ -678,7 +678,7 @@ tbody tr:last-child td { border-bottom: none; }
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
