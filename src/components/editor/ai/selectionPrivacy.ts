@@ -20,9 +20,13 @@ export function captureInlineSelectionParts(
   const textSelection = selection instanceof TextSelection;
   const parts: InlineSelectionPart[] = [];
   const unsupported = () => new Error("选区含表格或非文字块，请只选择正文文字后重试。");
-  if (textSelection && [selection.$from, selection.$to].some((pos) =>
-    !pos.parent.isTextblock || pos.depth < 2 || pos.node(-1).type.name !== "blockContainer",
-  )) throw unsupported();
+  // Body-wide selection (second Cmd+A) can end between containers instead of
+  // inside inline text. Validate those ranges per block below, while still
+  // rejecting positions inside tables and other non-inline content.
+  if (textSelection && [selection.$from, selection.$to].some((pos) => {
+    if (["doc", "blockGroup", "blockContainer"].includes(pos.parent.type.name)) return false;
+    return !pos.parent.isTextblock || pos.depth < 2 || pos.node(-1).type.name !== "blockContainer";
+  })) throw unsupported();
   doc.nodesBetween(from, to, (node, pos) => {
     if (node.type.name !== "blockContainer") return true;
     const content = node.firstChild;
