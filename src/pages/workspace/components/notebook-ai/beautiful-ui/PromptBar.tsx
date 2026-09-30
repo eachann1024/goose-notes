@@ -13,7 +13,7 @@ export function PromptBar({
   className,
 }: {
   streaming?: boolean;
-  /** 多行展开态：布局换行；beam 圆角始终与外壳 20px 对齐 */
+  /** 多行展开态：布局换行；beam 圆角始终与外壳实际圆角 对齐 */
   expanded?: boolean;
   children: ReactNode;
   className?: string;
@@ -33,6 +33,7 @@ export function PromptBar({
           width,
           height,
           inset: BEAM_INSET,
+          radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || PROMPT_BAR_RADIUS,
         }),
       );
     };

@@ -169,13 +169,13 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 }
 
 /*
- * 输入条外壳：单行、多行都是 20px 圆角（与 .bui-approval 同圆角），
+ * 输入条外壳：单行、多行复用通用控件圆角，
  * 边框与右键菜单 --goose-menu-border 一致，避免白底上看不见。
  * 高度与控件位移由 PromptBar 共用一次 180ms 布局过渡；编辑器立即完成重排。
  * 颜色过渡沿用原 150ms。
  */
 .notebook-ai-composer-shell {
- border-radius: 20px;
+ border-radius: var(--radius-control);
  background: var(--goose-input-surface);
  transition:
   color 150ms ease,
@@ -185,7 +185,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 .bui-prompt-bar {
  overflow: hidden;
  border: 1px solid hsl(var(--goose-menu-border));
- border-radius: 20px;
+ border-radius: var(--radius-control);
  background: var(--goose-input-surface);
 }
 .bui-prompt-bar > .notebook-ai-composer-shell {

@@ -28,7 +28,7 @@ function SplitPaneCloseButton({
       type="button"
       aria-label="关闭此格"
       className={cn(
-        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
         alwaysVisible
           ? "opacity-100"
           : "opacity-0 group-hover/split-chrome:opacity-100",

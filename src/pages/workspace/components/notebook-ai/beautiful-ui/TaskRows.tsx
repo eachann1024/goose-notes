@@ -30,7 +30,7 @@ function StatusMark({ status }: { status: ToolTaskRowView["status"] }) {
       </svg>
     );
   }
-  return <span className="h-1.5 w-1.5 rounded-full bg-current text-muted-foreground" />;
+  return <span className="h-1.5 w-1.5 rounded-marker bg-current text-muted-foreground" />;
 }
 
 function pillLabel(status: ToolTaskRowView["status"]) {

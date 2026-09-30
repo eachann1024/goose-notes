@@ -1,4 +1,4 @@
-/* 全局数值滑杆：原生键盘行为，细轨与空心圆柄；命中区域保持 32px。 */
+/* 全局数值滑杆：原生键盘行为，细轨与空心圆角方柄；命中区域保持 32px。 */
 input[type="range"] {
   appearance: none;
   -webkit-appearance: none;
@@ -17,19 +17,19 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: linear-gradient(to right, var(--range-ink) 0 var(--range-fill, 0%), var(--range-track) var(--range-fill, 0%) 100%);
 }
 
 input[type="range"]::-moz-range-track {
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: var(--range-track);
 }
 
 input[type="range"]::-moz-range-progress {
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: var(--range-ink);
 }
 
@@ -40,7 +40,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 20px;
   margin-top: -8px;
   border: 1px solid var(--range-ink);
-  border-radius: 999px;
+  border-radius: var(--radius-thumb);
   background: var(--range-handle);
   box-shadow: 0 1px 3px hsl(var(--foreground) / 0.12);
 }
@@ -50,7 +50,7 @@ input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
   border: 1px solid var(--range-ink);
-  border-radius: 999px;
+  border-radius: var(--radius-thumb);
   background: var(--range-handle);
   box-shadow: 0 1px 3px hsl(var(--foreground) / 0.12);
 }

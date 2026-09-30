@@ -284,7 +284,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h4 className="text-base font-semibold">显示</h4>
-        <span className="rounded-full bg-[var(--goose-interactive-selected)] px-3 py-1 text-xs text-[var(--goose-interactive-selected-fg)]">
+        <span className="rounded-control bg-[var(--goose-interactive-selected)] px-3 py-1 text-xs text-[var(--goose-interactive-selected-fg)]">
           {folders.length} 项已隐藏
         </span>
       </div>
@@ -317,7 +317,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
                 <GooseIcons.FolderClosed className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="min-w-0 flex-1 break-all text-sm font-medium">{folder}</span>
                 {isDefaultFolder ? (
-                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">默认隐藏 · 固定</span>
+                  <span className="shrink-0 rounded-control border border-border px-2 py-0.5 text-xs text-muted-foreground">默认隐藏 · 固定</span>
                 ) : (
                   <button
                     type="button"

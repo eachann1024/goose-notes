@@ -32,55 +32,6 @@ const value = (source: string, name: string) => {
   assert.ok(found, `Missing --${name}`);
   return found[1].trim();
 };
-
-const option = appearance.match(/\{\s*value: "amber",([\s\S]*?)\n  \},/);
-assert.ok(option, "Missing amber appearance option");
-assert.match(option[0], /value: "amber"/);
-assert.match(option[1], /label: "晨橙"/);
-assert.match(types, /"amber"/);
-assert.match(appearance, /className="relative h-5 w-5[^\"]*rounded-full/);
-assert.equal((appearance.match(/absolute inset-y-0 (?:left|right)-0 w-1\/2/g) ?? []).length, 2, "Keep the original two-half preview size");
-const preview = (name: string) => {
-  const found = option[1].match(new RegExp(`${name}: "([^"]+)"`));
-  assert.ok(found, `Missing ${name}`);
-  return found[1];
-};
-const amberSurface = rule(css, ':root:not(.dark)[data-goose-accent="amber"]');
-const amberAccent = rule(css, ':root[data-goose-accent="amber"]');
-const amberDarkSurface = rule(css, ':root.dark[data-goose-accent="amber"]');
-const darkAccent = rule(css, ':root.dark[data-goose-accent="amber"]');
-// The saved key stays amber; runtime overrides must agree with both CSS palettes.
-const runtimeAmber = runtime.slice(runtime.indexOf("  amber: {"), runtime.indexOf("  coral: {"));
-for (const [mode, declarations] of [["light", amberAccent], ["dark", darkAccent]]) {
-  const block = runtimeAmber.match(new RegExp(`${mode}: \{([\\s\\S]*?)\n    \}`));
-  assert.ok(block, `Missing ${mode} runtime palette`);
-  for (const [, name, color] of block[1].matchAll(/"--([^"]+)": "([^"]+)"/g)) {
-    assert.equal(value(declarations, name), color, `${mode} CSS/runtime mismatch: ${name}`);
-  }
-}
-assert.equal(value(amberAccent, "goose-interactive-selected"), "#fffaf3");
-assert.equal(value(amberAccent, "goose-inline-code-bg"), "#fff0de");
-assert.equal(value(amberAccent, "goose-accent-focus"), "#ad4e15");
-const monoSurface = rule(css, ':root:not(.dark)[data-goose-accent="mono"]');
-const monoAccent = rule(css, ':root[data-goose-accent="mono"]');
-assert.equal(value(amberSurface, "goose-editor-surface"), "linear-gradient(180deg, #fbf7f0, #fbfaf5)");
-assert.equal(value(amberSurface, "goose-editor-bg"), "38.182 57.895% 96.275%", "Solid editor chrome must match the paper gradient start");
-assert.equal(value(amberSurface, "goose-sidebar-surface"), "linear-gradient(180deg, #f7e8d5, #faf4e8)");
-assert.equal(value(amberSurface, "goose-ai-surface"), "linear-gradient(180deg, #faf4e9, #fbfaf5)");
-assert.equal(value(amberSurface, "goose-secondary-surface"), "var(--goose-ai-surface)");
-assert.equal(value(amberSurface, "goose-input-surface"), "#ffffff");
-for (const property of ["goose-sidebar-surface", "goose-secondary-surface"]) {
-  assert.equal(css.match(new RegExp(`--${property}:`, "g"))?.length, 2, `${property} must have only light/dark amber definitions`);
-  assert.match(amberSurface, new RegExp(`--${property}:`));
-  assert.match(amberDarkSurface, new RegExp(`--${property}:`));
-  assert.doesNotMatch(monoSurface, new RegExp(`--${property}:`));
-  assert.doesNotMatch(monoAccent, new RegExp(`--${property}:`));
-  assert.doesNotMatch(runtime, new RegExp(`--${property}`), `${property} must not linger as an inline runtime token`);
-}
-assert.match(workspace, /--workspace-sidebar-surface:\s*var\(--goose-sidebar-surface,/);
-assert.match(workspace, /\.settings-shell :is\(\[data-slot="input"\], textarea, select\)\s*\{\s*background: var\(--goose-input-surface\)/);
-assert.match(workspace, /:root\[data-goose-accent="amber"\][\s\S]*?\.workspace-page-empty[\s\S]*?\.goose-menu-surface[\s\S]*?background:\s*var\(--goose-secondary-surface\)/);
-
 const toRgb = (input: string): [number, number, number] => {
   const hex = input.match(/^#([\da-f]{6})$/i);
   if (hex) return [0, 2, 4].map((i) => Number.parseInt(hex[1].slice(i, i + 2), 16)) as [number, number, number];

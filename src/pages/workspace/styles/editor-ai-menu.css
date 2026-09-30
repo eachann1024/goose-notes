@@ -166,7 +166,7 @@
   content: "";
   position: absolute;
   inset: -7px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--goose-interactive-selected);
   transform: scale(0.72);
   opacity: 0.4;
@@ -893,7 +893,7 @@
   border: 1px solid rgba(219, 219, 219, 0.9);
   background: transparent;
   color: hsl(var(--popover-foreground));
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   padding: 4px 12px;
   font-size: 12.5px;
   line-height: 18px;
@@ -924,7 +924,7 @@
   border-color: var(--goose-interactive-hover-border);
 }
 
-/* ➕：圆形虚线，与普通 tag 区分 */
+/* ➕：圆角方形虚线，与普通 tag 区分 */
 .goose-ai-tag--plus {
   display: inline-flex;
   align-items: center;
@@ -933,7 +933,7 @@
   height: 28px;
   padding: 0;
   border-style: dashed;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   color: hsl(var(--muted-foreground));
 }
 

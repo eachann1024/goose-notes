@@ -157,7 +157,7 @@
 }
 
 .bui-loader-cell--round {
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
 }
 
 .bui-composer-send .bui-loader-grid {
@@ -168,7 +168,7 @@
 .bui-composer-send .bui-loader-cell {
   width: 4px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: currentColor;
 }
 
@@ -257,7 +257,7 @@
   width: 12px;
   height: 12px;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   border: 1.5px solid var(--bui-line-strong, hsl(var(--border)));
   border-top-color: var(--bui-ink-2, hsl(var(--muted-foreground)));
   animation: bui-spin 700ms linear infinite;
@@ -273,7 +273,7 @@
   height: 0.85em;
   margin-left: 2px;
   vertical-align: text-bottom;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: var(--bui-ink, hsl(var(--foreground)));
   animation: bui-caret-blink 1s step-end infinite;
 }
@@ -416,7 +416,7 @@
   height: 22px;
   align-items: center;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   font-size: 11.5px;
   font-weight: 500;
 }
@@ -547,7 +547,7 @@
   align-items: center;
   gap: 2px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: hsl(var(--goose-editor-bg));
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
 }

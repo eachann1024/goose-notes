@@ -84,7 +84,7 @@
   flex: 0 0 24px;
   place-items: center;
   border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-control);
   background: hsl(var(--background));
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;

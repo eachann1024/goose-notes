@@ -466,14 +466,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             streaming={isStreaming}
             expanded={expanded}
             className={cn(
-              "rounded-[20px]",
+              "rounded-control",
               "shadow-[0_8px_22px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_22px_rgba(0,0,0,0.32)]",
             )}
           >
             <div
               ref={shellRef}
               className={cn(
-                "notebook-ai-composer-shell bui-root flex min-h-[44px] gap-2 overflow-hidden rounded-[20px]",
+                "notebook-ai-composer-shell bui-root flex min-h-[44px] gap-2 overflow-hidden rounded-control",
                 expanded ? "flex-wrap items-end" : "flex-nowrap items-center",
                 "bg-[hsl(var(--goose-editor-bg))] py-1.5 pl-2.5 pr-2",
                 dropActive &&
@@ -503,7 +503,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled || isStreaming}
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-control",
                     "text-muted-foreground transition-colors duration-150",
                     "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     "",
@@ -560,7 +560,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               <span ref={sendWrapRef} className="flex shrink-0 items-center">
                 {isStreaming ? (
                   <ComposerPrimitive.Cancel
-                    className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--goose-color-danger-subtle-bg)] text-[var(--goose-color-danger)] "
+                    className="bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-[var(--goose-color-danger-subtle-bg)] text-[var(--goose-color-danger)] "
                     aria-label="停止生成"
                     title="停止生成"
                   >
@@ -577,7 +577,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                     onClick={handleSubmit}
                     disabled={!canClickSend}
                     className={cn(
-                      "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
+                      "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                       !sendLooksReady && "cursor-not-allowed opacity-35",
                     )}
                     aria-label="发送消息"

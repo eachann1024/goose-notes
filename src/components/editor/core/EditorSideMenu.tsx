@@ -292,7 +292,7 @@ export function EditorSideMenu() {
                 aria-label="添加块"
                 onClick={handleAdd}
                 className={cn(
-                  "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground/55",
+                  "flex h-6 w-[22px] items-center justify-center rounded-[7px] text-muted-foreground",
                   "transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                 )}
               >
@@ -353,7 +353,7 @@ export function EditorSideMenu() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           className={cn(
-            "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground/45",
+            "relative flex h-6 w-[22px] cursor-grab items-center justify-center rounded-[7px] text-muted-foreground",
             "before:absolute before:-left-0.5 before:top-1 before:bottom-1 before:w-px before:bg-border/55 before:content-['']",
             "transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] active:cursor-grabbing",
           )}

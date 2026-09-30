@@ -178,11 +178,11 @@ function FontSizeStepper({
         </div>
         <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
       </div>
-      <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+      <div className="flex items-center gap-1 rounded-control bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 rounded-full"
+          className="h-7 w-7 rounded-control"
           aria-label={`减小${label}`}
           disabled={value <= min}
           onClick={onDecrease}
@@ -198,7 +198,7 @@ function FontSizeStepper({
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 rounded-full"
+          className="h-7 w-7 rounded-control"
           aria-label={`增大${label}`}
           disabled={value >= max}
           onClick={onIncrease}
@@ -397,7 +397,7 @@ export function SettingsAppearance({
       <div
         role="group"
         aria-label="界面缩放"
-        className="flex shrink-0 items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1"
+        className="flex shrink-0 items-center gap-1 rounded-control bg-[hsl(var(--goose-selected-bg)/0.76)] p-1"
       >
         {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
           <Button
@@ -406,7 +406,7 @@ export function SettingsAppearance({
             variant="ghost"
             aria-pressed={uiFontSize === value}
             className={cn(
-              "h-7 rounded-full px-3 text-xs transition-all duration-200",
+              "h-7 rounded-control px-3 text-xs transition-all duration-200",
               uiFontSize === value &&
                 "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
             )}
@@ -443,7 +443,7 @@ export function SettingsAppearance({
               />
               <Label>主题模式</Label>
             </div>
-            <div className="flex items-center gap-1 rounded-full bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
+            <div className="flex items-center gap-1 rounded-control bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
               <TooltipProvider delayDuration={600}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -453,7 +453,7 @@ export function SettingsAppearance({
                       aria-label="跟随系统"
                       aria-pressed={theme === "system"}
                       className={cn(
-                        "h-7 w-7 rounded-full transition-all duration-200",
+                        "h-7 w-7 rounded-control transition-all duration-200",
                         theme !== "system" && "text-foreground",
                         theme === "system" &&
                           "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
@@ -473,7 +473,7 @@ export function SettingsAppearance({
                       aria-label="浅色模式"
                       aria-pressed={theme === "light"}
                       className={cn(
-                        "h-7 w-7 rounded-full transition-all duration-200",
+                        "h-7 w-7 rounded-control transition-all duration-200",
                         theme !== "light" && "text-foreground",
                         theme === "light" &&
                           "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
@@ -493,7 +493,7 @@ export function SettingsAppearance({
                       aria-label="深色模式"
                       aria-pressed={theme === "dark"}
                       className={cn(
-                        "h-7 w-7 rounded-full transition-all duration-200",
+                        "h-7 w-7 rounded-control transition-all duration-200",
                         theme !== "dark" && "text-foreground",
                         theme === "dark" &&
                           "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
@@ -555,11 +555,11 @@ export function SettingsAppearance({
                       setFocusedAccentIndex(index);
                       setAccentColor(option.value);
                     }}
-                    className="goose-accent-option flex h-11 min-w-0 items-center gap-2 rounded-[10px] px-2.5 text-left text-xs font-medium text-foreground transition-[background-color,color,box-shadow,transform]"
+                    className="goose-accent-option flex h-11 min-w-0 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium text-foreground transition-[background-color,color,box-shadow,transform]"
                   >
                     <span
                       aria-hidden="true"
-                      className="relative h-5 w-5 shrink-0 overflow-hidden rounded-full shadow-[inset_0_0_0_1px_rgba(15,23,42,0.12)]"
+                      className="relative h-5 w-5 shrink-0 overflow-hidden rounded-control shadow-[inset_0_0_0_1px_rgba(15,23,42,0.12)]"
                     >
                       <span
                         className="absolute inset-y-0 left-0 w-1/2"

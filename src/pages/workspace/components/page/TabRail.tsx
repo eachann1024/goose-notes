@@ -669,7 +669,7 @@ export function TabRail({
       {insertLeft != null && (
         <div
           aria-hidden
-          className="pointer-events-none absolute top-1 bottom-1 z-20 w-0.5 rounded-full bg-primary motion-reduce:transition-none"
+          className="pointer-events-none absolute top-1 bottom-1 z-20 w-0.5 rounded-marker bg-primary motion-reduce:transition-none"
           style={{ left: insertLeft }}
         />
       )}
@@ -695,7 +695,7 @@ export function TabRail({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   onClick={onOpenSearch}
                   aria-label="新标签页"
                 >
@@ -712,7 +712,7 @@ export function TabRail({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
                   aria-label="全部标签页"
                 >
                   <GooseIcons.ChevronDown

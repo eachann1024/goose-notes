@@ -553,6 +553,10 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  /* Compact controls reuse the existing menu-row corner shape. */
+  --radius-control: var(--goose-menu-item-radius);
+  --radius-thumb: 4px;
+  --radius-marker: 1px;
 
   /* fontFamily：v3 sans/serif/mono 映射 */
   --font-sans: var(--font-ui), sans-serif;
@@ -942,7 +946,7 @@
     --editor-link-tooltip-font-size: calc(12px * var(--editor-scale));
     --editor-link-tooltip-padding-y: calc(6px * var(--editor-scale));
     --editor-link-tooltip-padding-x: calc(10px * var(--editor-scale));
-    --editor-link-tooltip-radius: calc(14px * var(--editor-scale));
+    --editor-link-tooltip-radius: calc(var(--radius-control) * var(--editor-scale));
     --editor-code-block-padding-y: calc(12px * var(--editor-scale));
     --editor-code-block-padding-x: calc(16px * var(--editor-scale));
     --editor-code-block-radius: calc(8px * var(--editor-scale));
@@ -1013,7 +1017,7 @@
 
   /*
    * 全局低入侵 overlay 滚动条：8px 槽位里 2px 透明边当空隙，
-   * 胶囊 thumb 默认全透明，容器 hover 才淡入，thumb 自身 hover 再加深。
+   * 方形圆角 thumb 默认全透明，容器 hover 才淡入，thumb 自身 hover 再加深。
    * 显式 scrollbar-width:none 的区域（标签栏、工具栏等）选择器更具体，不受影响。
    */
   *::-webkit-scrollbar {
@@ -1027,7 +1031,7 @@
     background: rgba(0, 0, 0, 0);
     background-clip: padding-box;
     border: 2px solid transparent;
-    border-radius: 999px;
+    border-radius: var(--radius-marker);
     transition: background 220ms cubic-bezier(0.23, 1, 0.32, 1);
   }
   *:hover::-webkit-scrollbar-thumb {
@@ -1396,7 +1400,7 @@
 .ai-icon-ring {
   position: absolute;
   inset: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-thumb);
   border: 1.5px solid var(--goose-interactive-hover-border);
   box-shadow: none;
   transform-origin: center;
@@ -1665,7 +1669,7 @@ body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden]))
   width: 72px;
   height: 2px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-marker);
   background: hsl(var(--muted));
 }
 
