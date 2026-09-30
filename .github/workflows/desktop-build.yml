@@ -27,7 +27,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
-            latest=$(gh release view --repo eachann1024/goose-note-app --json tagName --jq .tagName)
+            latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+            previous="${latest##*-}"
+            if [[ "$previous" =~ ^[0-9a-f]{7}$ ]]; then
+              changed=$(gh api "repos/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_SHA" --jq '[.files[].filename | select(startswith("updates/") or startswith("Casks/") | not)] | length')
+              if [[ "$changed" == 0 ]]; then
+                echo 'publish=false' >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
             if [[ "$latest" == *"-${GITHUB_SHA:0:7}" ]]; then
               echo 'publish=false' >> "$GITHUB_OUTPUT"
               exit 0
@@ -42,7 +50,7 @@ jobs:
         run: |
           tag="ci-${GITHUB_RUN_ID}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --prerelease --latest=false
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --prerelease --draft --latest=false
 
   source:
     name: Source archive
@@ -62,6 +70,7 @@ jobs:
           git archive --format=tar.gz --prefix=goose-note-source/ HEAD > source-artifact/goose-note-source-${GITHUB_SHA}.tar.gz
           printf '%s\n' "$GITHUB_SHA" > source-artifact/COMMIT.txt
           cp BUILD-ARTIFACTS.md LICENSE SOURCE-CODE.md THIRD-PARTY-NOTICES.txt source-artifact/
+          cp docs/showcase/goose-note-first-release.mp4 source-artifact/
           cd source-artifact
           sha256sum *.tar.gz > source-${GITHUB_SHA}-SHA256SUMS.txt
       - name: Upload source to staging release
@@ -161,73 +170,13 @@ jobs:
           gh release upload "$STAGE_TAG" staging-upload/* --clobber
 
   release:
-    name: Publish development release
+    name: Publish release in source repository
     needs: [prepare, source, build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - name: Download staging assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
-        run: |
-          mkdir -p artifacts/staging
-          gh release download "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts/staging
-      - name: Verify and prepare release assets
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import pathlib, shutil, hashlib
-          staging = pathlib.Path('artifacts/staging')
-          out = pathlib.Path('release-assets')
-          out.mkdir()
-          checksum_names = {'SHA256SUMS.txt'}
-          for file in staging.iterdir():
-              if not file.is_file():
-                  continue
-              if file.name in checksum_names or file.name.endswith('-SHA256SUMS.txt'):
-                  continue
-              target = out / file.name.replace(' ', '.')
-              if target.exists():
-                  raise RuntimeError('Duplicate asset: ' + target.name)
-              shutil.copyfile(file, target)
-          (out / 'SHA256SUMS.txt').write_text(''.join(
-              hashlib.sha256(file.read_bytes()).hexdigest() + '  ' + file.name + '\n'
-              for file in sorted(out.iterdir())
-          ))
-          PY
-      - name: Publish complete prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          tag="dev-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          cat > release-notes.md <<EOF_NOTES
-          自动开发构建，提交：${GITHUB_SHA}
-
-          Windows x64：exe；macOS Apple Silicon：arm64.dmg，Intel：无 arm64 后缀的 dmg；Linux x64：AppImage / deb / rpm；Arch Linux：pacman。
-
-          签名与公证状态见各平台 BUILD.json。已通过多平台打包和 Arch 容器安装检查，未代替各平台桌面功能验收。
-          附对应项目源码归档、构建记录与 SHA256SUMS.txt。依赖源码及第三方声明的公开分发核对事项见随附 SOURCE-CODE 文档。
-
-          构建记录：https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          EOF_NOTES
-          gh release create "$tag" --target "$GITHUB_SHA" --title "开发构建 ${GITHUB_SHA:0:7}" --notes-file release-notes.md --prerelease --draft --latest=false
-          gh release upload "$tag" release-assets/*
-          gh release edit "$tag" --draft=false
-
-  publish-public:
-    name: Publish public release
-    needs: [prepare, build]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     concurrency:
-      group: public-app-publish-${{ github.ref }}
+      group: goose-notes-publish-${{ github.ref }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -235,23 +184,26 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Download staging installers
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Download complete staging assets
         env:
           GH_TOKEN: ${{ github.token }}
           STAGE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           mkdir -p artifacts
           gh release download "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts
-      - name: Publish to public repository
+      - name: Publish installers, source, video and update feeds
         env:
-          PUBLIC_APP_TOKEN: ${{ secrets.PUBLIC_APP_TOKEN }}
-          PUBLIC_APP_REPO: eachann1024/goose-note-app
-        run: node scripts/publish-public-app.mjs
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/publish-release.mjs
 
   cleanup-staging:
     name: Delete staging release
-    needs: [prepare, release, publish-public]
-    if: github.ref == 'refs/heads/main' && needs.release.result == 'success' && needs.publish-public.result == 'success'
+    needs: [prepare, release]
+    if: github.ref == 'refs/heads/main' && needs.release.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

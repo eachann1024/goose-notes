@@ -1,4 +1,4 @@
-export const PUBLIC_RELEASES_REPO = "eachann1024/goose-note-app";
+export const PUBLIC_RELEASES_REPO = "eachann1024/goose-notes";
 export const PUBLIC_RELEASES_LATEST_URL = `https://github.com/${PUBLIC_RELEASES_REPO}/releases/latest`;
 export const PUBLIC_RELEASES_API_URL = `https://api.github.com/repos/${PUBLIC_RELEASES_REPO}/releases/latest`;
 export const PUBLIC_UPDATE_URL = `https://raw.githubusercontent.com/${PUBLIC_RELEASES_REPO}/main/updates/latest.json`;

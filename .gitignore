@@ -100,4 +100,7 @@ public/fonts/*.otf
 !/.github/workflows/
 !/.github/workflows/desktop-build.yml
 !scripts/build-ci-installers.mjs
-!scripts/publish-public-app.mjs
+!scripts/publish-release.mjs
+
+!/docs/showcase/goose-note-first-release.mp4
+

@@ -11,16 +11,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/eachann1024/goose-note-app/releases/latest">下载安装包</a> ·
+  <a href="https://github.com/eachann1024/goose-notes/releases/latest">下载安装包</a> ·
   <a href="#开始记录">开始记录</a> ·
+  <a href="docs/showcase/goose-note-first-release.mp4">产品视频</a> ·
   <a href="DEVELOP.md">开发文档</a> ·
   <a href="SECURITY.md">安全说明</a>
 </p>
 
 <p align="center">
-  macOS 可用 Homebrew 安装：<code>brew trust --cask eachann1024/goose-note-app/goose-note</code><br />
-  <code>brew tap eachann1024/goose-note-app https://github.com/eachann1024/goose-note-app</code><br />
-  <code>brew install --cask eachann1024/goose-note-app/goose-note</code><br />
+  macOS 可用 Homebrew 安装：<code>brew trust --cask eachann1024/goose-notes/goose-note</code><br />
+  <code>brew tap eachann1024/goose-notes https://github.com/eachann1024/goose-notes</code><br />
+  <code>brew install --cask eachann1024/goose-notes/goose-note</code><br />
   升级：<code>brew upgrade --cask goose-note</code>
 </p>
 
