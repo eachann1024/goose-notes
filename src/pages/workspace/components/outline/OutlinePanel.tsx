@@ -48,11 +48,11 @@ export function OutlinePanel({
     return (
       <div className="w-full h-full flex flex-col">
         <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-          <FileText className="h-6 w-6 shrink-0 text-muted-foreground/20" />
+          <FileText className="h-6 w-6 shrink-0 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <p className="text-xs leading-5 text-muted-foreground/70">{emptyMessage}</p>
+            <p className="text-xs leading-5 text-muted-foreground">{emptyMessage}</p>
             {emptyHint && (
-              <p className="text-[11px] leading-5 text-muted-foreground/60">
+              <p className="text-[11px] leading-5 text-muted-foreground">
                 {emptyHint}
               </p>
             )}

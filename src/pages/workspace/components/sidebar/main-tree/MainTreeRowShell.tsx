@@ -65,7 +65,7 @@ export function MainTreeRowDisclosure({
     >
       <ChevronRight
         className={cn(
-          "h-3 w-3 text-muted-foreground/80 transition-transform duration-150 ease-out",
+          "h-3 w-3 text-muted-foreground transition-transform duration-150 ease-out",
           expanded && "rotate-90",
         )}
       />

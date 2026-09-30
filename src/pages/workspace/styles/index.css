@@ -517,7 +517,7 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .history-primary-control:disabled {
   cursor: not-allowed;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 1; color: var(--goose-text-disabled);
 }
 
 .workspace-shell .history-star-control svg {

@@ -462,7 +462,7 @@ export function SidebarContextMenu({
                       onSelect={() =>
                         void permanentlyDeletePageWithCleanup(page.id)
                       }
-                      className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
+                      className="text-foreground dark:text-foreground focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
                     >
                       <GooseIcons.Trash2 className="h-4 w-4" />
                       <span>永久删除</span>
@@ -471,7 +471,7 @@ export function SidebarContextMenu({
                 ) : (
                   <ContextMenuItem
                     onSelect={() => void deletePageWithUndo(page.id)}
-                    className="text-foreground/85 dark:text-foreground/85 focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
+                    className="text-foreground dark:text-foreground focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
                   >
                     {isLocalFolder ? (
                       <GooseIcons.FileX className="h-4 w-4" />

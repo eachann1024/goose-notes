@@ -44,7 +44,7 @@ interface SettingsDataPanelProps {
 }
 
 const DATA_BADGE_CLASS =
-  "rounded-control bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-foreground/75 dark:bg-[hsl(var(--foreground)/0.1)]";
+  "rounded-control bg-[hsl(var(--goose-selected-bg)/0.9)] px-2 py-0.5 text-[11px] text-muted-foreground dark:bg-[hsl(var(--foreground)/0.1)]";
 
 const DATA_UNSELECTED_CARD_CLASS =
   "border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:bg-[hsl(var(--foreground)/0.08)]";
@@ -422,7 +422,7 @@ export function SettingsDataPanel({
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-foreground/80">
+                <Label className="text-xs font-medium text-foreground">
                   选择记事本 ({selectedCount})
                 </Label>
                 <div className="flex items-center gap-2">
@@ -433,7 +433,7 @@ export function SettingsDataPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onSelectAll}
-                    className="h-8 rounded-[10px] px-2 text-xs text-foreground/75 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                    className="h-8 rounded-[10px] px-2 text-xs text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   >
                     {selectedCount === totalCount ? "取消全选" : "全选"}
                   </Button>
@@ -467,7 +467,7 @@ export function SettingsDataPanel({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-foreground/80">导出格式</Label>
+              <Label className="text-xs font-medium text-foreground">导出格式</Label>
               <div className="grid grid-cols-2 gap-2">
                 <SelectableCard
                   selected={format === "md"}
@@ -482,7 +482,7 @@ export function SettingsDataPanel({
                   <FileText className="h-5 w-5 shrink-0" />
                   <div className="text-left">
                     <div className="text-sm font-medium">Markdown</div>
-                    <div className="text-xs text-foreground/70">.md 文件</div>
+                    <div className="text-xs text-muted-foreground">.md 文件</div>
                   </div>
                 </SelectableCard>
                 <SelectableCard
@@ -498,7 +498,7 @@ export function SettingsDataPanel({
                   <Globe className="h-5 w-5 shrink-0" />
                   <div className="text-left">
                     <div className="text-sm font-medium">HTML</div>
-                    <div className="text-xs text-foreground/70">网页文件</div>
+                    <div className="text-xs text-muted-foreground">网页文件</div>
                   </div>
                 </SelectableCard>
               </div>
@@ -512,7 +512,7 @@ export function SettingsDataPanel({
               {exporting ? "导出中..." : "开始导出"}
               {!exporting && <Download className="ml-2 h-4 w-4" />}
             </Button>
-            <p className="text-xs text-foreground/70">
+            <p className="text-xs text-muted-foreground">
               建议在重置前先导出备份，避免误删造成数据丢失。
             </p>
           </SettingsSectionCard>
@@ -538,9 +538,9 @@ export function SettingsDataPanel({
           >
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-foreground/80">服务地址</Label>
+                <Label className="text-xs font-medium text-foreground">服务地址</Label>
                 <input
-                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                   value={tempUrl}
                   disabled={busy}
                   onChange={(e) => setTempUrl(e.target.value)}
@@ -553,9 +553,9 @@ export function SettingsDataPanel({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-foreground/80">账号</Label>
+                  <Label className="text-xs font-medium text-foreground">账号</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempUsername}
                     disabled={busy}
                     onChange={(e) => setTempUsername(e.target.value)}
@@ -563,9 +563,9 @@ export function SettingsDataPanel({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-foreground/80">远端目录</Label>
+                  <Label className="text-xs font-medium text-foreground">远端目录</Label>
                   <input
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempRemoteDir}
                     disabled={busy}
                     onChange={(e) => setTempRemoteDir(e.target.value)}
@@ -576,10 +576,10 @@ export function SettingsDataPanel({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-foreground/80">应用密码</Label>
+                  <Label className="text-xs font-medium text-foreground">应用密码</Label>
                   <input
                     type="password"
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempPassword}
                     disabled={busy}
                     onChange={(e) => setTempPassword(e.target.value)}
@@ -587,12 +587,12 @@ export function SettingsDataPanel({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-foreground/80">云端保留天数</Label>
+                  <Label className="text-xs font-medium text-foreground">云端保留天数</Label>
                   <input
                     type="number"
                     min={1}
                     max={365}
-                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-[12px] border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
                     value={tempRetentionDays}
                     disabled={busy}
                     onChange={(e) => setTempRetentionDays(parseInt(e.target.value) || 30)}
@@ -602,7 +602,7 @@ export function SettingsDataPanel({
 
               <div className="flex items-center justify-between rounded-[12px] border border-muted/20 p-3 bg-muted/10">
                 <div className="space-y-0.5 pr-4">
-                  <Label className="text-xs font-medium text-foreground/80">自动云备份</Label>
+                  <Label className="text-xs font-medium text-foreground">自动云备份</Label>
                   <p className="text-[11px] text-muted-foreground">
                     应用启动空闲时，若距离上次同步超过24小时，自动静默生成并上传备份
                   </p>
@@ -614,7 +614,7 @@ export function SettingsDataPanel({
                 />
               </div>
 
-              <div className="rounded-[12px] border border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] p-3 text-xs text-foreground/80 dark:bg-[hsl(var(--foreground)/0.08)]">
+              <div className="rounded-[12px] border border-transparent bg-[hsl(var(--goose-selected-bg)/0.58)] p-3 text-xs text-foreground dark:bg-[hsl(var(--foreground)/0.08)]">
                 <div className="flex flex-col gap-1.5">
                   <div>
                     <strong>最近上传：</strong>
@@ -701,7 +701,7 @@ export function SettingsDataPanel({
                   <div className="flex flex-col items-center gap-2 border border-dashed rounded-[12px] border-muted py-6 text-center">
                     <CloudOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                     <p className="text-xs font-medium text-foreground">暂无远端备份</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-1">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       保存连接配置后，点击“生成并上传”创建您的第一份云端备份
                     </p>
                   </div>

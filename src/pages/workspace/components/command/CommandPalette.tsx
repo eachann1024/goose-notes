@@ -321,7 +321,7 @@ export function CommandPalette() {
             className="flex items-center h-16 px-4"
             cmdk-input-wrapper=""
           >
-            <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground/60" />
+            <Search className="mr-3 h-4 w-4 shrink-0 text-muted-foreground" />
             <Command.Input
               ref={inputRef}
               value={searchQuery}
@@ -331,7 +331,7 @@ export function CommandPalette() {
                   ? "搜索所有记事本..."
                   : `搜索 "${scopedNotebookId ? notebooks[scopedNotebookId].name : currentNotebookName}"...`
               }
-              className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -371,7 +371,7 @@ export function CommandPalette() {
           <Command.List
             ref={listRef}
             onScroll={handleListScroll}
-            className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-items]]:space-y-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground/50"
+            className="max-h-[440px] overflow-y-auto overflow-x-hidden bg-[hsl(var(--goose-editor-bg))] px-2 py-2 [&_[cmdk-group-items]]:space-y-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
           >
             <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
               {searchQuery.trim() ? "未找到匹配的页面" : "输入关键词开始搜索"}
@@ -409,7 +409,7 @@ export function CommandPalette() {
                           action.run();
                         });
                       }}
-                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground/90 outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50"
+                      className="group relative flex cursor-pointer select-none items-center rounded-[8px] px-2.5 py-2 text-sm text-foreground outline-none transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-selected:bg-[var(--goose-interactive-selected)] aria-selected:text-[var(--goose-interactive-selected-fg)] data-[disabled=true]:pointer-events-none data-[disabled=true]:text-disabled"
                     >
                       <span className="mr-2 flex h-4 w-4 shrink-0 items-center justify-center">
                         <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)] group-aria-selected:text-[var(--goose-interactive-selected-fg)]" />

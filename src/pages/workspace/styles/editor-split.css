@@ -82,7 +82,7 @@
 /* 非活动格只压 chrome，正文对比不变。接线方把标题栏等标 data-split-chrome。 */
 .editor-split-pane[data-focused="false"] [data-split-chrome] {
   color: hsl(var(--muted-foreground));
-  opacity: 0.55;
+  opacity: 1;
 }
 
 .editor-split-sash {

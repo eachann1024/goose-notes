@@ -78,10 +78,10 @@ function SortableNotebookItem({
         "goose-notebook-row relative flex select-none items-center rounded-lg outline-none",
         "justify-between gap-2 group",
         "min-h-9 mb-0.5 last:mb-0 px-2 py-1 text-xs font-normal",
-        notebook.localPathMissing && "opacity-50",
+        notebook.localPathMissing && "text-disabled",
         "hover:bg-[var(--goose-interactive-hover)] focus-visible:bg-[var(--goose-interactive-hover)]",
         isActive && "bg-[var(--goose-interactive-selected)]",
-        isDragging && "opacity-60 cursor-grabbing z-10",
+        isDragging && "cursor-grabbing z-10",
         !isDragging && "cursor-pointer",
       )}
       {...attributes}
@@ -117,7 +117,7 @@ function SortableNotebookItem({
         </span>
         <span className="truncate leading-snug" title={notebook.name}>{notebook.name}</span>
         {notebook.localPathMissing && (
-          <span className="text-xs text-destructive">路径失效</span>
+          <span className="text-xs text-danger">路径失效</span>
         )}
       </div>
       <div

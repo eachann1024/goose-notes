@@ -866,7 +866,7 @@ export function SettingsAI({
             <span className="block">
               选择全局默认模型
               <span
-                className="mt-1 block font-medium text-foreground/75"
+                className="mt-1 block font-medium text-muted-foreground"
                 role="status"
                 aria-live="polite"
               >
@@ -939,7 +939,7 @@ export function SettingsAI({
                                 modelButtonReason ??
                                 "请选择模型"}
                             </span>
-                            <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                            <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -1097,7 +1097,7 @@ export function SettingsAI({
                       <ProviderIconTile providerId={providerId} size="sm" />
                       <span className="truncate">{selectedProvider.label}</span>
                     </span>
-                    <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                    <GooseIcons.ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[288px] p-1.5">
@@ -1336,7 +1336,7 @@ export function SettingsAI({
             ? "text-foreground"
             : connectionTestResult === "failed" ||
                 connectionTestResult === "timeout"
-              ? "text-destructive"
+              ? "text-danger"
               : "text-muted-foreground",
         )}
         role="status"

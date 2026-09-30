@@ -63,7 +63,7 @@ export function NotebookEditDialog({
         <div className="text-center mb-8">
           {showDeleteConfirm && (
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-[var(--goose-color-danger-subtle-bg)]">
-              <AlertTriangle className="w-7 h-7 text-destructive" />
+              <AlertTriangle className="w-7 h-7 text-danger" />
             </div>
           )}
           <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -84,7 +84,7 @@ export function NotebookEditDialog({
             <div className="space-y-3">
               <Label
                 htmlFor="confirm-delete"
-                className="select-text text-sm font-medium text-destructive"
+                className="select-text text-sm font-medium text-danger"
               >
                 {isLocalFolder ? "确认移除" : "确认删除"} <span className="select-text font-bold">{confirmName}</span>
               </Label>

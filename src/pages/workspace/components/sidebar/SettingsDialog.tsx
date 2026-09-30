@@ -651,7 +651,7 @@ export function SettingsDialog({
               <button
                 type="button"
                 onClick={handleCloseAppsBanner}
-                className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                 aria-label="关闭鹅的全家桶"
               >
                 <GooseIcons.X className="h-3 w-3" />
@@ -675,7 +675,7 @@ export function SettingsDialog({
                       className="h-4 w-4 shrink-0 rounded-[4px] object-cover"
                     />
                     <span className="flex-1 truncate">{app.name}</span>
-                    <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+                    <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
                   </Button>
                 ))}
               </div>
@@ -799,7 +799,7 @@ export function SettingsDialog({
         <div className="relative mx-auto w-full max-w-md py-6">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-4 bg-[var(--goose-color-danger-subtle-bg)]">
-              <GooseIcons.AlertTriangle className="w-7 h-7 text-destructive" />
+              <GooseIcons.AlertTriangle className="w-7 h-7 text-danger" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">
               确认重置所有数据？
@@ -812,7 +812,7 @@ export function SettingsDialog({
 
           <div className="bg-[var(--goose-color-danger-subtle-bg)] backdrop-blur-[1px] rounded-[14px] p-6 shadow-[0_12px_26px_rgba(15,23,42,0.1)] space-y-4">
             <div className="space-y-3">
-              <div className="text-sm font-medium text-destructive select-none">
+              <div className="text-sm font-medium text-danger select-none">
                 请输入以下短语以确认重置：
                 <span className="ml-1 select-text font-bold text-foreground">
                   {resetPhrase}

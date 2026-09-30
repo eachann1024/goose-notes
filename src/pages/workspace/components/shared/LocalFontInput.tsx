@@ -69,7 +69,7 @@ export function LocalFontInput({
         className="min-w-0 bg-background"
       />
       {unavailable && (
-        <p id={`${id}-warning`} role="status" className="text-xs text-destructive">
+        <p id={`${id}-warning`} role="status" className="text-xs text-danger">
           未找到本机字体，当前显示回退字体
         </p>
       )}

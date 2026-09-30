@@ -117,7 +117,7 @@ export function LocalFileIcon({
     return (
       <GooseIcons.CircleX
         size={16}
-        className={cn("h-4 w-4 text-destructive/90", className)}
+        className={cn("h-4 w-4 text-danger", className)}
         aria-label={page.localReadError || "Markdown 文件读取失败"}
       />
     );
@@ -131,7 +131,7 @@ export function LocalFileIcon({
       <Icon
         size={16}
         className={cn(
-          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
           className,
         )}
       />
@@ -143,7 +143,7 @@ export function LocalFileIcon({
       <SelectedIcon
         size={16}
         className={cn(
-          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
           className,
         )}
       />
@@ -159,7 +159,7 @@ export function LocalFileIcon({
       <DefaultPageIcon
         size={16}
         className={cn(
-          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
           className,
         )}
       />
@@ -173,7 +173,7 @@ export function LocalFileIcon({
       <FolderStateIcon
         size={16}
         className={cn(
-          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
           className,
         )}
       />
@@ -188,7 +188,7 @@ export function LocalFileIcon({
       <FolderIcon
         size={16}
         className={cn(
-          "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+          "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
           className,
         )}
       />
@@ -199,7 +199,7 @@ export function LocalFileIcon({
     <DefaultPageIcon
       size={16}
       className={cn(
-        "h-4 w-4 text-muted-foreground/80 dark:text-muted-foreground/80",
+        "h-4 w-4 text-muted-foreground dark:text-muted-foreground",
         className,
       )}
     />

@@ -61,7 +61,7 @@ interface DesktopTitleBarProps {
 
 /** 与 PageHeader 一致的顶栏图标按钮样式。 */
 const actionButtonClass =
-  "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground/75 transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-hover-fg)]";
+  "inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] aria-pressed:bg-[var(--goose-interactive-selected)] aria-pressed:text-[var(--goose-interactive-selected-fg)] aria-pressed:hover:bg-[var(--goose-interactive-selected)] aria-pressed:hover:text-[var(--goose-interactive-hover-fg)]";
 
 export function DesktopTitleBar({
   page,
@@ -117,7 +117,7 @@ export function DesktopTitleBar({
         ].map(({ label, Icon, disabled, onClick }) => (
           <Tooltip key={label}>
             <TooltipTrigger asChild>
-              <button type="button" className={cn(actionButtonClass, "disabled:pointer-events-none disabled:opacity-35")} aria-label={label} disabled={disabled} onClick={onClick}>
+              <button type="button" className={cn(actionButtonClass, "disabled:pointer-events-none disabled:text-disabled")} aria-label={label} disabled={disabled} onClick={onClick}>
                 <Icon className="h-4 w-4" />
               </button>
             </TooltipTrigger>

@@ -333,7 +333,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
           })}
         </div>
         <details className="group border-t border-border/70">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-primary hover:bg-[var(--goose-interactive-hover)] [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-link hover:bg-[var(--goose-interactive-hover)] [&::-webkit-details-marker]:hidden">
             <GooseIcons.Plus className="h-4 w-4" /> 添加文件夹
           </summary>
           <form
@@ -351,7 +351,7 @@ function HiddenFoldersField({ folders, onChange }: HiddenFoldersFieldProps) {
               />
               <Button type="submit" size="sm" className="h-9 shrink-0">添加</Button>
             </div>
-            {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+            {error && <p role="alert" className="text-xs text-danger">{error}</p>}
           </form>
         </details>
       </SettingsSectionCard>

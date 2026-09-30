@@ -64,7 +64,7 @@ export function WinWindowControls() {
       </button>
       <button
         type="button"
-        className={cn(btnClass, "hover:bg-[#c42b1c] hover:text-white")}
+        className={cn(btnClass, "hover:bg-[#c42b1c] hover:text-inverse")}
         aria-label="关闭"
         onClick={() => void desktop?.closeWindow?.()}
       >

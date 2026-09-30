@@ -226,14 +226,14 @@ function SortableTabItem({
             tabCount > 1 && "goose-interactive",
             tabRailItemClassName(tabCount),
             tab.preview && "italic",
-            isDragging && "opacity-60",
+            isDragging && "cursor-grabbing",
             tabRailSelectionClassName(tabCount, isActive),
           )}
         >
           {tab.pinned && (
             <GooseIcons.Pin
               aria-label="已固定"
-              className="h-3 w-3 shrink-0 text-primary"
+              className="h-3 w-3 shrink-0 text-link"
             />
           )}
           {isActive && shouldEditTitleInTab(tabPage, editTitleInPill) && tabPage ? (
@@ -266,8 +266,8 @@ function SortableTabItem({
                       ? "hidden @[64px]:group-hover:flex"
                       : "flex",
                     isActive
-                      ? "text-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-                      : "text-muted-foreground/70 hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
+                      ? "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                      : "text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                   )}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
@@ -676,7 +676,7 @@ export function TabRail({
       )}
 
       {openTabs.length === 0 && page && (
-        <span className="truncate text-sm text-foreground/80">
+        <span className="truncate text-sm text-foreground">
           {getPageTitle(page)}
         </span>
       )}
@@ -696,7 +696,7 @@ export function TabRail({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+                  className="h-8 w-8 shrink-0 rounded-[8px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
                   onClick={onOpenSearch}
                   aria-label="新标签页"
                 >
@@ -713,7 +713,7 @@ export function TabRail({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground/70 transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
+                  className="outline-none inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] data-[state=open]:bg-[var(--goose-interactive-selected)] data-[state=open]:text-[var(--goose-interactive-selected-fg)]"
                   aria-label="全部标签页"
                 >
                   <GooseIcons.ChevronDown
@@ -767,7 +767,7 @@ export function TabRail({
                     >
                       {tab.pinned && (
                         <GooseIcons.Pin
-                          className="h-3 w-3 shrink-0 text-primary"
+                          className="h-3 w-3 shrink-0 text-link"
                           strokeWidth={1.75}
                         />
                       )}
@@ -781,7 +781,7 @@ export function TabRail({
                       </span>
                       {isActive && (
                         <GooseIcons.Check
-                          className="h-3.5 w-3.5 shrink-0 text-foreground/60"
+                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           strokeWidth={1.75}
                         />
                       )}

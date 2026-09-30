@@ -61,13 +61,13 @@
 }
 
 /* 选中 / 拖放 / 右键行内图标统一吃强调文字色；语义色图标不动。 */
-.sidebar-tree-row--selected svg:not([class*="text-destructive"]),
-.sidebar-drop-parent-target svg:not([class*="text-destructive"]),
-.sidebar-tree-source-placeholder svg:not([class*="text-destructive"]),
+.sidebar-tree-row--selected svg:not([class*="text-danger"]),
+.sidebar-drop-parent-target svg:not([class*="text-danger"]),
+.sidebar-tree-source-placeholder svg:not([class*="text-danger"]),
 .workspace-shell
   [data-goose-context-trigger][data-context-open="true"]
   > .sidebar-tree-row
-  svg:not([class*="text-destructive"]) {
+  svg:not([class*="text-danger"]) {
   color: var(--goose-interactive-selected-fg);
 }
 
@@ -75,7 +75,7 @@
   color: var(--sidebar-dnd-accent) !important;
   background: var(--sidebar-dnd-accent-soft) !important;
   box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset;
-  opacity: 0.66;
+  opacity: 1;
 }
 
 .sidebar-tree-nest-target {
@@ -150,7 +150,7 @@
 .sidebar-tree-drag-overlay-grip {
   margin-left: 8px;
   color: hsl(var(--muted-foreground));
-  opacity: 0.62;
+  opacity: 1;
 }
 
 @keyframes sidebar-tree-overlay-enter {

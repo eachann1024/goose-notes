@@ -18,8 +18,8 @@
   --bui-canvas: hsl(var(--background));
   --bui-accent: var(--goose-interactive-selected-fg);
   --bui-accent-ink: var(--goose-interactive-selected-fg);
-  --bui-green: var(--goose-color-success);
-  --bui-red: var(--goose-color-danger);
+  --bui-green: var(--goose-text-success);
+  --bui-red: var(--goose-text-danger);
   --bui-orange: var(--goose-interactive-selected-fg);
   --bui-green-tint: var(--goose-interactive-selected);
   --bui-red-tint: var(--goose-color-danger-subtle-bg);
@@ -35,7 +35,7 @@
   --bui-ink: hsl(var(--foreground));
   --bui-ink-2: hsl(var(--muted-foreground));
   --bui-ink-3: hsl(var(--muted-foreground));
-  --bui-surface: hsl(var(--foreground));
+  --bui-surface: hsl(var(--popover));
   --bui-inset: hsl(var(--muted));
   --bui-hover: var(--goose-interactive-hover);
   --bui-hover-2: var(--goose-interactive-hover);
@@ -45,8 +45,8 @@
   --bui-canvas: hsl(var(--background));
   --bui-accent: var(--goose-interactive-selected-fg);
   --bui-accent-ink: var(--goose-interactive-selected-fg);
-  --bui-green: var(--goose-color-success);
-  --bui-red: var(--goose-color-danger);
+  --bui-green: var(--goose-text-success);
+  --bui-red: var(--goose-text-danger);
   --bui-orange: var(--goose-interactive-selected-fg);
   --bui-green-tint: var(--goose-interactive-selected);
   --bui-red-tint: var(--goose-color-danger-subtle-bg);

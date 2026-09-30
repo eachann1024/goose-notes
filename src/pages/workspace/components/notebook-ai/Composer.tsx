@@ -507,7 +507,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                     "text-muted-foreground transition-colors duration-150",
                     "hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
                     "",
-                    "disabled:cursor-not-allowed disabled:opacity-40",
+                    "disabled:cursor-not-allowed disabled:text-disabled",
                     isStreaming && "invisible pointer-events-none",
                   )}
                   aria-hidden={isStreaming}
@@ -578,7 +578,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                     disabled={!canClickSend}
                     className={cn(
                       "bui-composer-send flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]",
-                      !sendLooksReady && "cursor-not-allowed opacity-35",
+                      !sendLooksReady && "cursor-not-allowed text-disabled",
                     )}
                     aria-label="发送消息"
                     title="发送消息"

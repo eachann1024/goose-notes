@@ -447,11 +447,11 @@ export function WorkspaceLayout({
           <div className="fixed inset-0 z-[25000] flex items-center justify-center bg-[hsl(var(--goose-editor-bg)/0.96)] animate-in fade-in duration-150">
             <div className="flex min-h-[188px] min-w-[312px] flex-col items-center justify-center rounded-[14px] border border-border/70 bg-[hsl(var(--goose-shell-bg)/0.98)] px-10 py-8 text-center shadow-[0_18px_42px_rgba(15,23,42,0.12),0_1px_3px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
               {dragIntent === "folder" ? (
-                <GooseIcons.FolderOpen className="mb-4 h-12 w-12 text-muted-foreground/80" />
+                <GooseIcons.FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
               ) : dragIntent === "text-file" ? (
-                <GooseIcons.FileText className="mb-4 h-12 w-12 text-muted-foreground/80" />
+                <GooseIcons.FileText className="mb-4 h-12 w-12 text-muted-foreground" />
               ) : (
-                <GooseIcons.FileQuestion className="mb-4 h-12 w-12 text-muted-foreground/70" />
+                <GooseIcons.FileQuestion className="mb-4 h-12 w-12 text-muted-foreground" />
               )}
               <p className="text-base font-medium text-foreground">
                 {dragIntent === "folder"

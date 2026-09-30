@@ -77,7 +77,7 @@
   font-style: normal;
   font-size: 17px;
   line-height: 1;
-  opacity: 0.64;
+  opacity: 1;
 }
 
 /* MainTreeRowShell 共享几何：本地主树与大纲使用同一行高和背景间隔。 */
@@ -136,14 +136,14 @@
 
 /* 选中 / 拖放行内图标：lucide 均为 currentColor，但默认文件/文件夹图标自带
    text-muted-foreground 工具类，需显式覆盖；语义色图标（如读取失败红）不动。 */
-.main-tree-row--selected svg:not([class*="text-destructive"]),
-.main-tree-row--hovered svg:not([class*="text-destructive"]),
-.main-tree-row--drop-target svg:not([class*="text-destructive"]),
-.main-tree-row--drop-target-local svg:not([class*="text-destructive"]),
-.main-tree-row--dragging svg:not([class*="text-destructive"]),
+.main-tree-row--selected svg:not([class*="text-danger"]),
+.main-tree-row--hovered svg:not([class*="text-danger"]),
+.main-tree-row--drop-target svg:not([class*="text-danger"]),
+.main-tree-row--drop-target-local svg:not([class*="text-danger"]),
+.main-tree-row--dragging svg:not([class*="text-danger"]),
 [data-goose-context-trigger][data-context-open="true"]
   .main-tree-row
-  svg:not([class*="text-destructive"]) {
+  svg:not([class*="text-danger"]) {
   color: var(--goose-interactive-selected-fg);
 }
 
@@ -158,7 +158,7 @@
   color: var(--sidebar-dnd-accent) !important;
   background-color: var(--sidebar-dnd-accent-soft) !important;
   box-shadow: 0 0 0 1px var(--sidebar-dnd-accent-ring) inset !important;
-  opacity: 0.66;
+  opacity: 1;
 }
 
 .main-tree-row.main-tree-row--drop-target,
@@ -239,6 +239,6 @@
   box-shadow: none !important;
 }
 
-.main-tree-row--hovered svg:not([class*="text-destructive"]) {
+.main-tree-row--hovered svg:not([class*="text-danger"]) {
   color: var(--goose-interactive-hover-fg);
 }

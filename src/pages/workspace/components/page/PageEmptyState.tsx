@@ -399,14 +399,14 @@ export function PageEmptyState() {
                     {isAi ? <AiCrystalFx /> : null}
                     <Icon
                       className={cn(
-                        "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-foreground/75 transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-[var(--goose-interactive-selected-fg)]",
+                        "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-muted-foreground transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-[var(--goose-interactive-selected-fg)]",
                         isAi && "page-empty-ai-icon",
                       )}
                     />
                   </div>
                   <h3
                     className={cn(
-                      "text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 text-left transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-foreground/90",
+                      "text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 text-left transition-colors group-hover:text-[var(--goose-interactive-hover-fg)] dark:text-foreground",
                     )}
                   >
                     {action.title}

@@ -823,7 +823,7 @@ export function ChatMessages({
         className="flex items-center gap-0.5 text-[11px] text-muted-foreground"
       >
         <BranchPickerPrimitive.Previous
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
           aria-label="上一个回答分支"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -832,7 +832,7 @@ export function ChatMessages({
           <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
         </span>
         <BranchPickerPrimitive.Next
-          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:opacity-40"
+          className="flex h-6 w-6 items-center justify-center rounded-[6px] hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] disabled:text-disabled"
           aria-label="下一个回答分支"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -1035,7 +1035,7 @@ export function ChatMessages({
           ) : null}
           <MessagePrimitive.Parts components={ASSISTANT_ARTIFACT_PARTS} />
           <MessagePrimitive.Error>
-            <p className="text-xs text-destructive">这条回复生成失败。</p>
+            <p className="text-xs text-danger">这条回复生成失败。</p>
           </MessagePrimitive.Error>
           {/* 流式中不占位：避免底部空出一截操作栏高度 */}
           {!isStreaming ? <MessageActionBar /> : null}

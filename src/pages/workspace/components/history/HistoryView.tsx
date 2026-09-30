@@ -409,7 +409,7 @@ export function HistoryVersionList() {
           <div className="py-1 pb-4">
             {groups.map((group) => (
               <div key={group.label} className="mb-1">
-                <div className="px-3 py-1.5 text-[10px] tracking-wider text-muted-foreground/55">
+                <div className="px-3 py-1.5 text-[10px] tracking-wider text-muted-foreground">
                   {group.label}
                 </div>
                 <div className="px-2">
@@ -492,7 +492,7 @@ export function HistoryVersionList() {
                                 className={cn(
                                   "ml-1.5 font-normal",
                                   isSelected
-                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-80"
+                                    ? "text-[var(--goose-interactive-selected-fg)]"
                                     : "text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
                                 )}
                               >
@@ -504,8 +504,8 @@ export function HistoryVersionList() {
                                 className={cn(
                                   "ml-1.5 text-[10px] tabular-nums",
                                   isSelected
-                                    ? "text-[var(--goose-interactive-selected-fg)] opacity-55"
-                                    : "text-muted-foreground/55 group-hover:text-[var(--goose-interactive-hover-fg)]",
+                                    ? "text-[var(--goose-interactive-selected-fg)]"
+                                    : "text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]",
                                 )}
                               >
                                 {deltaText}
