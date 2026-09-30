@@ -4,7 +4,7 @@ import {
   isMissingTargetBlockError,
 } from "../../src/components/editor/ai/formatAiMenuError";
 
-test("识别 xl-ai 半替换失败：block not found", () => {
+test("识别流式替换目标块失效：block not found", () => {
   expect(
     isMissingTargetBlockError(
       new Error("Tool execution failed: block not found"),
@@ -20,7 +20,7 @@ test("block not found 映射成可操作中文，不暴露 Tool execution failed
     new Error("Tool execution failed: block not found"),
   );
   expect(text).toContain("目标块已变化");
-  expect(text).toContain("已恢复原文");
+  expect(text).toContain("原文未修改");
   expect(text.toLowerCase()).not.toContain("tool execution failed");
   expect(text.toLowerCase()).not.toContain("block not found");
 });
