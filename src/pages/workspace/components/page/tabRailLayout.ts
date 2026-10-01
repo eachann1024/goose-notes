@@ -52,17 +52,19 @@ export function tabRailListClassName(tabCount: number): string {
 }
 
 /**
- * 1 个：flex-1 占满，不要 max-w-[120px]。
- * 2–3 个：flex: 1 1 0 等分。
+ * 1 个：flex-1，固定上限 560px——顶栏右侧始终留空白轨道供拖动窗口、
+ *     双击最大化/还原；用固定像素而非百分比，最大化后 pill 不伸长，
+ *     不会吞掉用户刚双击过的空白点。
+ * 2–3 个：flex: 1 1 0 等分，单个上限 280px，宽屏时右侧留空白。
  * 4+：min-width 140px，超出滚动。
  */
 export function tabRailItemClassName(tabCount: number): string {
   const mode = getTabRailLayoutMode(tabCount);
   if (mode === "fill") {
-    return "tab-rail-item min-w-0 flex-1";
+    return "tab-rail-item min-w-0 flex-1 max-w-[560px]";
   }
   if (mode === "split") {
-    return "tab-rail-item min-w-0 flex-[1_1_0]";
+    return "tab-rail-item min-w-0 flex-[1_1_0] max-w-[280px]";
   }
   return "tab-rail-item min-w-[140px] flex-none";
 }

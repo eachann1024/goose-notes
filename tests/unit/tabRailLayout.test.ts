@@ -24,17 +24,19 @@ test("单标签不显示强调色，多标签保留选中和悬停强调色", ()
   expect(tabRailSelectionClassName(2, false)).toContain("hover:bg-[var(--goose-interactive-hover)]");
 });
 
-test("1 个标签占满，不要 max-w-[120px]", () => {
+test("1 个标签填充但固定上限 560px，顶栏留空白轨道供拖动与双击最大化", () => {
   expect(getTabRailLayoutMode(1)).toBe("fill");
   expect(tabRailItemClassName(1)).toContain("flex-1");
+  expect(tabRailItemClassName(1)).toContain("max-w-[560px]");
   expect(tabRailItemClassName(1)).not.toContain("max-w-[120px]");
   expect(tabRailItemClassName(0)).toContain("flex-1");
 });
 
-test("2–3 个标签等分 flex 1 1 0", () => {
+test("2–3 个标签等分 flex 1 1 0，单个上限 280px", () => {
   expect(getTabRailLayoutMode(2)).toBe("split");
   expect(getTabRailLayoutMode(3)).toBe("split");
   expect(tabRailItemClassName(2)).toContain("flex-[1_1_0]");
+  expect(tabRailItemClassName(2)).toContain("max-w-[280px]");
   expect(tabRailItemClassName(3)).toContain("flex-[1_1_0]");
   expect(tabRailListClassName(2)).not.toContain("overflow-x-auto");
 });
