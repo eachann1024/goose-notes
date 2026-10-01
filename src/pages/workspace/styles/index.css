@@ -253,6 +253,12 @@ html.is-electron .electron-titlebar {
   -webkit-app-region: drag;
   app-region: drag;
 }
+/* Linux：CSS 拖拽区吞掉鼠标事件，双击无法触发最大化；改为 JS 拖拽
+   （bindIdleWindowDrag）+ onDoubleClick 切换最大化，顶栏整体退回 no-drag。 */
+html.is-electron.os-linux .electron-titlebar {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
 /* Portal 浮层也要排除拖拽区，否则覆盖标题栏的菜单项收不到点击。 */
 html.is-electron [data-goose-floating-content],
 html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electron-no-drag], [role="button"]) {

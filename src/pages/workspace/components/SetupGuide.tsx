@@ -33,10 +33,11 @@ export function canFinishSetupGuideAI(
   return !aiEnabled || (!status.busy && !status.dirty && status.ready);
 }
 
-function getNativePlatform(): "mac" | "win" | "web" {
+function getNativePlatform(): "mac" | "win" | "linux" | "web" {
   if (!isElectronRuntime() || typeof navigator === "undefined") return "web";
   if (/Mac/i.test(navigator.platform)) return "mac";
   if (/Win/i.test(navigator.platform)) return "win";
+  if (/Linux/i.test(navigator.platform)) return "linux";
   return "web";
 }
 
@@ -120,7 +121,9 @@ function SetupGuideFlow() {
       aria-label="设置引导"
     >
       <div className="setup-guide-windowbar">
-        {nativePlatform === "win" && <WinWindowControls />}
+        {(nativePlatform === "win" || nativePlatform === "linux") && (
+          <WinWindowControls />
+        )}
       </div>
 
       <header className="setup-guide-header">

@@ -51,6 +51,9 @@ export function WorkspacePage() {
     if (isElectronRuntime() && /Win/i.test(navigator.platform)) {
       root.classList.add("is-win");
     }
+    if (isElectronRuntime() && /Linux/i.test(navigator.platform)) {
+      root.classList.add("os-linux");
+    }
     if (isElectronRuntime() && /Mac/i.test(navigator.platform)) {
       return bindOptionWindowDrag();
     }

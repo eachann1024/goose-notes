@@ -185,7 +185,9 @@ linux:
       Comment: Local-first notes
       Categories: Office;Note;
       MimeType: text/markdown;text/x-markdown;
-      StartupWMClass: goose-note
+      # Electron 在 Linux 上用 package.json 的 name 设置 WM_CLASS（实测为
+      # goose-note-app），StartupWMClass 必须一致，否则 Dock 匹配不到图标。
+      StartupWMClass: goose-note-app
 pacman:
   depends:
     - gtk3

@@ -11,10 +11,17 @@
  * 历史模式改渲染 HistoryToolbar（仍全宽）。
  * 非 Electron 构建不渲染本组件，PageHeader 保持原样。
  */
+import { useRef } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import * as GooseIcons from "@/components/ui/icons";
 import { WinWindowControls } from "./WinWindowControls";
 import type { Page } from "@/types";
 import { cn, formatShortcut } from "@/lib/utils";
+import { getGooseDesktop } from "@/lib/electron/runtime";
+import { bindIdleWindowDrag } from "@/lib/electron/windowDrag";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -102,8 +109,35 @@ export function DesktopTitleBar({
     Boolean(aiPanelOpen) && isFullscreenAiLayout(aiLayoutMode);
   const aiSidePanelOpen = Boolean(aiPanelOpen) && !aiFullscreenOpen;
 
-  const isWinElectron =
-    typeof navigator !== "undefined" && /Win/i.test(navigator.platform);
+  // Win/Linux 均为 frameless：右侧渲染自定义 min/max/close 窗控。
+  const isFramelessElectron =
+    typeof navigator !== "undefined" && /Win|Linux/i.test(navigator.platform);
+  // Linux 上 CSS 拖拽区不派发鼠标事件（index.css 已整体 no-drag），
+  // 顶栏空白处改走 JS 拖拽，双击切换最大化/还原。
+  const isLinuxElectron =
+    typeof navigator !== "undefined" && /Linux/i.test(navigator.platform);
+
+  const titleBarWindowDragRef = useRef(false);
+  const isInteractiveTitleBarTarget = (target: EventTarget | null): boolean =>
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        "button, input, textarea, a, select, [role='button'], [role='tab'], [data-electron-no-drag]",
+      ),
+    );
+
+  const onTitleBarPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isLinuxElectron) return;
+    if (event.button !== 0) return;
+    if (isInteractiveTitleBarTarget(event.target)) return;
+    bindIdleWindowDrag(event, titleBarWindowDragRef);
+  };
+
+  const onTitleBarDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!isLinuxElectron) return;
+    if (isInteractiveTitleBarTarget(event.target)) return;
+    void getGooseDesktop()?.toggleMaximizeWindow?.();
+  };
 
   const windowControls = (
     <div
@@ -154,10 +188,12 @@ export function DesktopTitleBar({
       <div
         className="electron-titlebar flex w-full shrink-0 items-center"
         data-sidebar-collapsed={sidebarCollapsed}
+        onPointerDown={onTitleBarPointerDown}
+        onDoubleClick={onTitleBarDoubleClick}
       >
         {windowControls}
         <HistoryToolbar />
-        {isWinElectron ? <WinWindowControls /> : null}
+        {isFramelessElectron ? <WinWindowControls /> : null}
       </div>
     );
   }
@@ -298,11 +334,13 @@ export function DesktopTitleBar({
     <div
       className={cn(
         "electron-titlebar flex w-full shrink-0 items-center",
-        isWinElectron ? "pr-0" : "pr-4",
+        isFramelessElectron ? "pr-0" : "pr-4",
       )}
       data-ai-conversation-header={aiFullscreenOpen || undefined}
       data-ai-side-panel={aiSidePanelOpen || undefined}
       data-sidebar-collapsed={sidebarCollapsed}
+      onPointerDown={onTitleBarPointerDown}
+      onDoubleClick={onTitleBarDoubleClick}
     >
       {windowControls}
       {titleBarRow}
@@ -312,7 +350,7 @@ export function DesktopTitleBar({
           {aiHeaderActions}
         </div>
       )}
-      {isWinElectron ? <WinWindowControls /> : null}
+      {isFramelessElectron ? <WinWindowControls /> : null}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * Windows 自定义窗控（仅 Win frameless 工作区窗）。
+ * Frameless 工作区窗的自定义窗控（Win/Linux 均为 frame：false）。
  * 放在 DesktopTitleBar 最右侧：最小化 / 最大化·还原 / 关闭。
  */
 import { useEffect, useState } from "react";
