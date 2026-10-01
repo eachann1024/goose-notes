@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
-import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 // Self-contained evidence utilities; no external repository or private files are loaded.
 export function hashFile(file) {
@@ -63,66 +62,26 @@ export function checkSandbox(info) {
   assert.equal(info.argv.some(arg => /^(--no-sandbox|--disable-setuid-sandbox|--disable-web-security)(=|$)/.test(arg)), false, 'Unsafe Chromium argument');
 }
 
-export const networkPolicy = `(version 1)
-(allow default)
-(deny network*)
-(allow network-bind (local ip "localhost:*"))
-(allow network-inbound (local ip "localhost:*"))
-(allow network-outbound (remote ip "localhost:*"))
-(allow network-bind (local unix-socket (subpath (param "RUN_ROOT"))))
-(allow network-outbound (remote unix-socket (subpath (param "RUN_ROOT"))))
-(deny appleevent-send)
-(deny lsopen)
-`;
-export async function probeNetwork() {
-  const server = net.createServer(socket => socket.end('loopback-probe'));
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
-  let localData = '';
-  try {
-    await withDeadline(() => new Promise((resolve, reject) => {
-      const socket = net.connect(server.address().port, '127.0.0.1');
-      socket.on('data', data => { localData += data.toString(); });
-      socket.once('end', resolve); socket.once('error', reject);
-    }), 3000);
-    assert.equal(localData, 'loopback-probe');
-  } finally { server.close(); }
-  const external = await new Promise(resolve => {
-    // TEST-NET-3, reserved for documentation. No user data or application request is sent.
-    const socket = net.connect({ host: '203.0.113.1', port: 443 });
-    socket.setTimeout(3000);
-    const done = result => { socket.destroy(); resolve(result); };
-    socket.once('connect', () => done('CONNECTED'));
-    socket.once('error', error => done(error.code));
-    socket.once('timeout', () => done('TIMEOUT'));
-  });
-  assert.ok(['EPERM', 'EACCES'].includes(external), `Direct non-loopback socket was not denied by policy: ${external}`);
-  return { loopbackTCP: 'passed', directNonLoopbackSocket: external, note: 'Socket restriction, not a separate network namespace or a guarantee about system XPC proxies' };
-}
-
 async function main(command) {
   const source = path.resolve(process.env.GOOSE_SOURCE || 'goose-source');
   const out = path.resolve(process.env.GOOSE_OUT || path.join(os.tmpdir(), 'goose-native-out'));
   const manifestFile = path.join(out, 'manifest.json');
   const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  if (command === 'restricted') {
-    assert.equal(process.platform, 'darwin', 'macOS-only runtime wrapper');
+  if (command === 'runtime') {
+    assert.equal(process.platform, 'darwin', 'Standard macOS runtime only');
     assert.ok(['preflight', 'record'].includes(process.argv[3]));
     const runRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'goose-runtime-')));
     fs.mkdirSync(path.join(runRoot, 'tmp'));
-    const policyFile = path.join(runRoot, 'runtime.sb'); fs.writeFileSync(policyFile, networkPolicy);
-    fs.writeFileSync(path.join(out, 'runtime-policy.sb'), networkPolicy);
     const before = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-    before.networkPolicySHA256 = hashFile(policyFile); before.stages[process.argv[3]] = 'running';
-    writeJSON(manifestFile, before);
+    before.stages[process.argv[3]] = 'running'; writeJSON(manifestFile, before);
     const env = {
       ...isolatedEnv(path.join(runRoot, 'home')),
       TMPDIR: `${runRoot}/tmp/`, GOOSE_SOURCE: source, GOOSE_OUT: out,
-      GOOSE_RUNTIME_POLICY: hashFile(policyFile), DEBUG: 'pw:browser',
+      GOOSE_RUNTIME_MODE: 'standard-macos', DEBUG: 'pw:browser',
       PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
     };
     try {
-      execFileSync('/usr/bin/sandbox-exec', ['-D', `RUN_ROOT=${runRoot}`, '-f', policyFile, process.execPath,
-        fileURLToPath(import.meta.url), process.argv[3]], { cwd: process.cwd(), env, stdio: 'inherit', timeout: process.argv[3] === 'record' ? 260000 : 75000 });
+      execFileSync(process.execPath, [fileURLToPath(import.meta.url), process.argv[3]], { cwd: process.cwd(), env, stdio: 'inherit', timeout: process.argv[3] === 'record' ? 260000 : 75000 });
     } catch (error) { persistFatal(manifestFile, error, 'runtime-wrapper'); throw error; }
     finally { fs.rmSync(runRoot, { recursive: true, force: true }); }
     return;
@@ -142,7 +101,8 @@ async function main(command) {
       runURL: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
       runAttempt: process.env.GITHUB_RUN_ATTEMPT, startedAt: new Date().toISOString(),
       platform: 'GitHub standard macos-15 arm64 / packaged Electron application', viewport, locale: 'zh-CN', theme: 'ocean / light',
-      runtimeNetwork: 'macOS per-process direct socket restriction; only loopback TCP and run-root Unix sockets; no claim of a Linux network namespace',
+      runtimeNetwork: 'Standard GitHub macOS VM networking; runtime external network is NOT blocked at the OS level',
+      runtimeExternalNetworkBlocked: false,
       data: 'Disposable synthetic Markdown files and isolated application profile',
       notCovered: ['Windows or Linux native behavior', 'Native folder chooser dialog', 'AI or provider calls', 'Distribution signing, notarization, global shortcuts, system screen capture', 'Full lint/unit suite; earlier failures remain unresolved'],
       status: 'initialized', errors: [], stages: {}, steps: [],
@@ -179,7 +139,7 @@ async function main(command) {
   env.TMPDIR = process.env.TMPDIR;
   const executablePath = command === 'record' ? '/Applications/Goose Note.app/Contents/MacOS/Goose Note' : requireApp('electron');
   assert.equal(process.platform, 'darwin', 'Native macOS recorder only');
-  assert.equal(process.env.GOOSE_RUNTIME_POLICY, crypto.createHash('sha256').update(networkPolicy).digest('hex'), 'Process-level network wrapper is required');
+  assert.equal(process.env.GOOSE_RUNTIME_MODE, 'standard-macos', 'Use the sanitized standard macOS runtime launcher');
   let app, page, video;
   const appLog = fs.createWriteStream(path.join(out, `${command}-app.log`));
   const rendererErrors = [];
@@ -252,8 +212,6 @@ async function main(command) {
     finally { s.finishedAt = new Date().toISOString(); save(); }
   };
   try {
-    manifest.networkProbe = await probeNetwork();
-    manifest.networkPolicySHA256 = process.env.GOOSE_RUNTIME_POLICY; save();
     if (command === 'preflight') {
       const entry = path.join(profile, 'preflight.cjs');
       fs.writeFileSync(path.join(profile, 'preload.cjs'), `const {contextBridge}=require('electron');contextBridge.exposeInMainWorld('probe',{sandboxed:process.sandboxed,contextIsolated:process.contextIsolated});`);

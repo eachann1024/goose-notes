@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { sourceSHA, requireSHA, isolatedEnv, summarize, checkSandbox, persistFatal, networkPolicy } from './record.mjs';
+import { sourceSHA, requireSHA, isolatedEnv, summarize, checkSandbox, persistFatal } from './record.mjs';
 
 test('both checkout identities require exact full SHAs', () => {
   requireSHA(sourceSHA, sourceSHA, 'Goose');
@@ -60,11 +60,10 @@ test('fatal launch observer preserves diagnostics without turning failure into s
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('runtime policy keeps direct outbound traffic limited to loopback', () => {
-  assert.match(networkPolicy, /\(deny network\*\)/);
-  assert.match(networkPolicy, /\(allow network-outbound \(remote ip "localhost:\*"\)\)/);
-  assert.equal(networkPolicy.includes('(remote ip "*:*"'), false);
-  assert.equal(networkPolicy.includes('(allow network-outbound (local ip'), false);
-  assert.match(networkPolicy, /\(deny appleevent-send\)/);
-  assert.match(networkPolicy, /\(deny lsopen\)/);
+test('standard runtime retains native sandboxing without changing OS security', () => {
+  const script = fs.readFileSync(new URL('./record.mjs', import.meta.url), 'utf8');
+  assert.match(script, /chromiumSandbox: true/);
+  assert.match(script, /runtimeExternalNetworkBlocked: false/);
+  assert.equal(script.includes("execFileSync('/usr/bin/sandbox-exec'"), false);
+  assert.equal(/sudo |spctl |csrutil |tccutil |pfctl /.test(script), false);
 });
