@@ -16,6 +16,8 @@ The first [lightweight preflight](https://github.com/eachann1024/goose-notes/act
 
 The video records real Electron page frames, not the entire macOS desktop; it requires no system Screen Recording permission. The native file picker, global shortcuts, notarization and distribution signing are not covered. Prior full unit/lint failures are not resolved by these focused acceptance checks. No passing macOS result is claimed until the run and media have been inspected.
 
+Capture dimensions come from the preflight's actual display work area and native window frame, capped at 1440×1000 and rounded down to even dimensions. The recorder resizes and positions the real `BrowserWindow`, without emulating a larger renderer viewport or changing the system display. It verifies native content size, renderer size, whole-window visibility and PNG dimensions against the video canvas. A smaller runner display therefore produces smaller complete images and video. The manifest preserves the display, scale factor, bounds and size checks for each launch/checkpoint. Each asserted checkpoint stays visible for 1.2 seconds for readability; this delay does not replace any readiness or persistence assertion. Raw video still includes the genuine application startup before the recorded geometry-ready timestamp.
+
 Only synthetic notes and public source are used. Artifacts/logs are visible to repository readers and expire after seven days. No Pages deployment or release is performed. A durable user-facing delivery should preserve the raw evidence and save verified PNGs plus an H.264 playback copy through the recipient's authorized file destination.
 
 ## Local checks

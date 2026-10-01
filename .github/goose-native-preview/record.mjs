@@ -28,6 +28,30 @@ export async function withDeadline(operation, milliseconds) {
 
 export const sourceSHA = 'fab53195d172c6ae008c8da9fe4d32716eba550a';
 export const viewport = { width: 1440, height: 1000 };
+export const checkpointHoldMs = 1200;
+export function chooseCaptureSize(workArea, frameSize, preferred = viewport) {
+  for (const key of ['width', 'height']) {
+    assert.ok(Number.isFinite(workArea[key]) && workArea[key] > 0, `Invalid display ${key}`);
+    assert.ok(Number.isFinite(frameSize[key]) && frameSize[key] >= 0, `Invalid window frame ${key}`);
+    assert.ok(Number.isFinite(preferred[key]) && preferred[key] > 0, `Invalid preferred ${key}`);
+  }
+  // Keep the entire native window within the existing work area, including its frame.
+  // Even dimensions also allow a lossless-size yuv420p playback derivative later.
+  const size = Object.fromEntries(['width', 'height'].map(key => [key,
+    Math.floor(Math.min(preferred[key], workArea[key] - frameSize[key] - 32) / 2) * 2]));
+  assert.ok(size.width >= 800 && size.height >= 560, 'Display work area is too small for this native scenario');
+  return size;
+}
+export function checkCaptureGeometry(geometry, expected) {
+  const { bounds, contentSize, workArea, renderer } = geometry;
+  assert.deepEqual(contentSize, expected, 'Native content size must match the video canvas');
+  assert.deepEqual({ width: renderer.width, height: renderer.height }, expected, 'Renderer must match the native content size');
+  assert.equal(renderer.visibility, 'visible', 'The recorded window must be visible');
+  assert.ok(bounds.x >= workArea.x && bounds.y >= workArea.y &&
+    bounds.x + bounds.width <= workArea.x + workArea.width &&
+    bounds.y + bounds.height <= workArea.y + workArea.height,
+  'The entire native window must fit inside the display work area');
+}
 export function requireSHA(actual, expected, name) {
   assert.match(expected || '', /^[a-f0-9]{40}$/, `${name} requires a full SHA`);
   assert.equal(actual, expected, `${name} checkout mismatch`);
@@ -93,14 +117,15 @@ async function main(command) {
     requireSHA(git(source, 'rev-parse', 'HEAD'), sourceSHA, 'Goose');
     assert.equal(fs.existsSync(manifestFile), false, 'Do not mix evidence from multiple runs');
     writeJSON(manifestFile, {
-      schemaVersion: 1, app: 'Goose Note', scenarioVersion: 'macos-electron-real-files-v1',
+      schemaVersion: 1, app: 'Goose Note', scenarioVersion: 'macos-electron-real-files-native-size-v2',
       sourceRepository: 'eachann1024/goose-notes', sourceSHA,
       recorderRepository: 'eachann1024/goose-notes', recorderSHA: recorder,
       sourceDirty: Boolean(git(source, 'status', '--porcelain', '--untracked-files=no')),
       appLockSHA256: hashFile(path.join(source, 'bun.lock')),
       runURL: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
       runAttempt: process.env.GITHUB_RUN_ATTEMPT, startedAt: new Date().toISOString(),
-      platform: 'GitHub standard macos-15 arm64 / packaged Electron application', viewport, locale: 'zh-CN', theme: 'ocean / light',
+      platform: 'GitHub standard macos-15 arm64 / packaged Electron application', preferredViewport: viewport,
+      viewport: null, checkpointHoldMs, locale: 'zh-CN', theme: 'ocean / light',
       runtimeNetwork: 'Standard GitHub macOS VM networking; runtime external network is NOT blocked at the OS level',
       runtimeExternalNetworkBlocked: false,
       data: 'Disposable synthetic Markdown files and isolated application profile',
@@ -144,16 +169,49 @@ async function main(command) {
   const appLog = fs.createWriteStream(path.join(out, `${command}-app.log`));
   const rendererErrors = [];
   manifest.stages[command] = 'running'; save();
+  let captureSize = manifest.captureSize;
+  const readGeometry = async () => {
+    const native = await app.evaluate(({ BrowserWindow, screen }) => {
+      const w = BrowserWindow.getAllWindows()[0];
+      const bounds = w.getBounds(), [width, height] = w.getContentSize();
+      const display = screen.getDisplayMatching(bounds);
+      return { bounds, contentSize: { width, height }, workArea: display.workArea,
+        displayBounds: display.bounds, displayScaleFactor: display.scaleFactor };
+    });
+    return { ...native, renderer: await page.evaluate(() => ({ width: innerWidth, height: innerHeight,
+      devicePixelRatio, visibility: document.visibilityState })) };
+  };
   const launch = async (entry, files = [], record = false) => {
+    if (record) assert.ok(captureSize, 'Preflight must establish a native recording size');
     app = await _electron.launch({ executablePath, args: [...(entry ? [entry] : []), `--user-data-dir=${profile}/profile`, '--lang=zh-CN', ...files],
       cwd: source, env, chromiumSandbox: true, timeout: 30000,
-      ...(record ? { recordVideo: { dir: out, size: viewport } } : {}) });
+      ...(record ? { recordVideo: { dir: out, size: captureSize } } : {}) });
     app.process().stdout?.pipe(appLog, { end: false });
     app.process().stderr?.pipe(appLog, { end: false });
     page = await app.firstWindow(); page.setDefaultTimeout(15000);
     page.on('pageerror', error => rendererErrors.push(error.message));
-    await page.setViewportSize(viewport);
     video = page.video();
+    // A simulated Playwright viewport can exceed the native macOS window and yield
+    // cropped screencast frames with gray padding. Resize the actual window instead.
+    const before = await readGeometry();
+    if (!captureSize) captureSize = chooseCaptureSize(before.workArea, {
+      width: Math.max(0, before.bounds.width - before.contentSize.width),
+      height: Math.max(0, before.bounds.height - before.contentSize.height),
+    });
+    await app.evaluate(({ BrowserWindow, screen }, size) => {
+      const w = BrowserWindow.getAllWindows()[0];
+      const area = screen.getDisplayMatching(w.getBounds()).workArea;
+      w.setContentSize(size.width, size.height, false);
+      w.setPosition(area.x + 16, area.y + 16, false);
+      w.show(); w.focus();
+    }, captureSize);
+    await page.waitForFunction(size => innerWidth === size.width && innerHeight === size.height &&
+      document.visibilityState === 'visible', captureSize);
+    const geometry = await readGeometry();
+    checkCaptureGeometry(geometry, captureSize);
+    manifest.captureSize = captureSize; manifest.viewport = captureSize;
+    (manifest.captureGeometry ||= []).push({ phase: command, recording: record,
+      readyAt: new Date().toISOString(), ...geometry }); save();
     manifest.versions = await app.evaluate(() => ({ ...process.versions }));
     manifest.playwrightVersion = requireApp('playwright/package.json').version;
     const prefs = await app.evaluate(({ BrowserWindow }) => {
@@ -204,7 +262,17 @@ async function main(command) {
     }
     if (failure) throw failure;
   };
-  const shot = async name => { await page.evaluate(() => document.fonts.ready); await page.screenshot({ path: path.join(out, `${name}.png`) }); };
+  const shot = async name => {
+    await page.evaluate(() => document.fonts.ready);
+    const geometry = await readGeometry();
+    if (name !== 'failure') checkCaptureGeometry(geometry, captureSize);
+    const screenshot = await page.screenshot({ path: path.join(out, `${name}.png`), scale: 'css' });
+    const pngSize = { width: screenshot.readUInt32BE(16), height: screenshot.readUInt32BE(20) };
+    if (name !== 'failure') assert.deepEqual(pngSize, captureSize, 'PNG dimensions must match the video canvas');
+    (manifest.captureCheckpoints ||= []).push({ name, capturedAt: new Date().toISOString(), pngSize, ...geometry }); save();
+    // Presentation dwell after the ready/content assertions, never a readiness substitute.
+    if (name !== 'failure') await new Promise(resolve => setTimeout(resolve, checkpointHoldMs));
+  };
   const step = async (name, operation) => {
     const s = { name, startedAt: new Date().toISOString(), status: 'running' }; manifest.steps.push(s); save();
     try { await operation(); s.status = 'passed'; }
