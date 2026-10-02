@@ -217,7 +217,7 @@ export function DesktopTitleBar({
               role="tab"
               aria-selected="true"
               tabIndex={0}
-              className="tab-rail-item flex min-w-0 max-w-[560px] flex-1 items-center px-2 text-foreground"
+              className="tab-rail-item flex min-w-0 flex-1 items-center px-2 text-foreground"
             >
               <ConversationTitle
                 summary={aiHeaderTitle ?? "新会话"}
