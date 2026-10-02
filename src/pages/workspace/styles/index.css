@@ -237,6 +237,12 @@ html.is-electron.is-win {
   /* 三个 w-11 按钮和 ml-1，与 WinWindowControls 共用尺寸。 */
   --electron-window-controls-width: 8.5rem;
 }
+/* Linux 同为 frameless 且渲染窗控，但左侧 traffic-inset 保持既有 96px，
+   只补右侧窗控占位变量（AI 头部宽度计算需要预留）。 */
+html.is-electron.os-linux {
+  --electron-titlebar-end-inset: 0px;
+  --electron-window-controls-width: 8.5rem;
+}
 
 @media (max-width: 680px) {
   .electron-window-controls button:is([aria-label="后退"], [aria-label="前进"]) {
@@ -757,10 +763,13 @@ html.is-electron body {
   background: var(--goose-shell-surface);
 }
 
-/* Win frameless：右侧自定义窗控贴齐顶栏高度 */
-html.is-electron.is-win .electron-win-chrome-controls {
+/* Win/Linux frameless：右侧自定义窗控贴齐顶栏高度（Linux 缺这条时按钮
+   固定 h-8 且顶部对齐，与顶栏其他内容不水平）。 */
+html.is-electron.is-win .electron-win-chrome-controls,
+html.is-electron.os-linux .electron-win-chrome-controls {
   height: var(--electron-titlebar-height, 2.75rem);
 }
-html.is-electron.is-win .electron-win-chrome-btn {
+html.is-electron.is-win .electron-win-chrome-btn,
+html.is-electron.os-linux .electron-win-chrome-btn {
   height: 100%;
 }
