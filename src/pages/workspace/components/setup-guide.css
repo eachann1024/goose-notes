@@ -27,7 +27,8 @@
 }
 
 .setup-guide[data-native-platform="mac"] .setup-guide-windowbar,
-.setup-guide[data-native-platform="win"] .setup-guide-windowbar {
+.setup-guide[data-native-platform="win"] .setup-guide-windowbar,
+.setup-guide[data-native-platform="linux"] .setup-guide-windowbar {
   -webkit-app-region: drag;
 }
 

@@ -105,3 +105,4 @@ public/fonts/*.otf
 
 # Trusted PR preview tooling uses its own pinned Node dependencies
 !/.github/ui-preview/package-lock.json
+__pycache__/

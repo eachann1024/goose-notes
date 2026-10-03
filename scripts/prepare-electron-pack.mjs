@@ -123,7 +123,7 @@ files:
   - "!**/__tests__/**"
   - "!icon.icns"
   - "!icon.ico"
-  - "!icon.png"
+  # BrowserWindow 在 Linux/Windows 从 app.asar/icon.png 读取窗口图标，必须保留。
   - "!electron-builder.yml"
 fileAssociations:
   - ext: md
@@ -185,6 +185,9 @@ linux:
       Comment: Local-first notes
       Categories: Office;Note;
       MimeType: text/markdown;text/x-markdown;
+      # 打包版 WM_CLASS 是 productName 的小写中划线形式 "goose-note"（实测 AppImage/deb）；
+      # 开发实例（electron .）才是 package.json name "goose-note-app"，
+      # 开发机图标匹配请在 ~/.local/share/applications 放 goose-note-app.desktop。
       StartupWMClass: goose-note
 pacman:
   depends:
