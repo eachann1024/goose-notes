@@ -123,7 +123,7 @@ files:
   - "!**/__tests__/**"
   - "!icon.icns"
   - "!icon.ico"
-  - "!icon.png"
+  # BrowserWindow 在 Linux/Windows 从 app.asar/icon.png 读取窗口图标，必须保留。
   - "!electron-builder.yml"
 fileAssociations:
   - ext: md

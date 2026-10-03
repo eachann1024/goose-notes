@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import re
 import shutil
 import signal
 import subprocess
@@ -156,7 +157,7 @@ def find_dev_pids() -> list[int]:
     try:
         if IS_LINUX or IS_MAC:
             out = subprocess.run(
-                ["pgrep", "-f", marker],
+                ["pgrep", "-f", re.escape(marker)],
                 capture_output=True,
                 text=True,
             ).stdout
@@ -167,18 +168,26 @@ def find_dev_pids() -> list[int]:
                 # 防自杀：跳过本脚本及其父进程（命令行可能带 marker 字符串）。
                 if pid in exclude:
                     continue
-                # electron 的 renderer/gpu 等子进程带 --type=，杀主进程即可。
-                try:
-                    if b"--type=" in Path(f"/proc/{pid}/cmdline").read_bytes():
+                # /proc 仅在 Linux 可用；无法确认所属仓库时不终止该进程。
+                if IS_LINUX:
+                    try:
+                        if b"--type=" in Path(f"/proc/{pid}/cmdline").read_bytes():
+                            continue
+                        if Path(f"/proc/{pid}/cwd").resolve(strict=True) != ROOT:
+                            continue
+                    except OSError:
                         continue
-                except OSError:
-                    pass
-                # linux 上按 cwd 再过滤一次，避免误杀其它仓库的 electron。
-                try:
-                    if Path(f"/proc/{pid}/cwd").resolve() != ROOT:
+                else:
+                    try:
+                        command = subprocess.run(
+                            ["ps", "-p", str(pid), "-o", "command="],
+                            capture_output=True,
+                            text=True,
+                        ).stdout
+                    except OSError:
                         continue
-                except OSError:
-                    pass
+                    if marker not in command or "--type=" in command:
+                        continue
                 pids.append(pid)
         else:
             query = (
@@ -208,10 +217,15 @@ def signal_pids(pids: list[int], sig: int) -> None:
                 subprocess.run(
                     ["taskkill", "/F", "/PID", str(pid), "/T"],
                     capture_output=True,
+                    check=True,
                 )
             else:
                 os.kill(pid, sig)
-        except (ProcessLookupError, PermissionError, OSError):
+        except subprocess.CalledProcessError as error:
+            die("kill", f"终止 PID {pid} 失败（退出码 {error.returncode}）")
+        except (ProcessLookupError, PermissionError, OSError) as error:
+            if IS_WIN:
+                die("kill", f"终止 PID {pid} 失败：{error}")
             pass
 
 
@@ -241,11 +255,11 @@ def cmd_kill(_args: argparse.Namespace) -> None:
         if pids:
             log("kill", f"{kind} 实例 PID: {', '.join(map(str, pids))}")
     merged = sorted({pid for pids in targets.values() for pid in pids})
+    signal_pids(merged, signal.SIGTERM)
     if IS_WIN:
         # taskkill /F 已在 signal_pids 内执行。
         log("kill", f"已强制终止 {len(merged)} 个进程。")
         return
-    signal_pids(merged, signal.SIGTERM)
     deadline = time.monotonic() + KILL_GRACE_SECONDS
     while time.monotonic() < deadline:
         if not alive_pids(merged):
@@ -255,7 +269,10 @@ def cmd_kill(_args: argparse.Namespace) -> None:
     log("kill", "宽限期内未退出，SIGKILL 强杀…")
     signal_pids(merged, signal.SIGKILL)
     time.sleep(1)
-    log("kill", f"完成，存活 {len(alive_pids(merged))} 个。")
+    remaining = alive_pids(merged)
+    if remaining:
+        die("kill", f"仍有进程未退出：{', '.join(map(str, remaining))}，停止后续打包或安装")
+    log("kill", "旧实例已强制退出。")
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,12 @@
 name: Desktop installers
 
 on:
+  push:
+    branches-ignore:
+      # Generated preview media is an orphan branch, not application source.
+      - ui-previews
+  pull_request:
+    branches: [main]
   schedule:
     # ponytail: GitHub cron 按月中日期隔日运行；月底可能连续两天，严格 48 小时需每日轻量检查。
     - cron: '0 7 */2 * *'
@@ -10,15 +16,16 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   prepare:
-    name: Prepare staging release
+    name: Select build and publication
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions:
-      contents: write
     outputs:
-      tag: ${{ steps.staging.outputs.tag }}
+      build: ${{ steps.check.outputs.build }}
       publish: ${{ steps.check.outputs.publish }}
     steps:
       - name: Skip unchanged scheduled builds
@@ -32,57 +39,55 @@ jobs:
             if [[ "$previous" =~ ^[0-9a-f]{7}$ ]]; then
               changed=$(gh api "repos/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_SHA" --jq '[.files[].filename | select(startswith("updates/") or startswith("Casks/") | not)] | length')
               if [[ "$changed" == 0 ]]; then
+                echo 'build=false' >> "$GITHUB_OUTPUT"
                 echo 'publish=false' >> "$GITHUB_OUTPUT"
                 exit 0
               fi
             fi
             if [[ "$latest" == *"-${GITHUB_SHA:0:7}" ]]; then
+              echo 'build=false' >> "$GITHUB_OUTPUT"
               echo 'publish=false' >> "$GITHUB_OUTPUT"
               exit 0
             fi
           fi
-          echo 'publish=true' >> "$GITHUB_OUTPUT"
-      - name: Create staging draft
-        id: staging
-        if: steps.check.outputs.publish == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="ci-${GITHUB_RUN_ID}"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "构建暂存 ${GITHUB_SHA:0:7}" --notes "内部暂存，构建完成后删除。" --prerelease --draft --latest=false
+          echo 'build=true' >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/heads/main && ( "$GITHUB_EVENT_NAME" == schedule || "$GITHUB_EVENT_NAME" == workflow_dispatch ) ]]; then
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+          fi
 
   source:
     name: Source archive
     needs: [prepare]
-    if: needs.prepare.outputs.publish == 'true'
+    if: needs.prepare.outputs.build == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - name: Archive exact tracked source
         run: |
           mkdir source-artifact
-          git archive --format=tar.gz --prefix=goose-note-source/ HEAD > source-artifact/goose-note-source-${GITHUB_SHA}.tar.gz
-          printf '%s\n' "$GITHUB_SHA" > source-artifact/COMMIT.txt
+          git archive --format=tar.gz --prefix=goose-note-source/ HEAD > source-artifact/goose-note-source-${SOURCE_SHA}.tar.gz
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf '%s\n' "$SOURCE_SHA" > source-artifact/COMMIT.txt
           cp BUILD-ARTIFACTS.md LICENSE SOURCE-CODE.md THIRD-PARTY-NOTICES.txt source-artifact/
-          cp docs/showcase/goose-note-first-release.mp4 source-artifact/
           cd source-artifact
-          sha256sum *.tar.gz > source-${GITHUB_SHA}-SHA256SUMS.txt
-      - name: Upload source to staging release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release upload "$STAGE_TAG" source-artifact/* --clobber
+          sha256sum *.tar.gz > source-${SOURCE_SHA}-SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: source-${{ env.SOURCE_SHA }}
+          path: source-artifact/
+          if-no-files-found: error
+          retention-days: 30
 
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
     needs: [prepare]
-    if: needs.prepare.outputs.publish == 'true'
+    if: needs.prepare.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -101,20 +106,14 @@ jobs:
             runner: ubuntu-24.04
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
-    permissions:
-      contents: write
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-      CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -122,14 +121,35 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.3.14'
+      - name: Verify selected source commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
       - name: Install Linux packaging tools
         if: matrix.platform == 'linux'
         run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
       - run: bun install --frozen-lockfile
+      - name: Verify packaging workflow regressions
+        if: matrix.platform == 'linux'
+        run: |
+          bun tests/unit/releaseCadence.assert.ts
+          node scripts/publish-release.mjs --self-test
+          python3 -m unittest discover -s tests/unit -p 'build_processes_test.py'
       - name: Compile renderer, main and preload
+        if: matrix.platform != 'mac' || matrix.arch != 'arm64'
         run: bun run build:electron
+      - name: Verify native macOS build and installation
+        if: matrix.platform == 'mac' && matrix.arch == 'arm64'
+        run: bun run mac
       - name: Build installers and checksums
-        run: node scripts/build-ci-installers.mjs ${{ matrix.platform }} ${{ matrix.arch }}
+        env:
+          CSC_LINK: ${{ needs.prepare.outputs.publish == 'true' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ needs.prepare.outputs.publish == 'true' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ needs.prepare.outputs.publish == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ needs.prepare.outputs.publish == 'true' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ needs.prepare.outputs.publish == 'true' && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          node scripts/prepare-electron-pack.mjs
+          node scripts/build-ci-installers.mjs ${{ matrix.platform }} ${{ matrix.arch }}
       - name: Verify Arch package installs with dependencies
         if: matrix.platform == 'linux'
         run: |
@@ -139,40 +159,17 @@ jobs:
             pacman -Q goose-note-app
             test -f "/opt/Goose Note/resources/app.asar"
           '
-      - name: Upload installers to staging release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
-          PLATFORM: ${{ matrix.platform }}
-          ARCH: ${{ matrix.arch }}
-        run: |
-          PYTHON=python3
-          command -v python3 >/dev/null || PYTHON=python
-          "$PYTHON" - <<'PY'
-          import os, shutil, pathlib
-          src = pathlib.Path('dist-desktop/ci')
-          dest = pathlib.Path('staging-upload')
-          dest.mkdir()
-          prefix = f"goose-note-{os.environ['PLATFORM']}-{os.environ['ARCH']}"
-          for file in src.iterdir():
-              if not file.is_file():
-                  continue
-              name = file.name.replace(' ', '.')
-              if name in {'SHA256SUMS.txt', 'BUILD.json', 'COMMIT.txt'}:
-                  name = f"{prefix}-{name}"
-              shutil.copyfile(file, dest / name)
-          files = list(dest.iterdir())
-          if not files:
-              raise SystemExit('No installer files to upload')
-          print('\n'.join(file.name for file in files))
-          PY
-          gh release upload "$STAGE_TAG" staging-upload/* --clobber
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goose-note-${{ matrix.platform }}-${{ matrix.arch }}-${{ env.SOURCE_SHA }}
+          path: dist-desktop/ci/
+          if-no-files-found: error
+          retention-days: 30
 
   release:
     name: Publish release in source repository
     needs: [prepare, source, build]
-    if: github.ref == 'refs/heads/main'
+    if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     concurrency:
@@ -183,34 +180,38 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
-      - name: Download complete staging assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: downloaded-artifacts/
+      - name: Collect exact build assets for publication
         run: |
-          mkdir -p artifacts
-          gh release download "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts
-      - name: Publish installers, source, video and update feeds
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          sha = os.environ['SOURCE_SHA']
+          dest = pathlib.Path('artifacts')
+          dest.mkdir()
+          for prefix in ('source', 'goose-note-win-x64', 'goose-note-mac-arm64', 'goose-note-mac-x64', 'goose-note-linux-x64'):
+              src = pathlib.Path('downloaded-artifacts') / f'{prefix}-{sha}'
+              if not src.is_dir():
+                  raise SystemExit(f'Missing artifact: {src}')
+              for file in src.iterdir():
+                  if not file.is_file():
+                      raise SystemExit(f'Unexpected directory: {file}')
+                  name = file.name.replace(' ', '.')
+                  if name in {'SHA256SUMS.txt', 'BUILD.json', 'COMMIT.txt'}:
+                      name = f'{prefix}-{name}'
+                  target = dest / name
+                  if target.exists() and target.read_bytes() != file.read_bytes():
+                      raise SystemExit(f'Conflicting asset: {name}')
+                  shutil.copyfile(file, target)
+          PYTHON
+      - name: Publish installers, source and update feeds
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: node scripts/publish-release.mjs
-
-  cleanup-staging:
-    name: Delete staging release
-    needs: [prepare, release]
-    if: github.ref == 'refs/heads/main' && needs.release.result == 'success'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    steps:
-      - name: Delete staging draft
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGE_TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release delete "$STAGE_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag

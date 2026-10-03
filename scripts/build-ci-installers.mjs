@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,6 +19,18 @@ execFileSync(process.execPath, [
   resolve(root, 'node_modules/electron-builder/out/cli/cli.js'),
   `--${platform}`, ...targets[platform], `--${arch}`, '--publish', 'never',
 ], { cwd: pack, stdio: 'inherit', env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' } });
+
+// Verify the runtime icon inside the actual packaged app, not only the input directory.
+const builderRequire = createRequire(resolve(root, 'node_modules/electron-builder/package.json'));
+const appBuilderRequire = createRequire(builderRequire.resolve('app-builder-lib/package.json'));
+const { extractFile } = appBuilderRequire('@electron/asar');
+const appAsar = platform === 'mac'
+  ? resolve(root, 'dist-electron/packaged', arch === 'arm64' ? 'mac-arm64' : 'mac', 'Goose Note.app/Contents/Resources/app.asar')
+  : resolve(root, 'dist-electron/packaged', platform === 'win' ? 'win-unpacked' : 'linux-unpacked', 'resources/app.asar');
+if (!extractFile(appAsar, 'icon.png').equals(readFileSync(resolve(root, 'electron/icons/icon.png')))) {
+  throw new Error('Packaged BrowserWindow icon does not match the application icon');
+}
+console.log('Verified packaged BrowserWindow icon in app.asar');
 
 const output = resolve(root, 'dist-desktop/ci');
 mkdirSync(output, { recursive: true });
