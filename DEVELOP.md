@@ -28,6 +28,18 @@ bun run linux        # Linux 包
 bun run build:debug  # 保留调试信息
 ```
 
+跨平台单入口脚本（参考 1Panel build.py 思路，三平台通用）：
+
+```bash
+python3 build.py all                               # 编译 → 打包 → 安装 → 启动
+python3 build.py kill                              # 强杀运行中的 Goose Note（安装版与开发实例）
+python3 build.py build --no-install                # 跳过 bun install 只编译
+python3 build.py package --linux-targets AppImage,deb  # Linux 指定打包目标（缺 rpm/libarchive-tools 时）
+python3 build.py install / start / status / clean / release
+```
+
+`package` 前会自动强杀旧实例（SingletonLock 与已挂载 AppImage 会阻塞覆盖）；本地打包默认注入 npmmirror 工具链镜像，已设置的 `ELECTRON_MIRROR` 等环境变量优先。`release` 读取 `artifacts/`（CI 汇总的完整产物），需 gh 已登录。
+
 - `dist-electron/renderer`：主窗口 `index.html` 与速记 `quicknote.html`。
 - `dist-electron/main`、`dist-electron/preload`：Electron 编译结果。
 - `dist-electron/app-pack`：打包输入目录。

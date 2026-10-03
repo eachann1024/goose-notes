@@ -5,7 +5,7 @@ import {
   shell,
   type BrowserWindowConstructorOptions,
 } from "electron";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -114,6 +114,18 @@ function rendererDevUrl(): string | null {
 
 function rendererFile(name: "index.html" | "quicknote.html"): string {
   return path.join(__dirname, "../renderer", name);
+}
+
+/**
+ * Linux/Windows 任务栏图标。打包后 main 位于 <pack>/main/，icon.png 由
+ * prepare-electron-pack 复制在 pack 根；开发态 main 位于 dist-electron/main/，
+ * 图标在源码 electron/icons/。macOS 走 app/dock 原生图标，不读这里。
+ */
+function framelessWindowIcon(): string | undefined {
+  if (process.platform === "darwin") return undefined;
+  const packaged = path.join(__dirname, "../icon.png");
+  const dev = path.join(__dirname, "../../electron/icons/icon.png");
+  return existsSync(packaged) ? packaged : existsSync(dev) ? dev : undefined;
 }
 
 function isDevRenderer(): boolean {
@@ -508,6 +520,7 @@ export function createWorkspaceWindow(
   const id = allocWindowId(opts.windowId);
   const bounds = resolveCreateBounds(opts);
   const material = workspaceWindowMaterialOptions();
+  const icon = framelessWindowIcon();
   const win = new BrowserWindow({
     title: "Goose Note",
     width: bounds.width ?? MAIN_WIDTH,
@@ -519,9 +532,10 @@ export function createWorkspaceWindow(
     backgroundColor: material.backgroundColor,
     transparent: false,
     autoHideMenuBar: true,
-    // Win：去掉原生顶栏，由 DesktopTitleBar 右侧自定义 min/max/close。
+    // Win/Linux：去掉原生顶栏，由 DesktopTitleBar 右侧自定义 min/max/close。
     // Mac：保留 frame + hidden titleBar，红绿灯仍走系统。
     frame: isMac,
+    ...(icon ? { icon } : {}),
     ...(material.backgroundMaterial
       ? { backgroundMaterial: material.backgroundMaterial }
       : {}),
@@ -579,8 +593,10 @@ export function createAssetMaintenanceWindow(): BrowserWindow {
     title: "资源清理 · Goose Note",
     width: 1000, height: 720, minWidth: 760, minHeight: 540,
     show: false, autoHideMenuBar: true,
+    ...(framelessWindowIcon() ? { icon: framelessWindowIcon() } : {}),
     webPreferences: { ...sharedWebPrefs(), partition: "asset-maintenance" },
   });
+
   assetMaintenanceWindow = win;
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   win.webContents.on("will-navigate", (event) => event.preventDefault());
@@ -656,6 +672,7 @@ export function createQuicknoteWindow(): BrowserWindow {
     skipTaskbar: true,
     backgroundColor: "#ffffff",
     transparent: false,
+    ...(framelessWindowIcon() ? { icon: framelessWindowIcon() } : {}),
     // panel 浮在当前空间，show 时不激活整个应用，避免把已 hide 的 workspace 一起放出来。
     ...(isMac
       ? {
