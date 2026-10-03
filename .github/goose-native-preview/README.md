@@ -1,6 +1,6 @@
 # Native macOS review
 
-This workflow builds and runs Goose Note on GitHub's standard public `macos-15` (Apple Silicon) runner. It does not change application source, use provider accounts, or require the owner's Mac. The recorder and application have separate exact SHAs in `manifest.json`: the application source is fixed to `fab53195d172c6ae008c8da9fe4d32716eba550a`; the recorder is the actual PR head.
+This workflow builds and runs Goose Note on GitHub's standard public `macos-15` (Apple Silicon) runner. It does not change application source, use provider accounts, or require the owner's Mac. It runs for same-repository PRs targeting main, pushes to main, and manual dispatches. The recorder and application have separate exact SHAs in `manifest.json`: by default both check out the actual PR head or triggering workflow commit, without using the implicit PR merge revision. Manual dispatch can select an application branch, tag or full SHA through `app_ref`; the checkout resolves that ref once to a full SHA before initializing evidence. The manifest preserves the requested application ref and resolved SHA, and the post-build check requires that exact SHA and an unchanged lockfile.
 
 ## Gates
 
@@ -24,4 +24,4 @@ Only synthetic notes and public source are used. Artifacts/logs are visible to r
 
 `node --test .github/goose-native-preview/record.test.mjs`
 
-The real runtime checks require macOS and should execute only within the workflow's sanitized runtime launcher, never as a web mock or an unsandboxed substitute.
+The tests also create isolated temporary Git repositories to prove that changing the requested application revision changes the recorded SHA, and that a checkout mismatch before or after building fails. The real runtime checks require macOS and should execute only within the workflow's sanitized runtime launcher, never as a web mock or an unsandboxed substitute. Previous artifacts retain their original application and recorder SHAs; they do not certify later revisions.

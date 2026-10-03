@@ -3,12 +3,52 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { sourceSHA, requireSHA, isolatedEnv, summarize, checkSandbox, persistFatal, chooseCaptureSize, checkCaptureGeometry } from './record.mjs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { requireSHA, isolatedEnv, summarize, checkSandbox, persistFatal, chooseCaptureSize, checkCaptureGeometry } from './record.mjs';
 
 test('both checkout identities require exact full SHAs', () => {
+  const sourceSHA = 'a'.repeat(40);
   requireSHA(sourceSHA, sourceSHA, 'Goose');
   assert.throws(() => requireSHA('other', sourceSHA, 'Goose'));
   assert.throws(() => requireSHA('fab5319', 'fab5319', 'Goose'));
+});
+test('initialization binds the requested app revision and post-build verification rejects a moved checkout', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'goose-revision-test-'));
+  const source = path.join(root, 'app'); fs.mkdirSync(source);
+  const recorderRoot = fileURLToPath(new URL('../../', import.meta.url));
+  const recorder = fileURLToPath(new URL('./record.mjs', import.meta.url));
+  const git = (...args) => execFileSync('git', args, { cwd: source, encoding: 'utf8' }).trim();
+  const commit = value => {
+    fs.writeFileSync(path.join(source, 'bun.lock'), value);
+    git('add', 'bun.lock'); git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', value);
+    return git('rev-parse', 'HEAD');
+  };
+  const run = (out, sha, command) => spawnSync(process.execPath, [recorder, command], {
+    cwd: recorderRoot, encoding: 'utf8', env: { ...process.env, GOOSE_SOURCE: source, GOOSE_OUT: out,
+      GOOSE_REF: 'requested-app', EXPECTED_SOURCE_SHA: sha,
+      EXPECTED_RECORDER_SHA: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: recorderRoot, encoding: 'utf8' }).trim() },
+  });
+  try {
+    git('init', '-q');
+    const first = commit('first'); const out = path.join(root, 'first-evidence');
+    assert.equal(run(out, '', 'init').status, 1, 'Missing expected app SHA must fail');
+    assert.equal(run(out, '0'.repeat(40), 'init').status, 1, 'Wrong expected app SHA must fail');
+    assert.equal(run(out, first, 'init').status, 0);
+    const initial = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json')));
+    assert.equal(initial.sourceSHA, first); assert.equal(initial.sourceRef, 'requested-app');
+    assert.equal(run(out, first, 'verify-source').status, 0);
+    fs.writeFileSync(path.join(source, 'bun.lock'), 'modified by build');
+    assert.equal(run(out, first, 'verify-source').status, 1, 'Tracked source/lock mutations must fail');
+    git('checkout', '--', 'bun.lock');
+    const second = commit('second');
+    assert.equal(run(out, second, 'verify-source').status, 1, 'Manifest must remain bound to the first checkout');
+    const secondOut = path.join(root, 'second-evidence');
+    assert.equal(run(secondOut, second, 'init').status, 0);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(secondOut, 'manifest.json'))).sourceSHA, second);
+    assert.equal(run(secondOut, second, 'verify-source').status, 0);
+    assert.equal(run(secondOut, second, 'init').status, 1, 'Existing evidence must never be overwritten');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 test('runtime environment does not inherit keys, home or application configuration', () => {
   const env = isolatedEnv('/tmp/disposable', { PATH: '/bin', TMPDIR: '/tmp/runner-tmp', HOME: '/real', GITHUB_TOKEN: 'not-a-real-token', ELECTRON_RENDERER_URL: 'https://external.invalid', NODE_OPTIONS: '--require=bad' });
@@ -33,7 +73,8 @@ test('workflow preflights before build and preserves the isolation and audience'
   assert.match(text, /github.event.repository.private == false/);
   assert.match(text, /contents: read/); assert.match(text, /retention-days: 7/);
   assert.equal(/pull_request_target|pages:|contents: write|--privileged|seccomp=unconfined|--no-sandbox/.test(text), false);
-  assert.match(text, new RegExp(sourceSHA));
+  assert.match(text, /GOOSE_REF:.*github\.event\.inputs\.app_ref.*github\.event\.pull_request\.head\.sha.*github\.sha/);
+  assert.match(text, /EXPECTED_SOURCE_SHA=.*rev-parse HEAD/);
   assert.equal(text.includes('${{ runner.temp }}'), false, 'Runner context is unavailable in job env');
 });
 

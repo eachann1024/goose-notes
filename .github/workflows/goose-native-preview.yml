@@ -1,12 +1,17 @@
 name: Goose native macOS preview
 
 on:
+  push:
+    branches: [main]
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
-    paths:
-      - '.github/goose-native-preview/**'
-      - '.github/workflows/goose-native-preview.yml'
   workflow_dispatch:
+    inputs:
+      app_ref:
+        description: Application branch, tag or full SHA (default is the selected workflow revision)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -17,12 +22,12 @@ concurrency:
 
 jobs:
   native:
-    if: github.repository == 'eachann1024/goose-notes' && github.event.repository.private == false && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.repository == 'eachann1024/goose-notes' && github.event.repository.private == false && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-15
     timeout-minutes: 15
     env:
       EXPECTED_RECORDER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      GOOSE_SHA: fab53195d172c6ae008c8da9fe4d32716eba550a
+      GOOSE_REF: ${{ github.event.inputs.app_ref || github.event.pull_request.head.sha || github.sha }}
       GOOSE_SOURCE: ${{ github.workspace }}/goose-source
       GOOSE_OUT: ${{ github.workspace }}/goose-native-out
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/goose-source/.ci-playwright
@@ -35,9 +40,12 @@ jobs:
       - name: Checkout exact application source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ env.GOOSE_SHA }}
+          ref: ${{ env.GOOSE_REF }}
           path: goose-source
           persist-credentials: false
+      - name: Resolve the selected application revision
+        run: |
+          printf 'EXPECTED_SOURCE_SHA=%s\n' "$(git -C "$GOOSE_SOURCE" rev-parse HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24.13.0'

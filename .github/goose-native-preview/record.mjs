@@ -26,7 +26,6 @@ export async function withDeadline(operation, milliseconds) {
   })]); } finally { clearTimeout(timer); }
 }
 
-export const sourceSHA = 'fab53195d172c6ae008c8da9fe4d32716eba550a';
 export const viewport = { width: 1440, height: 1000 };
 export const checkpointHoldMs = 1200;
 export function chooseCaptureSize(workArea, frameSize, preferred = viewport) {
@@ -113,12 +112,13 @@ async function main(command) {
 
   if (command === 'init') {
     const recorder = git(process.cwd(), 'rev-parse', 'HEAD');
+    const sourceSHA = process.env.EXPECTED_SOURCE_SHA;
     requireSHA(recorder, process.env.EXPECTED_RECORDER_SHA, 'Recorder');
     requireSHA(git(source, 'rev-parse', 'HEAD'), sourceSHA, 'Goose');
     assert.equal(fs.existsSync(manifestFile), false, 'Do not mix evidence from multiple runs');
     writeJSON(manifestFile, {
       schemaVersion: 1, app: 'Goose Note', scenarioVersion: 'macos-electron-real-files-native-size-v2',
-      sourceRepository: 'eachann1024/goose-notes', sourceSHA,
+      sourceRepository: 'eachann1024/goose-notes', sourceRef: process.env.GOOSE_REF, sourceSHA,
       recorderRepository: 'eachann1024/goose-notes', recorderSHA: recorder,
       sourceDirty: Boolean(git(source, 'status', '--porcelain', '--untracked-files=no')),
       appLockSHA256: hashFile(path.join(source, 'bun.lock')),
@@ -137,7 +137,7 @@ async function main(command) {
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   const save = () => writeJSON(manifestFile, manifest);
   if (command === 'verify-source') {
-    requireSHA(git(source, 'rev-parse', 'HEAD'), sourceSHA, 'Goose after build');
+    requireSHA(git(source, 'rev-parse', 'HEAD'), manifest.sourceSHA, 'Goose after build');
     manifest.sourceDirtyAfterBuild = Boolean(git(source, 'status', '--porcelain', '--untracked-files=no'));
     manifest.appLockSHA256AfterBuild = hashFile(path.join(source, 'bun.lock'));
     save();
