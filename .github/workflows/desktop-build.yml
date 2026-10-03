@@ -70,7 +70,6 @@ jobs:
           git archive --format=tar.gz --prefix=goose-note-source/ HEAD > source-artifact/goose-note-source-${GITHUB_SHA}.tar.gz
           printf '%s\n' "$GITHUB_SHA" > source-artifact/COMMIT.txt
           cp BUILD-ARTIFACTS.md LICENSE SOURCE-CODE.md THIRD-PARTY-NOTICES.txt source-artifact/
-          cp docs/showcase/goose-note-first-release.mp4 source-artifact/
           cd source-artifact
           sha256sum *.tar.gz > source-${GITHUB_SHA}-SHA256SUMS.txt
       - name: Upload source to staging release
