@@ -37,6 +37,25 @@ class BuildProcessTests(unittest.TestCase):
                 build.cmd_package(argparse.Namespace(linux_targets=None))
             package.assert_not_called()
 
+    def test_windows_parent_shutdown_accepts_already_exited_child(self):
+        def output(cmd, **_):
+            if cmd[0] == 'taskkill' and cmd[3] == '424243':
+                raise subprocess.CalledProcessError(128, cmd)
+            return subprocess.CompletedProcess(cmd, 0, stdout='INFO: No tasks match the specified criteria.')
+        with self.platform('win'), patch.object(build, 'find_installed_pids', return_value=[424242, 424243]), \
+                patch.object(build, 'find_dev_pids', return_value=[]), patch.object(build.subprocess, 'run', side_effect=output) as run:
+            build.cmd_kill(argparse.Namespace())
+            run.assert_any_call(['tasklist', '/FI', 'PID eq 424243', '/FO', 'CSV', '/NH'], capture_output=True, text=True, check=True)
+
+    def test_windows_failed_shutdown_of_live_process_remains_failure(self):
+        def output(cmd, **_):
+            if cmd[0] == 'taskkill':
+                raise subprocess.CalledProcessError(5, cmd)
+            return subprocess.CompletedProcess(cmd, 0, stdout='"Goose Note.exe","424242","Console","1","10 K"')
+        with self.platform('win'), patch.object(build.subprocess, 'run', side_effect=output):
+            with self.assertRaises(SystemExit):
+                build.signal_pids([424242], signal.SIGTERM)
+
     def test_mac_uses_ps_and_retains_main_process_without_proc(self):
         marker = str(build.ROOT / 'node_modules' / 'electron')
         def output(cmd, **_):

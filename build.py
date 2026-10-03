@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 import platform
 import re
@@ -222,6 +223,9 @@ def signal_pids(pids: list[int], sig: int) -> None:
             else:
                 os.kill(pid, sig)
         except subprocess.CalledProcessError as error:
+            # /T 可能已随父进程结束了其它目标；仅在 PID 仍存活时判定失败。
+            if IS_WIN and not alive_pids([pid]):
+                continue
             die("kill", f"终止 PID {pid} 失败（退出码 {error.returncode}）")
         except (ProcessLookupError, PermissionError, OSError) as error:
             if IS_WIN:
@@ -230,9 +234,23 @@ def signal_pids(pids: list[int], sig: int) -> None:
 
 
 def alive_pids(pids: list[int]) -> list[int]:
-    """还存活的 PID。win 上 taskkill /F 即时生效，不再复查。"""
+    """还存活的 PID；Windows 查询失败时保守视为存活。"""
     if IS_WIN:
-        return []
+        alive: list[int] = []
+        for pid in pids:
+            try:
+                result = subprocess.run(
+                    ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+            except (OSError, subprocess.CalledProcessError):
+                alive.append(pid)
+                continue
+            if any(len(row) >= 2 and row[1] == str(pid) for row in csv.reader(result.stdout.splitlines())):
+                alive.append(pid)
+        return alive
     alive: list[int] = []
     for pid in pids:
         try:
