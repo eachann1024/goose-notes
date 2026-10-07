@@ -55,6 +55,7 @@ default.profraw
 !/docs/showcase/01-writing-ai.png
 !/docs/showcase/02-code-and-diagram-user.png
 !/docs/showcase/PUBLISH.md
+!/docs/signpath-application.md
 CHANGELOG.md
 
 skills-lock.json
@@ -76,6 +77,7 @@ scripts/*
 !scripts/prepare-electron-pack.mjs
 !scripts/generate-license-notices.mjs
 !scripts/generate-text-colors.mjs
+!scripts/signpath-config.mjs
 # stray verification screenshots in repo root
 /*.png
 !series-features.png
@@ -106,3 +108,4 @@ public/fonts/*.otf
 # Trusted PR preview tooling uses its own pinned Node dependencies
 !/.github/ui-preview/package-lock.json
 __pycache__/
+dist-signpath/

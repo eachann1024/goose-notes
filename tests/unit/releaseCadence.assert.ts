@@ -18,7 +18,8 @@ for (const job of ['source', 'build']) {
   const checkout = workflow.jobs[job].steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@'));
   assert.equal(checkout.with.ref, '${{ env.SOURCE_SHA }}');
   assert.equal(checkout.with['persist-credentials'], false);
-  const upload = workflow.jobs[job].steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/upload-artifact@'));
+  const upload = workflow.jobs[job].steps.find((step: { uses?: string; with?: { name?: string } }) =>
+    step.uses?.startsWith('actions/upload-artifact@') && !step.with?.name?.startsWith('signpath-'));
   assert.equal(upload.with['retention-days'], 30);
   assert.equal(upload.with['if-no-files-found'], 'error');
   assert.ok(upload.with.name.includes('env.SOURCE_SHA'));
@@ -99,6 +100,27 @@ const lfFiles = ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'script
 const eolAttrs = spawnSync('git', ['check-attr', 'eol', '--', ...lfFiles], { encoding: 'utf8' });
 assert.equal(eolAttrs.status, 0, eolAttrs.stderr);
 assert.deepEqual(eolAttrs.stdout.trim().split('\n'), lfFiles.map(file => `${file}: eol: lf`));
+// SignPath signing is pre-wired but must stay inert until configured, and only on Windows publishing runs.
+const buildSteps = workflow.jobs.build.steps as { id?: string; name?: string; uses?: string; if?: string; env?: Record<string, string>; with?: Record<string, unknown>; run?: string }[];
+const decide = buildSteps.find(step => step.id === 'signing');
+assert.ok(decide?.run?.includes('scripts/signpath-config.mjs'));
+assert.equal(decide?.env?.SIGNPATH_TOKEN_SET, "${{ secrets.SIGNPATH_API_TOKEN != '' }}", 'only the presence of the token is passed');
+assert.equal(decide?.env?.PUBLISH, '${{ needs.prepare.outputs.publish }}');
+assert.equal(buildSteps.find(step => step.name === 'Build installers and checksums')?.if, "steps.signing.outputs.enabled != 'true'");
+const signSteps = buildSteps.filter(step => step.uses?.startsWith('signpath/'));
+assert.equal(signSteps.length, 2, 'app exe and installer are signed separately');
+for (const step of signSteps) {
+  assert.match(step.uses!, /^signpath\/github-action-submit-signing-request@[0-9a-f]{40}$/, 'pin SignPath action to a full SHA');
+  assert.equal(step.with?.['api-token'], '${{ secrets.SIGNPATH_API_TOKEN }}');
+}
+const signingIndex = buildSteps.indexOf(decide!);
+for (const step of buildSteps.slice(signingIndex + 2)) {
+  if (step.uses?.startsWith('actions/upload-artifact@') && step.with?.path === 'dist-desktop/ci/') break;
+  if (step.name === 'Verify Arch package installs with dependencies') continue;
+  assert.equal(step.if, "steps.signing.outputs.enabled == 'true'", `${step.name ?? step.uses} must only run when signing is enabled`);
+}
+const signpathSelfTest = spawnSync('node', ['scripts/signpath-config.mjs', '--self-test'], { encoding: 'utf8' });
+assert.equal(signpathSelfTest.status, 0, signpathSelfTest.stderr);
 // Release asset allowlist and rpm removal must stay in sync with what the build produces.
 const buildJob = workflow.jobs.build.steps.map((step: { run?: string }) => step.run ?? '').join('\n');
 assert.ok(!buildJob.includes(' rpm '), 'rpm is no longer built');

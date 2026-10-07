@@ -109,6 +109,21 @@ export function releaseAssets(version, signed) {
   return [...releaseInstallers(version, signed), "SHA256SUMS.txt"].sort();
 }
 
+// SignPath Foundation requires a "Code signing policy" section on download/release pages.
+export function codeSigningPolicy(windowsSigned) {
+  return [
+    "## Code signing policy",
+    "",
+    windowsSigned
+      ? "Free code signing provided by SignPath.io, certificate by SignPath Foundation."
+      : "Free code signing provided by SignPath.io, certificate by SignPath Foundation — application pending; this release is not signed yet.",
+    "",
+    "- Committers and reviewers: [eachann1024](https://github.com/eachann1024)",
+    "- Approvers: [eachann1024](https://github.com/eachann1024)",
+    `- Privacy policy: https://github.com/${REPO}/blob/main/PRIVACY.md`,
+  ].join("\n");
+}
+
 // The get-release-by-tag endpoint never returns drafts, so look releases up in the full list.
 export function pickRelease(lines, tag) {
   const found = lines.split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((release) => release.tag_name === tag);
@@ -131,6 +146,8 @@ async function main() {
       const build = JSON.parse(readFileSync(join(input, `goose-note-mac-${arch}-BUILD.json`), "utf8"));
       return build.signed === true && build.notarized === true;
     });
+    const windowsSigned = ["arm64", "x64"].every((arch) =>
+      JSON.parse(readFileSync(join(input, `goose-note-win-${arch}-BUILD.json`), "utf8")).signed === true);
     const installers = releaseInstallers(version, signed);
     const available = readdirSync(input).filter((name) => /\.(exe|dmg|zip|AppImage|deb|rpm|pacman)$/.test(name));
     const unexpected = available.filter((name) => !installers.includes(name) && !(name.endsWith(".zip") && !signed));
@@ -152,9 +169,11 @@ async function main() {
       "- Linux x64：`.AppImage`（通用）、`.deb`（Debian/Ubuntu）、`.pacman`（Arch / Omarchy 等 Arch 系：`sudo pacman -U ./goose-note-app-*.pacman`）",
       "- `SHA256SUMS.txt`：以上安装包的 SHA-256 校验值",
       "",
-      `${signed ? "macOS 已签名并公证" : "macOS 未签名、未公证"}；Windows 未做 Authenticode 签名。打包检查不代替桌面功能验收。`,
+      `${signed ? "macOS 已签名并公证" : "macOS 未签名、未公证"}；${windowsSigned ? "Windows 安装包与主程序已由 SignPath 签名" : "Windows 未做 Authenticode 签名"}。打包检查不代替桌面功能验收。`,
       "许可证与第三方声明随安装包附带；对应源码为本 Release 下方 GitHub 自动附带的 Source code 归档，构建方法见仓库 SOURCE-CODE.md。",
       `构建记录：https://github.com/${REPO}/actions/runs/${process.env.GITHUB_RUN_ID || ""}`,
+      "",
+      codeSigningPolicy(windowsSigned),
     ].join("\n");
     const existing = findRelease(tag);
     if (existing && !existing.draft) {
@@ -202,6 +221,8 @@ if (process.argv.includes("--self-test")) {
   assert.ok(createCask("1.5.8", "v1.5.8-abcdef0", hashes).includes("eachann1024/goose-notes/releases"));
   assert.equal(createUpdateFeed("v1.5.8-abcdef0", [...hashes.keys()], hashes).assets.length, 2);
   assert.throws(() => createCask("1.5.8", "v1.5.8-abcdef0", new Map()));
+  assert.ok(codeSigningPolicy(false).includes("Code signing policy") && codeSigningPolicy(false).includes("not signed yet"));
+  assert.ok(!codeSigningPolicy(true).includes("pending"));
   assert.deepEqual(releaseAssets("1.5.8", false), [
     "Goose.Note-1.5.8-arm64-setup.exe", "Goose.Note-1.5.8-arm64.dmg", "Goose.Note-1.5.8-x64-setup.exe",
     "Goose.Note-1.5.8.AppImage", "Goose.Note-1.5.8.dmg", "SHA256SUMS.txt",

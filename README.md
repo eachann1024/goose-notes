@@ -76,6 +76,26 @@ bun run mac:dev
 
 </details>
 
+## 卸载
+
+- Windows：设置 → 应用 → Goose Note → 卸载（安装包自带卸载程序）。
+- macOS：把「Goose Note」拖到废纸篓；Homebrew 安装用 `brew uninstall --cask --zap goose-note`。
+- Linux：`sudo pacman -R goose-note-app`（Arch / Omarchy）、`sudo apt remove goose-note-app`（Debian/Ubuntu）；AppImage 直接删除文件。
+
+卸载只移除程序，不会删除你的笔记文件夹。
+
+## 隐私
+
+无账号、无统计、无遥测；只有你配置 AI、Git 同步等功能时才会发送相应数据。自动联网仅限更新检查、按需字体和欢迎页图片，详见 [隐私政策（PRIVACY.md）](PRIVACY.md)。
+
+## Code signing policy
+
+Free code signing provided by SignPath.io, certificate by SignPath Foundation — **application pending**. Windows installers are not signed yet; this takes effect once the SignPath Foundation application is approved.
+
+- Committers and reviewers: [eachann1024](https://github.com/eachann1024)
+- Approvers: [eachann1024](https://github.com/eachann1024)
+- Privacy policy: [PRIVACY.md](PRIVACY.md)
+
 <br />
 
 ---

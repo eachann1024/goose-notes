@@ -109,7 +109,8 @@ jobs:
             arch: x64
             runner: ubuntu-24.04
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    # Signed Windows publishing waits for manual SignPath approvals (two requests per architecture).
+    timeout-minutes: ${{ matrix.platform == 'win' && needs.prepare.outputs.publish == 'true' && 180 || 45 }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
@@ -137,6 +138,7 @@ jobs:
         run: |
           bun tests/unit/releaseCadence.assert.ts
           node scripts/publish-release.mjs --self-test
+          node scripts/signpath-config.mjs --self-test
           python3 -m unittest discover -s tests/unit -p 'build_processes_test.py'
       - name: Compile renderer, main and preload
         if: matrix.platform != 'mac' || matrix.arch != 'arm64'
@@ -144,7 +146,20 @@ jobs:
       - name: Verify native macOS build and installation
         if: matrix.platform == 'mac' && matrix.arch == 'arm64'
         run: bun run mac
+      - name: Decide Windows signing
+        id: signing
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          PUBLISH: ${{ needs.prepare.outputs.publish }}
+          SIGNPATH_TOKEN_SET: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          SIGNPATH_APP_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_APP_ARTIFACT_CONFIGURATION_SLUG }}
+          SIGNPATH_INSTALLER_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_INSTALLER_ARTIFACT_CONFIGURATION_SLUG }}
+        run: node scripts/signpath-config.mjs
       - name: Build installers and checksums
+        if: steps.signing.outputs.enabled != 'true'
         env:
           CSC_LINK: ${{ needs.prepare.outputs.publish == 'true' && secrets.MAC_CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ needs.prepare.outputs.publish == 'true' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
@@ -154,6 +169,63 @@ jobs:
         run: |
           node scripts/prepare-electron-pack.mjs
           node scripts/build-ci-installers.mjs ${{ matrix.platform }} ${{ matrix.arch }}
+      # SignPath (only when configured): sign the app exe, build the NSIS installer from the signed
+      # app, sign the installer, then collect. Hashes are computed after signing.
+      - name: Build unpacked Windows app for signing
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          node scripts/prepare-electron-pack.mjs
+          node scripts/build-ci-installers.mjs win ${{ matrix.arch }} --stage=unpacked
+      - name: Upload unsigned Windows app exe
+        id: upload-unsigned-app
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signpath-app-win-${{ matrix.arch }}-${{ env.SOURCE_SHA }}
+          path: dist-signpath/app/
+          if-no-files-found: error
+          retention-days: 1
+      - name: Sign Windows app exe with SignPath
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ steps.signing.outputs.organizationId }}
+          project-slug: ${{ steps.signing.outputs.projectSlug }}
+          signing-policy-slug: ${{ steps.signing.outputs.signingPolicySlug }}
+          artifact-configuration-slug: ${{ steps.signing.outputs.appArtifactConfigurationSlug }}
+          github-artifact-id: ${{ steps.upload-unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist-signpath/app-signed
+      - name: Build Windows installer from signed app
+        if: steps.signing.outputs.enabled == 'true'
+        run: node scripts/build-ci-installers.mjs win ${{ matrix.arch }} --stage=installer
+      - name: Upload unsigned Windows installer
+        id: upload-unsigned-installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signpath-installer-win-${{ matrix.arch }}-${{ env.SOURCE_SHA }}
+          path: dist-signpath/installer/
+          if-no-files-found: error
+          retention-days: 1
+      - name: Sign Windows installer with SignPath
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ steps.signing.outputs.organizationId }}
+          project-slug: ${{ steps.signing.outputs.projectSlug }}
+          signing-policy-slug: ${{ steps.signing.outputs.signingPolicySlug }}
+          artifact-configuration-slug: ${{ steps.signing.outputs.installerArtifactConfigurationSlug }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist-signpath/installer-signed
+      - name: Collect signed Windows installer and checksums
+        if: steps.signing.outputs.enabled == 'true'
+        run: node scripts/build-ci-installers.mjs win ${{ matrix.arch }} --stage=collect
       - name: Verify Arch package installs with dependencies
         if: matrix.platform == 'linux'
         run: |
