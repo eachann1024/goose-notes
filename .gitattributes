@@ -1,0 +1,4 @@
+# Keep LF on every platform (matches .editorconfig). Windows runners default to
+# core.autocrlf=true, which turned the shared release docs (LICENSE, BUILD-ARTIFACTS.md, …)
+# into CRLF copies and broke "Collect exact build assets for publication".
+* text=auto eol=lf

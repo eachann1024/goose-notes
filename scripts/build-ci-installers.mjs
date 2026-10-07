@@ -44,7 +44,13 @@ for (const file of files) {
   if (!statSync(from).isFile()) throw new Error(`Expected installer file: ${file}`);
   cpSync(from, resolve(output, file));
 }
+// These docs are shared by every platform artifact and the source artifact; the release job
+// rejects any byte difference, so fail here (on every push/PR build) if checkout altered them.
 for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'BUILD-ARTIFACTS.md']) {
+  const committed = execFileSync('git', ['show', `HEAD:${file}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
+  if (!readFileSync(resolve(root, file)).equals(committed)) {
+    throw new Error(`${file} differs from the committed blob (line endings?); check .gitattributes eol=lf`);
+  }
   cpSync(resolve(root, file), resolve(output, file));
 }
 const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));

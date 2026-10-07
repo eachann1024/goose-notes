@@ -93,4 +93,9 @@ try {
 } finally {
   rmSync(artifacts, { recursive: true, force: true });
 }
+// Shared release docs must check out byte-identical on Windows runners (core.autocrlf=true).
+const sharedDocs = ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'BUILD-ARTIFACTS.md'];
+const eolAttrs = spawnSync('git', ['check-attr', 'eol', '--', ...sharedDocs], { encoding: 'utf8' });
+assert.equal(eolAttrs.status, 0, eolAttrs.stderr);
+assert.deepEqual(eolAttrs.stdout.trim().split('\n'), sharedDocs.map(file => `${file}: eol: lf`));
 console.log('Push/PR builds, exact source, artifacts, permissions and scheduled publication checks passed.');
