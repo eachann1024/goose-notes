@@ -87,6 +87,17 @@ function putFile(path, content, tag) {
     }));
 }
 
+// The get-release-by-tag endpoint never returns drafts, so look releases up in the full list.
+export function pickRelease(lines, tag) {
+  const found = lines.split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((release) => release.tag_name === tag);
+  assert.ok(found.length <= 1, `Multiple releases use tag ${tag}`);
+  return found[0];
+}
+
+function findRelease(tag) {
+  return pickRelease(gh(["api", "--paginate", `repos/${REPO}/releases?per_page=100`, "--jq", ".[]"]), tag);
+}
+
 async function main() {
   const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   const sha = process.env.GITHUB_SHA || gh(["api", `repos/${REPO}/commits/main`, "--jq", ".sha"]).trim();
@@ -120,12 +131,7 @@ async function main() {
       "签名与公证状态见各平台 BUILD.json；打包检查不代替桌面功能验收。",
       `构建记录：https://github.com/${REPO}/actions/runs/${process.env.GITHUB_RUN_ID || ""}`,
     ].join("\n");
-    let existing;
-    try {
-      existing = JSON.parse(gh(["api", `repos/${REPO}/releases/tags/${tag}`]));
-    } catch (error) {
-      if (!String(error.stderr).includes("404")) throw error;
-    }
+    const existing = findRelease(tag);
     if (existing && !existing.draft) {
       console.log(`${tag} is already published; keeping its assets intact.`);
       return;
@@ -136,7 +142,8 @@ async function main() {
     }
     gh(["release", "upload", tag, "--repo", REPO, "--clobber",
       ...readdirSync(stage).map((name) => join(stage, name))]);
-    const uploaded = JSON.parse(gh(["api", `repos/${REPO}/releases/tags/${tag}`]));
+    const uploaded = findRelease(tag);
+    assert.ok(uploaded, `Release ${tag} not found after upload`);
     for (const [name, digest] of hashes) {
       const asset = uploaded.assets.find((item) => item.name === name);
       assert.equal(asset?.digest, `sha256:${digest}`, `Uploaded checksum mismatch: ${name}`);
@@ -169,6 +176,12 @@ if (process.argv.includes("--self-test")) {
   assert.ok(createCask("1.5.8", "v1.5.8-abcdef0", hashes).includes("eachann1024/goose-notes/releases"));
   assert.equal(createUpdateFeed("v1.5.8-abcdef0", [...hashes.keys()], hashes).assets.length, 2);
   assert.throws(() => createCask("1.5.8", "v1.5.8-abcdef0", new Map()));
+  const list = [{ tag_name: "v1.5.8-abcdef0", draft: true }, { tag_name: "v1.5.7-1234567", draft: false }]
+    .map((release) => JSON.stringify(release)).join("\n") + "\n";
+  assert.equal(pickRelease(list, "v1.5.8-abcdef0")?.draft, true, "Draft releases must be found");
+  assert.equal(pickRelease(list, "v9.9.9-0000000"), undefined);
+  assert.ok(!readFileSync(fileURLToPath(import.meta.url), "utf8").includes("releases/" + "tags/"),
+    "get-release-by-tag misses drafts; use findRelease");
   console.log("Release feed and Homebrew cask checks passed.");
 } else if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await main();
