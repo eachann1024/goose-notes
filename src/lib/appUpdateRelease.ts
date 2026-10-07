@@ -68,7 +68,10 @@ export function pickUpdateAsset(
   }
 
   if (platform === "win32") {
-    return names.find((asset) => asset.name.toLowerCase().endsWith(".exe")) ?? null;
+    const exes = names.filter((asset) => asset.name.toLowerCase().endsWith(".exe"));
+    const native = exes.find((asset) => asset.name.toLowerCase().includes("arm64") === isArm);
+    // Windows on ARM can run the x64 installer under emulation if a release has no arm64 build.
+    return native ?? (isArm ? exes[0] : null) ?? null;
   }
 
   const linux = names.filter((asset) => {
@@ -76,7 +79,6 @@ export function pickUpdateAsset(
     return (
       lower.endsWith(".appimage") ||
       lower.endsWith(".deb") ||
-      lower.endsWith(".rpm") ||
       lower.endsWith(".pacman")
     );
   });

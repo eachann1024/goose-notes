@@ -55,7 +55,7 @@ linux:
   target:
     - AppImage
     - deb
-    - rpm
+    - pacman
   desktop:
     entry:
       Name: Goose Note

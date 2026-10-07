@@ -37,3 +37,15 @@ test("picks the mac arm64 dmg and the intel dmg separately", () => {
     "Goose.Note-9.0.1.AppImage",
   );
 });
+
+test("picks the Windows installer matching the CPU architecture", () => {
+  const assets = [
+    { name: "Goose.Note-9.0.1-arm64-setup.exe", browser_download_url: "https://example/win-arm" },
+    { name: "Goose.Note-9.0.1-x64-setup.exe", browser_download_url: "https://example/win-x64" },
+  ];
+  expect(pickUpdateAsset(assets, "win32", "arm64")?.name).toBe("Goose.Note-9.0.1-arm64-setup.exe");
+  expect(pickUpdateAsset(assets, "win32", "x64")?.name).toBe("Goose.Note-9.0.1-x64-setup.exe");
+  // Older releases only had x64: ARM devices fall back to it, x64 never gets an arm64 build.
+  expect(pickUpdateAsset(assets.slice(1), "win32", "arm64")?.name).toBe("Goose.Note-9.0.1-x64-setup.exe");
+  expect(pickUpdateAsset(assets.slice(0, 1), "win32", "x64")).toBeNull();
+});

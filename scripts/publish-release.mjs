@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -87,6 +87,28 @@ function putFile(path, content, tag) {
     }));
 }
 
+// The only files a public Release carries: one installer per platform/arch, plus SHA256SUMS.txt.
+// macOS update ZIPs are only consumed by Squirrel.Mac auto-update (updates/mac-*.json), which runs
+// for signed builds only, so they are published only when both macOS builds are signed + notarized.
+// Build records, notices and the source archive stay in workflow artifacts; notices are packaged in
+// the app and GitHub attaches the tag's source archive to every Release.
+export function releaseInstallers(version, signed) {
+  return [
+    `Goose.Note-${version}-arm64.dmg`,
+    `Goose.Note-${version}.dmg`,
+    ...(signed ? [`Goose.Note-${version}-arm64-mac.zip`, `Goose.Note-${version}-mac.zip`] : []),
+    `Goose.Note-${version}-x64-setup.exe`,
+    `Goose.Note-${version}-arm64-setup.exe`,
+    `Goose.Note-${version}.AppImage`,
+    `goose-note-app_${version}_amd64.deb`,
+    `goose-note-app-${version}.pacman`,
+  ];
+}
+
+export function releaseAssets(version, signed) {
+  return [...releaseInstallers(version, signed), "SHA256SUMS.txt"].sort();
+}
+
 // The get-release-by-tag endpoint never returns drafts, so look releases up in the full list.
 export function pickRelease(lines, tag) {
   const found = lines.split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((release) => release.tag_name === tag);
@@ -105,30 +127,33 @@ async function main() {
   const input = join(ROOT, "artifacts");
   const stage = mkdtempSync(join(tmpdir(), "goose-release-"));
   try {
-    const hashes = new Map();
-    for (const name of readdirSync(input).sort()) {
-      if (name.endsWith("SHA256SUMS.txt")) continue;
-      const target = join(stage, name.replaceAll(" ", "."));
-      assert.ok(!existsSync(target), `Duplicate release file: ${basename(target)}`);
-      copyFileSync(join(input, name), target);
-      hashes.set(basename(target), createHash("sha256").update(readFileSync(target)).digest("hex"));
-    }
-    const names = [...hashes.keys()];
-    assert.ok(names.some((name) => name.endsWith(".exe")), "Missing Windows installer");
-    assert.ok(names.some((name) => name.endsWith(".AppImage")), "Missing Linux installer");
-    assert.ok(names.some((name) => name.endsWith(`source-${sha}.tar.gz`)), "Missing matching source archive");
     const signed = ["arm64", "x64"].every((arch) => {
       const build = JSON.parse(readFileSync(join(input, `goose-note-mac-${arch}-BUILD.json`), "utf8"));
       return build.signed === true && build.notarized === true;
     });
+    const installers = releaseInstallers(version, signed);
+    const available = readdirSync(input).filter((name) => /\.(exe|dmg|zip|AppImage|deb|rpm|pacman)$/.test(name));
+    const unexpected = available.filter((name) => !installers.includes(name) && !(name.endsWith(".zip") && !signed));
+    assert.deepEqual(unexpected, [], `Unexpected installers would be dropped: ${unexpected.join(", ")}`);
+    const hashes = new Map();
+    for (const name of installers) {
+      assert.ok(existsSync(join(input, name)), `Missing release installer: ${name}`);
+      copyFileSync(join(input, name), join(stage, name));
+      hashes.set(name, createHash("sha256").update(readFileSync(join(stage, name))).digest("hex"));
+    }
     const cask = createCask(version, tag, hashes, REPO, signed);
-    writeFileSync(join(stage, "SHA256SUMS.txt"), names.map((name) => `${hashes.get(name)}  ${name}\n`).join(""));
+    writeFileSync(join(stage, "SHA256SUMS.txt"), installers.map((name) => `${hashes.get(name)}  ${name}\n`).join(""));
+    assert.deepEqual(readdirSync(stage).sort(), releaseAssets(version, signed));
     const notes = [
       `Goose Note ${version}，构建对应提交：${sha}`,
       "",
-      "Windows x64：exe；macOS：Apple Silicon arm64.dmg / Intel dmg；Linux x64：AppImage / deb / rpm / pacman。",
-      "附对应源码、构建记录、第三方声明和 SHA256SUMS.txt。",
-      "签名与公证状态见各平台 BUILD.json；打包检查不代替桌面功能验收。",
+      "- macOS：Apple 芯片 `-arm64.dmg`，Intel `.dmg`",
+      "- Windows：x64 `-x64-setup.exe`，ARM64 `-arm64-setup.exe`",
+      "- Linux x64：`.AppImage`（通用）、`.deb`（Debian/Ubuntu）、`.pacman`（Arch / Omarchy 等 Arch 系：`sudo pacman -U ./goose-note-app-*.pacman`）",
+      "- `SHA256SUMS.txt`：以上安装包的 SHA-256 校验值",
+      "",
+      `${signed ? "macOS 已签名并公证" : "macOS 未签名、未公证"}；Windows 未做 Authenticode 签名。打包检查不代替桌面功能验收。`,
+      "许可证与第三方声明随安装包附带；对应源码为本 Release 下方 GitHub 自动附带的 Source code 归档，构建方法见仓库 SOURCE-CODE.md。",
       `构建记录：https://github.com/${REPO}/actions/runs/${process.env.GITHUB_RUN_ID || ""}`,
     ].join("\n");
     const existing = findRelease(tag);
@@ -144,13 +169,14 @@ async function main() {
       ...readdirSync(stage).map((name) => join(stage, name))]);
     const uploaded = findRelease(tag);
     assert.ok(uploaded, `Release ${tag} not found after upload`);
+    assert.deepEqual(uploaded.assets.map((asset) => asset.name).sort(), releaseAssets(version, signed),
+      "Release assets must match the release allowlist exactly");
     for (const [name, digest] of hashes) {
       const asset = uploaded.assets.find((item) => item.name === name);
       assert.equal(asset?.digest, `sha256:${digest}`, `Uploaded checksum mismatch: ${name}`);
     }
     gh(["release", "edit", tag, "--repo", REPO, "--draft=false", "--latest"]);
     putFile("Casks/goose-note.rb", cask, tag);
-    const installers = names.filter((name) => /\.(exe|dmg|zip|AppImage|deb|rpm|pacman)$/.test(name));
     putFile("updates/latest.json", JSON.stringify(createUpdateFeed(tag, installers, hashes)) + "\n", tag);
     if (signed) {
       for (const arch of ["arm64", "x64"]) {
@@ -176,6 +202,13 @@ if (process.argv.includes("--self-test")) {
   assert.ok(createCask("1.5.8", "v1.5.8-abcdef0", hashes).includes("eachann1024/goose-notes/releases"));
   assert.equal(createUpdateFeed("v1.5.8-abcdef0", [...hashes.keys()], hashes).assets.length, 2);
   assert.throws(() => createCask("1.5.8", "v1.5.8-abcdef0", new Map()));
+  assert.deepEqual(releaseAssets("1.5.8", false), [
+    "Goose.Note-1.5.8-arm64-setup.exe", "Goose.Note-1.5.8-arm64.dmg", "Goose.Note-1.5.8-x64-setup.exe",
+    "Goose.Note-1.5.8.AppImage", "Goose.Note-1.5.8.dmg", "SHA256SUMS.txt",
+    "goose-note-app-1.5.8.pacman", "goose-note-app_1.5.8_amd64.deb",
+  ], "Unsigned Release assets changed; update the allowlist deliberately");
+  assert.deepEqual(releaseAssets("1.5.8", true).filter((name) => !releaseAssets("1.5.8", false).includes(name)),
+    ["Goose.Note-1.5.8-arm64-mac.zip", "Goose.Note-1.5.8-mac.zip"], "Signed Releases add only the Squirrel.Mac ZIPs");
   const list = [{ tag_name: "v1.5.8-abcdef0", draft: true }, { tag_name: "v1.5.7-1234567", draft: false }]
     .map((release) => JSON.stringify(release)).join("\n") + "\n";
   assert.equal(pickRelease(list, "v1.5.8-abcdef0")?.draft, true, "Draft releases must be found");

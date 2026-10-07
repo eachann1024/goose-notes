@@ -34,7 +34,7 @@ bun run build:debug  # 保留调试信息
 python3 build.py all                               # 编译 → 打包 → 安装 → 启动
 python3 build.py kill                              # 强杀运行中的 Goose Note（安装版与开发实例）
 python3 build.py build --no-install                # 跳过 bun install 只编译
-python3 build.py package --linux-targets AppImage,deb  # Linux 指定打包目标（缺 rpm/libarchive-tools 时）
+python3 build.py package --linux-targets AppImage,deb  # Linux 指定打包目标（缺 libarchive-tools、无法打 pacman 时）
 python3 build.py install / start / status / clean / release
 ```
 

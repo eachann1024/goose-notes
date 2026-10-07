@@ -95,6 +95,10 @@ jobs:
           - platform: win
             arch: x64
             runner: windows-2022
+          # Cross-packaged on x64: the app ships no native modules, electron-builder fetches arm64 Electron.
+          - platform: win
+            arch: arm64
+            runner: windows-2022
           - platform: mac
             arch: arm64
             runner: macos-15
@@ -126,7 +130,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
       - name: Install Linux packaging tools
         if: matrix.platform == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: bun install --frozen-lockfile
       - name: Verify packaging workflow regressions
         if: matrix.platform == 'linux'
@@ -158,6 +162,9 @@ jobs:
             pacman -U --noconfirm /packages/*.pacman
             pacman -Q goose-note-app
             test -f "/opt/Goose Note/resources/app.asar"
+            test -x /usr/bin/goose-note-app
+            # Every shared library the binary needs must come from the declared pacman depends.
+            ! ldd "/opt/Goose Note/goose-note-app" | grep "not found"
           '
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -195,7 +202,7 @@ jobs:
           sha = os.environ['SOURCE_SHA']
           dest = pathlib.Path('artifacts')
           dest.mkdir()
-          for prefix in ('source', 'goose-note-win-x64', 'goose-note-mac-arm64', 'goose-note-mac-x64', 'goose-note-linux-x64'):
+          for prefix in ('source', 'goose-note-win-x64', 'goose-note-win-arm64', 'goose-note-mac-arm64', 'goose-note-mac-x64', 'goose-note-linux-x64'):
               src = pathlib.Path('downloaded-artifacts') / f'{prefix}-{sha}'
               if not src.is_dir():
                   raise SystemExit(f'Missing artifact: {src}')

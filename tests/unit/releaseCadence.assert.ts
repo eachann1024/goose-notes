@@ -24,7 +24,7 @@ for (const job of ['source', 'build']) {
   assert.ok(upload.with.name.includes('env.SOURCE_SHA'));
 }
 assert.deepEqual(workflow.jobs.build.strategy.matrix.include.map((entry: { platform: string; arch: string }) => `${entry.platform}-${entry.arch}`).sort(),
-  ['linux-x64', 'mac-arm64', 'mac-x64', 'win-x64']);
+  ['linux-x64', 'mac-arm64', 'mac-x64', 'win-arm64', 'win-x64']);
 assert.equal(workflow.jobs.build.strategy['fail-fast'], false);
 assert.equal(workflow.concurrency, undefined, 'Older commits must not be cancelled');
 assert.equal(workflow.jobs.build.concurrency, undefined);
@@ -63,7 +63,7 @@ try {
 const collection = workflow.jobs.release.steps.find((step: { name?: string }) => step.name === 'Collect exact build assets for publication').run;
 const artifacts = mkdtempSync(join(tmpdir(), 'goose-release-artifacts-'));
 const sha = 'a'.repeat(40);
-const prefixes = ['source', 'goose-note-win-x64', 'goose-note-mac-arm64', 'goose-note-mac-x64', 'goose-note-linux-x64'];
+const prefixes = ['source', 'goose-note-win-x64', 'goose-note-win-arm64', 'goose-note-mac-arm64', 'goose-note-mac-x64', 'goose-note-linux-x64'];
 try {
   for (const prefix of prefixes) {
     const path = join(artifacts, 'downloaded-artifacts', `${prefix}-${sha}`);
@@ -93,9 +93,15 @@ try {
 } finally {
   rmSync(artifacts, { recursive: true, force: true });
 }
-// Shared release docs must check out byte-identical on Windows runners (core.autocrlf=true).
-const sharedDocs = ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'BUILD-ARTIFACTS.md'];
-const eolAttrs = spawnSync('git', ['check-attr', 'eol', '--', ...sharedDocs], { encoding: 'utf8' });
+// Windows runners default to core.autocrlf=true; .gitattributes keeps packaged notices and scripts LF
+// so every platform builds from byte-identical sources.
+const lfFiles = ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'scripts/prepare-electron-pack.mjs'];
+const eolAttrs = spawnSync('git', ['check-attr', 'eol', '--', ...lfFiles], { encoding: 'utf8' });
 assert.equal(eolAttrs.status, 0, eolAttrs.stderr);
-assert.deepEqual(eolAttrs.stdout.trim().split('\n'), sharedDocs.map(file => `${file}: eol: lf`));
+assert.deepEqual(eolAttrs.stdout.trim().split('\n'), lfFiles.map(file => `${file}: eol: lf`));
+// Release asset allowlist and rpm removal must stay in sync with what the build produces.
+const buildJob = workflow.jobs.build.steps.map((step: { run?: string }) => step.run ?? '').join('\n');
+assert.ok(!buildJob.includes(' rpm '), 'rpm is no longer built');
+assert.match(readFileSync(new URL('../../scripts/build-ci-installers.mjs', import.meta.url), 'utf8'),
+  /linux: \['AppImage', 'deb', 'pacman'\]/);
 console.log('Push/PR builds, exact source, artifacts, permissions and scheduled publication checks passed.');

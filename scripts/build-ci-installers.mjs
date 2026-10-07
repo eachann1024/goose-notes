@@ -8,10 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const [platform, arch] = process.argv.slice(2);
-const targets = { win: ['nsis'], mac: ['dmg', 'zip'], linux: ['AppImage', 'deb', 'rpm', 'pacman'] };
+// mac ZIPs feed Squirrel.Mac auto-update for signed builds; publish-release.mjs drops them otherwise.
+const targets = { win: ['nsis'], mac: ['dmg', 'zip'], linux: ['AppImage', 'deb', 'pacman'] };
 const host = { win: 'win32', mac: 'darwin', linux: 'linux' };
-if (process.platform !== host[platform] || !['x64', 'arm64'].includes(arch) || (platform !== 'mac' && arch !== 'x64')) {
-  throw new Error('Expected native host and win x64, mac arm64/x64, or linux x64');
+if (process.platform !== host[platform] || !['x64', 'arm64'].includes(arch) || (platform === 'linux' && arch !== 'x64')) {
+  throw new Error('Expected native host and win x64/arm64, mac arm64/x64, or linux x64');
 }
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 const pack = resolve(root, 'dist-electron/app-pack');
@@ -26,7 +27,7 @@ const appBuilderRequire = createRequire(builderRequire.resolve('app-builder-lib/
 const { extractFile } = appBuilderRequire('@electron/asar');
 const appAsar = platform === 'mac'
   ? resolve(root, 'dist-electron/packaged', arch === 'arm64' ? 'mac-arm64' : 'mac', 'Goose Note.app/Contents/Resources/app.asar')
-  : resolve(root, 'dist-electron/packaged', platform === 'win' ? 'win-unpacked' : 'linux-unpacked', 'resources/app.asar');
+  : resolve(root, 'dist-electron/packaged', platform === 'win' ? (arch === 'arm64' ? 'win-arm64-unpacked' : 'win-unpacked') : 'linux-unpacked', 'resources/app.asar');
 if (!extractFile(appAsar, 'icon.png').equals(readFileSync(resolve(root, 'electron/icons/icon.png')))) {
   throw new Error('Packaged BrowserWindow icon does not match the application icon');
 }
@@ -35,23 +36,14 @@ console.log('Verified packaged BrowserWindow icon in app.asar');
 const output = resolve(root, 'dist-desktop/ci');
 mkdirSync(output, { recursive: true });
 const files = readdirSync(resolve(root, 'dist-electron/packaged')).filter(name =>
-  /\.(exe|dmg|zip|AppImage|deb|rpm|pacman)$/.test(name));
-for (const ext of { win: ['exe'], mac: ['dmg', 'zip'], linux: ['AppImage', 'deb', 'rpm', 'pacman'] }[platform]) {
+  /\.(exe|dmg|zip|AppImage|deb|pacman)$/.test(name));
+for (const ext of targets[platform].map(target => target === 'nsis' ? 'exe' : target)) {
   if (!files.some(name => name.endsWith(`.${ext}`))) throw new Error(`Missing ${ext} installer`);
 }
 for (const file of files) {
   const from = resolve(root, 'dist-electron/packaged', file);
   if (!statSync(from).isFile()) throw new Error(`Expected installer file: ${file}`);
   cpSync(from, resolve(output, file));
-}
-// These docs are shared by every platform artifact and the source artifact; the release job
-// rejects any byte difference, so fail here (on every push/PR build) if checkout altered them.
-for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.txt', 'SOURCE-CODE.md', 'BUILD-ARTIFACTS.md']) {
-  const committed = execFileSync('git', ['show', `HEAD:${file}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
-  if (!readFileSync(resolve(root, file)).equals(committed)) {
-    throw new Error(`${file} differs from the committed blob (line endings?); check .gitattributes eol=lf`);
-  }
-  cpSync(resolve(root, file), resolve(output, file));
 }
 const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 writeFileSync(resolve(output, 'BUILD.json'), JSON.stringify({

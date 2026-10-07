@@ -21,8 +21,8 @@ try {
   throw new Error(`Failed to parse root package.json: ${err.message}`);
 }
 
-// Linux deb/rpm 需要 maintainer（要求邮箱格式）。优先取环境变量，其次取 package.json 的 author，
-// 最后给一个 GitHub-style no-reply 兜底，避免 deb/rpm 因缺 author 邮箱直接失败。
+// Linux deb/pacman 需要 maintainer（要求邮箱格式）。优先取环境变量，其次取 package.json 的 author，
+// 最后给一个 GitHub-style no-reply 兜底，避免 deb/pacman 因缺 author 邮箱直接失败。
 const linuxMaintainer =
   process.env.LINUX_MAINTAINER ||
   (typeof pkg.author === "string" && pkg.author.includes("@") ? pkg.author : undefined) ||
@@ -167,7 +167,7 @@ nsis:
   installerIcon: icon.ico
   uninstallerIcon: icon.ico
   installerHeaderIcon: icon.ico
-  artifactName: \${productName}-\${version}-x64-setup.\${ext}
+  artifactName: \${productName}-\${version}-\${arch}-setup.\${ext}
 linux:
   icon: icon.png
   category: Utility
@@ -177,7 +177,6 @@ linux:
   target:
     - AppImage
     - deb
-    - rpm
     - pacman
   desktop:
     entry:

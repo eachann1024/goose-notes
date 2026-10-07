@@ -4,7 +4,7 @@ import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { platform } from "node:process";
 
-// Linux 桌面端打包：产出 AppImage / deb / rpm（目标在 prepare-electron-pack.mjs 生成的
+// Linux 桌面端打包：产出 AppImage / deb / pacman（目标在 prepare-electron-pack.mjs 生成的
 // electron-builder.yml 中定义）。AppImage 可在 Omarchy / Arch 等发行版直接双击运行。
 if (platform !== "linux") {
   console.error("[linux] bun run linux 面向 Linux 打包；当前平台不是 Linux。");
@@ -15,7 +15,7 @@ if (platform !== "linux") {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pack = resolve(root, "dist-electron/app-pack");
 
-// 打包前强制停止正在运行的 Goose Note（AppImage / deb / rpm 安装版通用）。
+// 打包前强制停止正在运行的 Goose Note（AppImage / deb / pacman 安装版通用）。
 // 否则旧实例仍持有数据目录单实例锁（SingletonLock）与挂载的 AppImage，
 // 新打包的 AppImage 无法覆盖，双击启动也会被聚焦到已卡死的旧窗口。
 // 停止是尽力而为：杀进程失败不应中断打包，故整个函数用 try/catch 兜底。
@@ -64,7 +64,7 @@ const env = {
   PATH: `${resolve(root, "node_modules/.bin")}${delimiter}${process.env.PATH ?? ""}`,
   CSC_IDENTITY_AUTO_DISCOVERY: "false",
 };
-console.log("[linux] electron-builder --linux（AppImage / deb / rpm，未签名）");
+console.log("[linux] electron-builder --linux（AppImage / deb / pacman，未签名）");
 try {
   execSync("electron-builder --linux", {
     stdio: "inherit",

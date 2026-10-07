@@ -328,8 +328,8 @@ def package_with_builder(linux_targets: str | None) -> None:
         if IS_LINUX:
             log(
                 "package",
-                "提示：Linux 全目标打包需要 rpm 与 libarchive-tools"
-                "（sudo apt install rpm libarchive-tools）；"
+                "提示：Linux 全目标打包（含 pacman）需要 libarchive-tools"
+                "（sudo apt install libarchive-tools）；"
                 "或用 --linux-targets AppImage,deb 只出部分目标。",
             )
         die("package", f"electron-builder 退出码 {error.returncode}")
@@ -444,7 +444,7 @@ def cmd_release(_args: argparse.Namespace) -> None:
         die(
             "release",
             f"{artifacts} 为空。publish-release.mjs 面向 CI 汇总的完整产物"
-            "（双架构 dmg + exe + AppImage + 源码包 + BUILD.json）；"
+            "（双架构 dmg + 双架构 exe + AppImage/deb/pacman + macOS BUILD.json）；"
             "本地手工发布请先按 .github/workflows 汇总产物到 artifacts/。",
         )
     require_tool("gh", "发布需要 GitHub CLI 并已登录（gh auth login）。")
