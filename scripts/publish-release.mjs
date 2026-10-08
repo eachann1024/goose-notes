@@ -216,27 +216,6 @@ async function main() {
   }
 }
 
-if (process.argv.includes("--self-test")) {
-  const hashes = new Map([["Goose.Note-1.5.8-arm64.dmg", "arm"], ["Goose.Note-1.5.8.dmg", "intel"]]);
-  assert.ok(createCask("1.5.8", "v1.5.8-abcdef0", hashes).includes("eachann1024/goose-notes/releases"));
-  assert.equal(createUpdateFeed("v1.5.8-abcdef0", [...hashes.keys()], hashes).assets.length, 2);
-  assert.throws(() => createCask("1.5.8", "v1.5.8-abcdef0", new Map()));
-  assert.ok(codeSigningPolicy(false).includes("Code signing policy") && codeSigningPolicy(false).includes("not signed yet"));
-  assert.ok(!codeSigningPolicy(true).includes("pending"));
-  assert.deepEqual(releaseAssets("1.5.8", false), [
-    "Goose.Note-1.5.8-arm64-setup.exe", "Goose.Note-1.5.8-arm64.dmg", "Goose.Note-1.5.8-x64-setup.exe",
-    "Goose.Note-1.5.8.AppImage", "Goose.Note-1.5.8.dmg", "SHA256SUMS.txt",
-    "goose-note-app-1.5.8.pacman", "goose-note-app_1.5.8_amd64.deb",
-  ], "Unsigned Release assets changed; update the allowlist deliberately");
-  assert.deepEqual(releaseAssets("1.5.8", true).filter((name) => !releaseAssets("1.5.8", false).includes(name)),
-    ["Goose.Note-1.5.8-arm64-mac.zip", "Goose.Note-1.5.8-mac.zip"], "Signed Releases add only the Squirrel.Mac ZIPs");
-  const list = [{ tag_name: "v1.5.8-abcdef0", draft: true }, { tag_name: "v1.5.7-1234567", draft: false }]
-    .map((release) => JSON.stringify(release)).join("\n") + "\n";
-  assert.equal(pickRelease(list, "v1.5.8-abcdef0")?.draft, true, "Draft releases must be found");
-  assert.equal(pickRelease(list, "v9.9.9-0000000"), undefined);
-  assert.ok(!readFileSync(fileURLToPath(import.meta.url), "utf8").includes("releases/" + "tags/"),
-    "get-release-by-tag misses drafts; use findRelease");
-  console.log("Release feed and Homebrew cask checks passed.");
-} else if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await main();
 }

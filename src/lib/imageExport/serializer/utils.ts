@@ -34,7 +34,6 @@ export const BLOCKNOTE_BACKGROUND_COLORS: Record<string, string> = {
 /**
  * 深色导出卡片与常规编辑器共用的语义色阶：
  * 高明度文字 + 低明度同色表面，保证同色叠加仍清晰可读。
- * tests/unit/editorDarkExportColors.test.ts 会校验此处与编辑器 CSS 令牌同步。
  */
 export const BLOCKNOTE_TEXT_COLORS_DARK: Record<string, string> = documentTextColors("dark");
 

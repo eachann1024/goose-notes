@@ -38,7 +38,6 @@ npm ci --prefix .github/ui-preview --ignore-scripts
 node .github/ui-preview/run.mjs inspect . output/pr-preview/inspection
 node .github/ui-preview/plan.mjs output/pr-preview/request.json output/pr-preview/inspection/inspection.json output/pr-preview/plan.json
 node .github/ui-preview/run.mjs record . output/pr-preview/media output/pr-preview/plan.json
-node --test .github/ui-preview/publish.test.mjs
 ```
 
 `UI_PREVIEW_SKIP_BUILD=1` 仅用于已编译后的本地迭代。标准 CI 每次编译 PR。Web 预览不代替原生窗口、系统功能、真实磁盘或真实模型调用的验收；这些限制由规划器在 PR 中说明。

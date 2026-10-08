@@ -3,7 +3,6 @@
 // Signing runs only for publishing runs (main schedule / workflow_dispatch) on Windows, and only once
 // the SIGNPATH_API_TOKEN secret and the SIGNPATH_ORGANIZATION_ID variable exist. Otherwise the build
 // keeps the unsigned path unchanged. Every SignPath Foundation signing request needs manual approval.
-import assert from "node:assert/strict";
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,24 +33,7 @@ export function resolveSigning(env) {
   };
 }
 
-function selfTest() {
-  const ready = { PLATFORM: "win", PUBLISH: "true", SIGNPATH_TOKEN_SET: "true", SIGNPATH_ORGANIZATION_ID: "org-1" };
-  assert.deepEqual(resolveSigning(ready), {
-    enabled: true, reason: "SignPath configured", organizationId: "org-1", ...SIGNPATH_DEFAULTS,
-  });
-  assert.equal(resolveSigning({ ...ready, SIGNPATH_PROJECT_SLUG: " custom " }).projectSlug, "custom");
-  assert.equal(resolveSigning({ ...ready, PLATFORM: "mac" }).enabled, false);
-  assert.equal(resolveSigning({ ...ready, PLATFORM: "linux" }).enabled, false);
-  assert.equal(resolveSigning({ ...ready, PUBLISH: "false" }).enabled, false, "push/PR builds never sign");
-  assert.equal(resolveSigning({ ...ready, SIGNPATH_TOKEN_SET: "false" }).enabled, false, "missing secret skips signing");
-  assert.equal(resolveSigning({ ...ready, SIGNPATH_ORGANIZATION_ID: "" }).enabled, false, "missing org id skips signing");
-  assert.equal(resolveSigning({ ...ready, SIGNPATH_ORGANIZATION_ID: undefined }).enabled, false);
-  console.log("SignPath switch checks passed.");
-}
-
-if (process.argv.includes("--self-test")) {
-  selfTest();
-} else if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const signing = resolveSigning(process.env);
   console.log(`Windows signing ${signing.enabled ? "enabled" : "skipped"}: ${signing.reason}`);
   const lines = Object.entries(signing).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";

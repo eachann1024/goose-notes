@@ -26,8 +26,6 @@ Run the project checks locally:
 ```bash
 bun run typecheck   # tsc -b --noEmit
 bun run lint        # eslint .
-bun run test:unit   # Playwright unit suite
-bun run test:e2e    # browser end-to-end suite
 bun run build       # full production build
 ```
 

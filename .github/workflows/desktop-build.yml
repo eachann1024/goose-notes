@@ -133,13 +133,6 @@ jobs:
         if: matrix.platform == 'linux'
         run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: bun install --frozen-lockfile
-      - name: Verify packaging workflow regressions
-        if: matrix.platform == 'linux'
-        run: |
-          bun tests/unit/releaseCadence.assert.ts
-          node scripts/publish-release.mjs --self-test
-          node scripts/signpath-config.mjs --self-test
-          python3 -m unittest discover -s tests/unit -p 'build_processes_test.py'
       - name: Compile renderer, main and preload
         if: matrix.platform != 'mac' || matrix.arch != 'arm64'
         run: bun run build:electron

@@ -44,8 +44,6 @@
 ## 开发验证
 
 ```bash
-bun run test:mcp
-node --test preload/mcp-tools.test.cjs
 bun run build
 ```
 

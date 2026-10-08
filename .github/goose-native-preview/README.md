@@ -4,7 +4,7 @@ This workflow builds and runs Goose Note on GitHub's standard public `macos-15` 
 
 ## Gates
 
-1. Install the frozen app dependencies and Electron runtime, run recorder unit tests.
+1. Install the frozen app dependencies and Electron runtime.
 2. Before any full build, launch a tiny real Electron window with `chromiumSandbox: true`, `sandbox: true`, context isolation, and no Node integration. Retain macOS default security and do not request system permissions or weaken Electron sandboxing.
 3. Only after that passes, run the repository's `bun run mac` and `bun run typecheck`. Abort if the disposable runner already contains `/Applications/Goose Note.app`; never replace an existing app.
 4. Launch the actual installed `.app`, show the first-run guide, choose light/ocean, open synthetic Markdown files through the app's real file-open path, edit and verify the saved file, view the real search preview, quit/reopen and verify persistence.
@@ -20,8 +20,4 @@ Capture dimensions come from the preflight's actual display work area and native
 
 Only synthetic notes and public source are used. Artifacts/logs are visible to repository readers and expire after seven days. No Pages deployment or release is performed. A durable user-facing delivery should preserve the raw evidence and save verified PNGs plus an H.264 playback copy through the recipient's authorized file destination.
 
-## Local checks
-
-`node --test .github/goose-native-preview/record.test.mjs`
-
-The tests also create isolated temporary Git repositories to prove that changing the requested application revision changes the recorded SHA, and that a checkout mismatch before or after building fails. The real runtime checks require macOS and should execute only within the workflow's sanitized runtime launcher, never as a web mock or an unsandboxed substitute. Previous artifacts retain their original application and recorder SHAs; they do not certify later revisions.
+The real runtime checks require macOS and should execute only within the workflow's sanitized runtime launcher, never as a web mock or an unsandboxed substitute. Previous artifacts retain their original application and recorder SHAs; they do not certify later revisions.

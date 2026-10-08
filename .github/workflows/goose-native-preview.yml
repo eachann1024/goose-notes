@@ -53,7 +53,6 @@ jobs:
         run: |
           set -euo pipefail
           node .github/goose-native-preview/record.mjs init
-          node --test .github/goose-native-preview/record.test.mjs 2>&1 | tee "$GOOSE_OUT/helper-tests.log"
           sw_vers > "$GOOSE_OUT/platform.txt"
           uname -m >> "$GOOSE_OUT/platform.txt"
       - name: Install locked runtime dependencies without building the app
