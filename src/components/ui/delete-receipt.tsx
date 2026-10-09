@@ -12,7 +12,7 @@ export function showDeleteReceipt(
   if (!items.length) return;
   const done = items.filter((item) => item.deleted).length;
   const failed = items.length - done;
-  const destination = isLocalFolder ? "系统回收站" : "应用垃圾箱";
+  const destination = isLocalFolder ? "系统废纸篓" : "应用垃圾箱";
   let undoing = false;
   // ponytail: the receipt shows only outcome and undo; add a detail view if item-level diagnostics become necessary.
   const label = failed
