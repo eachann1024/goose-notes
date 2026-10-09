@@ -42,8 +42,6 @@ import { snapDragBetweenLine } from "./mainTreeLocalDrop";
 
 const INDENT = MAIN_TREE_INDENT;
 const ROW_PADDING_LEFT = MAIN_TREE_ROW_PADDING_LEFT;
-/** 按住后指针至少移动这么多像素才进入拖拽，避免轻轻一滑就拖走页面。 */
-const MAIN_TREE_DRAG_ARM_DISTANCE = 10;
 /** 子行标题相对行起点：行内补偿 4px + 图标槽 18px + sidebar-design 行距 10px。 */
 const CHILD_TITLE_OFFSET = 4 + INDENT + 10;
 let activeMainTreeDragId: string | null = null;
@@ -439,41 +437,6 @@ export function renderItem({
         | React.PointerEventHandler<HTMLDivElement>
         | undefined
     )?.(e);
-    // 原生 draggable 一点就起拖。未过移动门槛时取消这次拖拽。
-    const host = e.currentTarget;
-    if (host.draggable && e.button === 0) {
-      const originX = e.clientX;
-      const originY = e.clientY;
-      const guard = (move: PointerEvent) => {
-        if (
-          Math.hypot(move.clientX - originX, move.clientY - originY) >=
-          MAIN_TREE_DRAG_ARM_DISTANCE
-        ) {
-          detach();
-        }
-      };
-      const detach = () => {
-        window.removeEventListener("pointermove", guard);
-        host.removeEventListener("dragstart", cancel, true);
-        window.removeEventListener("pointerup", detach);
-        window.removeEventListener("pointercancel", detach);
-      };
-      const cancel = (start: DragEvent) => {
-        if (
-          Math.hypot(start.clientX - originX, start.clientY - originY) >=
-          MAIN_TREE_DRAG_ARM_DISTANCE
-        ) {
-          detach();
-          return;
-        }
-        start.preventDefault();
-        start.stopImmediatePropagation();
-      };
-      window.addEventListener("pointermove", guard);
-      host.addEventListener("dragstart", cancel, true);
-      window.addEventListener("pointerup", detach);
-      window.addEventListener("pointercancel", detach);
-    }
     if (!isLocalDirectory) return;
     if (e.button !== 0 || e.ctrlKey) return;
     if (e.detail <= 1) toggleLocalDirectory();
