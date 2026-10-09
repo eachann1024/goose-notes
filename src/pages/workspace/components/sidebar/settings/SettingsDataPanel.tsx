@@ -521,7 +521,7 @@ export function SettingsDataPanel({
             tone="danger"
             className="pt-3"
             title={<span className="flex items-center gap-2"><RotateCcw className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />重置所有数据</span>}
-            description="会清空内部记事本、页面、历史、AI 会话、标签与应用设置；不会删除本地文件夹中的磁盘文件。操作前建议先导出备份。"
+            description="会清空内部笔记本、页面、历史记录、AI 会话、标签与应用设置；不会删除本地文件夹中的文件。操作前建议先导出备份。"
             actions={
               <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
                 重置所有数据

@@ -805,8 +805,8 @@ export function SettingsDialog({
               确认重置所有数据？
             </h1>
             <p className="text-muted-foreground">
-              这将永久删除内部记事本、页面、历史、AI
-              会话、标签和应用设置；不会删除本地文件夹中的磁盘文件
+              这将永久删除内部笔记本、页面、历史记录、AI
+              会话、标签和应用设置；不会删除本地文件夹中的文件。
             </p>
           </div>
 
