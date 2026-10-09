@@ -1,20 +1,18 @@
 name: Desktop installers
 
 on:
-  push:
-    branches-ignore:
-      # Generated preview media is an orphan branch, not application source.
-      - ui-previews
-  pull_request:
-    branches: [main]
   schedule:
-    # ponytail: GitHub cron 按月中日期隔日运行；月底可能连续两天，严格 48 小时需每日轻量检查。
-    - cron: '0 7 */2 * *'
+    # 每天上海时间 6 点用 main 最新提交构建一次；无源码变化时 prepare 会跳过。
+    - cron: '0 6 * * *'
       timezone: 'Asia/Shanghai'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: desktop-installers-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
