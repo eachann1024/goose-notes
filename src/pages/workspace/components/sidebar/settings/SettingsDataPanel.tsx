@@ -702,7 +702,7 @@ export function SettingsDataPanel({
                     <CloudOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                     <p className="text-xs font-medium text-foreground">暂无远端备份</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      保存连接配置后，点击“生成并上传”创建您的第一份云端备份
+                      保存连接配置后，点击「生成并上传」即可创建云端备份
                     </p>
                   </div>
                 ) : (

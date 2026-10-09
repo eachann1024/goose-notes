@@ -1064,7 +1064,7 @@ export function SettingsAI({
             AI 服务
           </span>
         }
-        description="选择供应商，只需填写 API Key。"
+        description="选择模型供应商并填写对应 API Key。"
       >
         <div className="space-y-3">
           <div className="space-y-3">
@@ -1199,7 +1199,7 @@ export function SettingsAI({
                     setCustomSaveError(null);
                     setApiKeyDraft(event.target.value);
                   }}
-                  placeholder="输入后点保存自动拉取模型"
+                  placeholder="输入后保存将自动获取模型列表"
                   autoComplete="off"
                   spellCheck={false}
                   className="pr-10"
