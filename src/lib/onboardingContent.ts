@@ -357,7 +357,7 @@ export const onboardingPageContent: BlockNoteContent = [
   heading(2, "搜索与查找"),
   ...bulletList([
     "全局搜索用于跨页面找内容；页内查找用于在当前页面定位某个词。",
-    "搜索面板里按 Tab 可以切换“当前记事本”与“全部记事本”。",
+    "搜索面板中按 Tab 可在「当前笔记本」与「所有笔记本」之间切换。",
     `查找框支持 ${shortcutLabel("Enter")}、${shortcutLabel("Mod+G")} 和 F3 继续跳转结果。`,
     `${shortcutLabel("Esc")} 会关闭页内查找并把焦点还给编辑器。`,
   ]),
