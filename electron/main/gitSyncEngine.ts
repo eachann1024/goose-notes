@@ -97,7 +97,7 @@ export async function syncGitNotebook(input: GitSyncConfig): Promise<void> {
   let rootRepo = false;
   try {
     const top = await git(root, ["rev-parse", "--show-toplevel"]);
-    if (resolve(top) !== root) throw new Error("记事本目录位于其他 Git 仓库内，拒绝在父仓库中同步");
+    if (resolve(top) !== root) throw new Error("笔记本目录位于其他 Git 仓库内，拒绝在父仓库中同步");
     rootRepo = true;
   } catch (error) {
     if (error instanceof Error && error.message.includes("位于其他 Git 仓库内")) throw error;
@@ -106,13 +106,13 @@ export async function syncGitNotebook(input: GitSyncConfig): Promise<void> {
   if (!rootRepo) {
     if (gitEntry) throw new Error("现有 Git 仓库无法读取，请检查仓库权限和状态");
     if (await isAncestorRepository(dirname(root))) {
-      throw new Error("记事本目录位于其他 Git 仓库内，请移出父仓库后再同步");
+      throw new Error("笔记本目录位于其他 Git 仓库内，请移出父仓库后再同步");
     }
     await git(root, ["init", "--initial-branch", config.branch]);
   }
 
   const top = resolve(await git(root, ["rev-parse", "--show-toplevel"]));
-  if (top !== root) throw new Error("Git 仓库根目录必须与记事本目录相同");
+  if (top !== root) throw new Error("Git 仓库根目录必须与笔记本目录相同");
   const gitDir = await git(root, ["rev-parse", "--absolute-git-dir"]);
   const commonDir = await git(root, ["rev-parse", "--git-common-dir"]);
   if (resolve(root, commonDir) !== resolve(gitDir)) throw new Error("不支持 Git linked worktree，请使用普通仓库目录");

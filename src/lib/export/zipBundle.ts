@@ -360,7 +360,7 @@ export async function inspectNotebookImportZip(
       notebooks.length === 0 ||
       !Array.isArray(pages)
     ) {
-      throw new Error("备份元数据缺少记事本或页面列表");
+      throw new Error("备份元数据缺少笔记本或页面列表");
     }
     if (
       notebooks.some((notebook) => {
@@ -374,7 +374,7 @@ export async function inspectNotebookImportZip(
         );
       })
     ) {
-      throw new Error("备份中包含无效的记事本信息");
+      throw new Error("备份中包含无效的笔记本信息");
     }
     const notebookIds = new Set(
       notebooks.map((notebook) => (notebook as { id: string }).id),

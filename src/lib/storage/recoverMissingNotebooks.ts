@@ -5,7 +5,7 @@ import type { Page } from "@/types";
 const DEFAULT_NOTEBOOK_ID = "default-notebook";
 const DEFAULT_NOTEBOOK_NAME = "Note";
 const DEFAULT_NOTEBOOK_ICON = "📓";
-const RECOVERED_NOTEBOOK_NAME = "恢复的记事本";
+const RECOVERED_NOTEBOOK_NAME = "恢复的笔记本";
 
 interface RecoveryResult {
   notebooks: Record<string, Notebook>;

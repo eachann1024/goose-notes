@@ -343,7 +343,7 @@ export function SettingsDialog({
         }
 
         toast.success("导入成功", {
-          description: `已恢复 ${notebookCount} 个记事本，共 ${pageCount} 个页面`,
+          description: `已恢复 ${notebookCount} 个笔记本，共 ${pageCount} 个页面`,
         });
       } catch (err) {
         console.error("Import failed", err);
@@ -489,7 +489,7 @@ export function SettingsDialog({
       },
     );
     if (!firstWorkspaceId) {
-      throw new Error("备份中没有可恢复的记事本");
+      throw new Error("备份中没有可恢复的笔记本");
     }
     useNotebooks.setState({ activeNotebookId: firstWorkspaceId });
     closeNotebookAiIfFullscreen();

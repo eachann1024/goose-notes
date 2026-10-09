@@ -19,7 +19,7 @@ export function migrateGitSyncState(saved: unknown): GitSyncSavedState {
       id: `legacy-${createHash("sha256").update(legacy.notebookId).digest("hex").slice(0, 24)}`,
       provider: legacy.provider, remoteUrl: legacy.remoteUrl, branch: legacy.branch,
       intervalMinutes: legacy.intervalMinutes, enabled: legacy.enabled, layout: "legacy-root" as const,
-      folders: [{ notebookId: legacy.notebookId, localPath: legacy.localPath, name: "原记事本", remotePath: "" }],
+      folders: [{ notebookId: legacy.notebookId, localPath: legacy.localPath, name: "原笔记本", remotePath: "" }],
       visibility: unknownGitVisibility(), hasToken: false,
     };
   });

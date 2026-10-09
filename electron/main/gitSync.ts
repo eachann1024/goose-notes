@@ -77,7 +77,7 @@ async function checkedRoot(localPath: string) {
   if (!stat.isDirectory() || stat.isSymbolicLink() || normalizePath(root) !== normalizePath(allowed)) throw new Error("同步文件夹不能使用符号链接");
   assertAllowed(root);
   const vault = findVaultRootContaining(root);
-  if (!vault || normalizePath(await realpath(vault)) !== normalizePath(root)) throw new Error("只能同步已打开记事本的根文件夹");
+  if (!vault || normalizePath(await realpath(vault)) !== normalizePath(root)) throw new Error("只能同步已打开笔记本的根文件夹");
   return root;
 }
 
@@ -173,7 +173,7 @@ async function save(raw: GitRepositoryInput) {
       if (old.notebookId !== folder.notebookId || normalizePath(old.localPath) !== normalizePath(folder.localPath)) throw new Error("原文件夹身份或路径已变化，请创建新的映射");
       folder.remotePath = old.remotePath;
     }
-    if (history.some((entry) => entry.notebookId !== folder.notebookId && entry.remotePath.toLowerCase() === folder.remotePath.toLowerCase())) throw new Error("此远端子目录已保留给其他记事本，请使用新名称");
+    if (history.some((entry) => entry.notebookId !== folder.notebookId && entry.remotePath.toLowerCase() === folder.remotePath.toLowerCase())) throw new Error("此远端子目录已保留给其他笔记本，请使用新名称");
   }
   input = validateGitRepository(input);
   if (input.layout === "legacy-root" && input.folders.some((folder) => !history.some((old) => old.notebookId === folder.notebookId && old.localPath === folder.localPath))) throw new Error("旧布局只能重新选择原文件夹");
@@ -239,7 +239,7 @@ export function registerGitSyncIpc() {
       return { error: null };
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      return { error: code === "ENOENT" ? "文件夹或文件已不存在，请重新打开记事本" : code === "EACCES" || code === "EPERM" ? "没有读取文件夹的权限，请检查权限" : messageOf(error) };
+      return { error: code === "ENOENT" ? "文件夹或文件已不存在，请重新打开笔记本" : code === "EACCES" || code === "EPERM" ? "没有读取文件夹的权限，请检查权限" : messageOf(error) };
     }
   });
   ipcMain.on("git-sync:prepare-reply", (event, requestId: string, error: string | null) => {

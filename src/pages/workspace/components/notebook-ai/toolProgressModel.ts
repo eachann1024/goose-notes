@@ -99,11 +99,11 @@ export function getToolProgressStepText(
 
   if (part.type === "tool-listNotebooks") {
     return {
-      label: "查看记事本",
+      label: "查看笔记本",
       detail:
         outputCount === undefined
-          ? "正在查看可用记事本"
-          : `已查看 ${outputCount} 个记事本`,
+          ? "正在查看可用笔记本"
+          : `已查看 ${outputCount} 个笔记本`,
     };
   }
 

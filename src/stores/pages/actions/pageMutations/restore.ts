@@ -24,7 +24,7 @@ export const restorePageAction = (
 
   const notebookName =
     useNotebooks.getState().notebooks[page.workspaceId]?.name ||
-    "未命名记事本";
+    "未命名笔记本";
   const pageTitle = getPageTitle(page) || "无标题";
   const itemLabel = page.isFolder
     ? "文件夹"

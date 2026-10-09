@@ -423,7 +423,7 @@ export function SettingsDataPanel({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium text-foreground">
-                  选择记事本 ({selectedCount})
+                  选择笔记本 ({selectedCount})
                 </Label>
                 <div className="flex items-center gap-2">
                   <span className={DATA_BADGE_CLASS}>

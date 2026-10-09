@@ -33,8 +33,8 @@ export function NotebookCreateDialog({
       <div className="relative mx-auto w-full max-w-md py-6">
         {/* 标题 */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">新建记事本</h1>
-          <p className="text-muted-foreground">创建一个新的记事本</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">新建笔记本</h1>
+          <p className="text-muted-foreground">创建新的笔记本</p>
         </div>
 
         {/* 表单卡片 */}
@@ -48,7 +48,7 @@ export function NotebookCreateDialog({
 
           <div className="space-y-3">
             <Label htmlFor="new-notebook-name" className="text-sm font-medium text-muted-foreground">
-              记事本名称
+              笔记本名称
             </Label>
             <Input
               id="new-notebook-name"
@@ -57,7 +57,7 @@ export function NotebookCreateDialog({
                 onNameChange(e.target.value);
                 onClearError();
               }}
-              placeholder="输入记事本名称"
+              placeholder="输入笔记本名称"
               className="h-12 text-base"
               autoFocus
               onKeyDown={(e) => {
