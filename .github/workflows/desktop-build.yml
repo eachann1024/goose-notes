@@ -2,9 +2,8 @@ name: Desktop installers
 
 on:
   schedule:
-    # 每天上海时间 6 点用 main 最新提交构建一次；无源码变化时 prepare 会跳过。
-    - cron: '0 6 * * *'
-      timezone: 'Asia/Shanghai'
+    # 每天北京时间 8 点（UTC 0 点）用 main 最新提交构建一次；无源码变化时 prepare 会跳过。
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
