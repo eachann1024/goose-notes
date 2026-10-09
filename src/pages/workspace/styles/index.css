@@ -223,6 +223,16 @@
   top: 50%;
   transform: translateY(-50%);
 }
+.goose-dev-version {
+  position: absolute;
+  right: calc(100% + 8px);
+  color: var(--sidebar-muted, hsl(var(--muted-foreground)));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
 .workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
 .workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
   padding-left: calc(var(--electron-traffic-inset, 78px) + 7rem + 8px);

@@ -1,6 +1,6 @@
 import path from "path";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
-import { defineConfig, createLogger } from "vite";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { defineConfig, createLogger, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import AutoImport from "unplugin-auto-import/vite";
 import { codeInspectorPlugin } from "code-inspector-plugin";
@@ -200,7 +200,7 @@ const codeSplittingGroups: ChunkGroup[] = [
 ];
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
   customLogger: logger,
   base: "./", // electron 需要相对路径
   define: {
@@ -208,6 +208,11 @@ export default defineConfig({
     __GOOSE_LITE__: JSON.stringify(isQuicknoteBuild),
     __GOOSE_EDITOR_COMPACT__: JSON.stringify(isQuicknoteBuild),
     __GOOSE_EDITOR_AI__: JSON.stringify(!isQuicknoteBuild),
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(
+      command === "serve"
+        ? JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
+        : loadEnv(mode, __dirname, "").VITE_APP_VERSION,
+    ),
   },
   plugins: [
     {
@@ -405,4 +410,4 @@ export default defineConfig({
     reportCompressedSize: false,
   },
   logLevel: isDebugBuild ? "info" : "warn",
-});
+}));

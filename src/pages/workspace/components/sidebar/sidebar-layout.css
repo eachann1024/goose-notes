@@ -209,6 +209,9 @@
 .sidebar-design .sidebar-tree-row.sidebar-tree-row { border-block: 0; }
 .sidebar-design .sidebar-tree-row > div:first-child { gap: 10px; }
 .sidebar-design .sidebar-tree-row > div:first-child > div:last-child { font-size: inherit; line-height: inherit; }
+.workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-tree-row.sidebar-tree-row--selected > div:first-child > div:last-child {
+  font-size: var(--sidebar-font-size, 13px);
+}
 .sidebar-design :is(.main-tree-row, .sidebar-tree-row) svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.6; }
 .sidebar-design .main-tree-row:not(.main-tree-row--selected):not(.main-tree-row--hovered) svg:not([class*="text-danger"]),
 .sidebar-design .sidebar-tree-row:not(.sidebar-tree-row--selected):not(.sidebar-tree-row--hovered) svg:not([class*="text-danger"]) { color: var(--sidebar-muted); }
