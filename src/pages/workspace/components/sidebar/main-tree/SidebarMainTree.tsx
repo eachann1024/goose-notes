@@ -262,7 +262,7 @@ export function SidebarMainTree({
           });
           if (!createdId) {
             setPendingCreate((latest) => (latest?.id === id ? null : latest));
-            toast.error("新建文件夹失败：名称冲突或文件系统错误");
+            toast.error("新建文件夹失败：名称已存在或无写入权限");
             return;
           }
           setPendingCreate((latest) => (latest?.id === id ? null : latest));
@@ -281,7 +281,7 @@ export function SidebarMainTree({
         });
         if (!createdId) {
           setPendingCreate((latest) => (latest?.id === id ? null : latest));
-          toast.error("新建文件失败：名称冲突或文件系统错误");
+          toast.error("新建文件失败：名称已存在或无写入权限");
           return;
         }
         setPendingCreate((latest) => (latest?.id === id ? null : latest));

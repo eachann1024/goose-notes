@@ -109,7 +109,7 @@ export function SidebarSearch() {
         {!hasQuery && <button className="sidebar-search-remove" aria-label={`从最近访问中移除 ${getPageTitle(page)}`} onClick={() => removeRecent(page.id)}><X size={14}/></button>}
       </div>)}
       </div>
-      {!loading && !pending && !results.length && <div className="sidebar-search-empty"><strong>{hasQuery ? `没有找到“${session.query.trim()}”` : "从一句话开始找"}</strong>{hasQuery ? <><button onClick={() => { session.setQuery(""); inputRef.current?.focus(); }}>清空搜索</button>{session.scope.kind !== "all" && <button onClick={() => session.setScope({ kind: "all" })}>扩大到所有笔记本</button>}</> : <p>输入标题或记得的内容。</p>}</div>}
+      {!loading && !pending && !results.length && <div className="sidebar-search-empty"><strong>{hasQuery ? `未找到「${session.query.trim()}」相关内容` : "输入关键词开始搜索"}</strong>{hasQuery ? <><button onClick={() => { session.setQuery(""); inputRef.current?.focus(); }}>清空搜索</button>{session.scope.kind !== "all" && <button onClick={() => session.setScope({ kind: "all" })}>扩大到所有笔记本</button>}</> : <p>输入标题或记得的内容。</p>}</div>}
       {hasQuery && searchResults.hasMore && <button className="sidebar-search-more" onClick={loadMoreResults}>加载更多结果</button>}
       {matchingSplitPaletteActions(session.query).map(action => <button key={action.id} className="sidebar-search-command rounded-lg" onClick={() => { action.run(); session.closeSearch(); }}>{action.label}</button>)}
     </div>

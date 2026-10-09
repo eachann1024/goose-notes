@@ -635,7 +635,7 @@ export function QuickNoteApp() {
             title={
               occupiedSlots[activeSlot]
                 ? "保存到笔记"
-                : "当前便签是空的，无法保存"
+                : "便签内容为空，无法保存"
             }
             className="quicknote-titlebar-btn quicknote-save-btn"
             style={{ WebkitAppRegion: "no-drag" } as CSSProperties}

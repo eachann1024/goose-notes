@@ -108,7 +108,7 @@ export function FolderHomePage({ page }: FolderHomePageProps) {
         parentId: page.id,
       });
       if (!newId) {
-        toast.error("新建文件夹失败：名称冲突或文件系统错误");
+        toast.error("新建文件夹失败：名称已存在或无写入权限");
         return;
       }
       // 侧栏展开父级并定位新文件夹，保持「双向可见」

@@ -101,12 +101,12 @@ function CustomFileBlockContent({
     try {
       const result = await onOpenAttachment(url, name);
       if (!result.ok) {
-        toast.error("系统默认应用打开失败", {
+        toast.error("无法使用系统默认应用打开", {
           description: describeOpenFailure(result.error),
         });
       }
     } catch (error) {
-      toast.error("系统默认应用打开失败", {
+      toast.error("无法使用系统默认应用打开", {
         description: describeOpenFailure(error),
       });
     }
