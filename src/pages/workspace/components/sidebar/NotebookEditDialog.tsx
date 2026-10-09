@@ -68,13 +68,13 @@ export function NotebookEditDialog({
           )}
           <h1 className="text-2xl font-bold text-foreground mb-2">
             {showDeleteConfirm
-              ? (isLocalFolder ? "移除本地文件夹" : "永久删除记事本")
-              : "编辑记事本"}
+              ? (isLocalFolder ? "移除本地文件夹" : "永久删除笔记本")
+              : "编辑笔记本"}
           </h1>
           <p className="text-muted-foreground">
             {showDeleteConfirm
               ? (isLocalFolder ? "仅移除挂载，不会删除磁盘上的文件" : "此操作无法撤销，请谨慎操作")
-              : "修改记事本的名称与搜索设置"}
+              : "修改笔记本的名称与搜索设置"}
           </p>
         </div>
 
@@ -136,13 +136,13 @@ export function NotebookEditDialog({
                 htmlFor="notebook-name"
                 className="text-sm font-medium text-muted-foreground"
               >
-                记事本名称
+                笔记本名称
               </Label>
               <Input
                 id="notebook-name"
                 value={name}
                 onChange={(e) => onNameChange(e.target.value)}
-                placeholder="记事本名称"
+                placeholder="输入笔记本名称"
                 className="h-12 text-base"
                 autoFocus
                 onKeyDown={(e) => {
@@ -163,7 +163,7 @@ export function NotebookEditDialog({
                   不在全局搜索中展示
                 </Label>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  开启后，从其他记事本搜「所有记事本」时不会出现该记事本页面；正在该记事本内仍可搜索。
+                  开启后，从其他笔记本搜索「所有笔记本」时排除该笔记本；当前笔记本内搜索不受影响。
                 </p>
               </div>
               <Switch
@@ -194,7 +194,7 @@ export function NotebookEditDialog({
                   ) : (
                     <GooseIcons.Trash2 className="mr-2 h-4 w-4" />
                   )}
-                  {isLocalFolder ? "移除此记事本" : "删除此记事本"}
+                  {isLocalFolder ? "移除此笔记本" : "删除此笔记本"}
                 </Button>
               )}
 

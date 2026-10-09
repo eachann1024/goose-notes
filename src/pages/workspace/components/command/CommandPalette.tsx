@@ -250,8 +250,8 @@ export function CommandPalette() {
   }, []);
 
   const currentNotebookName = activeNotebookId
-    ? useNotebooks.getState().notebooks[activeNotebookId]?.name || "当前记事本"
-    : "当前记事本";
+    ? useNotebooks.getState().notebooks[activeNotebookId]?.name || "当前笔记本"
+    : "当前笔记本";
 
   // 手动聚焦输入框，绕过 cmdk 的焦点管理。快捷键面板不能等双 rAF。
   useLayoutEffect(() => {

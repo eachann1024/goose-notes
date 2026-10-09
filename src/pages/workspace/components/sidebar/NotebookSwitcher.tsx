@@ -150,7 +150,7 @@ function SortableNotebookItem({
               <button
                 type="button"
                 className="inline-flex h-6 w-6 items-center justify-center rounded-md opacity-0 overflow-hidden px-0 text-muted-foreground transition-all duration-120 pointer-events-none hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto motion-reduce:transition-none"
-                aria-label="编辑记事本"
+                aria-label="编辑笔记本"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(notebook.id);
@@ -159,7 +159,7 @@ function SortableNotebookItem({
                 <GooseIcons.Settings className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">编辑记事本</TooltipContent>
+            <TooltipContent side="bottom">编辑笔记本</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         {isActive && <GooseIcons.Check className="h-4 w-4" />}
@@ -231,7 +231,7 @@ export function NotebookSwitcher({
   const isRail = variant === "rail";
   const notebookKind = isElectronHost ? "文件夹" : "笔记本";
   const activeNotebookLabel =
-    activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择记事本");
+    activeNotebook?.name || (isElectronHost ? "打开文件夹" : "选择笔记本");
   const notebookList = sortNotebooksByOrder(notebooks);
   // Electron 仅本地文件夹模式：最后一个文件夹也允许移除（回到空态）
   const canDeleteNotebook = isElectronHost
@@ -245,7 +245,7 @@ export function NotebookSwitcher({
 
   const handleConfirmCreate = () => {
     if (!createDialog.name.trim()) {
-      setCreateDialog({ ...createDialog, error: "请输入记事本名称" });
+      setCreateDialog({ ...createDialog, error: "请输入笔记本名称" });
       return;
     }
 
@@ -253,7 +253,7 @@ export function NotebookSwitcher({
       (nb) => nb.name.toLowerCase() === createDialog.name.trim().toLowerCase(),
     );
     if (nameExists) {
-      setCreateDialog({ ...createDialog, error: "记事本名称已存在" });
+      setCreateDialog({ ...createDialog, error: "笔记本名称已存在" });
       return;
     }
 
@@ -469,7 +469,7 @@ export function NotebookSwitcher({
                 onClick={handleCreate}
               >
                 <GooseIcons.BookPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                新建记事本
+                新建笔记本
               </PopoverAction>
               <PopoverAction
                 className="min-h-9 w-full justify-start gap-1.5 rounded-lg px-2 py-1.5 text-xs whitespace-nowrap"

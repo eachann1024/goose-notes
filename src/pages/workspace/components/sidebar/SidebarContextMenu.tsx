@@ -117,9 +117,9 @@ export function SidebarContextMenu({
     const result = movePageTreeToNotebook(page.id, targetNotebookId);
     if (!result.ok) {
       if (result.reason === "same-notebook") {
-        toast.error("页面已在当前记事本");
+        toast.error("页面已在当前笔记本");
       } else if (result.reason === "target-not-supported") {
-        toast.error("目标记事本不支持移动");
+        toast.error("目标笔记本不支持移动");
       } else {
         toast.error("移动失败，请重试");
       }
@@ -127,7 +127,7 @@ export function SidebarContextMenu({
     }
 
     const targetNotebook = notebooks[targetNotebookId];
-    const targetName = targetNotebook?.name || "目标记事本";
+    const targetName = targetNotebook?.name || "目标笔记本";
     toast.success(`已移动到「${targetName}」`, {
       description: `共移动 ${result.movedCount} 个页面`,
       duration: 5000,
@@ -140,7 +140,7 @@ export function SidebarContextMenu({
             result.prevActivePageId,
           );
           if (!ok) {
-            toast.error("撤回失败：源记事本不存在");
+            toast.error("撤回失败：源笔记本不存在");
           }
         },
       },

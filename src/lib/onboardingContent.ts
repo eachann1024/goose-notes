@@ -141,7 +141,7 @@ const shortcutSections: ShortcutSection[] = [
       {
         shortcut: shortcutLabel("Mod+N"),
         action: "新建页面",
-        note: "在当前记事本里新建并自动打开。",
+        note: "在当前笔记本中新建并自动打开。",
       },
       {
         shortcut: shortcutLabel(fixedShortcuts.openSettings),
@@ -167,7 +167,7 @@ const shortcutSections: ShortcutSection[] = [
       {
         shortcut: "Tab",
         action: "切换搜索范围",
-        note: "在当前记事本与全部记事本之间切换。",
+        note: "在当前笔记本与所有笔记本之间切换。",
       },
       {
         shortcut: shortcutLabel("Escape"),

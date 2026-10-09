@@ -23,14 +23,14 @@ export function installGitSyncResponder() {
       const notebookPaths = await Promise.all(notebooks.map(async (item) => ({ item, path: await window.gooseDesktop!.fsRealpath(item.localPath!) })));
       const selected = canonical.map((root) => {
         const notebook = notebookPaths.find((entry) => entry.path === root)?.item;
-        if (!notebook) throw new Error("同步记事本已移除或路径已变化，请在设置中断开旧配置");
+        if (!notebook) throw new Error("同步笔记本已移除或路径已变化，请在设置中断开旧配置");
         return notebook;
       });
       window.dispatchEvent(new CustomEvent("goose-note:flush-editor", { detail: { immediate: true } }));
       await usePages.getState().flushPendingLocalSaves();
       const ids = new Set(selected.map((notebook) => notebook.id));
       const pages = Object.values(usePages.getState().pages).filter((page) => ids.has(page.workspaceId));
-      if (pages.some((page) => usePages.getState().dirtyLocalPageIds[page.id])) throw new Error("记事本还有未保存的内容，请先处理保存异常后重试同步");
+      if (pages.some((page) => usePages.getState().dirtyLocalPageIds[page.id])) throw new Error("笔记本还有未保存的内容，请保存后再重试同步");
       if (request.finished) return;
       // All roots share one flush. Acquiring another root never flushes behind a held barrier.
       for (const [index, root] of canonical.entries()) {

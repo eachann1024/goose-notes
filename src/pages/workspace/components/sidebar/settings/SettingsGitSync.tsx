@@ -149,7 +149,7 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   for (const folder of rows) nameCounts.set(folder.name, (nameCounts.get(folder.name) ?? 0) + 1);
 
   return <div className="min-w-0 space-y-5">
-    <div><h3 className="text-xl font-semibold tracking-tight text-foreground">Git 同步</h3><p className="mt-1 text-sm text-muted-foreground">添加 GitHub 或 Gitee 仓库，为每个仓库选择多个本地记事本。</p></div>
+    <div><h3 className="text-xl font-semibold tracking-tight text-foreground">Git 同步</h3><p className="mt-1 text-sm text-muted-foreground">添加 GitHub 或 Gitee 仓库，为每个仓库选择多个本地笔记本。</p></div>
     {!bridge ? <SettingsSectionCard><p className="text-sm text-muted-foreground">Git 同步仅在桌面版应用中可用。</p></SettingsSectionCard> : <>
       {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{spinner}正在读取同步配置…</p>}
       {loadError && <div role="alert" className="space-y-2 text-sm"><p className="git-sync-error">读取配置失败：{loadError}</p><Button variant="outline" onClick={() => { setLoadError(""); setLoading(true); setReload((value) => value + 1); }}>重新读取</Button></div>}
@@ -182,12 +182,12 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
         </SettingsSectionCard>
         <SettingsSectionCard title="同步文件夹" description="勾选后立即保存并同步；取消勾选不会删除文件。" contentClassName="space-y-2" actions={<Button variant="ghost" size="sm" disabled={disabled} onClick={() => setCheckRevision((value) => value + 1)}>重新检查</Button>}>
           {config.layout === "legacy-root" && <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">这是旧版根目录布局，仅支持原来的一个文件夹，远端路径保持仓库根目录。要同步多个文件夹，请添加另一个仓库的配置；不会自动迁移旧布局。</p>}
-          {!rows.length && <p className="text-sm text-muted-foreground">尚无本地文件夹记事本，请先在侧栏添加本地记事本。</p>}
+          {!rows.length && <p className="text-sm text-muted-foreground">暂无本地文件夹笔记本，请先在侧栏添加本地笔记本。</p>}
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-2">{rows.map((folder) => {
             const selected = config.folders.some((item) => item.notebookId === folder.notebookId);
             const available = localNotebooks.some((item) => item.id === folder.notebookId);
             const check = folderChecks[folder.localPath];
-            const folderError = !available ? "记事本未打开" : check?.error;
+            const folderError = !available ? "笔记本未打开" : check?.error;
             const duplicateName = (nameCounts.get(folder.name) ?? 0) > 1;
             return <div key={folder.notebookId} className="min-w-0 rounded-lg bg-muted/50 p-3"><Checkbox className="min-h-6 w-full min-w-0 items-center gap-2" aria-label={`同步 ${folder.name}${duplicateName ? ` ${folder.localPath}` : ""}`} isSelected={selected} isDisabled={disabled || (!selected && (!available || !check || Boolean(folderError))) || (config.layout === "legacy-root" && !selected && config.folders.length > 0)} onChange={(checked) => {
               const key = `${id}:${folder.notebookId}`;

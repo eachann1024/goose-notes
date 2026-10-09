@@ -44,7 +44,7 @@ export function restorePageWithToast(
   toast.success(
     `已恢复${result.itemLabel || "页面"}「${result.pageTitle || "无标题"}」`,
     {
-      description: `位置：${result.notebookName || "未命名记事本"} / ${parentPath}${restoredChildrenText}`,
+      description: `位置：${result.notebookName || "未命名笔记本"} / ${parentPath}${restoredChildrenText}`,
     },
   );
 }

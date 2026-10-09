@@ -31,5 +31,5 @@ export async function waitForGitSyncRead(target: string): Promise<void> {
 }
 
 export function assertGitSyncWritable(target: string): void {
-  if (isGitSyncPathLocked(target)) throw new Error("此记事本正在同步，请稍后重试文件操作");
+  if (isGitSyncPathLocked(target)) throw new Error("此笔记本正在同步，请稍后重试文件操作");
 }

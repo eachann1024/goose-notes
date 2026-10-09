@@ -464,7 +464,7 @@ export function WorkspaceLayout({
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {dragIntent === "folder"
-                  ? "会作为本地文件夹记事本载入"
+                  ? "会作为本地文件夹笔记本载入"
                   : "支持 .md、.markdown、.txt"}
               </p>
             </div>
