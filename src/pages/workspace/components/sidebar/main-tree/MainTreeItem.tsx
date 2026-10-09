@@ -406,8 +406,17 @@ export function renderItem({
     label.textContent = title || "无标题";
     ghost.appendChild(label);
     document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 18, 17);
-    window.setTimeout(() => ghost.remove(), 0);
+    // 系统拖影永远画在窗口内容下面，刚拖时会被源行挡住。改用页面浮层。
+    e.dataTransfer.setDragImage(new Image(), 0, 0);
+    const place = (x: number, y: number) => {
+      ghost.style.transform = `translate(${x + 14}px, ${y + 16}px)`;
+    };
+    place(e.clientX, e.clientY);
+    const follow = (move: DragEvent) => {
+      if (move.clientX === 0 && move.clientY === 0) return;
+      place(move.clientX, move.clientY);
+    };
+    window.addEventListener("dragover", follow);
 
     if (rowEl instanceof HTMLElement) {
       rowEl.classList.add("main-tree-row--dragging", "main-tree-row--selected");
@@ -415,6 +424,8 @@ export function renderItem({
     e.currentTarget.addEventListener(
       "dragend",
       () => {
+        window.removeEventListener("dragover", follow);
+        ghost.remove();
         activeMainTreeDragId = null;
         onItemDragEnd?.();
         if (rowEl instanceof HTMLElement) {

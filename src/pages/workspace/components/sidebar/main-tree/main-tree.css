@@ -29,15 +29,14 @@
   outline: none !important;
 }
 
-/* 3) 拖拽快照：dragstart 时由 MainTreeItem 动态创建本胶囊并 setDragImage。
- *    默认快照是整行大块，跟随鼠标会盖住目标行的拖入高亮；改用紧凑的
- *    "图标+标题"胶囊，落点反馈不再被遮挡。
+/* 3) 拖拽浮层：系统拖影永远画在窗口内容下面，刚拖时会被源行挡住。
+ *    这里是挂在 body 上、跟随指针的真实浮层，因此能盖过源行。
  *    注意：颜色只用实色变量与 rgba 老语法（Electron 旧内核禁 /alpha）。 */
 .main-tree-drag-ghost {
   position: fixed;
-  top: -1000px;
-  left: -1000px;
-  z-index: 9999;
+  top: 0;
+  left: 0;
+  z-index: 10000;
   display: flex;
   align-items: center;
   gap: 7px;
