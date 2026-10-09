@@ -249,7 +249,7 @@ export function PageEmptyState() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("打开文件夹失败: " + String(e));
+      toast.error("打开文件夹失败：" + String(e));
     }
   }, [createLocalFolderNotebook, loadLocalFolderPages]);
 

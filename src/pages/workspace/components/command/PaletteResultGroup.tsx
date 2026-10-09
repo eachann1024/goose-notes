@@ -188,7 +188,7 @@ export function PaletteResultGroup({
                     </span>
                     <button
                       type="button"
-                      aria-label={`从最近访问中移除“${getPageTitle(page)}”`}
+                      aria-label={`从最近访问中移除「${getPageTitle(page)}」`}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

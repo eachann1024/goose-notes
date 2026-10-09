@@ -154,7 +154,7 @@ export function ArtifactActions({
                       await copyImagePayload(payload);
                     } catch (err) {
                       toast.error(
-                        `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+                        `复制失败：${err instanceof Error ? err.message : "未知错误"}`,
                       );
                     } finally {
                       setCopyingImage(false);
@@ -233,7 +233,7 @@ export function ArtifactActions({
                         setPreviewContent(await resolvePreview());
                       } catch (err) {
                         toast.error(
-                          `预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+                          `预览失败：${err instanceof Error ? err.message : "未知错误"}`,
                         );
                       } finally {
                         setPreviewing(false);
@@ -248,7 +248,7 @@ export function ArtifactActions({
                         await openPreviewInSystem(await resolvePreview());
                       } catch (err) {
                         toast.error(
-                          `系统预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+                          `系统预览失败：${err instanceof Error ? err.message : "未知错误"}`,
                         );
                       } finally {
                         setPreviewing(false);
@@ -286,7 +286,7 @@ export function ArtifactActions({
                   toast.success("已保存");
                 } catch (err) {
                   toast.error(
-                    `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+                    `下载失败：${err instanceof Error ? err.message : "未知错误"}`,
                   );
                 } finally {
                   setDownloadingImage(false);

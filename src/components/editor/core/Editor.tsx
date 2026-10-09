@@ -426,7 +426,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           default:
             __GOOSE_LITE__ || isQuickNoteEditorPage(page)
               ? ""
-              : "输入 / 、或随时 @ 提及笔记...",
+              : "输入 / 或随时 @ 提及笔记…",
           quote: "引用",
           toggleListItem: "",
         },

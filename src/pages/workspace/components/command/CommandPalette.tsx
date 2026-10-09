@@ -329,7 +329,7 @@ export function CommandPalette() {
               placeholder={
                 !scopedNotebookId && searchAllNotebooks
                   ? "搜索所有笔记本…"
-                  : `搜索 "${scopedNotebookId ? notebooks[scopedNotebookId].name : currentNotebookName}"...`
+                  : `搜索「${scopedNotebookId ? notebooks[scopedNotebookId].name : currentNotebookName}」…`
               }
               className="flex h-16 min-w-0 w-full rounded-md bg-transparent text-[17px] outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled"
             />

@@ -818,7 +818,7 @@ function CodeBlockComponent({
       else toast.error("保存失败");
     } catch (err) {
       toast.error(
-        `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        `下载失败：${err instanceof Error ? err.message : "未知错误"}`,
       );
     }
   }, [getCodeContent, language, resolvePreviewPngBlob]);
@@ -831,7 +831,7 @@ function CodeBlockComponent({
       toast.success("已复制到剪贴板");
     } catch (err) {
       toast.error(
-        `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        `复制失败：${err instanceof Error ? err.message : "未知错误"}`,
       );
       throw err;
     }
@@ -868,7 +868,7 @@ function CodeBlockComponent({
       throw new Error("当前代码块不支持系统预览");
     } catch (err) {
       toast.error(
-        `系统预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        `系统预览失败：${err instanceof Error ? err.message : "未知错误"}`,
       );
     }
   }, [getCodeContent, language, theme]);
@@ -904,7 +904,7 @@ function CodeBlockComponent({
       throw new Error("当前代码块不支持预览");
     } catch (err) {
       toast.error(
-        `预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+        `预览失败：${err instanceof Error ? err.message : "未知错误"}`,
       );
     }
   }, [getCodeContent, language, theme]);

@@ -292,7 +292,7 @@ export function ImageLightbox({
         toast.error("保存失败");
       } catch (err) {
         toast.error(
-          `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `下载失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         if (resolvedObjectUrl) {
@@ -333,7 +333,7 @@ export function ImageLightbox({
         toast.success("已复制到剪贴板");
       } catch (err) {
         toast.error(
-          `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `复制失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         if (resolvedObjectUrl) {

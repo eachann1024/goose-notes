@@ -77,7 +77,7 @@ interface SettingsAIProps {
 const SETTINGS_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
-const CUSTOM_AI_KEY_HINT = "请前往“设置 -> AI 助手 -> AI 服务”补充 API Key";
+const CUSTOM_AI_KEY_HINT = "请前往「设置 › AI 助手 › AI 服务」补充 API Key";
 const EMPTY_AI_MODEL_OPTIONS: AIModelOption[] = [];
 
 /** 供应商菜单图标：与预设文案解耦，避免 presets 依赖 React */

@@ -17,7 +17,7 @@ import {
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com/v1";
 export const SETTINGS_ENTRY_HINT =
-  '请前往"设置 -> AI 助手 -> AI 服务"检查配置。';
+  "请前往「设置 › AI 助手 › AI 服务」检查配置。";
 export const ANTHROPIC_THINKING_BUDGET: Record<AIReasoningLevel, number> = {
   default: 0,
   low: 1024,

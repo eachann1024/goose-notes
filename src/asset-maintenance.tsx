@@ -147,7 +147,7 @@ function AssetMaintenanceApp() {
         </div>
         <ScrollArea className="min-h-0 flex-1">
           <div className="p-2">
-            {!scan && <p className="p-6 text-sm text-muted-foreground">{busy ? "正在检查引用，请稍候…" : "选择笔记本并点击“扫描资源”后显示结果。"}</p>}
+            {!scan && <p className="p-6 text-sm text-muted-foreground">{busy ? "正在检查引用，请稍候…" : "选择笔记本并点击「扫描资源」后显示结果。"}</p>}
             {scan?.assets.length === 0 && <p className="p-6 text-sm text-muted-foreground">没有发现未引用的图片或视频。</p>}
             {scan?.assets.map((asset) => <div key={asset.path} className={`mb-2 flex items-center gap-3 rounded-lg p-2 ${previewPath === asset.path ? "bg-accent" : "hover:bg-muted"}`}>
               <Checkbox aria-label={`选择 ${asset.name}`} isSelected={selected.has(asset.path)} isDisabled={busy} onChange={() => toggle(asset.path)} className="min-h-6 min-w-6 shrink-0 justify-center">
