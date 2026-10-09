@@ -159,7 +159,7 @@ const joinFonts = (fonts: string[]) => fonts.filter(Boolean).join(", ");
 const withTimeout = <T>(promise: Promise<T>, timeoutMs = 4000) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Font load timed out")), timeoutMs);
+    timer = setTimeout(() => reject(new Error("Font loading timed out")), timeoutMs);
   });
   return Promise.race([promise, timeout]).finally(() => {
     if (timer !== undefined) clearTimeout(timer);
