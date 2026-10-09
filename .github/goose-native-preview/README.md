@@ -6,7 +6,7 @@ This workflow builds and runs Goose Note on GitHub's standard public `macos-15` 
 
 1. Install the frozen app dependencies and Electron runtime.
 2. Before any full build, launch a tiny real Electron window with `chromiumSandbox: true`, `sandbox: true`, context isolation, and no Node integration. Retain macOS default security and do not request system permissions or weaken Electron sandboxing.
-3. Only after that passes, run the repository's `bun run mac` and `bun run typecheck`. Abort if the disposable runner already contains `/Applications/Goose Note.app`; never replace an existing app.
+3. Only after that passes, run the repository's `bun run mac`. Typecheck stays on the local commit path and is not repeated here. Abort if the disposable runner already contains `/Applications/Goose Note.app`; never replace an existing app.
 4. Launch the actual installed `.app`, show the first-run guide, choose light/ocean, open synthetic Markdown files through the app's real file-open path, edit and verify the saved file, view the real search preview, quit/reopen and verify persistence.
 5. Preserve PNG checkpoints, native Electron renderer video, trace, logs, exact SHAs, lock hash, step results and per-file hashes. Failed stages remain failed, including launcher failures before an Electron handle exists.
 

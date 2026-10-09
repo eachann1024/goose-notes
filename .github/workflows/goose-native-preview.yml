@@ -82,7 +82,6 @@ jobs:
           node .github/goose-native-preview/record.mjs stage build running
           cd "$GOOSE_SOURCE"
           bun run mac 2>&1 | tee "$GOOSE_OUT/build.log"
-          bun run typecheck 2>&1 | tee "$GOOSE_OUT/typecheck.log"
           cd "$GITHUB_WORKSPACE"
           node .github/goose-native-preview/record.mjs verify-source
           node .github/goose-native-preview/record.mjs stage build passed
