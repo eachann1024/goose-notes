@@ -30,14 +30,14 @@ export function SettingsGeneral({
           <div className={`flex items-center justify-between gap-4 p-4 ${ROW_CLASS}`}>
             <div>
               <div className="flex items-center gap-3"><GooseIcons.FileClock className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} /><Label htmlFor="auto-open-last-note" className="cursor-pointer">自动打开上次笔记</Label></div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">打开应用就直接跳到你上次编辑的那篇笔记，省去再点一次的麻烦。</p>
+              <p className="mt-1 pl-7 text-xs text-muted-foreground">启动应用时自动打开上次编辑的笔记。</p>
             </div>
             <Switch id="auto-open-last-note" checked={autoOpenLastNote} onCheckedChange={setAutoOpenLastNote} className={SWITCH_CLASS} />
           </div>
           <div className={`mt-2 flex items-center justify-between gap-4 p-4 ${ROW_CLASS}`}>
             <div>
               <div className="flex items-center gap-3"><GooseIcons.MousePointer2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} /><Label htmlFor="notebook-hover-expand" className="cursor-pointer">悬停展开笔记本切换</Label></div>
-              <p className="mt-1 pl-7 text-xs text-muted-foreground">鼠标停在笔记本名称上就自动弹出切换菜单，不用点击。</p>
+              <p className="mt-1 pl-7 text-xs text-muted-foreground">鼠标悬停在笔记本名称上自动展开切换菜单。</p>
             </div>
             <Switch id="notebook-hover-expand" checked={notebookDropdownHoverExpand} onCheckedChange={setNotebookDropdownHoverExpand} className={SWITCH_CLASS} />
           </div>
