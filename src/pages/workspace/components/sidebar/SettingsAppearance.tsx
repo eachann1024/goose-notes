@@ -56,6 +56,14 @@ type AccentOption = {
 
 const accentOptions: AccentOption[] = [
   {
+    value: "ocean",
+    label: "海蓝",
+    previewLight: "#3b82f6",
+    previewDark: "#93c5fd",
+    lightSurface: "#dbeafe",
+    darkSurface: "rgba(59, 130, 246, 0.2)",
+  },
+  {
     value: "mono",
     label: "叶脉",
     previewLight: "#756b42",
@@ -70,14 +78,6 @@ const accentOptions: AccentOption[] = [
     previewDark: "#a5b4fc",
     lightSurface: "#e0e7ff",
     darkSurface: "rgba(99, 102, 241, 0.2)",
-  },
-  {
-    value: "ocean",
-    label: "海蓝",
-    previewLight: "#3b82f6",
-    previewDark: "#93c5fd",
-    lightSurface: "#dbeafe",
-    darkSurface: "rgba(59, 130, 246, 0.2)",
   },
   {
     value: "pine",
