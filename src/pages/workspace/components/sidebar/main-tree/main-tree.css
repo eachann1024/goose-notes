@@ -70,16 +70,6 @@
   text-overflow: ellipsis;
 }
 
-.main-tree-drag-ghost-grip {
-  flex: 0 0 auto;
-  margin-left: 3px;
-  color: hsl(var(--muted-foreground));
-  font-style: normal;
-  font-size: 17px;
-  line-height: 1;
-  opacity: 1;
-}
-
 /* MainTreeRowShell 共享几何：本地主树与大纲使用同一行高和背景间隔。 */
 .main-tree-row {
   height: var(--main-tree-row-height, 32px);
