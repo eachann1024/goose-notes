@@ -85,11 +85,11 @@ export function SidebarSearch() {
   const currentName = notebooks[session.startingNotebookId ?? ""]?.name ?? "当前笔记本";
   const scopeLabel = session.scope.kind === "all" ? "所有笔记本" : session.scope.kind === "current" ? `当前笔记本 · ${notebooks[scopedId ?? ""]?.name ?? currentName}` : notebooks[scopedId ?? ""]?.name ?? "笔记本已移除";
   return <section className="sidebar-search" aria-label="全局搜索" hidden={!session.open}>
-    <div className="sidebar-search-heading"><strong>搜索笔记</strong><button aria-label="关闭搜索" onClick={close}><X size={16}/></button></div>
+    <div className="sidebar-search-heading"><strong>搜索笔记</strong></div>
     <div className="sidebar-search-input-wrap"><Search size={16} aria-hidden="true"/><input ref={inputRef} role="combobox" aria-label="搜索笔记" aria-controls="sidebar-search-results" aria-expanded={session.open} aria-autocomplete="list" aria-activedescendant={selected ? `search-result-${selected.id}` : undefined} value={draft} placeholder="搜索笔记内容…" autoComplete="off" spellCheck={false}
       onChange={e => { setDraft(e.target.value); if (!composing.current) session.setQuery(e.target.value); }}
       onCompositionStart={() => { composing.current = true; }} onCompositionEnd={e => { composing.current = false; session.setQuery(e.currentTarget.value); }} onKeyDown={keydown}/>
-      <button aria-label="清空搜索" disabled={!draft} onClick={() => { session.setQuery(""); inputRef.current?.focus(); }}><X size={16}/></button></div>
+      {draft ? <button aria-label="清空搜索" onClick={() => { session.setQuery(""); inputRef.current?.focus(); }}><X size={16}/></button> : null}</div>
     <div className="sidebar-search-filters"><DropdownMenu><DropdownMenuTrigger asChild><button className="sidebar-search-scope" aria-label="搜索范围"><span>{scopeLabel}</span><ChevronDown size={14}/></button></DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64"><DropdownMenuRadioGroup value={scopeValue} onValueChange={value => session.setScope(value === "all" ? { kind: "all" } : value === "current" ? { kind: "current", notebookId: session.startingNotebookId } : { kind: "notebook", notebookId: value.slice(9) })}>
         <DropdownMenuRadioItem value="current">当前笔记本 · {currentName}</DropdownMenuRadioItem><DropdownMenuRadioItem value="all">所有笔记本</DropdownMenuRadioItem>

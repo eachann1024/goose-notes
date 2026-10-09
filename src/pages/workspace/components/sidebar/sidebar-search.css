@@ -3,7 +3,7 @@
 .sidebar-search button { border-radius:var(--radius-lg,.5rem); }
 .sidebar-search button:disabled { opacity:.4; cursor:default; }
 .sidebar-search-heading { display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem .25rem; font-size:.875rem; }
-.sidebar-search-heading button,.sidebar-search-input-wrap button { display:flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; flex:none; }
+.sidebar-search-input-wrap button { display:flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; flex:none; }
 .sidebar-search-input-wrap { display:flex; align-items:center; gap:.5rem; margin:.5rem 1rem .75rem; border-bottom:1px solid hsl(var(--border)); }
 .sidebar-search-input-wrap:focus-within { border-color:var(--goose-accent-focus); }
 .sidebar-search-input-wrap input { min-width:0; flex:1; width:100%; border:0; background:transparent!important; color:hsl(var(--foreground)); outline:none; box-shadow:none; padding:.5rem 0; caret-color:var(--goose-accent-focus); font-size:.875rem; }
