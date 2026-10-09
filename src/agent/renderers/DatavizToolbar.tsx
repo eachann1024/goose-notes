@@ -70,7 +70,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
         toast.success("已复制到剪贴板");
       } catch (err) {
         toast.error(
-          `复制失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `复制失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         setCopyLoading(false);
@@ -91,7 +91,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
         else toast.error("保存失败");
       } catch (err) {
         toast.error(
-          `下载失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `下载失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         setDownloadLoading(false);
@@ -113,7 +113,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
         setPreviewContent(await resolvePreview());
       } catch (err) {
         toast.error(
-          `预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `预览失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         setPreviewLoading(false);
@@ -127,7 +127,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
         await openPreviewInSystem(await resolvePreview());
       } catch (err) {
         toast.error(
-          `系统预览失败: ${err instanceof Error ? err.message : "未知错误"}`,
+          `系统预览失败：${err instanceof Error ? err.message : "未知错误"}`,
         );
       } finally {
         setPreviewLoading(false);

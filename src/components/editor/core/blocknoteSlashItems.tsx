@@ -218,7 +218,7 @@ export function getBlockNoteSlashMenuItems(
   if (aiEnabled && (__GOOSE_EDITOR_AI__ || false) && !compact) {
     items.push({
       title: "生成",
-      description: "接着写点什么...",
+      description: "接着写点内容…",
       icon: SLASH_ICONS.sparkles,
       aliases: ["ai", "generate", "shengcheng", "xiezuo", "sparkle"],
       onItemClick: () => {

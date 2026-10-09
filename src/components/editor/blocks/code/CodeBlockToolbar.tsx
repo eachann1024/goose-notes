@@ -299,7 +299,7 @@ export function CodeBlockToolbar({
                         ? `${languageListId}-opt-${safeHighlightedIndex}`
                         : undefined
                     }
-                    placeholder="搜索语言..."
+                    placeholder="搜索语言…"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     onKeyDown={handleSearchKeyDown}

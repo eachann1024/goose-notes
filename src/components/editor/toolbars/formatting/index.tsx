@@ -182,7 +182,7 @@ export function EditorFormattingToolbar() {
       const apiKey = getCustomAIApiKey(aiSettings);
       if (!apiKey) {
         toast.error(
-          '未填写 API Key。请前往"设置 → AI 助手 → AI 服务"检查配置。',
+          '未填写 API Key。请前往「设置 › AI 助手 › AI 服务」检查配置。',
         );
         return;
       }

@@ -415,7 +415,7 @@ export function SettingsDataPanel({
             className="pb-3"
             actions={
               <Button variant="secondary" size="sm" onClick={onImport} disabled={importing}>
-                {importing ? "导入中..." : "导入 ZIP"}
+                {importing ? "正在导入…" : "导入 ZIP"}
                 {!importing && <Upload className="ml-2 h-4 w-4" />}
               </Button>
             }
@@ -509,7 +509,7 @@ export function SettingsDataPanel({
               onClick={onExport}
               disabled={selectedCount === 0 || exporting}
             >
-              {exporting ? "导出中..." : "开始导出"}
+              {exporting ? "正在导出…" : "开始导出"}
               {!exporting && <Download className="ml-2 h-4 w-4" />}
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -720,8 +720,8 @@ export function SettingsDataPanel({
                               {file.basename}
                             </p>
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              <span>时间: {formatRemoteTime(file.lastmod)}</span>
-                              <span>大小: {formatFileSize(file.size)}</span>
+                              <span>时间：{formatRemoteTime(file.lastmod)}</span>
+                              <span>大小：{formatFileSize(file.size)}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 self-end sm:self-center">
