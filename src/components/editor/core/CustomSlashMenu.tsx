@@ -1,5 +1,5 @@
 import { isWorkspaceSettingsOpen } from "@/lib/settings-navigation";
-import {
+import React, {
   forwardRef,
   useCallback,
   useEffect,
@@ -297,10 +297,10 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                     );
                   }
 
+                  const itemKey = item.title ?? index;
                   const button = (
                     <button
                       type="button"
-                      key={item.title ?? index}
                       data-index={index}
                       data-goose-slash-item={lite ? "" : undefined}
                       data-goose-slash-selected={
@@ -388,9 +388,11 @@ const CustomSlashMenu = forwardRef<HTMLDivElement, CustomSlashMenuProps>(
                     </button>
                   );
 
-                  if (!item.disabled || !item.disabledReason) return button;
+                  if (!item.disabled || !item.disabledReason) {
+                    return <React.Fragment key={itemKey}>{button}</React.Fragment>;
+                  }
                   return (
-                    <Tooltip key={item.title ?? index}>
+                    <Tooltip key={itemKey}>
                       <TooltipTrigger asChild>
                         <span className="block w-full cursor-not-allowed">
                           {button}

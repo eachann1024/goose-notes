@@ -90,11 +90,11 @@ export function SidebarSearch() {
       onChange={e => { setDraft(e.target.value); if (!composing.current) session.setQuery(e.target.value); }}
       onCompositionStart={() => { composing.current = true; }} onCompositionEnd={e => { composing.current = false; session.setQuery(e.currentTarget.value); }} onKeyDown={keydown}/>
       {draft ? <button aria-label="清空搜索" onClick={() => { session.setQuery(""); inputRef.current?.focus(); }}><X size={16}/></button> : null}</div>
-    <div className="sidebar-search-filters"><DropdownMenu><DropdownMenuTrigger asChild><button className="sidebar-search-scope" aria-label="搜索范围"><span>{scopeLabel}</span><ChevronDown size={14}/></button></DropdownMenuTrigger>
+    <div className="sidebar-search-filters">{session.open && <DropdownMenu><DropdownMenuTrigger asChild><button className="sidebar-search-scope" aria-label="搜索范围"><span>{scopeLabel}</span><ChevronDown size={14}/></button></DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64"><DropdownMenuRadioGroup value={scopeValue} onValueChange={value => session.setScope(value === "all" ? { kind: "all" } : value === "current" ? { kind: "current", notebookId: session.startingNotebookId } : { kind: "notebook", notebookId: value.slice(9) })}>
         <DropdownMenuRadioItem value="current">当前笔记本 · {currentName}</DropdownMenuRadioItem><DropdownMenuRadioItem value="all">所有笔记本</DropdownMenuRadioItem>
         {Object.values(notebooks).map(n => <DropdownMenuRadioItem key={n.id} value={`notebook:${n.id}`}>{n.name}</DropdownMenuRadioItem>)}
-      </DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><span role="status">{loading || pending ? "搜索中…" : hasQuery ? `${searchResults.all.length} 篇` : ""}</span></div>
+      </DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>}<span role="status">{loading || pending ? "搜索中…" : hasQuery ? `${searchResults.all.length} 篇` : ""}</span></div>
     {!hasQuery && showRecent && <button className="sidebar-search-hide-recent" onClick={() => setShowRecent(false)}>隐藏最近访问</button>}
     {loadError && <div className="sidebar-search-empty" role="alert">部分笔记本读取失败<button onClick={() => setRetry(n => n + 1)}>重试读取</button></div>}
     <div ref={listRef} className="sidebar-search-results" onScroll={e => { const el = e.currentTarget; useSearchSession.setState({ listScrollTop: el.scrollTop }); if (hasQuery && searchResults.hasMore && el.scrollTop + el.clientHeight >= el.scrollHeight - 100) loadMoreResults(); }}>
