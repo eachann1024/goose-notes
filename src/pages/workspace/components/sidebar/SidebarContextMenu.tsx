@@ -479,7 +479,7 @@ export function SidebarContextMenu({
                       <GooseIcons.Trash2 className="h-4 w-4" />
                     )}
                     <span className="min-w-0 truncate">
-                      {isLocalFolder ? "移到系统回收站" : "删除"}
+                      {isLocalFolder ? "移到系统废纸篓" : "删除"}
                     </span>
                     <MenuShortcut shortcut="Mod+Backspace" />
                   </ContextMenuItem>

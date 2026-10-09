@@ -611,7 +611,7 @@ export function PageMenu() {
               <GooseIcons.Trash2 className="h-3.5 w-3.5 text-muted-foreground group-focus:text-[var(--goose-color-danger-focus)]" />
             )}
             <span className="min-w-0 truncate">
-              {isLocalItem ? "移到系统回收站" : "删除"}
+              {isLocalItem ? "移到系统废纸篓" : "删除"}
             </span>
           </PopoverAction>
 

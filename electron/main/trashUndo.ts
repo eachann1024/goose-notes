@@ -36,7 +36,7 @@ export async function trashWithUndo(
 
 export async function undoTrash(token: string): Promise<string> {
   const item = pending.get(token);
-  if (!item) throw new Error("撤回已过期，请从系统回收站恢复");
+  if (!item) throw new Error("撤回已过期，请从系统废纸篓恢复");
   const { original, backup, timer } = item;
   assertGitSyncWritable(original);
   clearTimeout(timer);

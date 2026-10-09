@@ -424,7 +424,7 @@ export const deletePages = tool({
                 restored++;
               }
               toast.success(`已恢复 ${restored} 项`, {
-                description: "系统回收站仍保留原文件副本。",
+                description: "系统废纸篓仍保留原文件副本。",
               });
             }
           : () => {

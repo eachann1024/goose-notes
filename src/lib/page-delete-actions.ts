@@ -132,7 +132,7 @@ export async function deletePageWithUndo(pageId: string) {
               useTabs.getState().openTab(pageId);
             }
             toast.success(`已恢复「${pageTitle}」`, {
-              description: "系统回收站仍保留原文件副本。",
+              description: "系统废纸篓仍保留原文件副本。",
             });
           }
         : undefined
@@ -142,7 +142,7 @@ export async function deletePageWithUndo(pageId: string) {
 
 /** Restore only the exact item backed up for this deletion; never guess by filename. */
 export async function undoLocalTrash(token: string, notebookId: string) {
-  if (!(await window.gooseFs?.undoTrash?.(token))) throw new Error("无法从回收站恢复文件");
+  if (!(await window.gooseFs?.undoTrash?.(token))) throw new Error("无法从废纸篓恢复文件");
   const notebook = useNotebooks.getState().notebooks[notebookId];
   if (notebook?.localPath) {
     try {
