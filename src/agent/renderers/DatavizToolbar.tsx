@@ -57,7 +57,7 @@ export const DatavizToolbar: React.FC<DatavizToolbarProps> = React.memo(
     const capture = useCallback(async () => {
       if (onCapture) return onCapture();
       if (!targetRef?.current || !blockType)
-        throw new Error("No capture method available");
+        throw new Error("无法截取图表");
       return captureImage(targetRef.current, blockType);
     }, [onCapture, targetRef, blockType]);
 
