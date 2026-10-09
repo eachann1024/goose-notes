@@ -484,6 +484,10 @@ html[data-sidebar-collapsed] .bn-side-menu {
 .workspace-shell .workspace-sidebar-pane .sidebar-notebook-trigger {
   font-size: var(--sidebar-font-size, 13px);
 }
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row.sidebar-tree-row--selected,
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row.sidebar-tree-row--selected .text-\[13px\] {
+  font-size: calc(var(--sidebar-font-size, 13px) - 1px);
+}
 
 .workspace-shell .workspace-main-sheet {
   background: var(--workspace-main-surface);
