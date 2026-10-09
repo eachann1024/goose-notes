@@ -199,9 +199,6 @@
   padding-right: 10px;
   color: var(--sidebar-foreground);
 }
-.workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row--selected, .sidebar-tree-row--selected) {
-  font-size: var(--sidebar-font-size, 13px);
-}
 .sidebar-design .main-tree-row.main-tree-row {
   height: calc(var(--main-tree-row-height) - 2px);
   min-height: calc(var(--main-tree-row-height) - 2px);

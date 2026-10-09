@@ -412,7 +412,10 @@ export function SortablePageRow({
 
             <SidebarInlineRename>
             <InlineOverflowRevealText
-              className="text-[13px] leading-snug"
+              className={cn(
+                "leading-snug",
+                isActive ? "text-[12px]" : "text-[13px]",
+              )}
               text={titleText}
               expandedText={expandedTitleText}
               active={isActive || rowHovered}
