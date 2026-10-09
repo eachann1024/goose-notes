@@ -455,7 +455,7 @@ export const onboardingChildPageContent: BlockNoteContent = [
     "输入 / 打开指令菜单，比到处找按钮快很多。",
     "需要切换页面时优先用搜索或侧边栏，当前笔记会被直接替换。",
     `需要找一句话时先用 ${shortcutLabel("Mod+F")}，别把全局搜索当页内查找用。`,
-    "内容平时会自动保存，把注意力放在整理结构上，不要被“要不要保存”打断。",
+    "内容会自动保存，无需担心未保存丢失。",
   ]),
   heading(2, "本地文件模式和普通页面的区别"),
   table(
@@ -463,7 +463,7 @@ export const onboardingChildPageContent: BlockNoteContent = [
     [
       ["保存方式", "自动保存", "自动保存 + 可手动立即落盘"],
       ["适合用途", "日常记录、知识整理", "管理已有 Markdown 文件"],
-      ["常见反馈", "通常无感保存", "更容易看到“已保存”反馈"],
+      ["常见反馈", "通常无感保存", "更容易看到「已保存」状态"],
     ],
   ),
 ];
@@ -482,7 +482,7 @@ export const onboardingSecondChildContent: BlockNoteContent = [
   heading(2, "关于保存这件事"),
   ...bulletList([
     `普通页面默认自动保存，所以这里不把 ${shortcutLabel("Mod+S")} 当成必学快捷键。`,
-    `如果你正在编辑本地文件页面，${shortcutLabel("Mod+S")} 更像“现在就立即落盘”。`,
+    `编辑本地文件时，按 ${shortcutLabel("Mod+S")} 会立即保存到磁盘。`,
     "真正值得优先记住的，是搜索、查找、标签切换和格式化这几组高频操作。",
   ]),
 ];
@@ -490,7 +490,7 @@ export const onboardingSecondChildContent: BlockNoteContent = [
 export const onboardingThirdChildContent: BlockNoteContent = [
   heading(1, "生产 HTML 与图片指南"),
   paragraph(
-    "鹅的笔记不仅是本地知识库，更是强大的内容生产与分享工具。你可以一键生成精美长图/选区卡片、导出单文件离线 HTML 网页，或借助 AI 创作可交互的 HTML 小组件。",
+    "鹅的笔记支持本地存储与多种导出分享方式。你可以将选区或全文导出为长图卡片、单文件离线 HTML 网页，或借助 AI 创作可交互的 HTML 小组件。",
   ),
   callout(
     "🎨",
@@ -517,13 +517,13 @@ export const onboardingThirdChildContent: BlockNoteContent = [
   ),
   ...bulletList([
     "丰富主题配色：内置极简现代、多彩艺术、深色科技等多种精选视觉主题，点击即可实时预览。",
-    "个性化水印：支持在图片底部添加自定义作者昵称或来源署名，也可一键关闭保持极简。",
+    "水印署名：支持在图片底部添加作者昵称或来源，也可以关闭。",
     "高画质矢量渲染：Mermaid 流程图、KaTeX 数学公式、代码高亮与表格均保持超清画质导出。",
-    "快捷分发：支持一键「复制图片」直接粘贴到聊天工具，或「保存图片」下载到本地。",
+    "快捷分享：支持直接复制图片粘贴到其他应用，或保存到本地。",
   ]),
   heading(2, "2. 生产与导出独立 HTML 网页"),
   paragraph(
-    "一键将笔记导出为完全独立的单文件 HTML 网页，脱离编辑器也能在任意设备上完美呈现。",
+    "将笔记导出为单文件 HTML 网页，脱离编辑器也能在任意浏览器中完整浏览。",
   ),
   ...bulletList([
     "单文件离线可用：所有样式、排版与字体配置全部内嵌，无需服务器或外部依赖，双击即可在浏览器中打开。",
@@ -538,8 +538,8 @@ export const onboardingThirdChildContent: BlockNoteContent = [
   ...bulletList([
     "交互式 HTML 部件（```html）：AI 输出的 HTML 代码直接在独立沙箱 iframe 中安全运行，支持动态交互与动画。",
     "智能主题自适应：自动遵循当前笔记的浅色/深色主题与设计规范，呈现专业级 UI 质感。",
-    "小组件专属工具栏：支持「全屏预览」（在独立浏览器标签中查看）、「另存为 HTML」（保存为本地单文件）、「一键截图」（转为 PNG 下载）和「复制代码」。",
-    "ECharts 与 SVG 数据图表：支持将复杂数据一键生成为专业统计图表（柱状/折线/饼图/雷达图）或 SVG 架构图。",
+    "小组件工具栏：支持全屏预览、另存为 HTML、保存截图为 PNG 和复制代码。",
+    "数据图表与图形：支持将数据整理为常用统计图表（柱状/折线/饼图/雷达图）或 SVG 架构图。",
   ]),
   heading(2, "4. 更多专业导出格式"),
   table(
@@ -571,6 +571,6 @@ export const onboardingThirdChildContent: BlockNoteContent = [
   ),
   callout(
     "💡",
-    "提示：选中文档中任意段落或上面的流程图，试试右上角的「生成选中图片」吧！",
+    "提示：选中文档中任意段落或图表，可使用右上角「生成选中图片」导出。",
   ),
 ];

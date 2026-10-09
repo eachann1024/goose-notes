@@ -38,8 +38,8 @@ function createNoticeContent(handleClose: () => void) {
       ]}
     >
       <p>· 空白段落按空格 → 唤起行内 AI</p>
-      <p>· 选中文字 → 一键润色改写</p>
-      <p>支持 DeepSeek、GLM、MiniMax 等供应商一键接入，前往设置填写 API Key 即可。</p>
+      <p>· 选中文字后直接润色改写</p>
+      <p>支持 DeepSeek、GLM、MiniMax 等供应商，在设置中填写 API Key 即可使用。</p>
     </FeatureToastCard>
   );
 }
