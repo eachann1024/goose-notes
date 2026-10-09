@@ -156,7 +156,7 @@ export function ImageLightbox({
         loadInternalResource: (source) => platform.imageStorage.load(source),
       });
       if (result.ok) return;
-      toast.error("系统图片查看器打开失败", {
+      toast.error("无法使用系统图片查看器打开", {
         description: result.error || "未知错误",
       });
     },

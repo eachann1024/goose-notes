@@ -126,7 +126,7 @@ export function useFileDrop() {
     clearLocalFolderFileDropTarget();
 
     if (files.length === 0) {
-      toast.error("暂不支持这种文件", {
+      toast.error("不支持该文件格式", {
         description: "可以拖入 .md、.markdown 或 .txt 文本文件。",
       });
       return;

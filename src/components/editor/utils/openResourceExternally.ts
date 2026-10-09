@@ -165,7 +165,7 @@ async function tryOpenNamedLocalFile(
     const opened = await platform.shell.openPath(candidate);
     return opened
       ? { ok: true, path: candidate }
-      : { ok: false, error: "系统默认应用打开失败" };
+      : { ok: false, error: "无法使用系统默认应用打开" };
   }
   return null;
 }
@@ -189,7 +189,7 @@ async function readResourceBlob(
     : await loadInternalResource?.(source);
   if (!blob) throw new Error("资源不存在或尚未同步完成");
   if (blob.size > MAX_MATERIALIZED_RESOURCE_SIZE) {
-    throw new Error("文件超过 100MB，未交给系统打开");
+    throw new Error("文件大小超过 100MB，无法直接打开");
   }
   return blob;
 }
@@ -219,7 +219,7 @@ async function openMaterializedBlob(
   const opened = await options.platform.shell.openPath(targetPath);
   return opened
     ? { ok: true, path: targetPath }
-    : { ok: false, error: "系统默认应用打开失败" };
+    : { ok: false, error: "无法使用系统默认应用打开" };
 }
 
 async function openResourceOnce(
@@ -249,7 +249,7 @@ async function openResourceOnce(
     const opened = await platform.shell.openPath(physicalPath);
     return opened
       ? { ok: true, path: physicalPath }
-      : { ok: false, error: "系统默认应用打开失败" };
+      : { ok: false, error: "无法使用系统默认应用打开" };
   }
 
   if (!platform.fs.isAvailable()) {
