@@ -14,6 +14,13 @@ import { debugMinify, debugSourcemap, isDebugBuild } from "./vite.debug";
 // - GOOSE_BUILD_TARGET=electron：input=index.html + quicknote.html → dist-electron/renderer/，Electron 桌面端（仅本地模式）。
 //   renderer 与 main/preload 由 Electron 构建链分别产出。
 const isQuicknoteBuild = process.env.GOOSE_BUILD_TARGET === "quicknote";
+const quicknoteInput = { quicknote: path.resolve(__dirname, "quicknote.html") };
+const desktopInput = {
+  index: path.resolve(__dirname, "index.html"),
+  assetMaintenance: path.resolve(__dirname, "asset-maintenance.html"),
+  quicknote: path.resolve(__dirname, "quicknote.html"),
+};
+const buildInput = isQuicknoteBuild ? quicknoteInput : desktopInput;
 const hostTarget = "electron";
 
 // 小窗精简构建专用：把这些「仅经动态 import 进入图」的重型 JS 依赖 alias 到极小空壳，
@@ -381,13 +388,7 @@ export default defineConfig(({ command, mode }) => ({
       // 分开构建让 rolldown 各自按入口可达性裁剪——小窗图不含 workspace <App/>，
       // 自动甩掉 echarts / PDF 导出 / AI 图表等仅主应用需要的代码。
       // Electron 桌面端同时打 index.html（主窗）与 quicknote.html（速记小窗），outDir 为 dist-electron/renderer。
-      input: isQuicknoteBuild
-        ? { quicknote: path.resolve(__dirname, "quicknote.html") }
-        : {
-            index: path.resolve(__dirname, "index.html"),
-            assetMaintenance: path.resolve(__dirname, "asset-maintenance.html"),
-            quicknote: path.resolve(__dirname, "quicknote.html"),
-          },
+      input: buildInput,
       output: {
         // rolldown 原生分包；不用废弃的 manualChunks
         codeSplitting: {
