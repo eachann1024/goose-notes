@@ -15,6 +15,8 @@ import {
   type LocalFontOption,
 } from "@/lib/localFontOptions";
 
+import { useFontSelectionPreview } from "./useFontSelectionPreview";
+
 const DEFAULT_VALUE = "__goose_system_default__";
 
 export function LocalFontSelect({
@@ -34,6 +36,8 @@ export function LocalFontSelect({
   defaultFontFamily?: string;
   modes?: LocalFontOption[];
 }) {
+  const { open, onOpenChange, contentRef, confirmFont } =
+    useFontSelectionPreview(value, onChange);
   const [fonts, setFonts] = useState<LocalFontOption[] | null>(null);
   const [savedFont, setSavedFont] = useState<{
     family: string;
@@ -85,7 +89,7 @@ export function LocalFontSelect({
 
   return (
     <div className="min-w-0">
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button
             id={id}
@@ -99,13 +103,13 @@ export function LocalFontSelect({
               style={{ fontFamily: selectedFamily }}
             >
               <span className="block truncate">{selectedName}</span>
-              <span className="block text-xs text-muted-foreground">
-                {fallback
-                  ? "本机未找到，已使用默认字体"
-                  : value && availability === undefined
-                    ? "正在确认本机字体…"
-                    : "你好 · Aa"}
-              </span>
+              {(fallback || (value && availability === undefined)) && (
+                <span className="block text-xs text-muted-foreground">
+                  {fallback
+                    ? "本机未找到，已使用默认字体"
+                    : "正在确认本机字体…"}
+                </span>
+              )}
             </span>
             <ChevronDown
               aria-hidden="true"
@@ -116,30 +120,30 @@ export function LocalFontSelect({
         <DropdownMenuContent
           align="start"
           aria-label={label}
+          ref={contentRef}
           className="max-h-80 min-w-[var(--trigger-width)] overflow-y-auto"
         >
-          <DropdownMenuRadioGroup
-            value={value ?? DEFAULT_VALUE}
-            onValueChange={(next) =>
-              onChange(next === DEFAULT_VALUE ? null : next)
-            }
-          >
+          <DropdownMenuRadioGroup value={value ?? DEFAULT_VALUE}>
             <DropdownMenuRadioItem
               value={DEFAULT_VALUE}
+              data-font-preview=""
+              onSelect={() => confirmFont(null)}
               style={{ fontFamily: defaultFontFamily }}
             >
-              {defaultLabel} · 你好 Aa
+              {defaultLabel}
             </DropdownMenuRadioItem>
             {options.map((option) => (
               <DropdownMenuRadioItem
                 key={option.family}
                 value={option.family}
+                data-font-preview={option.family}
+                onSelect={() => confirmFont(option.family)}
                 style={{
                   fontFamily: `${toCssFontFamily(option.family)}, ${defaultFontFamily}`,
                 }}
               >
                 <span>
-                  <span className="block">{option.label} · 你好 Aa</span>
+                  <span className="block">{option.label}</span>
                   {!modes.some((mode) => mode.family === option.family) &&
                     option.label !== option.family && (
                       <span className="block text-xs text-muted-foreground">
