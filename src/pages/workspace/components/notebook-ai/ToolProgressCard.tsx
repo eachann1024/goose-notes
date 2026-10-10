@@ -3,6 +3,7 @@
  * 工具调用与思考汇总成一行；思考只在行内截成一句，不另开折叠。
  */
 import { useMemo, useState, type ReactNode } from "react";
+import { PlanReviewProvider } from "./approval/PlanReviewContext";
 import { visibleBusyTickerLine } from "@/components/editor/ai/inlineBusyTicker";
 import {
   ORB_VISIBLE_MIN_MS,
@@ -157,87 +158,91 @@ export function ToolProgressCard({
   if (!hasHeading && !showTraceRow && !children && !footer) return null;
 
   return (
-    <WorkCardStatusContext.Provider value={setApprovalStatus}>
-      <section
-        className={cn(
-          "bui-root bui-approval notebook-ai-work-card",
-          showProcessing && "notebook-ai-work-card--running",
-        )}
-        aria-label="处理进度"
-        aria-busy={showProcessing || undefined}
-      >
-        {hasHeading ? <WorkCardStatus status={status} /> : null}
-        {heading.detail && !footer ? (
-          <p className="notebook-ai-work-status-detail" role="alert">
-            {heading.detail}
-          </p>
-        ) : null}
-        {showTraceRow ? (
-          <WorkCardTraceRow
-            foldable={foldable}
-            open={open}
-            label={traceLabel}
-            thinkingLine={thinkingLine}
-            onToggle={() => setOpen((value) => !value)}
-          />
-        ) : null}
-        {foldable && open ? (
-          <ul className="notebook-ai-work-steps">
-            {steps.map((step, index) => (
-              <li
-                key={`${step.label}-${index}`}
-                className="notebook-ai-work-step"
-              >
-                <div className="notebook-ai-work-step-body">
-                  <div className="notebook-ai-work-step-row">
-                    <span className="notebook-ai-work-step-label">
-                      {step.label}
-                    </span>
-                    <span
-                      className={cn(
-                        "notebook-ai-work-step-st",
-                        step.status === "error" &&
-                          "text-[var(--goose-color-danger-focus)]",
-                      )}
-                    >
-                      {stepStatusLabel(step.status)}
-                    </span>
+    <PlanReviewProvider>
+      <WorkCardStatusContext.Provider value={setApprovalStatus}>
+        <section
+          className={cn(
+            "bui-root bui-approval notebook-ai-work-card",
+            showProcessing && "notebook-ai-work-card--running",
+          )}
+          aria-label="处理进度"
+          aria-busy={showProcessing || undefined}
+        >
+          {hasHeading ? <WorkCardStatus status={status} /> : null}
+          {heading.detail && !footer ? (
+            <p className="notebook-ai-work-status-detail" role="alert">
+              {heading.detail}
+            </p>
+          ) : null}
+          {showTraceRow ? (
+            <WorkCardTraceRow
+              foldable={foldable}
+              open={open}
+              label={traceLabel}
+              thinkingLine={thinkingLine}
+              onToggle={() => setOpen((value) => !value)}
+            />
+          ) : null}
+          {foldable && open ? (
+            <ul className="notebook-ai-work-steps">
+              {steps.map((step, index) => (
+                <li
+                  key={`${step.label}-${index}`}
+                  className="notebook-ai-work-step"
+                >
+                  <div className="notebook-ai-work-step-body">
+                    <div className="notebook-ai-work-step-row">
+                      <span className="notebook-ai-work-step-label">
+                        {step.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "notebook-ai-work-step-st",
+                          step.status === "error" &&
+                            "text-[var(--goose-color-danger-focus)]",
+                        )}
+                      >
+                        {stepStatusLabel(step.status)}
+                      </span>
+                    </div>
+                    {step.status === "error" && step.detail ? (
+                      <p className="notebook-ai-work-step-detail">
+                        {step.detail}
+                      </p>
+                    ) : null}
                   </div>
-                  {step.status === "error" && step.detail ? (
-                    <p className="notebook-ai-work-step-detail">
-                      {step.detail}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {children ? (
-          <div
-            className={cn(
-              "notebook-ai-work-letter",
-              !hasHeading && !showTraceRow && "notebook-ai-work-letter--flush",
-            )}
-          >
-            {children}
-          </div>
-        ) : null}
-        {footer ? (
-          <div className="notebook-ai-work-footer">{footer}</div>
-        ) : null}
-        {hasHeading || thinkingLine ? (
-          <span
-            className="sr-only"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {hasHeading ? status.label : ""}
-            {thinkingLine}
-          </span>
-        ) : null}
-      </section>
-    </WorkCardStatusContext.Provider>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {children ? (
+            <div
+              className={cn(
+                "notebook-ai-work-letter",
+                !hasHeading &&
+                  !showTraceRow &&
+                  "notebook-ai-work-letter--flush",
+              )}
+            >
+              {children}
+            </div>
+          ) : null}
+          {footer ? (
+            <div className="notebook-ai-work-footer">{footer}</div>
+          ) : null}
+          {hasHeading || thinkingLine ? (
+            <span
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {hasHeading ? status.label : ""}
+              {thinkingLine}
+            </span>
+          ) : null}
+        </section>
+      </WorkCardStatusContext.Provider>
+    </PlanReviewProvider>
   );
 }

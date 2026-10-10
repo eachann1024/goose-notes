@@ -8,6 +8,7 @@ import { LoadingState } from "./beautiful-ui/LoadingState";
 import { PromptBar } from "./beautiful-ui/PromptBar";
 import { AiComposerInput } from "@/components/editor/ai/composer/AiComposerInput";
 import { ModelSelectorPopover } from "./ModelSelectorPopover";
+import { usePlanRefinementInput } from "./approval/usePlanRefinementInput";
 import { useComposerSurface } from "./composer/useComposerSurface";
 import { useComposerDraft } from "./composer/useComposerDraft";
 import { useComposerSubmission } from "./composer/useComposerSubmission";
@@ -34,6 +35,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     } = props;
     const isFullscreen = layout === "fullscreen";
     const surface = useComposerSurface(props);
+    usePlanRefinementInput(notebookId, surface.inputRef, disabled || isStreaming);
     const {
       inputRef,
       fileInputRef,

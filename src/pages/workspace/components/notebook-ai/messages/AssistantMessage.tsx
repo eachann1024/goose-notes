@@ -2,7 +2,8 @@ import { MessagePrimitive } from "@assistant-ui/react";
 import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import { isNotebookAiToolPart } from "@/lib/notebook-ai/messageUtils";
 import { ToolProgressCard } from "../ToolProgressCard";
-import { BatchPlanProposal } from "../ApprovalPlanCard";
+import { ApprovalPlanCard, BatchPlanProposal } from "../ApprovalPlanCard";
+import { PlanReviewCard } from "../approval/PlanReviewCard";
 import { shouldShowToolProgress } from "../toolProgressVisibility";
 import {
   AssistantToolRenderContext,
@@ -13,12 +14,10 @@ import {
   getTextPartText,
   shouldShowToolPart,
   findVisibleApprovalPart,
-  hasVisibleApprovalPart,
 } from "./messagePresentation";
 import { AssistantLetterFold } from "./AssistantLetterFold";
 import {
   ASSISTANT_TEXT_PARTS,
-  ASSISTANT_APPROVAL_PARTS,
   ASSISTANT_ARTIFACT_PARTS,
 } from "./assistantParts";
 import { MessageActionBar } from "./MessageActionBar";
@@ -53,6 +52,11 @@ export function AssistantMessage({
     progressToolParts,
     isStreaming,
   );
+  const otherApprovalParts = progressToolParts
+    .map((part) => findVisibleApprovalPart([part], isStreaming))
+    .filter((part): part is NonNullable<typeof part> =>
+      Boolean(part && part !== visibleApprovalPart),
+    );
 
   return (
     <AssistantToolRenderContext.Provider value={toolRenderValue}>
@@ -63,8 +67,13 @@ export function AssistantMessage({
             isMessageStreaming={isStreaming}
             thinkingText={reasoningText}
             footer={
-              hasVisibleApprovalPart(progressToolParts, isStreaming) ? (
-                <MessagePrimitive.Parts components={ASSISTANT_APPROVAL_PARTS} />
+              visibleApprovalPart ? (
+                <ApprovalPlanCard
+                  part={visibleApprovalPart}
+                  onApprovalResponse={toolRenderBase.onBatchApproval}
+                  onUndo={toolRenderBase.onBatchUndo}
+                  embedded
+                />
               ) : undefined
             }
           >
@@ -80,6 +89,14 @@ export function AssistantMessage({
             ) : null}
           </ToolProgressCard>
         ) : null}
+        {otherApprovalParts.map((part) => (
+          <PlanReviewCard
+            key={part.toolCallId}
+            part={part}
+            onApprovalResponse={toolRenderBase.onBatchApproval}
+            onUndo={toolRenderBase.onBatchUndo}
+          />
+        ))}
         <MessagePrimitive.Parts components={ASSISTANT_ARTIFACT_PARTS} />
         <MessagePrimitive.Error>
           <p className="text-xs text-danger">这条回复生成失败。</p>

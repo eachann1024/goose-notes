@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { batchExecutionSummary } from "@/lib/notebook-ai/batch-plan/executionSummary";
 import { toast } from "@/components/ui/sonner";
 import { useNotebookAiChats } from "@/stores/useNotebookAiChats";
 import {
@@ -7,9 +8,8 @@ import {
   updateBatchPlanSelection,
 } from "@/lib/notebook-ai/batch-plan";
 import { reloadEditorIfActive } from "@/lib/notebook-ai/liveWriter";
-import { sanitizeNotebookAiMessages } from "@/lib/notebook-ai/messageUtils";
+import { updatePlanMessages } from "../approval/updatePlanMessages";
 import { formatNotebookAiError } from "@/lib/notebook-ai/errors";
-import type { NotebookAiMessage } from "@/lib/notebook-ai/types";
 import type {
   BatchApprovalResponse,
   BatchUndoResult,
@@ -20,7 +20,6 @@ export function useBatchApprovalActions(state: SessionState) {
   const {
     currentSessionScope,
     isCurrentSession,
-    messages,
     setMessages,
     notebookId,
     conversationId,
@@ -37,20 +36,11 @@ export function useBatchApprovalActions(state: SessionState) {
         payload: { output?: unknown; errorText?: string } = {},
       ) => {
         if (!isCurrentSession(scope)) return;
-        const nextMessages = messages.map((message) => ({
-          ...message,
-          parts: (message.parts ?? []).map((part) => {
-            if (
-              !(
-                typeof part === "object" &&
-                part &&
-                "toolCallId" in part &&
-                part.toolCallId === response.toolCallId
-              )
-            ) {
-              return part;
-            }
-            return {
+        setMessages((current) => {
+          const cleanedMessages = updatePlanMessages(
+            current,
+            response.toolCallId,
+            (part) => ({
               ...part,
               state,
               ...(payload.output !== undefined
@@ -64,14 +54,13 @@ export function useBatchApprovalActions(state: SessionState) {
                   ? `用户批准执行 ${response.selectedOperationIds.length} 项操作`
                   : "用户取消了整批计划",
               },
-            } as unknown as typeof part;
-          }),
-        })) as NotebookAiMessage[];
-        const cleanedMessages = sanitizeNotebookAiMessages(nextMessages);
-        setMessages(cleanedMessages);
-        useNotebookAiChats
-          .getState()
-          .setMessages(notebookId, conversationId, cleanedMessages);
+            }),
+          );
+          useNotebookAiChats
+            .getState()
+            .setMessages(notebookId, conversationId, cleanedMessages);
+          return cleanedMessages;
+        });
       };
 
       if (!response.approved) {
@@ -95,14 +84,13 @@ export function useBatchApprovalActions(state: SessionState) {
           response.toolCallId,
           response.runId,
         );
-        const appliedCount = result.results.filter((item) => item.ok).length;
         replaceToolPart("output-available", {
           output: {
             ok: result.ok,
             toolCallId: response.toolCallId,
             runId: response.runId,
             status: result.journal.status,
-            appliedCount,
+            ...batchExecutionSummary(result),
             selectedCount: result.journal.selectedOperationIds.length,
             canUndo: result.ok && result.journal.status === "completed",
             ...(result.ok ? {} : { error: result.error }),
@@ -122,7 +110,6 @@ export function useBatchApprovalActions(state: SessionState) {
       conversationId,
       currentSessionScope,
       isCurrentSession,
-      messages,
       notebookId,
       setMessages,
     ],
@@ -152,37 +139,26 @@ export function useBatchApprovalActions(state: SessionState) {
           result.results.flatMap((operation) => operation.pageIds),
         );
         pageIds.forEach(reloadEditorIfActive);
-        const nextMessages = messages.map((message) => ({
-          ...message,
-          parts: (message.parts ?? []).map((part) => {
-            if (
-              !(
-                typeof part === "object" &&
-                part &&
-                "toolCallId" in part &&
-                part.toolCallId === toolCallId &&
-                "output" in part &&
-                part.output &&
-                typeof part.output === "object"
-              )
-            ) {
-              return part;
-            }
-            return {
+        setMessages((current) => {
+          const cleanedMessages = updatePlanMessages(
+            current,
+            toolCallId,
+            (part) => ({
               ...part,
               output: {
-                ...(part.output as Record<string, unknown>),
+                ...(part.output && typeof part.output === "object"
+                  ? (part.output as Record<string, unknown>)
+                  : {}),
                 status: "undone",
                 canUndo: false,
               },
-            } as unknown as typeof part;
-          }),
-        })) as NotebookAiMessage[];
-        const cleanedMessages = sanitizeNotebookAiMessages(nextMessages);
-        setMessages(cleanedMessages);
-        useNotebookAiChats
-          .getState()
-          .setMessages(notebookId, conversationId, cleanedMessages);
+            }),
+          );
+          useNotebookAiChats
+            .getState()
+            .setMessages(notebookId, conversationId, cleanedMessages);
+          return cleanedMessages;
+        });
         toast.success("已撤回本批变更");
         return {
           ok: true,
@@ -203,7 +179,6 @@ export function useBatchApprovalActions(state: SessionState) {
       conversationId,
       currentSessionScope,
       isCurrentSession,
-      messages,
       notebookId,
       setMessages,
     ],
