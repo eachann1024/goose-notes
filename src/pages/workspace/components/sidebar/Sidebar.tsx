@@ -9,7 +9,7 @@ import { focusedPageIdOf } from "@/lib/editor-split/tree";
 import { useEffectiveSidebarCollapsed } from "@/hooks/useWorkspaceViewportCollapse";
 import { useWorkspaceViewport } from "@/stores/useWorkspaceViewport";
 import { getPageTitle } from "@/components/editor/utils/page-title";
-import { resolveSidebarOverlayWidth, SIDEBAR_MAX_WIDTH, useSidebarResize } from "./hooks/useSidebarResize";
+import { resolveSidebarOverlayWidth, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH, useSidebarResize } from "./hooks/useSidebarResize";
 import { useSidebarItemHeight } from "./hooks/useSidebarItemHeight";
 import { useSidebarEffects } from "./hooks/useSidebarEffects";
 import { SidebarResizeEdge } from "./SidebarResizeEdge";
@@ -116,14 +116,23 @@ export function Sidebar({
     }
   }, [sidebarCollapsed, sidebarOverlay]);
 
+  const sidebarMaxWidth = sidebarOverlay
+    ? resolveSidebarOverlayWidth(SIDEBAR_MAX_WIDTH, viewportWidth)
+    : SIDEBAR_MAX_WIDTH;
+  const workspaceResize = useSidebarResize({
+    disableResize: disableResize || sidebarCollapsed || settingsOpen,
+    onWidthPreview: previewSidebarWidth,
+    maxWidth: sidebarMaxWidth,
+  });
+  const settingsResize = useSidebarResize({
+    disableResize: disableResize || sidebarCollapsed || !settingsOpen,
+    defaultWidth: SIDEBAR_MIN_WIDTH,
+    storageKey: "settings-sidebar-width",
+    onWidthPreview: previewSidebarWidth,
+    maxWidth: sidebarMaxWidth,
+  });
   const { width, minWidth, maxWidth, isResizing, handleResizePointerDown, handleResizeKeyDown } =
-    useSidebarResize({
-      disableResize: disableResize || sidebarCollapsed,
-      onWidthPreview: previewSidebarWidth,
-      maxWidth: sidebarOverlay
-        ? resolveSidebarOverlayWidth(SIDEBAR_MAX_WIDTH, viewportWidth)
-        : SIDEBAR_MAX_WIDTH,
-    });
+    settingsOpen ? settingsResize : workspaceResize;
 
   const [currentView, setCurrentView] = useState<SidebarView>("pages");
   const [settingsSidebarHost, setSettingsSidebarHost] = useState<HTMLDivElement | null>(null);

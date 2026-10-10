@@ -585,6 +585,7 @@ export function SettingsDialog({
       "goose-note-ai-panel-open",
       "goose-note-ai-panel-width",
       "sidebar-width",
+      "settings-sidebar-width",
     ].forEach((key) => window.localStorage.removeItem(key));
   };
 

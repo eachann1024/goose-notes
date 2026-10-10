@@ -42,6 +42,7 @@ export function resolveSidebarKeyboardWidth(
 interface UseSidebarResizeOptions {
   disableResize?: boolean;
   defaultWidth?: number;
+  storageKey?: string;
   maxWidth?: number;
   onWidthPreview: (width: number) => void;
 }
@@ -49,12 +50,13 @@ interface UseSidebarResizeOptions {
 export function useSidebarResize({
   disableResize = false,
   defaultWidth = SIDEBAR_DEFAULT_WIDTH,
+  storageKey = "sidebar-width",
   maxWidth = SIDEBAR_MAX_WIDTH,
   onWidthPreview,
 }: UseSidebarResizeOptions) {
   const [preferredWidth, setWidth] = useState(() => {
     try {
-      return resolveSidebarWidth(localStorage.getItem("sidebar-width"), defaultWidth);
+      return resolveSidebarWidth(localStorage.getItem(storageKey), defaultWidth);
     } catch {
       return defaultWidth;
     }
@@ -84,13 +86,13 @@ export function useSidebarResize({
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("sidebar-width", String(preferredWidth));
+        localStorage.setItem(storageKey, String(preferredWidth));
       } catch {
         // Width is still usable for this session when storage is unavailable.
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [preferredWidth]);
+  }, [preferredWidth, storageKey]);
 
   const startResizing = (startX: number, pointerId: number) => {
     if (disableResize || activeCleanupRef.current) return;
