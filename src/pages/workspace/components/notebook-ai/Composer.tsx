@@ -187,6 +187,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         }),
         // 不读取受当前软换行/固定高度影响的 live scrollHeight。
         scrollHeight: content.height,
+        lineHeight: parseFloat(getComputedStyle(el).lineHeight) || 24,
       });
       if (expandedRef.current !== next) {
         expandedRef.current = next;

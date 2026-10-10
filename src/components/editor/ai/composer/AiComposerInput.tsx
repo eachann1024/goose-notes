@@ -486,7 +486,7 @@ export const AiComposerInput = forwardRef<
           const el = editorRef.current;
           if (!el) return;
           el.innerHTML = "";
-          el.style.setProperty("--ai-composer-h", "24px");
+          el.style.removeProperty("--ai-composer-h");
           el.dataset.multiline = "false";
           lastEmittedContentRef.current = null;
           releaseAllImages();
@@ -948,7 +948,7 @@ export const AiComposerInput = forwardRef<
             className={cn(
               "pointer-events-none absolute left-0 right-0 z-[1] text-muted-foreground",
               variant === "panel"
-                ? "top-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] leading-6"
+                ? "top-0 overflow-hidden text-ellipsis whitespace-nowrap font-[family-name:var(--font-default)] text-[length:var(--editor-font-size)] leading-[var(--editor-line-height)]"
                 : "top-0 pr-8 text-[12px] leading-[20px]",
             )}
             style={isEmpty ? undefined : { display: "none" }}

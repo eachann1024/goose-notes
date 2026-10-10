@@ -75,6 +75,7 @@ export function applyAppearanceScaleVariables(options: {
   const sidebarFontSize = computeSidebarFontSize(options.uiFontSize);
   root.style.setProperty("font-size", `${targetUiSize}px`);
   root.style.setProperty("--editor-font-size", `${options.editorFontSize}px`);
+  root.style.setProperty("--editor-base-font-size", `${EDITOR_FONT_SIZE_DEFAULT}px`);
   root.style.setProperty("--editor-line-height", String(normalizeEditorLineHeight(options.editorLineHeight)));
   root.style.setProperty("--sidebar-font-size", `${sidebarFontSize}px`);
   root.style.setProperty(
