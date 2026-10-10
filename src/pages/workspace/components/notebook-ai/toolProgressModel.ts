@@ -14,7 +14,14 @@ export interface ToolProgressPart {
 export interface ProgressStep {
   label: string;
   detail: string;
-  status: "running" | "done" | "error" | "waiting";
+  status:
+    | "running"
+    | "done"
+    | "error"
+    | "waiting"
+    | "approval"
+    | "cancelled"
+    | "undone";
 }
 
 const INPUT_ONLY_STATES = new Set([
@@ -66,7 +73,23 @@ export function getToolProgressStepStatus(
   ) {
     return "error";
   }
-  if (part.state === "approval-requested") return "done";
+  if (
+    part.state === "output-denied" ||
+    (part.state === "approval-responded" && part.approval?.approved === false)
+  )
+    return "cancelled";
+  const output = readObject(part.output);
+  if (part.type === "tool-executeBatchPlan" && output?.status === "undone")
+    return "undone";
+  if (
+    part.state === "approval-requested" ||
+    (part.type === "tool-executeBatchPlan" &&
+      output?.status === "prepared" &&
+      output?.needsApproval === true)
+  )
+    return "approval";
+  if (part.state === "approval-responded" && part.approval?.approved === true)
+    return "running";
   if (isInputOnly(part)) return isMessageStreaming ? "running" : "waiting";
   return "done";
 }
@@ -280,8 +303,38 @@ export function getToolProgressStepText(
       };
     }
     if (
+      part.state === "output-denied" ||
+      (part.state === "approval-responded" && part.approval?.approved === false)
+    ) {
+      return { label: "生成批量计划", detail: "已取消本次变更" };
+    }
+    if (output?.status === "undone") {
+      return { label: "执行批量计划", detail: "已撤回本批变更" };
+    }
+    if (
+      part.state === "approval-responded" &&
+      part.approval?.approved === true
+    ) {
+      return { label: "执行批量计划", detail: "正在执行已同意的变更" };
+    }
+    if (
+      part.state === "output-available" &&
+      output?.ok === true &&
+      output?.status !== "prepared"
+    ) {
+      const appliedCount =
+        typeof output.appliedCount === "number"
+          ? output.appliedCount
+          : operationCount;
+      return {
+        label: "执行批量计划",
+        detail: appliedCount
+          ? `已完成 ${appliedCount} 项变更`
+          : "本批变更已完成",
+      };
+    }
+    if (
       part.state === "approval-requested" ||
-      part.state === "approval-responded" ||
       (part.state === "output-available" &&
         output?.status === "prepared" &&
         output?.needsApproval === true)

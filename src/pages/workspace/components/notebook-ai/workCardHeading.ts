@@ -1,28 +1,15 @@
 import type { ProgressStep } from "./toolProgressModel";
+import type { WorkCardStatusData } from "./workCardStatusContext";
 
-export type WorkCardPhase = "running" | "done" | "error";
+export type WorkCardPhase = ProgressStep["status"];
 
 export type WorkCardHeading = {
-  kicker: string;
-  title: string;
+  status: WorkCardStatusData;
+  detail?: string;
   toggle: string;
-  tone: "neutral" | "danger";
 };
 
 const CONFLICT = "页面内容已发生变化";
-
-function firstClause(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return "";
-  return trimmed.split(/[。！？\n]/, 1)[0]?.trim() || trimmed;
-}
-
-function shorten(text: string, max = 22): string {
-  const clause = firstClause(text);
-  if (!clause) return "";
-  if (clause.length <= max) return clause;
-  return `${clause.slice(0, max).trimEnd()}…`;
-}
 
 function lastOf(
   steps: readonly ProgressStep[],
@@ -39,7 +26,15 @@ export function getWorkCardPhase(
   isRunning: boolean,
 ): WorkCardPhase {
   if (steps.some((step) => step.status === "error")) return "error";
+  const latestStatus = steps.at(-1)?.status;
+  if (
+    latestStatus === "approval" ||
+    latestStatus === "cancelled" ||
+    latestStatus === "undone"
+  )
+    return latestStatus;
   if (isRunning) return "running";
+  if (steps.some((step) => step.status === "waiting")) return "waiting";
   return "done";
 }
 
@@ -51,7 +46,8 @@ export function getWorkCardHeading(
   const errorStep = steps.find((step) => step.status === "error");
   const runningStep = lastOf(steps, "running");
   const doneStep = lastOf(steps, "done");
-  const latest = errorStep ?? runningStep ?? doneStep ?? steps[n - 1];
+  const latest =
+    errorStep ?? (phase === "running" ? runningStep : steps[n - 1]) ?? doneStep;
   const toggle =
     n === 0 ? "" : `${n} 步${latest?.label ? ` · ${latest.label}` : ""}`;
 
@@ -59,28 +55,32 @@ export function getWorkCardHeading(
     const detail = errorStep?.detail ?? "";
     const conflict = detail.includes(CONFLICT);
     return {
-      kicker: conflict ? "写入已取消" : "处理失败",
-      title: conflict
-        ? "页面已被改过"
-        : shorten(detail) || errorStep?.label || "处理失败",
+      status: {
+        label: conflict ? "写入已取消" : "处理失败",
+        tone: "danger",
+        icon: conflict ? "cancelled" : "error",
+      },
+      detail,
       toggle,
-      tone: "danger",
     };
   }
 
   if (phase === "running") {
     return {
-      kicker: "处理中",
-      title: runningStep?.detail || "正在处理",
+      status: { label: "处理中", tone: "accent", icon: "running" },
       toggle,
-      tone: "neutral",
     };
   }
 
-  return {
-    kicker: "处理完成",
-    title: doneStep?.detail || (n > 0 ? `${n} 步完成` : "已完成"),
-    toggle,
-    tone: "neutral",
-  };
+  const status: WorkCardStatusData =
+    phase === "approval"
+      ? { label: "等待同意", tone: "warning", icon: "waiting" }
+      : phase === "cancelled"
+        ? { label: "已取消", tone: "neutral", icon: "cancelled" }
+        : phase === "undone"
+          ? { label: "已撤回", tone: "neutral", icon: "undone" }
+          : phase === "waiting"
+            ? { label: "待处理", tone: "warning", icon: "waiting" }
+            : { label: "处理完成", tone: "success", icon: "done" };
+  return { status, toggle };
 }

@@ -1,10 +1,12 @@
-/* 运行态使用独立标签，背景和边框始终跟随当前 primary；不复用中性选中色。 */
-.notebook-ai-work-card.notebook-ai-work-card--running.bui-approval {
+/* 所有状态共用紧凑标签；处理中跟随主题，结果使用产品语义色。 */
+.notebook-ai-work-card.bui-approval,
+.notebook-ai-approval-plan.bui-approval {
   padding-top: 20px;
   padding-bottom: 14px;
 }
 
 .notebook-ai-work-status {
+  --notebook-ai-status-color: hsl(var(--primary));
   position: relative;
   isolation: isolate;
   display: inline-flex;
@@ -34,38 +36,96 @@
 }
 
 .notebook-ai-work-status::before {
-  background: hsl(var(--primary));
+  background: var(--notebook-ai-status-color);
   opacity: 0.12;
 }
 
 .notebook-ai-work-status::after {
-  border: 1px solid hsl(var(--primary));
+  border: 1px solid var(--notebook-ai-status-color);
   opacity: 0.36;
 }
 
 /* 浅色蓝紫文字降低明度，深色文字提高明度，保持小字号状态的对比度。 */
-:root:not(.dark)[data-goose-accent="ocean"] .notebook-ai-work-status { color: #1d4ed8; }
-:root:not(.dark)[data-goose-accent="iris"] .notebook-ai-work-status { color: #4338ca; }
-:root:not(.dark)[data-goose-accent="grape"] .notebook-ai-work-status { color: #7e22ce; }
-.dark .notebook-ai-work-status { color: #93c5fd; }
-.dark[data-goose-accent="iris"] .notebook-ai-work-status { color: #a5b4fc; }
-.dark[data-goose-accent="mono"] .notebook-ai-work-status { color: #e5e5e5; }
-.dark[data-goose-accent="pine"] .notebook-ai-work-status { color: #86efac; }
-.dark[data-goose-accent="amber"] .notebook-ai-work-status { color: #e0c39a; }
-.dark[data-goose-accent="wheat"] .notebook-ai-work-status { color: #d7dbb8; }
-.dark[data-goose-accent="coral"] .notebook-ai-work-status { color: #fdba74; }
-.dark[data-goose-accent="rose"] .notebook-ai-work-status { color: #fda4af; }
-.dark[data-goose-accent="grape"] .notebook-ai-work-status { color: #d8b4fe; }
+:root:not(.dark)[data-goose-accent="ocean"] .notebook-ai-work-status--accent {
+  color: #1d4ed8;
+}
+:root:not(.dark)[data-goose-accent="iris"] .notebook-ai-work-status--accent {
+  color: #4338ca;
+}
+:root:not(.dark)[data-goose-accent="grape"] .notebook-ai-work-status--accent {
+  color: #7e22ce;
+}
+.dark .notebook-ai-work-status--accent {
+  color: #93c5fd;
+}
+.dark[data-goose-accent="iris"] .notebook-ai-work-status--accent {
+  color: #a5b4fc;
+}
+.dark[data-goose-accent="mono"] .notebook-ai-work-status--accent {
+  color: #e5e5e5;
+}
+.dark[data-goose-accent="pine"] .notebook-ai-work-status--accent {
+  color: #86efac;
+}
+.dark[data-goose-accent="amber"] .notebook-ai-work-status--accent {
+  color: #e0c39a;
+}
+.dark[data-goose-accent="wheat"] .notebook-ai-work-status--accent {
+  color: #d7dbb8;
+}
+.dark[data-goose-accent="coral"] .notebook-ai-work-status--accent {
+  color: #fdba74;
+}
+.dark[data-goose-accent="rose"] .notebook-ai-work-status--accent {
+  color: #fda4af;
+}
+.dark[data-goose-accent="grape"] .notebook-ai-work-status--accent {
+  color: #d8b4fe;
+}
 
-.notebook-ai-work-status-spinner {
+.notebook-ai-work-status.notebook-ai-work-status--success {
+  --notebook-ai-status-color: var(--goose-text-success);
+  color: var(--notebook-ai-status-color);
+}
+.notebook-ai-work-status.notebook-ai-work-status--danger {
+  --notebook-ai-status-color: var(--goose-text-danger);
+  color: var(--notebook-ai-status-color);
+}
+.notebook-ai-work-status.notebook-ai-work-status--warning {
+  --notebook-ai-status-color: var(--goose-text-warning);
+  color: var(--notebook-ai-status-color);
+}
+.notebook-ai-work-status.notebook-ai-work-status--neutral {
+  --notebook-ai-status-color: hsl(var(--muted-foreground));
+  color: var(--notebook-ai-status-color);
+}
+
+.notebook-ai-work-status-icon {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  color: hsl(var(--primary));
   stroke-width: 2.4;
+}
+
+.notebook-ai-work-status-spinner {
+  color: var(--notebook-ai-status-color);
   animation: bui-spin 900ms linear infinite;
 }
 
+.notebook-ai-work-status-detail {
+  margin: 12px 0 0;
+  color: var(--goose-text-danger);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.notebook-ai-work-footer .notebook-ai-work-status-detail {
+  margin: 0 0 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .notebook-ai-work-status-spinner { animation: none; }
+  .notebook-ai-work-status-spinner {
+    animation: none;
+  }
 }

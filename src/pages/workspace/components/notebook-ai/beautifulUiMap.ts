@@ -41,17 +41,15 @@ export type ThinkingTraceStepInput = {
   status?: ProgressStep["status"] | string;
 };
 
-function chipStatusFromStep(
-  status: ProgressStep["status"],
-): LoaderChipStatus {
-  if (status === "waiting") return "pending";
+function chipStatusFromStep(status: ProgressStep["status"]): LoaderChipStatus {
+  if (status === "waiting" || status === "approval") return "pending";
+  if (status === "cancelled" || status === "undone") return "done";
   return status;
 }
 
-function taskStatusFromStep(
-  status: ProgressStep["status"],
-): LoaderTaskStatus {
-  if (status === "waiting") return "pending";
+function taskStatusFromStep(status: ProgressStep["status"]): LoaderTaskStatus {
+  if (status === "waiting" || status === "approval") return "pending";
+  if (status === "cancelled" || status === "undone") return "done";
   if (status === "error") return "failed";
   return status;
 }

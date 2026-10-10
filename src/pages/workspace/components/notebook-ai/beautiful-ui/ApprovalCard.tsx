@@ -1,45 +1,44 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { WorkCardStatus } from "../WorkCardStatus";
+import type { WorkCardStatusData } from "../workCardStatusContext";
 
 export function ApprovalCard({
-    title,
-    statusLabel,
-    statusTone = "neutral",
-    children,
-    footer,
-    className,
+  title,
+  status,
+  children,
+  footer,
+  className,
 }: {
-    title: string;
-    statusLabel: string;
-    statusTone?: "neutral" | "danger" | "success";
-    children?: ReactNode;
-    footer?: ReactNode;
-    className?: string;
+  title: string;
+  status: WorkCardStatusData;
+  children?: ReactNode;
+  footer?: ReactNode;
+  className?: string;
 }) {
-    return (
-        <section
-            className={cn(
-                "bui-root bui-approval notebook-ai-approval-plan",
-                className,
-            )}
-            aria-label="AI 笔记变更计划"
-        >
-            <p
-                className={cn(
-                    "m-0 text-[12px] tracking-[0.08em] text-muted-foreground",
-                    statusTone === "danger" &&
-                        "text-[var(--goose-color-danger-focus)]",
-                    statusTone === "success" &&
-                        "text-[var(--goose-color-success)]",
-                )}
-            >
-                {statusLabel}
-            </p>
-            <h3 className="mt-2 min-w-0 text-[20px] font-semibold leading-tight tracking-[-0.04em] text-foreground">
-                {title}
-            </h3>
-            {children}
-            {footer ? <div className="mt-[22px]">{footer}</div> : null}
-        </section>
-    );
+  return (
+    <section
+      className={cn(
+        "bui-root bui-approval notebook-ai-approval-plan",
+        className,
+      )}
+      aria-label="AI 笔记变更计划"
+      aria-busy={status.icon === "running" || undefined}
+    >
+      <WorkCardStatus status={status} />
+      <p className="mt-3 min-w-0 text-[14px] font-semibold leading-normal text-foreground">
+        {title}
+      </p>
+      <span
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {status.label}
+      </span>
+      {children}
+      {footer ? <div className="mt-[22px]">{footer}</div> : null}
+    </section>
+  );
 }

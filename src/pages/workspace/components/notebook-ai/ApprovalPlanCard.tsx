@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { FilePlus2, FileText, Loader2, Pencil, RotateCcw, Trash2 } from "@/components/ui/icons";
+import {
+  FilePlus2,
+  FileText,
+  Loader2,
+  Pencil,
+  RotateCcw,
+  Trash2,
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
   normalizeBatchPlanInput,
@@ -12,11 +19,12 @@ import {
 import { getPageTitle } from "@/components/editor/utils/page-title";
 import { usePages } from "@/stores/usePages";
 import { ApprovalCard } from "./beautiful-ui/ApprovalCard";
-import {
-  diffTextLines,
-  planOperationKindLabel,
-} from "./batchPlanDiff";
+import { diffTextLines, planOperationKindLabel } from "./batchPlanDiff";
 import { PlanMarkdown } from "./PlanMarkdown";
+import {
+  useEmbeddedWorkCardStatus,
+  type WorkCardStatusData,
+} from "./workCardStatusContext";
 
 type BatchOperation =
   | {
@@ -207,29 +215,55 @@ export function ApprovalPlanCard({
     }
   };
 
-  const statusLabel = invalidPlanError
-    ? "计划无效"
-    : isApprovalRequested
-      ? "等待同意"
+  const executionError =
+    invalidPlanError ||
+    formatNotebookAiError(
+      collapseRepeatedErrorSegments(
+        String(part.errorText || output.error || ""),
+      ) ||
+        part.errorText ||
+        output.error,
+      {
+        phase:
+          isApprovalResponded || part.approval?.approved === true
+            ? "execute"
+            : "prepare",
+      },
+    );
+  const status: WorkCardStatusData = undoing
+    ? { label: "撤回中", tone: "accent", icon: "running" }
+    : submitting
+      ? { label: "提交中", tone: "accent", icon: "running" }
       : isDenied
-        ? "已取消"
-        : isApprovalResponded
-          ? "准备执行"
-          : isPersistedUndone || undoResult?.status === "reverted"
-            ? "已撤回"
-            : isComplete
-              ? "执行完成"
-              : hasError
-                ? "执行失败"
-                : "生成计划";
-  const statusTone =
-    hasError || isDenied ? "danger" : isComplete ? "success" : "neutral";
+        ? { label: "已取消", tone: "neutral", icon: "cancelled" }
+        : hasError
+          ? {
+              label: invalidPlanError
+                ? "计划无效"
+                : executionError.includes("页面内容已发生变化")
+                  ? "写入已取消"
+                  : "执行失败",
+              tone: "danger",
+              icon: "error",
+            }
+          : isPersistedUndone || undoResult?.ok === true
+            ? { label: "已撤回", tone: "neutral", icon: "undone" }
+            : undoResult?.ok === false
+              ? { label: "撤回失败", tone: "danger", icon: "error" }
+              : isApprovalRequested
+                ? { label: "等待同意", tone: "warning", icon: "waiting" }
+                : isApprovalResponded
+                  ? { label: "执行中", tone: "accent", icon: "running" }
+                  : isComplete
+                    ? { label: "执行完成", tone: "success", icon: "done" }
+                    : { label: "生成计划", tone: "accent", icon: "running" };
+  useEmbeddedWorkCardStatus(status, embedded);
 
   const footer = isApprovalRequested ? (
     <div className="grid grid-cols-[1fr_1.2fr] gap-2.5">
       {invalidPlanError ? (
         <p
-          className="col-span-2 min-w-0 truncate text-[12px] text-[var(--goose-color-danger-focus)]"
+          className="col-span-2 min-w-0 text-[13px] leading-relaxed text-[var(--goose-color-danger-focus)]"
           role="alert"
         >
           {invalidPlanError}
@@ -255,62 +289,53 @@ export function ApprovalPlanCard({
       </Button>
     </div>
   ) : isDenied ? (
-    <p className="text-[13px] text-muted-foreground">已取消</p>
+    <p className="text-[13px] text-muted-foreground">本次变更未写入笔记。</p>
   ) : hasError ? (
     <p
       className="text-[13px] text-[var(--goose-color-danger-focus)]"
       role="alert"
     >
-      {formatNotebookAiError(
-        collapseRepeatedErrorSegments(
-          String(part.errorText || output.error || ""),
-        ) ||
-          part.errorText ||
-          output.error,
-        {
-          phase:
-            isApprovalResponded || part.approval?.approved === true
-              ? "execute"
-              : "prepare",
-        },
-      )}
+      {executionError}
     </p>
   ) : isComplete ? (
     output.canUndo !== false &&
     !isPersistedUndone &&
     undoResult?.ok !== true ? (
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-[40px] w-full rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[14px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
-        disabled={!output.runId || undoing}
-        onClick={() => void handleUndo()}
-      >
-        {undoing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <RotateCcw className="h-4 w-4" />
-        )}
-        撤回
-      </Button>
+      <>
+        {undoResult?.ok === false ? (
+          <p className="notebook-ai-work-status-detail" role="alert">
+            {formatNotebookAiError(undoResult.error, { phase: "undo" })}
+          </p>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-[40px] w-full rounded-[14px] bg-[var(--goose-block-subtle-bg)] text-[14px] text-foreground shadow-none hover:bg-[var(--goose-block-subtle-hover)]"
+          disabled={!output.runId || undoing}
+          onClick={() => void handleUndo()}
+        >
+          {undoing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RotateCcw className="h-4 w-4" />
+          )}
+          撤回
+        </Button>
+      </>
     ) : (
       <p className="text-[13px] text-muted-foreground" aria-live="polite">
         {undoResult
           ? undoResult.ok
-            ? "已撤回"
+            ? "本批变更已恢复。"
             : collapseRepeatedErrorSegments(undoResult.error ?? "") ||
               undoResult.error ||
               "未能撤回"
           : isPersistedUndone
-            ? "已撤回"
+            ? "本批变更已恢复。"
             : "已更改"}
       </p>
     )
-  ) : (
-    <p className="text-[13px] text-muted-foreground" aria-live="polite">
-      正在更改…
-    </p>
-  );
+  ) : null;
 
   // embedded 时外层 ToolProgressCard 已包 .notebook-ai-work-footer，这里只出内容，避免双层叠加 margin
   if (embedded) {
@@ -320,8 +345,7 @@ export function ApprovalPlanCard({
   return (
     <ApprovalCard
       title={input.title?.trim() || "笔记变更计划"}
-      statusLabel={statusLabel}
-      statusTone={statusTone}
+      status={status}
       footer={footer}
     />
   );

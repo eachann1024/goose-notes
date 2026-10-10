@@ -1,9 +1,8 @@
 /**
- * 处理进度：运行中使用主题色状态标签，结束后显示结果标题与可展开步骤。
+ * 处理进度：所有阶段共用紧凑状态标签，步骤与具体原因保留在正文。
  * 工具调用与思考汇总成一行；思考只在行内截成一句，不另开折叠。
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { LoaderCircle } from "lucide-react";
 import { visibleBusyTickerLine } from "@/components/editor/ai/inlineBusyTicker";
 import {
   ORB_VISIBLE_MIN_MS,
@@ -18,11 +17,12 @@ import {
   type ProgressStep,
   type ToolProgressPart,
 } from "./toolProgressModel";
+import { getWorkCardHeading, getWorkCardPhase } from "./workCardHeading";
+import { WorkCardStatus } from "./WorkCardStatus";
 import {
-  getWorkCardHeading,
-  getWorkCardPhase,
-} from "./workCardHeading";
-import "./tool-progress.css";
+  WorkCardStatusContext,
+  type WorkCardStatusData,
+} from "./workCardStatusContext";
 
 export {
   getToolProgressStepStatus,
@@ -34,6 +34,9 @@ function stepStatusLabel(status: ProgressStep["status"]) {
   if (status === "running") return "进行中";
   if (status === "error") return "失败";
   if (status === "done") return "完成";
+  if (status === "approval") return "等待同意";
+  if (status === "cancelled") return "已取消";
+  if (status === "undone") return "已撤回";
   return "待处理";
 }
 
@@ -139,7 +142,10 @@ export function ToolProgressCard({
   const showRunning = resolveLoaderHold(isRunning, heldRunning);
   const phase = getWorkCardPhase(steps, showRunning);
   const heading = getWorkCardHeading(steps, phase);
-  const showProcessing = phase === "running";
+  const [approvalStatus, setApprovalStatus] =
+    useState<WorkCardStatusData | null>(null);
+  const status = approvalStatus ?? heading.status;
+  const showProcessing = status.icon === "running";
   // 步骤默认收起，不随 running/error 自动展开
   const [open, setOpen] = useState(false);
   const foldable = steps.length > 0;
@@ -151,92 +157,87 @@ export function ToolProgressCard({
   if (!hasHeading && !showTraceRow && !children && !footer) return null;
 
   return (
-    <section
-      className={cn(
-        "bui-root bui-approval notebook-ai-work-card",
-        showProcessing && "notebook-ai-work-card--running",
-      )}
-      aria-label="处理进度"
-      aria-busy={showProcessing || undefined}
-    >
-      {hasHeading && showProcessing ? (
-        <h3 className="notebook-ai-work-status">
-          <LoaderCircle className="notebook-ai-work-status-spinner" aria-hidden />
-          <span>处理中</span>
-        </h3>
-      ) : hasHeading ? (
-        <>
-          <p
+    <WorkCardStatusContext.Provider value={setApprovalStatus}>
+      <section
+        className={cn(
+          "bui-root bui-approval notebook-ai-work-card",
+          showProcessing && "notebook-ai-work-card--running",
+        )}
+        aria-label="处理进度"
+        aria-busy={showProcessing || undefined}
+      >
+        {hasHeading ? <WorkCardStatus status={status} /> : null}
+        {heading.detail && !footer ? (
+          <p className="notebook-ai-work-status-detail" role="alert">
+            {heading.detail}
+          </p>
+        ) : null}
+        {showTraceRow ? (
+          <WorkCardTraceRow
+            foldable={foldable}
+            open={open}
+            label={traceLabel}
+            thinkingLine={thinkingLine}
+            onToggle={() => setOpen((value) => !value)}
+          />
+        ) : null}
+        {foldable && open ? (
+          <ul className="notebook-ai-work-steps">
+            {steps.map((step, index) => (
+              <li
+                key={`${step.label}-${index}`}
+                className="notebook-ai-work-step"
+              >
+                <div className="notebook-ai-work-step-body">
+                  <div className="notebook-ai-work-step-row">
+                    <span className="notebook-ai-work-step-label">
+                      {step.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "notebook-ai-work-step-st",
+                        step.status === "error" &&
+                          "text-[var(--goose-color-danger-focus)]",
+                      )}
+                    >
+                      {stepStatusLabel(step.status)}
+                    </span>
+                  </div>
+                  {step.status === "error" && step.detail ? (
+                    <p className="notebook-ai-work-step-detail">
+                      {step.detail}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {children ? (
+          <div
             className={cn(
-              "m-0 text-[12px] tracking-[0.08em] text-muted-foreground",
-              heading.tone === "danger" &&
-                "text-[var(--goose-color-danger-focus)]",
+              "notebook-ai-work-letter",
+              !hasHeading && !showTraceRow && "notebook-ai-work-letter--flush",
             )}
           >
-            {heading.kicker}
-          </p>
-          <h3 className="mt-2 flex min-w-0 items-start gap-2 text-[20px] font-semibold leading-tight tracking-[-0.04em] text-foreground">
-            <span className="notebook-ai-work-title" title={heading.title}>
-              {heading.title}
-            </span>
-          </h3>
-        </>
-      ) : null}
-      {showTraceRow ? (
-        <WorkCardTraceRow
-          foldable={foldable}
-          open={open}
-          label={traceLabel}
-          thinkingLine={thinkingLine}
-          onToggle={() => setOpen((value) => !value)}
-        />
-      ) : null}
-      {foldable && open ? (
-        <ul className="notebook-ai-work-steps">
-          {steps.map((step, index) => (
-            <li key={`${step.label}-${index}`} className="notebook-ai-work-step">
-              <div className="notebook-ai-work-step-body">
-                <div className="notebook-ai-work-step-row">
-                  <span className="notebook-ai-work-step-label">
-                    {step.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "notebook-ai-work-step-st",
-                      step.status === "error" &&
-                        "text-[var(--goose-color-danger-focus)]",
-                    )}
-                  >
-                    {stepStatusLabel(step.status)}
-                  </span>
-                </div>
-                {step.status === "error" && step.detail ? (
-                  <p className="notebook-ai-work-step-detail">{step.detail}</p>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {children ? (
-        <div
-          className={cn(
-            "notebook-ai-work-letter",
-            !hasHeading && !showTraceRow && "notebook-ai-work-letter--flush",
-          )}
-        >
-          {children}
-        </div>
-      ) : null}
-      {footer ? (
-        <div className="notebook-ai-work-footer">{footer}</div>
-      ) : null}
-      {hasHeading || thinkingLine ? (
-        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {hasHeading ? (showProcessing ? "处理中" : `${heading.kicker}${heading.title}`) : ""}
-          {thinkingLine}
-        </span>
-      ) : null}
-    </section>
+            {children}
+          </div>
+        ) : null}
+        {footer ? (
+          <div className="notebook-ai-work-footer">{footer}</div>
+        ) : null}
+        {hasHeading || thinkingLine ? (
+          <span
+            className="sr-only"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {hasHeading ? status.label : ""}
+            {thinkingLine}
+          </span>
+        ) : null}
+      </section>
+    </WorkCardStatusContext.Provider>
   );
 }
