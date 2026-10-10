@@ -96,8 +96,8 @@ export function ShortcutField({
   const modifierUsedInChordRef = useRef(false)
   const displayValue = value ? formatShortcut(value) : ""
   const hintText = isCapturing
-    ? "正在监听，可按键盘快捷键或鼠标侧键"
-    : "点击输入框后，按键盘快捷键或鼠标侧键"
+    ? "正在录制，请按下按键（支持组合键）…"
+    : "点击输入框后，按下键盘快捷键或鼠标侧键"
   const resetPendingModifier = () => {
     pendingModifierRef.current = ""
     modifierUsedInChordRef.current = false
@@ -120,7 +120,7 @@ export function ShortcutField({
           value={displayValue}
           readOnly
           data-shortcut-recorder
-          placeholder={isCapturing ? "请按下快捷键…" : "点击后按下快捷键"}
+          placeholder={isCapturing ? "请按下按键…" : "点击录制快捷键"}
           className={cn(
             "h-9 text-sm transition-colors",
             isCapturing && "placeholder:text-[var(--goose-color-capture-hint)]",

@@ -63,16 +63,16 @@ export function LocalFontInput({
         }}
         placeholder={placeholder}
         aria-label={label}
-        maxLength={80}
-        aria-invalid={unavailable}
-        aria-describedby={unavailable ? `${id}-warning` : undefined}
-        className="min-w-0 bg-background"
-      />
-      {unavailable && (
-        <p id={`${id}-warning`} role="status" className="text-xs text-danger">
-          未找到本机字体，当前显示回退字体
-        </p>
-      )}
-    </>
+      maxLength={80}
+      aria-invalid={unavailable}
+      aria-describedby={unavailable ? `${id}-warning` : undefined}
+      className="min-w-0 bg-background"
+    />
+    {unavailable && (
+      <p id={`${id}-warning`} role="status" className="text-xs text-danger">
+        未在设备中检测到该字体，已自动显示回退字体
+      </p>
+    )}
+  </>
   );
 }

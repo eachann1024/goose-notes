@@ -33,10 +33,10 @@ export function defaultFontValueForMode(mode: DefaultFontMode): string | null {
 }
 
 const fontModes: { value: DefaultFontMode; label: string }[] = [
-  { value: "system", label: "系统默认" },
-  { value: "serif", label: "系统衬线" },
-  { value: "mono", label: "系统等宽" },
-  { value: "custom", label: "自定义本机字体" },
+  { value: "system", label: "默认" },
+  { value: "serif", label: "衬线" },
+  { value: "mono", label: "等宽" },
+  { value: "custom", label: "自定义字体" },
 ];
 
 const emptyFonts: CustomFonts = {
@@ -123,7 +123,7 @@ export function DefaultFontSelect({
 
       {mode === "custom" && (
         <div className="space-y-2">
-          <Label htmlFor={`${id}-custom`}>本机字体名称</Label>
+          <Label htmlFor={`${id}-custom`}>字体名称</Label>
           <LocalFontInput
             id={`${id}-custom`}
             value={inferredMode === "custom" && value !== null ? value : ""}
@@ -131,7 +131,7 @@ export function DefaultFontSelect({
               setModeOverride(font ? null : { value: null, mode: "custom" });
               onChange(font || null);
             }}
-            placeholder="输入已安装的字体名称"
+            placeholder="输入已安装的字体名称（如 PingFang SC）"
           />
         </div>
       )}
