@@ -1,4 +1,5 @@
 import "./styles/index.css";
+import "./styles/desktop-material.css";
 import { useEffect, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { usePages } from "@/stores/usePages";
@@ -55,6 +56,7 @@ export function WorkspacePage() {
       root.classList.add("os-linux");
     }
     if (isElectronRuntime() && /Mac/i.test(navigator.platform)) {
+      root.classList.add("os-mac");
       return bindOptionWindowDrag();
     }
   }, []);

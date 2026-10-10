@@ -1,0 +1,12 @@
+/* 原生 under-window 材质由 Electron 绘制；body 必须透明，避免先铺实色底。
+ * 只作用于 macOS 主窗口，网页、速记和其他平台继续使用原来的背景。 */
+html.is-electron.os-mac:has(.workspace-shell[data-electron-chrome]),
+html.is-electron.os-mac:has(.workspace-shell[data-electron-chrome]) body {
+  background: transparent;
+}
+
+/* 顶栏、左侧导航轨道和窗口留白共用一层微透明灰色，避免叠加后变实心。
+ * 文件列表与正文仍由各自的不透明内容表面绘制。 */
+html.is-electron.os-mac .workspace-shell[data-electron-chrome] {
+  background: hsl(var(--goose-shell-bg) / 0.78);
+}
