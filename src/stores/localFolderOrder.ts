@@ -1,24 +1,12 @@
-/**
- * localFolderOrder —— 本地文件夹（local-folder）目录排序
- *
- * 每个目录（含笔记本根）默认按名称排序（文件夹优先）；某目录内首次有效手动拖动后
- * 切为手动顺序并落盘，此后扫描发现 / 新建 / 移入的条目一律追加到末尾，
- * 应用内重命名不改 pageId，所以位置不动。
- *
- * 顺序按 (notebookId, dirKey) 存，dirKey = 父目录 pageId，笔记本根用
- * LOCAL_FOLDER_ROOT_DIR_KEY；存储 key `gn:local-order:{notebookId}`
- * （localDbStorage，底层是 localStorage）。只影响本地文件夹的这一个目录，
- * 普通笔记本的 Page.order 与收藏顺序都不动。
- */
 import { create } from "zustand";
-import type { Page } from "@/types";
-import { getPageTitle } from "@/components/editor/utils/page-title";
-import { toast } from "@/components/ui/sonner";
 import {
+  writeDbStorageJSON,
   readDbStorageJSON,
   removeDbStorageItem,
-  writeDbStorageJSON,
 } from "@/lib/storage/localDbStorage";
+import { toast } from "@/components/ui/sonner";
+import type { Page } from "@/types";
+import { sortLocalFolderChildren } from "./localFolderOrder/sorting";
 
 const ORDER_KEY_PREFIX = "gn:local-order:";
 
@@ -66,7 +54,9 @@ function persist(notebookId: string, orders: LocalFolderOrderMap): boolean {
 function sanitizeOrders(raw: unknown): LocalFolderOrderMap {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const orders: LocalFolderOrderMap = {};
-  for (const [dirKey, value] of Object.entries(raw as Record<string, unknown>)) {
+  for (const [dirKey, value] of Object.entries(
+    raw as Record<string, unknown>,
+  )) {
     if (!Array.isArray(value)) continue;
     orders[dirKey] = [
       ...new Set(
@@ -110,7 +100,10 @@ export function setLocalFolderOrder(
 }
 
 /** 恢复名称排序：清掉该目录的手动顺序，其他目录不受影响。 */
-export function clearLocalFolderOrder(notebookId: string, dirKey: string): boolean {
+export function clearLocalFolderOrder(
+  notebookId: string,
+  dirKey: string,
+): boolean {
   const current = getLocalFolderOrders(notebookId);
   if (!(dirKey in current)) return false;
   const next = { ...current };
@@ -202,43 +195,6 @@ export function useLocalFolderManualOrder(
   });
 }
 
-function compareNames(a: Page, b: Page): number {
-  const byName = getPageTitle(a).localeCompare(getPageTitle(b), "zh-CN", {
-    numeric: true,
-  });
-  return byName !== 0 ? byName : a.id.localeCompare(b.id);
-}
-
-/**
- * 本地文件夹子项排序，侧栏树与目录主页共用，保证两处顺序一致。
- * - 无手动顺序：文件夹优先，再按名称（与访达一致）；
- * - 有手动顺序：按手动顺序，不在表内的项（尚未追加进顺序的新条目）排末尾。
- * 两种模式都不看 Page.order，扫描刷新不会打乱顺序。
- */
-export function sortLocalFolderChildren(
-  pages: Page[],
-  manualOrder: string[] | undefined,
-): Page[] {
-  const rank = manualOrder
-    ? new Map(manualOrder.map((id, index) => [id, index]))
-    : null;
-  const unknownRank = rank ? rank.size : 0;
-
-  return [...pages].sort((a, b) => {
-    if (!!a.localPendingCreate !== !!b.localPendingCreate) {
-      return a.localPendingCreate ? -1 : 1;
-    }
-    if (rank) {
-      const rankA = rank.get(a.id) ?? unknownRank;
-      const rankB = rank.get(b.id) ?? unknownRank;
-      if (rankA !== rankB) return rankA - rankB;
-    } else if (!!a.isFolder !== !!b.isFolder) {
-      return a.isFolder ? -1 : 1;
-    }
-    return compareNames(a, b);
-  });
-}
-
 /**
  * 同目录拖动落点 → 新的手动顺序并落盘。
  * @param insertIndex react-complex-tree 给的子项下标（基于含被拖项的列表）；负数表示末尾
@@ -309,3 +265,5 @@ export function insertLocalFolderOrder(
     Math.max(insertIndex, 0),
   );
 }
+
+export { sortLocalFolderChildren } from "./localFolderOrder/sorting";
