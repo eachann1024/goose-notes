@@ -160,7 +160,7 @@ export function registerAssetMaintenanceIpc(): void {
           await shell.trashItem(filePath);
           deleted++;
         }
-      } catch (error) { throw new Error(`已移入废纸篓 ${deleted} 个，其余未完成。请重新扫描。${String(error)}`); }
+      } catch (error) { throw new Error(`已移入废纸篓 ${deleted} 个，其余未完成。请重新扫描。${String(error)}`, { cause: error }); }
       return { deleted, canceled: false };
     });
   });

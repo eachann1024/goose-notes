@@ -11,7 +11,13 @@ export default defineConfig([
   globalIgnores([
     'dist',
     'dist-quicknote',
+    'dist-electron',
+    'dist-desktop',
+    'dist-signpath',
     'output',
+    'tmp',
+    'tests',
+    'plans',
     'node_modules',
     'scripts',
     '.claude',
