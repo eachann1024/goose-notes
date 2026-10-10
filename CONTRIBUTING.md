@@ -21,7 +21,7 @@ Node.js `>=20` is required if you run the toolchain without Bun.
 
 ## Before opening a pull request
 
-Run the project checks locally:
+Use the relevant commands to diagnose syntax, type or packaging problems:
 
 ```bash
 bun run typecheck   # tsc -b --noEmit
@@ -29,7 +29,9 @@ bun run lint        # eslint .
 bun run build       # full production build
 ```
 
-Resolve blocking failures before declaring the change ready. Record any remaining warnings and unverified desktop behavior.
+Product acceptance uses actual interaction: quickly exercise ordinary pages in the browser; have a `use-browser` subagent complete complex flows through the visible UI; use `use-compute` only for affected native controls and necessary system interactions. Build a macOS package only when the native change needs it. Record the actions, visible results and host behavior that the browser cannot verify.
+
+Do not add or run TDD, ERE, unit or E2E cases, fixtures, test bridges, automated assertion/recording pipelines or coverage gates. Static diagnostics and successful compilation do not replace interaction acceptance. Resolve affected compilation failures before shipping.
 
 ## Branching & commits
 
@@ -58,16 +60,16 @@ expected versus actual behavior.
 Use this when reviewing internal pull requests.
 
 1. **Correct diff** — Review the PR’s real remote head (not a stale local branch with the same name).
-2. **Merge gate** — `typecheck`, `lint`, and full `build` (includes main and quick-note renderers).
+2. **Acceptance** — Actual affected user paths, using the browser or native-control route above. Compilation commands are diagnostics, not a test gate.
 3. **Scope** — One logical change; Conventional Commits; no `tasks/`, `.env*`, or AI-only tooling artifacts.
 4. **Editor** — Changes under `src/components/editor/` must not break **title block one** (first block is always H1; see `src/components/editor/inputrules/firstTitleGuard.ts`).
-5. **Electron UI** — Style changes must avoid Tailwind alpha/palette traps that fail in the Electron WebView; prefer CSS variables in `src/index.css`. Browser dev alone is not enough for hover/selected states.
+5. **UI** — Preserve theme tokens, hover/selected states and sidebar rounded corners. Ordinary page changes use quick browser acceptance; native controls use the native route.
 6. **Dual plugin** — Shared code must still build for both the main app and `GOOSE_BUILD_TARGET=quicknote` / `__GOOSE_LITE__`.
 7. **Data** — Persistence and local-folder sync changes must not lose or silently overwrite notes.
 8. **Security** — No hardcoded secrets or personal paths in defaults; see [SECURITY.md](./SECURITY.md).
-9. **Verification** — Ask for a short **Testing** note in the PR when behavior changes. Report the checks actually run; do not infer CI results from local success.
+9. **Verification** — Record actual interaction and unverified host boundaries. Do not infer CI results from local success.
 
-Run `bun run build`, then start the packaged Electron app from `dist-electron/app-pack` for a local smoke test (see DEVELOP.md).
+Keep handwritten implementation files at or below 300 lines, grouped by responsibility. Main modules usually have 200–300 lines; entry points and focused helpers may be shorter. Split generated declarations through their generator, without mechanically splitting lockfiles or license data.
 
 ## Security
 

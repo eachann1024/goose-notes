@@ -66,8 +66,6 @@ skills-lock.json
 tasks/
 .pi-lens.json
 scripts/*
-!scripts/audit-editor.mjs
-!scripts/serve-editor.mjs
 !scripts/collect-desktop-artifacts.mjs
 !scripts/compile-electron.mjs
 !scripts/electron-build-linux.mjs
@@ -94,6 +92,9 @@ public/fonts/*.otf
 /.ego-qa/
 /output/
 /test-results/
+/tmp/
+/tests/
+/plans/
 /src/**/_prototype/
 
 # Private desktop CI configuration
@@ -104,7 +105,5 @@ public/fonts/*.otf
 !scripts/publish-release.mjs
 
 
-# Trusted PR preview tooling uses its own pinned Node dependencies
-!/.github/ui-preview/package-lock.json
 __pycache__/
 dist-signpath/
