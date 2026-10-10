@@ -73,7 +73,6 @@ scripts/*
 !scripts/electron-build-linux.mjs
 !scripts/electron-build-mac.mjs
 !scripts/electron-build-win.mjs
-!scripts/electron-dev.mjs
 !scripts/prepare-electron-pack.mjs
 !scripts/generate-license-notices.mjs
 !scripts/generate-text-colors.mjs

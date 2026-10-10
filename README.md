@@ -69,7 +69,7 @@ https://github.com/user-attachments/assets/95f9bf50-3992-4f99-a256-b52ee6f41b74
 
 ```bash
 bun install --frozen-lockfile
-bun run mac:dev
+bun run mac
 ```
 
 完整运行、验证与打包步骤见 [开发文档](DEVELOP.md)。

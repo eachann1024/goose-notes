@@ -9,7 +9,6 @@
 ```bash
 bun install --frozen-lockfile
 bun run dev          # 浏览器开发，端口 6001
-bun run mac:dev      # Vite + Electron，验证主进程、preload 与窗口能力
 bun run typecheck
 bun run lint
 bun run build

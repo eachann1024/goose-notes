@@ -15,13 +15,13 @@
     "build": "node scripts/generate-text-colors.mjs && node src/lib/vite-stubs/assert-present.mjs && vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs",
     "build:debug": "node scripts/generate-text-colors.mjs && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/compile-electron.mjs && GOOSE_DEBUG=1 node scripts/prepare-electron-pack.mjs",
     "mac": "python3 build_mac.py",
-    "mac:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
+
     "win": "bun run build:electron && node scripts/electron-build-win.mjs && node scripts/collect-desktop-artifacts.mjs",
     "build:win": "bun run win",
-    "win:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
+
     "linux": "bun run build:electron && node scripts/electron-build-linux.mjs && node scripts/collect-desktop-artifacts.mjs",
     "build:linux": "bun run linux",
-    "linux:dev": "GOOSE_BUILD_TARGET=electron node scripts/electron-dev.mjs",
+
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "build:electron": "node scripts/generate-text-colors.mjs && GOOSE_BUILD_TARGET=electron vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs"

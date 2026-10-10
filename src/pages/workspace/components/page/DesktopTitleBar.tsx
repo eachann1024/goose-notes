@@ -144,11 +144,6 @@ export function DesktopTitleBar({
       className="electron-window-controls flex shrink-0 items-center gap-1"
       data-electron-no-drag
     >
-      {import.meta.env.DEV && (
-        <span className="goose-dev-version" data-electron-no-drag>
-          {import.meta.env.VITE_APP_VERSION}
-        </span>
-      )}
       <TooltipProvider delayDuration={600}>
         {[
           { label: "后退", Icon: GooseIcons.ArrowLeft, disabled: !canGoBack, onClick: () => { onBeforeActivateTab?.(); useTabs.getState().goBackTabHistory(); } },
