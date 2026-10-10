@@ -1,0 +1,207 @@
+/*
+ * 产品强调色 preset。所有关键交互色均为静态 HSL 通道、hex 或 rgba，
+ * 不依赖 oklch / color-mix / hsl(var(...)/alpha)，兼容 Electron 旧 Chromium。
+ * 无 data-goose-accent 时继续使用 index.css 的现有鸢尾 fallback。
+ */
+
+:root[data-goose-accent="iris"] {
+  --primary: 239 84% 67%;
+  --ring: 239 84% 67%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #eceafa;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #8174cb;
+  --goose-sidebar-hover: #f3f1fb;
+  --goose-interactive-hover: #f3f1fb;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #8174cb;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #eef2ff;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #c7d2fe;
+  --goose-callout-accent: #6366f1;
+  --goose-ai-approval-check-bg: #6366f1;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #6366f1;
+  --goose-accent-drag-line: #6366f1;
+  --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+:root.dark[data-goose-accent="iris"] {
+  --primary: 239 84% 67%;
+  --ring: 239 84% 67%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #34304e;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #9484e5;
+  --goose-sidebar-hover: #2c293d;
+  --goose-interactive-hover: #2c293d;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #9484e5;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #3d3e64;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #6366f1;
+  --goose-callout-accent: #6366f1;
+  --goose-ai-approval-check-bg: #6366f1;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #6366f1;
+  --goose-accent-drag-line: #6366f1;
+  --goose-accent-drag-glow: 0 0 8px rgba(99, 102, 241, 0.42);
+}
+
+:root[data-goose-accent="ocean"] {
+  --primary: 217 91% 60%;
+  --ring: 217 91% 60%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #e5edfc;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #547dd0;
+  --goose-sidebar-hover: #eef3fc;
+  --goose-interactive-hover: #eef3fc;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #547dd0;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #eff6ff;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #bfdbfe;
+  --goose-callout-accent: #3b82f6;
+  --goose-ai-approval-check-bg: #3b82f6;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #3b82f6;
+  --goose-accent-drag-line: #3b82f6;
+  --goose-accent-drag-glow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+:root.dark[data-goose-accent="ocean"] {
+  --primary: 217 91% 60%;
+  --ring: 217 91% 60%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #273750;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #779de8;
+  --goose-sidebar-hover: #29313d;
+  --goose-interactive-hover: #29313d;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #779de8;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #324665;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #3b82f6;
+  --goose-callout-accent: #3b82f6;
+  --goose-ai-approval-check-bg: #3b82f6;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #3b82f6;
+  --goose-accent-drag-line: #3b82f6;
+  --goose-accent-drag-glow: 0 0 8px rgba(59, 130, 246, 0.42);
+}
+
+:root[data-goose-accent="mono"] {
+  --primary: 48.235 27.869% 35.882%;
+  --primary-foreground: var(--goose-text-on-dark-channels);
+  --ring: 48.235 27.869% 35.882%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #fcfcf7;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #756b42;
+  --goose-sidebar-hover: #e3e1d5;
+  --goose-interactive-hover: #e3e1d5;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #756b42;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #eeebde;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #756b42;
+  --goose-callout-accent: #756b42;
+  --goose-ai-approval-check-bg: #756b42;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #756b42;
+  --goose-accent-drag-line: #756b42;
+  --goose-accent-drag-glow: 0 0 8px rgba(117, 107, 66, 0.36);
+}
+
+:root.dark[data-goose-accent="mono"] {
+  --primary: 0 0% 90%;
+  --primary-foreground: var(--goose-text-on-light-channels);
+  --ring: 0 0% 83%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #363636;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #a0a0a0;
+  --goose-sidebar-hover: #2f2f2f;
+  --goose-interactive-hover: #2f2f2f;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #a0a0a0;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #3a3a3a;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #737373;
+  --goose-callout-accent: #d4d4d4;
+  --goose-ai-approval-check-bg: #737373;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #d4d4d4;
+  --goose-accent-drag-line: #d4d4d4;
+  --goose-accent-drag-glow: 0 0 8px rgba(229, 229, 229, 0.34);
+}
+
+:root[data-goose-accent="pine"] {
+  --primary: 142 72% 29%;
+  --ring: 142 72% 29%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #e4f1e8;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #559369;
+  --goose-sidebar-hover: #edf5ef;
+  --goose-interactive-hover: #edf5ef;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #559369;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #f0fdf4;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #bbf7d0;
+  --goose-callout-accent: #15803d;
+  --goose-ai-approval-check-bg: #15803d;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #15803d;
+  --goose-accent-drag-line: #15803d;
+  --goose-accent-drag-glow: 0 0 8px rgba(21, 128, 61, 0.4);
+}
+
+:root.dark[data-goose-accent="pine"] {
+  --primary: 142 72% 29%;
+  --ring: 142 72% 29%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #273e31;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #6aae83;
+  --goose-sidebar-hover: #29342e;
+  --goose-interactive-hover: #29342e;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #6aae83;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #2b4a37;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #22c55e;
+  --goose-callout-accent: #15803d;
+  --goose-ai-approval-check-bg: #15803d;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #15803d;
+  --goose-accent-drag-line: #15803d;
+  --goose-accent-drag-glow: 0 0 8px rgba(34, 197, 94, 0.42);
+}

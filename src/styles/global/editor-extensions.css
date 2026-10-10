@@ -1,0 +1,106 @@
+/* --- Editor Extensions Styles --- */
+
+/* Inline Math */
+.inline-math-node {
+  @apply mx-0.5 px-1 rounded border border-transparent hover:border-border transition-colors;
+  background-color: var(--goose-block-subtle-bg);
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* Details / Toggle List */
+.details-wrapper {
+  @apply my-2 border rounded-lg overflow-hidden;
+  border-color: var(--goose-block-subtle-border);
+}
+
+.details-wrapper summary {
+  @apply px-3 py-2 cursor-pointer transition-colors font-medium list-none flex items-center gap-2;
+}
+
+.details-wrapper summary:hover {
+  background-color: var(--goose-block-subtle-hover);
+}
+
+.details-wrapper summary::-webkit-details-marker {
+  display: none;
+}
+
+.details-wrapper summary::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  background-color: hsl(var(--muted-foreground));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>")
+    no-repeat center / 14px 14px;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>")
+    no-repeat center / 14px 14px;
+  transition: transform 0.2s ease;
+}
+
+.details-wrapper[open] summary::before,
+.details-wrapper.is-open summary::before {
+  transform: rotate(90deg);
+}
+
+.details-wrapper div[data-type="detailsContent"],
+.details-wrapper > div[data-type="details-content"] {
+  @apply p-3 pt-1 border-t;
+  border-top-color: var(--goose-block-subtle-border);
+  background-color: var(--goose-block-subtle-inset);
+}
+
+/* Callout Node */
+.callout-node {
+  @apply transition-all duration-200;
+}
+
+.callout-content p {
+  @apply m-0;
+}
+
+/* --- CMDK Overlay：搜索框外全屏磨砂 ---
+ * 中等 blur + 半透明底，独立合成层；只淡入淡出 opacity，不动画 filter（Electron 旧内核更稳、更省） */
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: var(--goose-search-overlay);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+@supports not (
+  (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
+) {
+  [cmdk-overlay] {
+    background-color: var(--goose-search-overlay-fallback);
+  }
+}
+
+[cmdk-overlay][data-state="open"],
+[cmdk-overlay][data-state="closed"] {
+  animation: none;
+}
+
+/* Electron 全屏 backdrop-filter 会强制把编辑器栅成纹理，⌘K 打开明显卡一帧 */
+.is-electron [cmdk-overlay] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 径向渐变工具类 */
+@layer utilities {
+  .bg-gradient-radial {
+    background: radial-gradient(
+      circle,
+      var(--tw-gradient-from) 0%,
+      var(--tw-gradient-to) 70%
+    );
+  }
+}

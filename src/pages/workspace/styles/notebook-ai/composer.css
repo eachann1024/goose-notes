@@ -1,0 +1,165 @@
+/*
+ * Cmd+= 只改 --editor-scale。消息区用 CSS zoom 而非 transform: scale——zoom 同时
+ * 缩放布局盒，正文按新宽度重排（同 Chrome 页面缩放、速记小窗）。百分比宽高已在
+ * 缩放坐标系里换算，禁止再除 --editor-scale 反比补偿：那是 transform 才需要的，
+ * 加了就是缩两次，内容变窄贴左。输入条不进来：模型选择是 Portal，会被算歪定位。
+ */
+.notebook-ai-zoom-slot {
+ flex: 1 1 0;
+ min-width: 0;
+ min-height: 0;
+ overflow: hidden;
+}
+
+.notebook-ai-zoom-surface {
+ box-sizing: border-box;
+ display: flex;
+ flex-direction: column;
+ min-width: 0;
+ min-height: 0;
+ width: 100%;
+ height: 100%;
+ /* 消息区已由 zoom 应用正文字号比例，内部基准不再使用 rem 或最终字号。 */
+ font-family: var(--font-default);
+ font-size: var(--editor-base-font-size, 17px);
+ zoom: var(--editor-scale, 1);
+}
+
+/*
+ * 输入条浮动在面板底部，消息从底下穿过。
+ * --ai-composer-float-pad 由面板按 dock 高度 / --editor-scale 写入，
+ * 已是 zoom 坐标系里的垫高，消息区直接用，不要再除一次。
+ */
+.notebook-ai-composer-dock {
+ position: absolute;
+ left: 0;
+ right: 0;
+ bottom: 0;
+ z-index: 20;
+ pointer-events: none;
+}
+
+/* 侧栏输入条保留独立内边距，随应用字号缩放。 */
+[data-ai-panel-layout="side-panel"] .notebook-ai-composer-dock {
+ left: 1rem;
+ right: 1rem;
+ bottom: 12px;
+}
+
+/*
+ * 输入条外壳：单行、多行复用通用控件圆角，
+ * 边框与右键菜单 --goose-menu-border 一致，避免白底上看不见。
+ * 高度与控件位移由 PromptBar 共用一次 180ms 布局过渡；编辑器立即完成重排。
+ * 颜色过渡沿用原 150ms。
+ */
+.notebook-ai-composer-shell {
+ border-radius: var(--radius-control);
+ background: var(--goose-input-surface);
+ transition:
+  color 150ms ease,
+  background-color 150ms ease,
+  border-color 150ms ease;
+}
+.bui-prompt-bar {
+ overflow: hidden;
+ border: 1px solid hsl(var(--goose-menu-border));
+ border-radius: var(--radius-control);
+ background: var(--goose-input-surface);
+}
+.bui-prompt-bar > .notebook-ai-composer-shell {
+ background: transparent;
+}
+/* panel 输入区按正文字号与行高测量，4 行封顶，超出内部滚动。 */
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+ --ai-composer-line-height: calc(var(--editor-font-size, 17px) * var(--editor-line-height, 1.5));
+ height: var(--ai-composer-h, var(--ai-composer-line-height));
+ min-height: var(--ai-composer-line-height);
+ max-height: calc(var(--ai-composer-line-height) * 4);
+ /* 不单独过渡高度，避免外壳展开后输入内容才跟上。 */
+}
+@media (prefers-reduced-motion: reduce) {
+ .notebook-ai-composer-shell,
+ .bui-prompt-bar,
+ [data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+  transition: none;
+ }
+}
+
+/* ── AI 行内 chip：与 caret 同一行盒 ──────────────────────
+ * contenteditable 光标高度 ≈ 行高，不是 chip 内容高。
+ * 先前 chip 比行高矮 → 光标比 tag 高一截、看起来没垂直对齐。
+ * 规则：
+ * - chip 外框高度 = 编辑器行高（含 border，box-sizing:border-box）
+ * - vertical-align:bottom 与文本行盒底边对齐（等高则顶边也齐）
+ * - 文字在 chip 内 flex 居中
+ * - 左右 margin 给 caret 留缝；ZWSP 仅零宽锚点
+ */
+[data-ai-composer-editor="true"] {
+ /* 与 AiComposerInput default：text-[12px] leading-[20px] 锁死 */
+ font-size: 12px;
+ line-height: 20px;
+}
+
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"] {
+ font-family: var(--font-default);
+ font-size: var(--editor-font-size, 17px);
+ line-height: var(--editor-line-height, 1.5);
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ box-sizing: border-box;
+ /* = 编辑器行高，与 caret 同高 */
+ height: 20px;
+ min-height: 20px;
+ max-height: 20px;
+ line-height: 20px;
+ font-size: 11px;
+ max-width: 100%;
+ margin-left: 4px;
+ margin-right: 4px;
+ margin-top: 0;
+ margin-bottom: 0;
+ padding-top: 0;
+ padding-bottom: 0;
+ padding-left: 6px;
+ padding-right: 6px;
+ border-radius: 6px;
+ position: static;
+ top: auto;
+ /* 与 ZWSP 文本行盒底对齐；高度一致时顶/底/中线都齐 */
+ vertical-align: bottom;
+ min-width: 0;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ white-space: nowrap;
+}
+
+[data-ai-composer-editor="true"][data-ai-composer-variant="panel"]
+ .ai-composer-chip {
+ height: var(--ai-composer-line-height);
+ min-height: var(--ai-composer-line-height);
+ max-height: var(--ai-composer-line-height);
+ line-height: var(--ai-composer-line-height);
+}
+
+@keyframes goose-selection-quote-enter {
+ from {
+  opacity: 0;
+ }
+ to {
+  opacity: 1;
+ }
+}
+
+.ai-composer-chip[data-ai-selection-quote-enter] {
+ animation: goose-selection-quote-enter 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .ai-composer-chip[data-ai-selection-quote-enter] {
+  animation: none;
+ }
+}

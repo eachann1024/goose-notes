@@ -1,0 +1,93 @@
+@media (max-width: 900px) {
+  .setup-guide {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-rows: auto auto auto auto;
+    overflow: visible;
+  }
+
+  .setup-guide-content {
+    grid-template-areas:
+      "controls"
+      "preview";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-inline: 16px;
+  }
+
+  .setup-guide-controls {
+    overflow: visible;
+  }
+
+  .setup-guide-preview {
+    height: 320px;
+  }
+
+  .setup-guide-footer {
+    flex-wrap: wrap;
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .setup-guide-header {
+    gap: 8px;
+    padding: 4px 16px 12px;
+  }
+
+  .setup-guide-steps {
+    gap: 8px;
+  }
+
+  .setup-guide-steps li {
+    gap: 6px;
+    font-size: 0.8125rem;
+  }
+
+  .setup-guide-step-marker {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+  }
+
+  .setup-guide-heading h1 {
+    font-size: 1.25rem;
+  }
+
+  .setup-guide-content {
+    gap: 12px;
+    padding-inline: 12px;
+  }
+
+  .setup-guide-preview {
+    height: 300px;
+  }
+
+  .setup-guide-preview .appearance-preview-sidebar {
+    display: none;
+  }
+
+  .setup-guide-footer {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .setup-guide-footer-actions {
+    margin-inline-start: auto;
+  }
+
+  .setup-guide-status {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    order: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-guide * {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

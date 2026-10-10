@@ -1,0 +1,233 @@
+/* 错误态：与成功态同结构——干净表面 + 语义色边框/文字，无渐变装饰 */
+.goose-toaster [data-sonner-toast].goose-toast-error,
+.goose-toaster [data-sonner-toast][data-type="error"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error,
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+ overflow: visible !important;
+ color: var(--goose-text-danger) !important;
+ border-color: rgba(194, 65, 75, 0.2) !important;
+ background: #fff !important;
+ box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-error,
+.dark .goose-toaster [data-sonner-toast][data-type="error"],
+.dark [data-sonner-toaster] [data-sonner-toast].goose-toast-error,
+.dark [data-sonner-toaster] [data-sonner-toast][data-type="error"],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-error,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="error"] {
+ color: var(--goose-text-danger) !important;
+ border-color: rgba(240, 160, 168, 0.22) !important;
+ background: rgba(22, 18, 20, 0.96) !important;
+ box-shadow: 0 10px 28px rgba(2, 6, 23, 0.42) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-title],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-title],
+.goose-toaster [data-sonner-toast].goose-toast-error .goose-toast-error-title,
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-title],
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-title] {
+ color: var(--goose-text-danger) !important;
+ opacity: 1 !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-description],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-description],
+.goose-toaster
+ [data-sonner-toast].goose-toast-error
+ .goose-toast-error-description,
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-description],
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-description] {
+ color: var(--goose-text-danger) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-error [data-title],
+.dark .goose-toaster [data-sonner-toast][data-type="error"] [data-title],
+.dark [data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-title],
+.dark [data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-title],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-error
+ [data-title],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="error"]
+ [data-title] {
+ color: var(--goose-text-danger) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-error [data-description],
+.dark .goose-toaster [data-sonner-toast][data-type="error"] [data-description],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-description],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-description],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-error
+ [data-description],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="error"]
+ [data-description] {
+ color: var(--goose-text-danger) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-icon],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-icon],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-icon],
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-icon] {
+ position: relative;
+ z-index: 1;
+ width: 20px !important;
+ height: 20px !important;
+ margin-top: calc((1.5em - 20px) / 2) !important;
+ margin-bottom: 0 !important;
+ margin-left: 0 !important;
+ margin-right: 0 !important;
+}
+
+.goose-toast-error-mark {
+ display: grid;
+ place-items: center;
+ width: 20px;
+ height: 20px;
+ border-radius: var(--radius-control);
+ background: rgba(194, 65, 75, 0.1);
+ color: var(--goose-text-danger);
+ box-shadow: inset 0 0 0 1px rgba(194, 65, 75, 0.14);
+ font-size: 12px;
+ font-weight: 800;
+ line-height: 1;
+}
+
+.dark .goose-toast-error-mark,
+[data-sonner-toaster][data-sonner-theme="dark"] .goose-toast-error-mark {
+ background: rgba(240, 160, 168, 0.12);
+ color: var(--goose-text-danger);
+ box-shadow: inset 0 0 0 1px rgba(240, 160, 168, 0.16);
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-close-button],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-close-button],
+.goose-toaster [data-sonner-toast].goose-toast-error .goose-toast-error-close,
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-close-button],
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button] {
+ position: absolute !important;
+ left: auto !important;
+ right: 8px !important;
+ top: 8px !important;
+ transform: none !important;
+ width: 22px !important;
+ height: 22px !important;
+ border: 0 !important;
+ border-radius: var(--radius-control) !important;
+ background: transparent !important;
+ color: var(--goose-text-danger) !important;
+ opacity: 1 !important;
+ box-shadow: none !important;
+ z-index: 2;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-close-button]:hover,
+.goose-toaster [data-sonner-toast][data-type="error"] [data-close-button]:hover,
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-close-button]:hover,
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button]:hover {
+ color: var(--goose-text-danger) !important;
+ background: rgba(194, 65, 75, 0.1) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-error [data-close-button],
+.dark .goose-toaster [data-sonner-toast][data-type="error"] [data-close-button],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-close-button],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-error
+ [data-close-button],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button] {
+ color: var(--goose-text-danger) !important;
+}
+
+.dark
+ .goose-toaster
+ [data-sonner-toast].goose-toast-error
+ [data-close-button]:hover,
+.dark
+ .goose-toaster
+ [data-sonner-toast][data-type="error"]
+ [data-close-button]:hover,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-close-button]:hover,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button]:hover,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-error
+ [data-close-button]:hover,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="error"]
+ [data-close-button]:hover {
+ color: var(--goose-text-on-dark) !important;
+ background: rgba(240, 160, 168, 0.14) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-content],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-content],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-content],
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-content] {
+ position: relative;
+ z-index: 1;
+}
+
+/* 错误消息保持错误语义；其中的恢复/重试操作跟随产品强调色。 */
+.goose-toaster [data-sonner-toast].goose-toast-error [data-button][data-action],
+.goose-toaster
+ [data-sonner-toast][data-type="error"]
+ [data-button][data-action],
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-button][data-action],
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-button][data-action] {
+ background: var(--goose-interactive-hover) !important;
+ border-color: var(--goose-interactive-hover-border) !important;
+ color: var(--goose-interactive-hover-fg) !important;
+}
+
+.goose-toaster
+ [data-sonner-toast].goose-toast-error
+ [data-button][data-action]:hover,
+.goose-toaster
+ [data-sonner-toast][data-type="error"]
+ [data-button][data-action]:hover,
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-error
+ [data-button][data-action]:hover,
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="error"]
+ [data-button][data-action]:hover {
+ background: var(--goose-interactive-selected) !important;
+ color: var(--goose-interactive-selected-fg) !important;
+}

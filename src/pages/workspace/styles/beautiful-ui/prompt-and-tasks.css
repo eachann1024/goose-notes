@@ -1,0 +1,195 @@
+.bui-prompt-bar {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-width: 0;
+  contain: layout;
+}
+
+@keyframes bui-beam-orbit {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+.bui-prompt-bar-beam {
+  position: absolute;
+  inset: 1px;
+  display: block;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.bui-prompt-bar-beam rect {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: bui-beam-orbit 2s linear infinite;
+}
+
+.bui-prompt-bar-beam-glow {
+  stroke: var(--goose-interactive-selected-fg);
+  stroke-width: 4;
+  stroke-dasharray: 0.2 0.8;
+  opacity: 0.28;
+}
+
+.bui-prompt-bar-beam-core {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 0.1 0.9;
+}
+
+.bui-chips,
+.bui-tasks,
+.bui-approval,
+.bui-chat,
+.bui-recommend,
+.bui-context,
+.bui-diff,
+.bui-search,
+.bui-code,
+.bui-select-actions {
+  color: var(--bui-ink, hsl(var(--foreground)));
+}
+
+/* 对话列白纸张；外壳透明，灰缝由 workspace / 面板 gap 露出 */
+.bui-chat {
+  background: transparent;
+}
+
+.bui-chip-row {
+  display: flex;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.bui-chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 22px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--bui-field, hsl(var(--background)));
+  color: var(--bui-ink-2, hsl(var(--muted-foreground)));
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bui-chip[data-status="running"] {
+  color: var(--bui-ink, hsl(var(--foreground)));
+}
+
+.bui-chip[data-status="error"] {
+  background: var(--bui-red-tint, var(--goose-color-danger-subtle-bg));
+  color: var(--bui-red, var(--goose-color-danger));
+}
+
+.bui-chip[data-status="done"] {
+  color: var(--bui-ink-2, hsl(var(--muted-foreground)));
+}
+
+.bui-task {
+  overflow: hidden;
+  border-radius: 12px;
+  background: hsl(var(--goose-editor-bg));
+}
+
+.bui-task-head {
+  display: flex;
+  width: 100%;
+  height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bui-task-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bui-task-pill {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.bui-task-pill--done {
+  background: var(--bui-green-tint, var(--goose-interactive-selected));
+  color: var(--bui-green, var(--goose-color-success));
+}
+
+.bui-task-pill--failed,
+.bui-task-pill--error {
+  background: var(--bui-red-tint, var(--goose-color-danger-subtle-bg));
+  color: var(--bui-red, var(--goose-color-danger));
+}
+
+.bui-task-detail {
+  padding: 0 10px 10px 44px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--bui-ink-2, hsl(var(--muted-foreground)));
+}
+
+.bui-approval {
+  overflow: hidden;
+  border: 0;
+  border-radius: 20px;
+  padding: 22px 20px 18px;
+  background: hsl(var(--goose-editor-bg));
+  color: hsl(var(--foreground));
+  box-shadow:
+    inset 0 0 0 1px var(--goose-block-subtle-bg),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.bui-diff {
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--goose-block-subtle-border, var(--bui-line, hsl(var(--border))));
+}
+
+.bui-diff-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bui-diff-row--del {
+  background: var(--bui-red-tint, var(--goose-color-danger-subtle-bg));
+  color: var(--bui-red, var(--goose-color-danger));
+}
+
+.bui-diff-row--add {
+  background: var(--bui-green-tint, var(--goose-interactive-selected));
+  color: var(--bui-green, var(--goose-color-success));
+}

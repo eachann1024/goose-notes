@@ -1,0 +1,144 @@
+@keyframes slow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slow-pulse {
+    animation: none;
+  }
+}
+
+.workspace-shell {
+  --workspace-divider: hsl(var(--foreground) / 0.06);
+  --workspace-divider-strong: hsl(var(--foreground) / 0.1);
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 3%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-sidebar-surface: var(--goose-sidebar-surface, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-main-surface: var(--goose-editor-surface);
+  --workspace-stage-pad-top: 8px;
+  --workspace-stage-pad-left: 8px;
+  --workspace-stage-pad-right: 8px;
+  --workspace-stage-pad-bottom: 8px;
+  --workspace-sidebar-gap: 0px;
+  --workspace-sidebar-width: 240px;
+  --workspace-rail-width: 4rem;
+  --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-glow: none;
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
+  background: var(--goose-shell-surface);
+}
+
+.dark .workspace-shell {
+  --workspace-divider: hsl(var(--foreground) / 0.12);
+  --workspace-divider-strong: hsl(var(--foreground) / 0.18);
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 6%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+  --workspace-main-surface: var(--goose-editor-surface);
+  --workspace-resize-line: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-accent-drag-line) 22%,
+    var(--goose-accent-drag-line) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-active: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--goose-interactive-selected-fg) 22%,
+    var(--goose-interactive-selected-fg) 78%,
+    transparent 100%
+  );
+  --workspace-resize-line-glow: none;
+  --workspace-drag-line-color: var(--goose-accent-drag-line);
+  --workspace-drag-line-glow: var(--goose-accent-drag-glow);
+}
+
+/* 完整主题：正文使用暖纸色，次级页面略暖，布局不变。 */
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) :is(
+  .workspace-page-empty,
+  .workspace-folder-home,
+  .notebook-ai-shell,
+  .settings-shell > header,
+  .settings-shell > nav,
+  .settings-shell > .min-h-0,
+  .goose-floating-surface,
+  .goose-menu-surface
+) {
+  background: var(--goose-secondary-surface);
+}
+
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .settings-shell :is([data-slot="input"], textarea, select) {
+  background: var(--goose-input-surface);
+}
+
+.workspace-shell .workspace-divider {
+  border-color: var(--workspace-divider) !important;
+}
+
+.workspace-shell .workspace-divider-strong {
+  border-color: var(--workspace-divider-strong) !important;
+}
+
+.workspace-shell .code-block-node pre {
+  border-color: var(--workspace-divider) !important;
+}
+
+.workspace-shell .workspace-stage {
+  position: relative;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  gap: var(--workspace-sidebar-gap);
+  padding: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
+  transition: gap var(--workspace-sidebar-motion);
+}
+
+/* ponytail: 共用外沿、不裁切跨栏拖拽热区；需要整板裁切时再重组容器。 */
+.workspace-shell .workspace-content-frame {
+  position: absolute;
+  inset: var(--workspace-stage-pad-top) var(--workspace-stage-pad-right) var(--workspace-stage-pad-bottom) var(--workspace-stage-pad-left);
+  z-index: 3;
+  border: 1px solid var(--workspace-divider);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.025), 0 4px 14px hsl(var(--foreground) / 0.035);
+  transition: left var(--workspace-sidebar-motion);
+}
+/* 顶栏和 stage 共用左侧留白，避免调整侧栏宽度后分隔线错位。 */
+.workspace-shell:has(> .workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay])) .sidebar-mode-rail) {
+  --workspace-stage-pad-left: 0px;
+}
+.workspace-stage:where(:not([data-sidebar-collapsed]):not([data-sidebar-overlay]):has(.sidebar-mode-rail)) > .workspace-content-frame {
+  left: calc(var(--workspace-stage-pad-left) + var(--workspace-rail-width));
+}
+
+/* 浅色外框增强区域分隔，独立于内部细分隔线，保留主题色与圆角。 */
+:root:not(.dark) .workspace-shell .workspace-content-frame {
+  border-color: hsl(var(--foreground) / 0.12);
+}
+
+/* 深色面板四边共用不透底的细线，避免不同底色让边线忽明忽暗。 */
+.dark .workspace-shell .workspace-content-frame {
+  border-color: var(--workspace-top-edge);
+}

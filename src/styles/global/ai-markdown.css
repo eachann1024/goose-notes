@@ -1,0 +1,93 @@
+/* ── AI 对话气泡内的 Markdown 渲染样式 ── */
+.ai-markdown {
+  /* 段落 */
+  & p {
+    @apply my-1.5 leading-7;
+  }
+  & p:first-child {
+    @apply mt-0;
+  }
+  & p:last-child {
+    @apply mb-0;
+  }
+
+  /* 标题 */
+  & h1 {
+    @apply mt-4 mb-2 text-base font-bold;
+  }
+  & h2 {
+    @apply mt-3 mb-2 text-sm  font-bold;
+  }
+  & h3 {
+    @apply mt-2 mb-1 text-sm  font-semibold;
+  }
+
+  /* 列表 */
+  & ul {
+    @apply my-1.5 list-disc pl-5 space-y-0.5;
+  }
+  & ol {
+    @apply my-1.5 list-decimal pl-5 space-y-0.5;
+  }
+  & li {
+    @apply leading-7;
+  }
+
+  /* 行内代码：跟随当前强调色 token，避免明暗模式硬编码灰 */
+  & code:not(pre > code) {
+    background-color: var(--goose-inline-code-bg);
+    color: var(--goose-inline-code-fg);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    border: none;
+  }
+
+  /* 代码块 */
+  & pre {
+    @apply my-2 overflow-x-auto rounded-lg bg-muted/60 px-4 py-3;
+  }
+  & pre code {
+    @apply font-mono text-[0.82em] leading-6;
+  }
+
+  /* 引用块 */
+  & blockquote {
+    @apply my-2 border-l-2 border-border/60 pl-3 text-muted-foreground;
+  }
+
+  /* 表格 */
+  & table {
+    @apply my-2 w-full border-collapse text-sm;
+  }
+  & th {
+    @apply border border-border/50 bg-muted/40 px-3 py-1.5 text-left font-semibold;
+  }
+  & td {
+    @apply border border-border/50 px-3 py-1.5;
+  }
+
+  /* 分割线 */
+  & hr {
+    @apply my-3 border-border/40;
+  }
+
+  /* 链接 */
+  & a {
+    color: var(--goose-accent-link);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+  & a:hover {
+    color: var(--goose-accent-link-hover);
+  }
+
+  /* 粗体 / 斜体 */
+  & strong {
+    @apply font-semibold;
+  }
+  & em {
+    @apply italic;
+  }
+}

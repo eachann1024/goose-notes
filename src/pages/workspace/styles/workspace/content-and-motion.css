@@ -1,0 +1,156 @@
+.workspace-shell .workspace-editor-surface {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 页面、文件夹与空白标签由主内容面统一裁切，避免接缝露出第二组内圆角。 */
+.workspace-shell .workspace-content-columns {
+  background: var(--workspace-main-surface);
+}
+.workspace-content-columns:has(> [data-ai-panel-layout="side-panel"]) {
+  gap: 0;
+}
+.workspace-shell .workspace-content-columns > :first-child:not([data-editor-split="true"]) {
+  border-radius: 0;
+}
+
+.workspace-shell .page-scroll-container {
+  overflow-anchor: none;
+}
+
+/* 文案装饰不再拥有彩虹/红色渐变，跟随控件与强调色。 */
+.page-menu-generate-image .page-menu-shimmer-text {
+  color: inherit;
+}
+
+.shortcut-capture-hint {
+  color: var(--goose-interactive-selected-fg);
+}
+
+@keyframes ai-stream-wave-char {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@keyframes ai-streaming-sparkles-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes ai-stream-wave-dot {
+  0%,
+  100% {
+    transform: translateY(0) scale(0.92);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translateY(-3px) scale(1);
+    opacity: 1;
+  }
+}
+
+.ai-stream-wave-char {
+  animation: ai-stream-wave-char 1.45s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.ai-streaming-sparkles {
+  animation: ai-streaming-sparkles-shift 2.4s ease-in-out infinite;
+  will-change: background-position;
+}
+
+.ai-stream-wave-dot {
+  animation: ai-stream-wave-dot 1.15s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ── AI Workspace 流式加载动画 ── */
+
+@keyframes ai-workspace-stream-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.ai-workspace-stream-dot {
+  background: var(--goose-interactive-selected-fg);
+  animation: ai-workspace-stream-dot 1.2s ease-in-out infinite;
+}
+
+.ai-workspace-stream-label {
+  color: var(--goose-interactive-selected-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-workspace-stream-dot,
+  .ai-stream-wave-char,
+  .ai-stream-wave-dot {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace-shell .workspace-content-frame {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .workspace-shell .workspace-stage {
+    padding: 0;
+    gap: 0;
+  }
+
+  .workspace-shell .workspace-main-sheet {
+    border-radius: 0;
+    margin-left: 0;
+    margin-bottom: 0;
+  }
+
+  .workspace-shell .workspace-editor-surface {
+    border-radius: 0;
+  }
+}
+
+
+
+
+/* 外壳与顶栏同色；文件导航和编辑正文各自拥有独立表面。 */
+html.is-electron .workspace-shell,
+html.is-electron body {
+  background: var(--goose-shell-surface);
+}
+
+/* Win/Linux frameless：右侧自定义窗控贴齐顶栏高度（Linux 缺这条时按钮
+   固定 h-8 且顶部对齐，与顶栏其他内容不水平）。 */
+html.is-electron.is-win .electron-win-chrome-controls,
+html.is-electron.os-linux .electron-win-chrome-controls {
+  height: var(--electron-titlebar-height, 2.75rem);
+}
+html.is-electron.is-win .electron-win-chrome-btn,
+html.is-electron.os-linux .electron-win-chrome-btn {
+  height: 100%;
+}

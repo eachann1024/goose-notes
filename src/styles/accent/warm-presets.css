@@ -1,0 +1,150 @@
+
+:root[data-goose-accent="coral"] {
+  --primary: 17 87% 40%;
+  --ring: 17 87% 40%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #fbeadf;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #b76e4a;
+  --goose-sidebar-hover: #fcf2ec;
+  --goose-interactive-hover: #fcf2ec;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #b76e4a;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #fff7ed;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #fed7aa;
+  --goose-callout-accent: #c2410c;
+  --goose-ai-approval-check-bg: #c2410c;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #c2410c;
+  --goose-accent-drag-line: #c2410c;
+  --goose-accent-drag-glow: 0 0 8px rgba(194, 65, 12, 0.4);
+}
+
+:root.dark[data-goose-accent="coral"] {
+  --primary: 17 87% 40%;
+  --ring: 17 87% 40%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #463128;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #d28f68;
+  --goose-sidebar-hover: #372c28;
+  --goose-interactive-hover: #372c28;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #d28f68;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #4f3425;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #f97316;
+  --goose-callout-accent: #c2410c;
+  --goose-ai-approval-check-bg: #c2410c;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #c2410c;
+  --goose-accent-drag-line: #c2410c;
+  --goose-accent-drag-glow: 0 0 8px rgba(249, 115, 22, 0.42);
+}
+
+:root[data-goose-accent="rose"] {
+  --primary: 347 77% 41%;
+  --ring: 347 77% 41%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #f8e7eb;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #c36a83;
+  --goose-sidebar-hover: #fbf0f2;
+  --goose-interactive-hover: #fbf0f2;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #c36a83;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #fff1f2;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #fecdd3;
+  --goose-callout-accent: #be123c;
+  --goose-ai-approval-check-bg: #be123c;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #be123c;
+  --goose-accent-drag-line: #be123c;
+  --goose-accent-drag-glow: 0 0 8px rgba(190, 18, 60, 0.4);
+}
+
+:root.dark[data-goose-accent="rose"] {
+  --primary: 347 77% 41%;
+  --ring: 347 77% 41%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #462e37;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #d486a0;
+  --goose-sidebar-hover: #382a30;
+  --goose-interactive-hover: #382a30;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #d486a0;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #66333b;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #f43f5e;
+  --goose-callout-accent: #be123c;
+  --goose-ai-approval-check-bg: #be123c;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #be123c;
+  --goose-accent-drag-line: #be123c;
+  --goose-accent-drag-glow: 0 0 8px rgba(244, 63, 94, 0.42);
+}
+
+:root[data-goose-accent="grape"] {
+  --primary: 272 72% 47%;
+  --ring: 272 72% 47%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #f1e8f8;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #9d6abf;
+  --goose-sidebar-hover: #f7f1fb;
+  --goose-interactive-hover: #f7f1fb;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #9d6abf;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #faf5ff;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #e9d5ff;
+  --goose-callout-accent: #7e22ce;
+  --goose-ai-approval-check-bg: #7e22ce;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #7e22ce;
+  --goose-accent-drag-line: #7e22ce;
+  --goose-accent-drag-glow: 0 0 8px rgba(126, 34, 206, 0.4);
+}
+
+:root.dark[data-goose-accent="grape"] {
+  --primary: 272 72% 47%;
+  --ring: 272 72% 47%;
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-interactive-selected: #3d2e4a;
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: #b088cc;
+  --goose-sidebar-hover: #302837;
+  --goose-interactive-hover: #302837;
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: #b088cc;
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-inline-code-bg: #46305d;
+  --goose-inline-code-fg: var(--goose-text-info);
+  --goose-inline-code-border-hover: #a855f7;
+  --goose-callout-accent: #7e22ce;
+  --goose-ai-approval-check-bg: #7e22ce;
+  --goose-accent-link: var(--goose-text-link);
+  --goose-accent-link-hover: var(--goose-text-link);
+  --goose-accent-focus: #7e22ce;
+  --goose-accent-drag-line: #7e22ce;
+  --goose-accent-drag-glow: 0 0 8px rgba(168, 85, 247, 0.42);
+}

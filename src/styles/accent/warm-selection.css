@@ -1,0 +1,135 @@
+
+:root[data-goose-accent="coral"] .goose-blocknote-editor .bn-inline-content::selection,
+:root[data-goose-accent="coral"] .bn-editor .bn-inline-content::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root[data-goose-accent="coral"] .bn-editor .bn-inline-content *::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .goose-code-pre::selection,
+:root[data-goose-accent="coral"] .bn-editor .goose-code-pre::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root[data-goose-accent="coral"] .bn-editor .goose-code-pre *::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="coral"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="coral"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="coral"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="coral"] .bn-editor .goose-fake-selection {
+  background-color: #ffedd5;
+  color: inherit;
+}
+:root[data-goose-accent="coral"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="coral"] .bn-editor [data-show-selection] {
+  background-color: #ffedd5 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="coral"] .bn-editor .goose-fake-selection {
+  background-color: #444444;
+  color: inherit;
+}
+:root.dark[data-goose-accent="coral"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="coral"] .bn-editor [data-show-selection] {
+  background-color: #444444 !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="rose"] .goose-blocknote-editor .bn-inline-content::selection,
+:root[data-goose-accent="rose"] .bn-editor .bn-inline-content::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root[data-goose-accent="rose"] .bn-editor .bn-inline-content *::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .goose-code-pre::selection,
+:root[data-goose-accent="rose"] .bn-editor .goose-code-pre::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root[data-goose-accent="rose"] .bn-editor .goose-code-pre *::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="rose"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="rose"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="rose"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="rose"] .bn-editor .goose-fake-selection {
+  background-color: #ffe4e6;
+  color: inherit;
+}
+:root[data-goose-accent="rose"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="rose"] .bn-editor [data-show-selection] {
+  background-color: #ffe4e6 !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="rose"] .bn-editor .goose-fake-selection {
+  background-color: #444444;
+  color: inherit;
+}
+:root.dark[data-goose-accent="rose"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="rose"] .bn-editor [data-show-selection] {
+  background-color: #444444 !important;
+  color: inherit;
+}
+
+:root[data-goose-accent="grape"] .goose-blocknote-editor .bn-inline-content::selection,
+:root[data-goose-accent="grape"] .bn-editor .bn-inline-content::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root[data-goose-accent="grape"] .bn-editor .bn-inline-content *::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .goose-code-pre::selection,
+:root[data-goose-accent="grape"] .bn-editor .goose-code-pre::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root[data-goose-accent="grape"] .bn-editor .goose-code-pre *::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="grape"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="grape"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root[data-goose-accent="grape"] .goose-blocknote-editor .goose-fake-selection,
+:root[data-goose-accent="grape"] .bn-editor .goose-fake-selection {
+  background-color: #f3e8ff;
+  color: inherit;
+}
+:root[data-goose-accent="grape"] .goose-blocknote-editor [data-show-selection],
+:root[data-goose-accent="grape"] .bn-editor [data-show-selection] {
+  background-color: #f3e8ff !important;
+  color: inherit;
+}
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .bn-inline-content::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .bn-inline-content *::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .goose-code-pre::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .goose-code-pre *::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor .goose-fake-selection,
+:root.dark[data-goose-accent="grape"] .bn-editor .goose-fake-selection {
+  background-color: #444444;
+  color: inherit;
+}
+:root.dark[data-goose-accent="grape"] .goose-blocknote-editor [data-show-selection],
+:root.dark[data-goose-accent="grape"] .bn-editor [data-show-selection] {
+  background-color: #444444 !important;
+  color: inherit;
+}

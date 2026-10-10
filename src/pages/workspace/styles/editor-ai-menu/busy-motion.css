@@ -1,0 +1,235 @@
+/* 忙态：星星旋转缩放 + 碎星飞溅 + 扫光（仅 opacity/transform） */
+.goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: var(--radius-control);
+  background: var(--goose-interactive-selected);
+  transform: scale(0.72);
+  opacity: 0.4;
+  animation: goose-ai-sparkle-glow 1.05s ease-in-out infinite;
+  z-index: 0;
+}
+
+.goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -70%;
+  width: 70%;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--goose-interactive-hover);
+  transform: translateX(0);
+  animation: goose-ai-sparkle-shimmer 0.95s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon svg {
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 50%;
+  animation: goose-ai-sparkle-pulse 1.15s ease-in-out infinite;
+}
+
+.dark
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::before {
+  background: var(--goose-interactive-selected);
+}
+
+.dark
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field--busy
+  .goose-ai-prompt-field__icon
+  .bn-combobox-icon::after {
+  background: var(--goose-interactive-hover);
+}
+
+.goose-ai-sparkle-bit {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--goose-interactive-selected-fg);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transform: rotate(45deg) scale(0.4);
+}
+
+.goose-ai-sparkle-bit--b,
+.goose-ai-sparkle-bit--d {
+  width: 3px;
+  height: 3px;
+  background: var(--goose-interactive-selected-fg);
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--a {
+  animation: goose-ai-sparkle-bit-a 1.15s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--b {
+  animation: goose-ai-sparkle-bit-b 1.35s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--c {
+  animation: goose-ai-sparkle-bit-c 1.05s ease-in-out infinite;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-sparkle-bit--d {
+  animation: goose-ai-sparkle-bit-d 1.5s ease-in-out infinite;
+}
+
+@keyframes goose-ai-sparkle-pulse {
+  0%,
+  100% {
+    transform: rotate(-14deg) scale(1);
+    opacity: 0.82;
+  }
+  32% {
+    transform: rotate(16deg) scale(1.38);
+    opacity: 1;
+  }
+  62% {
+    transform: rotate(-8deg) scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes goose-ai-sparkle-glow {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.78;
+  }
+}
+
+@keyframes goose-ai-sparkle-shimmer {
+  0% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(280%);
+    opacity: 0.15;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-a {
+  0% {
+    transform: translate(-2px, 4px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  22% {
+    transform: translate(-11px, -6px) rotate(45deg) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-4px, -13px) rotate(45deg) scale(0.7);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(8px, -2px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-b {
+  0% {
+    transform: translate(3px, -2px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+  28% {
+    transform: translate(12px, -8px) rotate(45deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(6px, 10px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-c {
+  0% {
+    transform: translate(0, 2px) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  35% {
+    transform: translate(-9px, 10px) rotate(45deg) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(10px, 6px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes goose-ai-sparkle-bit-d {
+  0% {
+    transform: translate(2px, 0) rotate(45deg) scale(0.2);
+    opacity: 0;
+  }
+  40% {
+    transform: translate(11px, 8px) rotate(45deg) scale(0.95);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-8px, 8px) rotate(45deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-ai-prompt-field--busy
+    .goose-ai-prompt-field__icon
+    .bn-combobox-icon::before {
+    animation: none;
+    opacity: 0.45;
+    transform: scale(1);
+  }
+
+  .goose-ai-prompt-field--busy
+    .goose-ai-prompt-field__icon
+    .bn-combobox-icon::after {
+    animation: none;
+    opacity: 0.45;
+    transform: none;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon svg {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .goose-ai-prompt-field--busy .goose-ai-sparkle-bit {
+    animation: none;
+    opacity: 0;
+  }
+}

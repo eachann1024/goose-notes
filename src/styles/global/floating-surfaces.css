@@ -1,0 +1,195 @@
+/* 弹出层外壳：右键菜单、下拉、Popover 共用边框/圆角/阴影。
+ * goose-menu-surface 额外管菜单项 hover；下拉仍走强调色 hover，只用 floating。 */
+.goose-floating-surface,
+.goose-menu-surface {
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: var(--goose-menu-radius);
+  background-color: hsl(var(--goose-menu-surface));
+  box-shadow: var(--goose-menu-shadow);
+}
+
+/* HeroUI 的 .dropdown__popover 在 @layer 里用 bg-overlay。
+ * 深色只挂 .dark，:root 的 --overlay 仍是白色，layer 规则会盖掉上面的背景。
+ * 无 layer 才能压过它，把下拉底色锁回菜单表面。 */
+.dropdown__popover.goose-floating-surface,
+.dropdown__popover.goose-menu-surface {
+  background-color: hsl(var(--goose-menu-surface));
+  color: hsl(var(--popover-foreground));
+}
+
+/* 菜单从浮层外壳转移焦点到高亮项时，始终保留外壳真实投影。
+ * 控件焦点策略只清理 ring 变量，不清除浮层的 box-shadow。 */
+@layer properties {
+  .goose-floating-surface,
+  .goose-floating-surface:focus,
+  .goose-floating-surface:focus-visible,
+  .goose-menu-surface,
+  .goose-menu-surface:focus,
+  .goose-menu-surface:focus-visible {
+    box-shadow: var(--goose-menu-shadow) !important;
+  }
+}
+
+.goose-dropdown-host {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  padding: 0;
+}
+
+/* HeroUI 下拉默认 zoom-in-90 过猛，且从中心放大。
+ * 改成和 Floating UI 菜单同一套：从触发边移入 6px + scale(0.96)。 */
+[data-goose-floating-content].dropdown__popover {
+  transform-origin: var(--trigger-anchor-point, top center);
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"] {
+  animation: goose-floating-in-bottom 200ms cubic-bezier(0.23, 1, 0.32, 1) both
+    !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="top"] {
+  animation-name: goose-floating-in-top !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="left"] {
+  animation-name: goose-floating-in-left !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-entering="true"][data-placement^="right"] {
+  animation-name: goose-floating-in-right !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"] {
+  animation: goose-floating-out-bottom 150ms ease-in both !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="top"] {
+  animation-name: goose-floating-out-top !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="left"] {
+  animation-name: goose-floating-out-left !important;
+}
+
+[data-goose-floating-content].dropdown__popover[data-exiting="true"][data-placement^="right"] {
+  animation-name: goose-floating-out-right !important;
+}
+
+@keyframes goose-floating-in-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes goose-floating-out-bottom {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-top {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.96);
+  }
+}
+
+@keyframes goose-floating-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes goose-floating-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-goose-floating-content].dropdown__popover[data-entering="true"] {
+    animation: goose-floating-fade-in 150ms ease both !important;
+  }
+
+  [data-goose-floating-content].dropdown__popover[data-exiting="true"] {
+    animation: goose-floating-fade-out 150ms ease both !important;
+  }
+}

@@ -1,0 +1,158 @@
+/* 速记滚动区：只保留纵向滚动；横向始终裁切，避免 Cmd+/- 缩放残留底栏滚动条。 */
+.quicknote-root .page-scroll-container {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+  overflow-x: hidden;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+.quicknote-root .page-scroll-container:hover,
+.quicknote-root .page-scroll-container:focus-within {
+  scrollbar-color: rgba(115, 115, 115, 0.28) transparent;
+}
+.quicknote-root .page-scroll-container:hover::-webkit-scrollbar-thumb,
+.quicknote-root .page-scroll-container:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(115, 115, 115, 0.28);
+}
+.quicknote-root .page-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 82, 82, 0.45);
+}
+
+/* 说明层受 Radix 计算出的可用高度约束。标题和改名入口固定，正文在矮窗中滚动。 */
+.quicknote-help-popover {
+  display: flex;
+  max-height: var(--goose-popover-available-height);
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  line-height: 1.6;
+}
+
+.quicknote-help-heading {
+  flex: 0 0 auto;
+}
+
+.quicknote-help-heading p {
+  margin: 4px 0 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.quicknote-help-rename {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--goose-interactive-hover);
+}
+
+.quicknote-help-rename:hover {
+  background: var(--goose-interactive-selected);
+}
+
+.quicknote-help-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  list-style: none;
+}
+
+.quicknote-help-list li + li {
+  margin-top: 8px;
+}
+
+.quicknote-help-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quicknote-help-list::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: hsl(var(--muted-foreground) / 0.25);
+}
+
+.quicknote-help-list::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* 选中文字后的格式栏属于速记小窗：横向铺满并吸附窗口底边，不做悬浮胶囊。 */
+.goose-formatting-toolbar-dock [data-formatting-toolbar] {
+  width: 100%;
+  max-width: none;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] > div {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.goose-formatting-toolbar-dock [data-formatting-toolbar] > div > * {
+  flex: 0 0 auto;
+}
+
+.goose-formatting-toolbar-dock
+  [data-formatting-toolbar]
+  > div::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-formatting-toolbar-dock {
+    transition: none;
+  }
+}
+
+/* 速记斜杠菜单：更紧凑行高；列表底部留白，避免滚到底最后一项贴边被裁切感 */
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-notion-slash-surface="true"] {
+  overflow: hidden;
+  /* Electron 旧内核会把大圆角外投影绘成直角灰块；小窗只留很轻的边界感。 */
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item] {
+  background: transparent !important;
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
+
+.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item]:active,
+.quicknote-root [data-goose-slash-lite="true"] [data-goose-slash-item]:focus,
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-selected="true"] {
+  background: transparent !important;
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
+
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-item]:focus-visible {
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+}
+
+.quicknote-root
+  [data-goose-slash-lite="true"]
+  [data-goose-slash-selected="true"] {
+  background: transparent !important;
+}
+
+.quicknote-root [data-goose-slash-lite="true"] [data-notion-slash-scroll] {
+  scroll-padding-bottom: 12px;
+}

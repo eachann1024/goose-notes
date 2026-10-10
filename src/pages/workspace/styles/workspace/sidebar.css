@@ -1,0 +1,242 @@
+/* 收起与覆盖模式下，编辑器恢复完整外角，不改变侧栏宽度状态。 */
+.workspace-shell .workspace-stage[data-sidebar-collapsed] {
+  gap: 0;
+}
+
+/* 导航轨道透出 shell 底色；仅文件列表/历史内容面板使用侧栏表面。 */
+.workspace-shell .sidebar-mode-rail {
+  border-right: 0;
+  background: transparent;
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-size-container > div > .sidebar-content-surface {
+  background: var(--workspace-sidebar-surface);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+.workspace-shell .workspace-stage .workspace-sidebar-pane .sidebar-size-container .sidebar-design {
+  background: transparent;
+}
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] .sidebar-size-container > div > .sidebar-content-surface {
+  border-radius: var(--radius-lg);
+}
+.workspace-shell .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-main-sheet {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 1px;
+  background: var(--workspace-divider);
+  pointer-events: none;
+}
+
+.dark .workspace-stage:not([data-sidebar-collapsed]):not([data-sidebar-overlay]) .workspace-sidebar-pane::after {
+  background: var(--workspace-top-edge);
+}
+
+/* 侧栏收起时把手仍可能由 BlockNote 挂到 portal；用根属性藏掉，不让编辑器订侧栏 store。 */
+html[data-sidebar-collapsed] .bn-side-menu {
+  display: none;
+}
+
+.workspace-shell .workspace-sidebar-pane {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  /* 保留跨越两栏接缝的拖拽热区，不增加常驻分隔线。 */
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  font-size: var(--sidebar-font-size, 13px);
+  transition:
+    opacity var(--workspace-sidebar-motion),
+    transform var(--workspace-sidebar-motion),
+    width var(--workspace-sidebar-motion);
+}
+/* 顶栏、导航轨道与外侧留白透出同一张 shell 渐变；覆盖式侧栏仍需独立底色。 */
+.workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] {
+  background: var(--goose-shell-surface);
+}
+
+/* 顶边必须不透底：同一条细线跨越深浅不同的三栏，避免正文看似高出一像素。 */
+.workspace-shell[data-electron-chrome] .workspace-content-frame {
+  border-top-color: var(--workspace-top-edge);
+  /* 留出极轻的顶部环境阴影，让整板从外层留白中浮起。 */
+  clip-path: inset(-10px -16px -16px);
+}
+
+:root:not(.dark):is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .workspace-shell {
+  --workspace-top-edge: color-mix(in srgb, hsl(var(--foreground)) 4.5%, color-mix(in srgb, hsl(var(--goose-shell-bg)) 60%, hsl(var(--goose-editor-bg))));
+}
+
+.workspace-shell .workspace-sidebar-pane[data-sidebar-resizing] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .workspace-stage,
+  .workspace-shell .workspace-content-frame,
+  .workspace-shell .workspace-sidebar-pane,
+  .workspace-shell[data-electron-chrome] .electron-titlebar {
+    transition: none;
+  }
+}
+
+.workspace-shell .workspace-sidebar-pane .sidebar-section-label {
+  font-size: calc(var(--sidebar-font-size, 13px) * 0.85);
+  letter-spacing: 0.02em;
+}
+
+.workspace-shell .workspace-sidebar-pane .main-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row,
+.workspace-shell .workspace-sidebar-pane .sidebar-notebook-trigger {
+  font-size: var(--sidebar-font-size, 13px);
+}
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row.sidebar-tree-row--selected,
+.workspace-shell .workspace-sidebar-pane .sidebar-tree-row.sidebar-tree-row--selected .text-\[13px\] {
+  font-size: calc(var(--sidebar-font-size, 13px) - 1px);
+}
+
+.workspace-shell .workspace-main-sheet {
+  background: var(--workspace-main-surface);
+  border: 0;
+  border-radius: var(--radius-lg);
+  margin-left: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* 隐藏编辑器的选区更新仍可能滚动祖先。设置使用主区门户，外层必须
+   禁止程序化滚动，避免整页被推离视口；滚动只交给 settings-scroll。 */
+.workspace-shell[data-settings] .workspace-main-sheet {
+  overflow: clip;
+}
+
+/* 历史页与侧栏控件共享状态色；选中和展开不额外绘制轮廓。 */
+.workspace-shell .history-secondary-control:hover:not(:disabled),
+.workspace-shell .history-version-item[data-selected="false"]:hover,
+.workspace-shell .history-star-control:hover:not(:disabled),
+.workspace-shell .sidebar-footer-control:hover:not([data-active="true"]),
+.workspace-shell .goose-page-icon-trigger:hover {
+  color: var(--goose-interactive-hover-fg);
+  background-color: var(--goose-interactive-hover);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+.workspace-shell .history-version-item[data-selected="true"],
+.workspace-shell .history-version-item[data-selected="true"]:hover,
+.workspace-shell .sidebar-footer-control[data-active="true"],
+.workspace-shell .sidebar-footer-control[data-active="true"]:hover,
+.workspace-shell .goose-page-icon-trigger[data-state="open"],
+.workspace-shell .history-primary-control,
+.workspace-shell .history-primary-control:hover:not(:disabled),
+.workspace-shell .history-secondary-control:active:not(:disabled),
+.workspace-shell .sidebar-footer-control:active,
+.workspace-shell .history-star-control:active:not(:disabled) {
+  color: var(--goose-interactive-selected-fg);
+  background-color: var(--goose-interactive-selected);
+}
+
+.workspace-shell .history-secondary-control:focus-visible,
+.workspace-shell .history-primary-control:focus-visible,
+.workspace-shell .sidebar-footer-control:focus-visible,
+.workspace-shell .history-star-control:focus-visible,
+.workspace-shell .history-version-item:focus-within {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.workspace-shell .history-primary-control:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 1; color: var(--goose-text-disabled);
+}
+
+.workspace-shell .history-star-control svg {
+  opacity: 0;
+}
+
+.workspace-shell .history-version-item:hover .history-star-control svg,
+.workspace-shell .history-version-item:focus-within .history-star-control svg,
+.workspace-shell .history-star-control:focus-visible svg,
+.workspace-shell .history-star-control[data-marked="true"] svg,
+.workspace-shell .history-star-control[aria-busy="true"] svg {
+  opacity: 1;
+}
+
+.workspace-shell .history-star-control:hover svg {
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+.workspace-shell .history-star-control[data-marked="true"] svg {
+  color: var(--goose-interactive-selected-fg) !important;
+  fill: currentColor;
+}
+
+.workspace-shell .sidebar-expand-attention {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  animation: sidebar-expand-attention 4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes sidebar-expand-attention {
+  0% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.16);
+    transform: scale(1);
+  }
+  8% {
+    box-shadow: 0 0 0 7px rgba(15, 23, 42, 0);
+    transform: scale(1.04);
+  }
+  18% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.12);
+    transform: scale(1);
+  }
+  30% {
+    box-shadow: 0 0 0 6px rgba(15, 23, 42, 0);
+    transform: scale(1.03);
+  }
+  42%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0);
+    transform: scale(1);
+  }
+}
+
+.dark .workspace-shell .sidebar-expand-attention {
+  animation-name: sidebar-expand-attention-dark;
+}
+
+@keyframes sidebar-expand-attention-dark {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.16);
+    transform: scale(1);
+  }
+  8% {
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0);
+    transform: scale(1.04);
+  }
+  18% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.12);
+    transform: scale(1);
+  }
+  30% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    transform: scale(1.03);
+  }
+  42%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .sidebar-expand-attention {
+    animation: none;
+  }
+}

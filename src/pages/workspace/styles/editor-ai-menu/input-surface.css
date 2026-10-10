@@ -1,0 +1,160 @@
+/* AI 菜单样式覆盖：把 Mantine 默认外观对齐项目设计系统。
+   目标：选中文字 → 点 AI 图标后弹出的 input + 命令列表。
+   覆盖 @blocknote/mantine/style.css 的默认外观。
+   注意：Electron 旧内核对 hsl(var(--xxx)/alpha) 支持差，本文件只用 rgba/hex。 */
+
+/* ---------- Popover 卡片（input + items 共用容器） ---------- */
+.bn-combobox {
+  /* 组件默认 width:100% 会跟着块锚点被撑满整行。
+     浮层外壳由 Floating UI 定宽；内部 combobox 吃满外壳，
+     避免「块宽 100% + 菜单居中」把输入框甩到标题正下方。 */
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: min(468px, 100%);
+  max-width: 100% !important;
+  padding: 5px 6px;
+  gap: 2px;
+  border-radius: 14px;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid rgba(219, 219, 219, 0.7);
+  box-shadow:
+    0 8px 22px rgba(15, 23, 42, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+  font-family: var(--font-default, inherit);
+}
+
+/* Floating UI 外层：JS size 中间件会覆写 width/maxWidth，这里是兜底
+   紧凑浮卡不铺满正文；窄窗按视口收缩。 */
+.goose-ai-menu-floating {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 16px));
+  min-width: 0;
+  max-width: min(420px, calc(100vw - 16px));
+}
+
+/* 选区包装层不占盒，避免小窗里多出一层把输入框和 tag 挤扁。 */
+.goose-ai-menu-selection {
+  display: contents;
+}
+
+.dark .bn-combobox,
+.bn-root.dark .bn-combobox,
+.bn-root[data-color-scheme="dark"] .bn-combobox {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-color: rgba(61, 61, 61, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 16px 36px rgba(0, 0, 0, 0.42),
+    0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* 移除 mantine 给 input 和 items 各自加的卡片背景，让它们融入外层卡片 */
+.bn-mantine .bn-combobox-input,
+.bn-mantine .bn-combobox-items:not(:empty) {
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* 仅清 Mantine TextInput 的默认 padding；
+ * 不要波及 .goose-ai-prompt-field__textarea，否则会抹掉首行垂直 padding，
+ * 导致图标按 36px 居中、文字贴顶 → 视觉上「没对齐第一行」。 */
+.bn-mantine .bn-combobox .bn-combobox-input.mantine-Input-input,
+.bn-mantine .bn-combobox .bn-combobox-input.mantine-TextInput-input {
+  padding-inline-start: 34px !important;
+  padding-inline-end: 12px !important;
+}
+
+/* ---------- Input 行（多行 textarea + 自动增高） ----------
+ * 布局契约：
+ * - 永远 row：图标与「第一行文字」并排
+ * - 图标中心 = 首行文字中心（同一套 pad-y + line-height）
+ * - JS 量高时包含 padding，避免高度只算内容把图标顶歪
+ */
+.goose-ai-prompt-field {
+  --goose-ai-line: 20px;
+  --goose-ai-pad-y: 8px;
+  --goose-ai-icon-slot: 36px;
+  --goose-ai-icon: 22px;
+  --goose-ai-row: calc(var(--goose-ai-pad-y) * 2 + var(--goose-ai-line));
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0;
+  min-height: var(--goose-ai-row);
+  border-radius: 10px;
+  background: rgba(241, 240, 237, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.6);
+  transition:
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover {
+  background: var(--goose-interactive-hover);
+}
+
+.goose-ai-prompt-field:focus-within {
+  background: rgba(241, 240, 237, 0.75);
+}
+
+.dark .goose-ai-prompt-field,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field {
+  background: rgba(42, 42, 40, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
+}
+
+.dark .goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:not(.goose-ai-prompt-field--disabled):hover {
+  background: var(--goose-interactive-hover);
+}
+
+.dark .goose-ai-prompt-field:focus-within,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field:focus-within {
+  background: rgba(42, 42, 40, 0.75);
+}
+
+.goose-ai-prompt-field--disabled {
+  opacity: 0.92;
+}
+
+.goose-ai-prompt-field__icon {
+  flex: 0 0 var(--goose-ai-icon-slot);
+  width: var(--goose-ai-icon-slot);
+  /* 与 textarea 首行行盒同高，内部垂直居中图标 → 对齐首行中线 */
+  height: var(--goose-ai-row);
+  min-height: var(--goose-ai-row);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+  align-self: flex-start;
+  line-height: 0;
+  position: relative;
+  overflow: visible;
+}
+
+.goose-ai-prompt-field__icon .bn-combobox-icon {
+  position: relative;
+  overflow: hidden;
+  width: var(--goose-ai-icon);
+  height: var(--goose-ai-icon);
+  flex: 0 0 var(--goose-ai-icon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  line-height: 0;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__icon .bn-combobox-icon {
+  overflow: visible;
+}

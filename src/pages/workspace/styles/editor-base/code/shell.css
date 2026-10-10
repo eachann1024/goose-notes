@@ -1,0 +1,107 @@
+/* 代码块 chrome、工具栏、行号与代码预览 lightbox。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --editor-code-* / --goose-block-subtle-* / --goose-preview-toolbar-height / --goose-popup-trigger-origin。
+ */
+
+/* ===== 自定义代码块增强（DOM 注入方案） ===== */
+
+/* 内置 codeBlock 容器：中性化 BlockNote 默认 chrome（#161616 黑底/白字/圆角），
+   视觉统一交给内层 .goose-code-block-node */
+.workspace-editor-surface .bn-block-content[data-content-type="codeBlock"] {
+  background-color: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 隐藏内置 language select（工具栏替代） */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > div
+  > select {
+  display: none !important;
+}
+
+/* 内置 pre 样式覆盖 */
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]
+  > pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 12px 16px;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: 0.85em;
+  line-height: 1.7;
+  position: relative;
+}
+
+/* 注入的工具栏宿主 */
+.goose-code-toolbar-host {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--code-border, hsl(var(--border) / 0.3));
+  background: var(--code-bg, hsl(var(--muted) / 0.3));
+  color: var(--code-fg, hsl(var(--foreground)));
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:hover
+  .goose-code-toolbar-host,
+.workspace-editor-surface
+  .bn-block-content[data-content-type="codeBlock"]:focus-within
+  .goose-code-toolbar-host {
+  opacity: 1;
+}
+
+.goose-code-floating-toolbar {
+  display: flex;
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--background) / 0.92);
+  padding: 2px;
+  box-shadow: 0 6px 18px hsl(var(--foreground) / 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* 自定义 codeBlockSpec 容器 */
+.goose-code-block-node {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* 普通代码块随内容撑高，避免单行内容被固定最小高度撑出额外留白。 */
+  min-height: 0;
+  background-color: var(--code-bg, hsl(var(--muted) / 0.55));
+  color: var(--code-fg, hsl(var(--foreground)));
+  /* 外壳边框与文件块统一，不随代码主题走（--code-border 仅供内部分隔线使用） */
+  border: 1px solid var(--goose-block-subtle-border);
+  border-radius: var(--editor-code-block-radius, 8px);
+  overflow: hidden;
+}
+
+.goose-code-block-node[data-collapsed="true"] {
+  min-height: 42px;
+}
+
+.goose-code-block-node[data-visual-preview="true"] {
+  min-height: 178px;
+  background-color: hsl(var(--background));
+}

@@ -1,0 +1,254 @@
+.goose-ai-prompt-field__textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box !important;
+  /* border-box：height 含 padding，与图标槽 --goose-ai-row 同一套度量 */
+  min-height: var(--goose-ai-row) !important;
+  max-height: 148px; /* 6 行内容 + 上下 padding */
+  height: var(--goose-ai-row);
+  margin: 0 !important;
+  /* 必须 !important：否则会被 .bn-mantine .bn-combobox-input 的 padding 清零 */
+  padding: var(--goose-ai-pad-y) 12px var(--goose-ai-pad-y) 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  resize: none;
+  outline: none;
+  color: hsl(var(--popover-foreground));
+  font-size: 13px !important;
+  line-height: var(--goose-ai-line) !important;
+  font-family: inherit;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: top;
+  field-sizing: content;
+}
+
+.dark .goose-ai-prompt-field__textarea,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea {
+  color: hsl(var(--popover-foreground));
+}
+
+.goose-ai-prompt-field__textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+  /* placeholder 单行省略，避免撑开高度错觉 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--goose-ai-line);
+}
+
+.dark .goose-ai-prompt-field__textarea::placeholder,
+.bn-root[data-color-scheme="dark"]
+  .goose-ai-prompt-field__textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-ai-prompt-field__textarea:disabled {
+  cursor: default;
+  opacity: 1;
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .goose-ai-prompt-field__textarea:disabled,
+.bn-root[data-color-scheme="dark"] .goose-ai-prompt-field__textarea:disabled {
+  color: hsl(var(--muted-foreground));
+}
+
+/* 忙态：输入槽改成单行 ticker，原文/placeholder 让位 */
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__textarea {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  caret-color: transparent;
+  opacity: 0;
+}
+
+.goose-ai-prompt-field--busy .goose-ai-prompt-field__textarea::placeholder {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  opacity: 0;
+}
+
+.goose-ai-think-ticker {
+  position: absolute;
+  left: var(--goose-ai-icon-slot);
+  right: 8px;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  padding: var(--goose-ai-pad-y) 12px var(--goose-ai-pad-y) 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.goose-ai-prompt-field--with-right .goose-ai-think-ticker {
+  right: 40px;
+}
+
+.goose-ai-think-ticker__scroller {
+  height: var(--goose-ai-line);
+  overflow: hidden;
+  font-size: 13px;
+  line-height: var(--goose-ai-line);
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  word-break: normal;
+}
+
+.dark .goose-ai-think-ticker__scroller,
+.bn-root[data-color-scheme="dark"] .goose-ai-think-ticker__scroller {
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-ai-prompt-field--with-right .goose-ai-prompt-field__textarea {
+  padding-inline-end: 4px !important;
+}
+
+.goose-ai-prompt-field__right {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-self: flex-start;
+  height: var(--goose-ai-row);
+  min-height: var(--goose-ai-row);
+  min-width: 36px;
+  padding: 0 6px 0 0;
+  pointer-events: auto;
+  z-index: 2;
+  border-radius: 0 10px 10px 0;
+  box-sizing: border-box;
+}
+
+/* 兼容仍走 Mantine TextInput 的路径（若有） */
+.bn-combobox .bn-combobox-input {
+  margin: 0;
+}
+
+.bn-combobox .bn-combobox-input .mantine-Input-wrapper {
+  --input-height: 36px;
+  height: 36px;
+  background: transparent;
+}
+
+.bn-mantine .bn-combobox .bn-combobox-input .mantine-TextInput-input,
+.bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding-inline-start: 34px;
+  padding-inline-end: 12px;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(241, 240, 237, 0.55);
+  color: hsl(var(--popover-foreground));
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: inset 0 0 0 1px rgba(219, 219, 219, 0.6);
+  transition:
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.dark .bn-mantine .bn-combobox .bn-combobox-input .mantine-TextInput-input,
+.dark .bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-TextInput-input,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input {
+  background: rgba(42, 42, 40, 0.55);
+  color: hsl(var(--popover-foreground));
+  box-shadow: inset 0 0 0 1px rgba(61, 61, 61, 0.6);
+}
+
+.bn-mantine .bn-combobox .bn-combobox-input .mantine-Input-input::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
+
+.dark
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input::placeholder,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-combobox
+  .bn-combobox-input
+  .mantine-Input-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.bn-combobox .mantine-Input-section[data-position="left"] {
+  width: 36px;
+  pointer-events: none;
+}
+
+.bn-combobox .mantine-Input-section[data-position="right"] {
+  width: auto;
+  min-width: 36px;
+  padding-inline-end: 6px;
+  pointer-events: auto;
+  z-index: 2;
+  background: hsl(var(--muted));
+  border-radius: 0 10px 10px 0;
+}
+
+.dark .bn-combobox .mantine-Input-section[data-position="right"],
+.bn-root[data-color-scheme="dark"]
+  .bn-combobox
+  .mantine-Input-section[data-position="right"] {
+  background: hsl(var(--muted));
+}
+
+.bn-combobox .bn-combobox-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  color: var(--goose-interactive-selected-fg); /* 与 AiButton 共用项目主题强调色 */
+}
+
+.bn-combobox .bn-combobox-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.goose-ai-menu-busy-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goose-ai-menu-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.goose-ai-menu-stop:hover {
+  background: var(--goose-color-danger-subtle-bg);
+  color: var(--goose-color-danger);
+}

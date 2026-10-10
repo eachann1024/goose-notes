@@ -1,0 +1,114 @@
+.goose-menu-surface [role="menuitem"][data-highlighted],
+.goose-menu-surface [role="menuitem"][data-focused],
+.goose-menu-surface [role="menuitem"][data-state="open"],
+.goose-menu-surface [role="menuitem"]:focus,
+.goose-menu-surface [role="menuitemcheckbox"][data-highlighted],
+.goose-menu-surface [role="menuitemcheckbox"][data-focused],
+.goose-menu-surface [role="menuitemcheckbox"]:focus,
+.goose-menu-surface [role="menuitemradio"][data-highlighted],
+.goose-menu-surface [role="menuitemradio"][data-focused],
+.goose-menu-surface [role="menuitemradio"]:focus,
+.goose-menu-surface [data-slot="menu-item"]:hover,
+.goose-menu-surface [data-slot="menu-item"][data-hovered],
+.goose-menu-surface [data-slot="menu-item"][data-focused],
+.goose-menu-surface [data-slot="menu-item"]:focus {
+  background-color: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+}
+
+.goose-menu-surface [data-slot="menu-item"],
+.goose-menu-surface .menu-item {
+  min-height: var(--goose-menu-item-height);
+  border-radius: var(--goose-menu-item-radius);
+  font-size: var(--goose-menu-item-font-size);
+  line-height: var(--goose-menu-item-line-height);
+  gap: 8px;
+  padding-block: 0;
+}
+
+.goose-menu-surface [data-slot="menu-item"]:active,
+.goose-menu-surface [data-slot="menu-item"][data-pressed="true"],
+.goose-menu-surface .menu-item:active,
+.goose-menu-surface .menu-item[data-pressed="true"] {
+  transform: none;
+}
+
+[data-slot="menu-item"]:hover,
+[data-slot="menu-item"][data-hovered],
+[data-slot="menu-item"][data-focused],
+[data-slot="menu-item"]:focus {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-menu-item:hover,
+.goose-menu-item:focus,
+.goose-menu-item[data-highlighted],
+.goose-menu-item[data-state="open"] {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-menu-surface .goose-interactive[data-selected="true"],
+.goose-menu-surface .goose-interactive[aria-selected="true"],
+.goose-menu-surface .goose-interactive[aria-checked="true"],
+.goose-menu-surface .goose-interactive[data-state="checked"],
+.goose-menu-surface .goose-interactive[data-state="open"] {
+  background-color: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+.goose-menu-item {
+  min-height: var(--goose-menu-item-height);
+  border-radius: var(--goose-menu-item-radius);
+  font-size: var(--goose-menu-item-font-size);
+  line-height: var(--goose-menu-item-line-height);
+}
+
+/* 菜单键盘焦点改用中性高亮，不再绘制蓝色/强调色外框；指针焦点由
+   focus-reset.css 统一抑制。 */
+.goose-menu-surface :is(
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [data-slot="menu-item"]
+  ):focus-visible {
+  outline: none !important;
+  background-color: var(--goose-block-subtle-hover) !important;
+  color: var(--goose-interactive-hover-fg) !important;
+  box-shadow: none !important;
+}
+
+/* 危险菜单项（删除行/列）：只用危险色 token，不硬编码色值。 */
+.goose-menu-item-danger {
+  --goose-interactive-hover: var(--goose-interactive-danger);
+  --goose-interactive-hover-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-hover-border: var(--goose-interactive-danger-border);
+  color: var(--goose-interactive-danger-fg);
+}
+
+.goose-menu-item-danger:hover,
+.goose-menu-item-danger:focus,
+.goose-menu-item-danger[data-highlighted],
+.goose-menu-item-danger[data-state="open"] {
+  background-color: var(--goose-interactive-danger);
+  color: var(--goose-interactive-danger-fg);
+}
+
+.goose-menu-separator {
+  margin: 6px 8px;
+  background-color: hsl(var(--goose-menu-border));
+}
+
+.goose-menu-surface.menu {
+  gap: 0;
+}
+
+.goose-menu-surface [data-slot="separator"],
+.goose-menu-surface.menu [data-slot="separator"],
+.goose-menu-surface .goose-menu-separator {
+  width: auto;
+  margin: 6px 8px;
+  align-self: stretch;
+  background-color: hsl(var(--goose-menu-border));
+}

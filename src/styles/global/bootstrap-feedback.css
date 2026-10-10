@@ -1,0 +1,150 @@
+/* 本地空文件夹点击反馈：只让图标短促摆动，不弹 toast 打断浏览节奏。 */
+.goose-empty-folder-shake {
+  transform-origin: 50% 60%;
+  animation: goose-empty-folder-shake 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes goose-empty-folder-shake {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  18% {
+    transform: translateX(-1.5px) rotate(-7deg);
+  }
+  38% {
+    transform: translateX(1.5px) rotate(7deg);
+  }
+  58% {
+    transform: translateX(-1px) rotate(-4deg);
+  }
+  78% {
+    transform: translateX(0.75px) rotate(3deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-empty-folder-shake {
+    animation: none;
+  }
+}
+
+/* Legacy custom icons keep their original stroke. Phosphor uses regular weight paths. */
+svg.lucide {
+  stroke-width: 1.75;
+}
+
+/* 打开菜单或对话框时隐藏残留提示，兼容第三方与自有浮层。 */
+body:has([role="dialog"]:not([hidden]), [role="menu"]:not([hidden]))
+  [role="tooltip"] {
+  display: none !important;
+}
+
+.bootstrap-screen {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  text-align: center;
+}
+
+.bootstrap-screen__mark {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.bootstrap-screen h1,
+.bootstrap-screen p {
+  margin: 0;
+}
+
+.bootstrap-screen h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bootstrap-screen p,
+.bootstrap-screen code {
+  max-width: 32rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
+.bootstrap-screen code {
+  overflow-wrap: anywhere;
+}
+
+.bootstrap-screen button {
+  min-height: 36px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--goose-interactive-hover-border);
+  padding: 0 16px;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bootstrap-screen__progress {
+  width: 72px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: var(--radius-marker);
+  background: hsl(var(--muted));
+}
+
+.bootstrap-screen__progress::after {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: inherit;
+  background: hsl(var(--foreground));
+  content: "";
+  animation: bootstrap-progress 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes bootstrap-progress {
+  to {
+    transform: translateX(122%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bootstrap-screen__progress::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* 启动恢复首帧（data-startup-settling 存在期间）：
+   禁用所有过渡，组件直接呈现恢复后的状态，不从默认值播动画追赶。
+   标记由 bootstrap 在渲染前写入、App 挂载稳定后移除。 */
+html[data-startup-settling] *,
+html[data-startup-settling] *::before,
+html[data-startup-settling] *::after {
+  transition-property: none !important;
+}
+
+/* 选中只保留底色，不让状态描边在失焦后残留；拖放仍使用独立强调色。 */
+:root:root {
+  --goose-interactive-selected-border: transparent;
+}
+
+/* 文本控件的键盘焦点使用中性色；指针焦点由 focus-reset.css 抑制。 */
+:is(input, textarea, select, [contenteditable="true"]) {
+  --ring: var(--muted-foreground);
+  --goose-accent-focus: hsl(var(--muted-foreground));
+}
+
+svg.goose-icon { flex-shrink: 0; vertical-align: middle; }
+.goose-tree-disclosure::before { content: ""; position: absolute; width: 24px; height: 24px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.goose-tree-disclosure:focus-visible { outline: 2px solid var(--goose-interactive-selected-border); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .goose-tree-disclosure svg { transition: none; } }

@@ -1,0 +1,262 @@
+/* 速记小窗专属样式（仅 quicknote.html 入口加载）。 */
+
+/* 无边框窗口：根容器填满。窗口圆角交给系统（createBrowserWindow roundedCorners）。 */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  /* 背景兜底：setSize 放大窗口的瞬间，web 内容若尚未重绘到新尺寸，
+     会露出窗口底层（表现为右侧/底部一条灰边）。让 html/body 与编辑器同色，
+     任何未绘制区域都是同一底色，消除灰色残影。 */
+  background: hsl(var(--goose-editor-bg));
+}
+
+.quicknote-root {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100%;
+  width: 100vw;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.dark .quicknote-root {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 固定标题栏：占布局高度，常驻可见；空白区拖窗，正文不再被把手/覆层误拖。 */
+.quicknote-titlebar-reveal-zone {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  width: 100%;
+  height: 30px;
+}
+
+/* 当前便签名常驻左侧，同时作为改名入口。 */
+.quicknote-slot-name-display {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  max-width: min(88px, calc(50vw - 94px));
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quicknote-slot-name-display:hover {
+  color: hsl(var(--foreground));
+}
+
+.quicknote-slot-name-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quicknote-slot-name-input {
+  position: absolute;
+  z-index: 22;
+  box-sizing: border-box;
+  top: 3px;
+  left: 6px;
+  width: calc(100% - 12px);
+  height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  outline: none;
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.quicknote-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px 0 10px;
+  -webkit-user-select: none;
+  user-select: none;
+  background: hsl(var(--goose-editor-bg));
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dark .quicknote-titlebar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 改名时顶部只保留全宽输入框：隐藏标题栏控件。 */
+.quicknote-titlebar-reveal-zone[data-renaming="true"] .quicknote-titlebar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.quicknote-titlebar-btn {
+  cursor: default;
+}
+
+.quicknote-titlebar-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.quicknote-help-trigger,
+.quicknote-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  color: hsl(var(--muted-foreground));
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.quicknote-help-trigger:hover,
+.quicknote-save-btn:hover:not(:disabled) {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.quicknote-help-trigger[data-state="open"] {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.quicknote-save-btn:disabled {
+  opacity: 1; color: var(--goose-text-disabled);
+}
+
+.quicknote-slot-switcher-positioner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.quicknote-slot-switcher-interactive {
+  pointer-events: auto;
+}
+
+.quicknote-titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
+}
+
+.quicknote-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.quicknote-close-btn:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+/* 标题栏已占布局高度；正文从剩余区域顶部开始。 */
+.quicknote-editor-surface {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100%;
+  padding-inline: 4px;
+  padding-top: 0;
+  padding-bottom: 16px;
+}
+
+/* BlockNote 的 contenteditable 默认只按内容撑高。小窗让编辑面填满
+   滚动容器（标题栏已从视口扣掉）剩余高度。 */
+.quicknote-editor-surface .bn-editor {
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+/* 首块去掉 BlockNote 给 heading 的 18px 内置上间距：该间距是用来跟「上文」拉开
+   距离的，但首块前面没有内容，叠加 surface padding 后顶部会显出一大段死空白。
+   仅作用于首块，不影响文中其它 heading 的上间距。 */
+.quicknote-editor-surface
+  .bn-block-group
+  > .bn-block-outer:first-child
+  .bn-block-content[data-content-type="heading"] {
+  padding-top: 0;
+}
+/* 无侧边菜单（无把手/加号），收窄左右留白让正文贴近窗口。
+   需压过 editor-base.css 的 `.workspace-editor-surface.max-w-none .bn-editor`
+   (该 56px 是主窗为 side menu 预留的 gutter)——小窗内层仍带 workspace-editor-surface
+   全宽容器，故选择器要叠到同级或更高特异度才生效。 */
+.quicknote-editor-surface .workspace-editor-surface.max-w-none .bn-editor {
+  padding-inline: 8px;
+}
+
+.quicknote-toaster[data-sonner-toaster] {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  transform: none !important;
+}
+
+/* toast 在窗口正中弹出（不贴底）：定位到视口垂直 / 水平居中，宽度按内容自适应
+   成一颗小胶囊，而非横贯整窗。 */
+.quicknote-toaster[data-sonner-toaster] [data-sonner-toast] {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: max-content !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-inline: 0 !important;
+  transform: translate(-50%, -50%) !important;
+}

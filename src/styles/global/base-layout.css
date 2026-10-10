@@ -1,0 +1,208 @@
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    caret-color: var(--goose-accent-focus);
+    font-family: var(--font-ui, var(--font-default));
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    letter-spacing: normal;
+  }
+
+  .window-shell-safe-top {
+    box-sizing: border-box;
+    height: calc(100dvh - var(--goose-top-safe-area));
+    margin-top: var(--goose-top-safe-area);
+  }
+
+  /* Electron 桌面端：顶栏在文档流里（overlay 融合条），无额外安全区。 */
+  html.is-electron {
+    --goose-top-safe-area: 0px;
+    /* 正文区顶边距 pt-1 + 代码块工具栏 top:8px，与 YAML 元数据行对齐。 */
+    --goose-toast-offset-top: calc(
+      var(--electron-titlebar-height, 2.75rem) + 12px
+    );
+  }
+
+  [data-sonner-toaster][data-y-position="top"] {
+    top: calc(
+      var(--goose-toast-offset-top, var(--offset-top, 14px)) +
+        var(--goose-top-safe-area)
+    ) !important;
+  }
+
+  ::selection {
+    background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
+    color: inherit;
+  }
+  ::-moz-selection {
+    background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
+    color: inherit;
+  }
+
+  /* 编辑器失焦时（如 AI 输入框打开），用装饰保留选区视觉 */
+  .goose-fake-selection {
+    background-color: rgba(127, 127, 127, 0.24);
+  }
+
+  /* 编辑器缩放变量（通过 JS 动态设置，供编辑器内容模块统一跟随缩放） */
+  :root {
+    --editor-font-size: 17px;
+    --editor-line-height: 1.5;
+    --sidebar-font-size: 13px;
+    --editor-scale: 1;
+    /* 编辑器上下文 UI 的统一缩放契约。浮层通过显式 opt-in 使用，
+       不影响设置、侧栏、Dialog、Toast 等全局界面。 */
+    --editor-ui-scale: 1;
+    --editor-module-sm-font-size: calc(14px * var(--editor-scale));
+    --editor-module-xs-font-size: calc(12px * var(--editor-scale));
+    --editor-module-2xs-font-size: calc(11px * var(--editor-scale));
+    --editor-control-height-sm: calc(24px * var(--editor-scale));
+    --editor-control-height-md: calc(28px * var(--editor-scale));
+    --editor-control-icon-size: calc(14px * var(--editor-scale));
+    --editor-control-icon-lg-size: calc(16px * var(--editor-scale));
+    --editor-inline-code-padding-y: calc(3px * var(--editor-scale));
+    --editor-inline-code-padding-x: calc(6px * var(--editor-scale));
+    --editor-inline-code-radius: calc(4px * var(--editor-scale));
+    --editor-inline-code-baseline-offset: 0.04em;
+    --editor-link-tooltip-font-size: calc(12px * var(--editor-scale));
+    --editor-link-tooltip-padding-y: calc(6px * var(--editor-scale));
+    --editor-link-tooltip-padding-x: calc(10px * var(--editor-scale));
+    --editor-link-tooltip-radius: calc(var(--radius-control) * var(--editor-scale));
+    --editor-code-block-padding-y: calc(12px * var(--editor-scale));
+    --editor-code-block-padding-x: calc(16px * var(--editor-scale));
+    --editor-code-block-radius: calc(8px * var(--editor-scale));
+    --editor-code-block-node-radius: calc(12px * var(--editor-scale));
+    --editor-code-toolbar-row-height: calc(36px * var(--editor-scale));
+    --editor-code-toolbar-padding-inline: calc(8px * var(--editor-scale));
+    --editor-code-toolbar-gap: calc(8px * var(--editor-scale));
+    --editor-code-toolbar-gap-sm: calc(6px * var(--editor-scale));
+    --editor-code-toolbar-surface-padding: calc(4px * var(--editor-scale));
+    --editor-code-summary-padding-x: calc(6px * var(--editor-scale));
+    --editor-code-line-number-width: calc(40px * var(--editor-scale));
+    --editor-code-line-number-padding-top: calc(12px * var(--editor-scale));
+    --editor-code-line-number-padding-right: calc(8px * var(--editor-scale));
+    --editor-code-line-number-offset: calc(48px * var(--editor-scale));
+    --editor-code-preview-padding: calc(16px * var(--editor-scale));
+    --editor-table-cell-font-size: calc(14px * var(--editor-scale));
+    --editor-table-cell-padding-y: calc(8px * var(--editor-scale));
+    --editor-table-cell-padding-x: calc(12px * var(--editor-scale));
+    --editor-file-action-height: calc(32px * var(--editor-scale));
+    --editor-file-icon-box-size: calc(40px * var(--editor-scale));
+  }
+
+  /* 程序性焦点不绘制外框，键盘 focus-visible 保留独立可见提示。
+     [tabindex] 包含 -1：Radix DialogContent 等容器在打开和窗口重获焦点时
+     会被程序性聚焦，Electron 旧内核会按系统强调色画出贴窗口边缘的 outline。 */
+  :where(
+      a[href],
+      button,
+      input,
+      textarea,
+      select,
+      summary,
+      [tabindex],
+      [contenteditable="true"]
+    ):focus:not(:focus-visible) {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-inset-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+
+  /* Placeholder 也是操作提示，需达到与普通小号文本一致的可读性。 */
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 1;
+  }
+
+  /* Prevent image dragging globally */
+  img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* 标签与编辑区域保留文本选择能力。 */
+  label,
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable="plaintext-only"],
+  .bn-editor {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
+
+  /*
+   * 全局低入侵 overlay 滚动条：8px 槽位里 2px 透明边当空隙，
+   * 方形圆角 thumb 默认全透明，容器 hover 才淡入，thumb 自身 hover 再加深。
+   * 显式 scrollbar-width:none 的区域（标签栏、工具栏等）选择器更具体，不受影响。
+   */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: var(--radius-marker);
+    transition: background 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+    background-clip: padding-box;
+  }
+  .dark *:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    background-clip: padding-box;
+  }
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+    background-clip: padding-box;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  *:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  }
+  .dark *:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *::-webkit-scrollbar-thumb {
+      transition: none;
+    }
+  }
+
+  /* 本地文件夹目录列表：滚动条始终可见，提示还有更多子项 */
+  .folder-home-list {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  }
+  .dark .folder-home-list {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+  .folder-home-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .dark .folder-home-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}

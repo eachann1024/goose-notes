@@ -1,0 +1,122 @@
+/**
+ * notebook-ai.css — 笔记本 AI 聊天面板的 markdown 预览样式
+ *
+ * Streamdown 输出带 data-streamdown="..." 属性，借此精准覆盖默认样式，
+ * 让预览与应用排版契合：8px 圆角、紧凑行距、currentColor 链接、
+ * 自绘任务勾选框（与编辑器 checkListItem 同风格）。
+ */
+
+/* AI 与编辑器共用内容底色，外层主面板统一裁切圆角。 */
+.notebook-ai-shell {
+ background: var(--workspace-main-surface);
+}
+
+[data-ai-panel-layout="side-panel"] .notebook-ai-shell {
+ background: var(--workspace-sidebar-surface);
+ box-shadow: inset 1px 0 var(--workspace-divider);
+}
+
+.notebook-ai-panel-header {
+ min-width: 0;
+}
+
+.notebook-ai-empty-state {
+ max-width: 100%;
+ padding: 48px 24px 0;
+}
+
+.notebook-ai-empty-state-fullscreen {
+ max-width: 720px;
+ padding: 2.75rem 0 0;
+}
+
+.notebook-ai-empty-title {
+ margin: 0 0 12px;
+ font-family: var(--font-default);
+ font-size: 23px; /* The parent zoom surface already applies editor scale. */
+ font-weight: 600;
+ line-height: 1.5;
+ letter-spacing: -0.3px;
+ -webkit-font-smoothing: auto;
+}
+
+.notebook-ai-empty-description {
+ max-width: 100%;
+ margin: 0;
+ font-size: var(--editor-base-font-size, 17px);
+ line-height: var(--editor-line-height, 1.5);
+}
+
+.notebook-ai-empty-suggestions {
+ margin-top: 24px;
+}
+
+.notebook-ai-empty-suggestion {
+ display: flex;
+ min-height: 40px;
+ align-items: center;
+ justify-content: space-between;
+ gap: 0.5rem;
+ border-bottom: 1px solid hsl(var(--goose-menu-border));
+ padding: 0 0.375rem;
+ color: hsl(var(--muted-foreground));
+ text-align: left;
+ font-size: var(--editor-base-font-size, 17px);
+}
+
+.notebook-ai-empty-suggestion:hover {
+ color: hsl(var(--foreground));
+}
+
+.notebook-ai-empty-suggestion:focus-visible {
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
+}
+
+.notebook-ai-conversation-title {
+ animation: notebook-ai-title-fade 120ms ease-out;
+}
+
+@keyframes notebook-ai-title-fade {
+ from {
+  opacity: 0;
+ }
+ to {
+  opacity: 1;
+ }
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .notebook-ai-conversation-title {
+  animation: none;
+ }
+}
+
+/* 全屏叠层：Electron 在 PageHeader 下方；Electron 主区已不含顶栏 */
+.notebook-ai-fullscreen-host {
+ top: 3rem;
+}
+
+body[data-goose-ai-fullscreen] .notebook-ai-fullscreen-host {
+ top: 4.5rem;
+}
+
+html.is-electron .notebook-ai-fullscreen-host {
+ top: 0;
+}
+
+.notebook-ai-page-header-stack {
+ display: flex;
+ flex-direction: column;
+ gap: 0.125rem;
+}
+
+.workspace-divider[data-ai-conversation-header] {
+ height: auto;
+ min-height: 3rem;
+}
+
+/* Electron AI 会话沿用笔记标签的一行顶栏和系统拖动区域。 */
+html.is-electron .electron-titlebar[data-ai-conversation-header] {
+ height: var(--electron-titlebar-height, 2.75rem);
+}

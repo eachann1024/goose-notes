@@ -1,0 +1,183 @@
+/* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
+@source "../../../node_modules/streamdown/dist/index.js";
+
+/* ── Electron 旧内核 @property 降级 ───────────────────────────────
+ * Tailwind v4 的 shadow-* / ring-* / 渐变 / transform 等工具类全部依赖
+ * @property 注册初值的 --tw-* 变量链（如 box-shadow: var(--tw-inset-shadow), ..., var(--tw-shadow)）。
+ * Electron 旧内核不支持 @property，且 Tailwind 自带降级块包在旧内核同样匹配不上的
+ * @supports 门里 → 变量未定义 → 整条 box-shadow 等声明作废（菜单/弹层投影消失）。
+ * 这里把官方降级块原样无条件声明一份（@layer properties 优先级低于 utilities，
+ * 工具类自身的变量赋值仍正常覆盖，新内核/浏览器零影响）。 */
+@layer properties {
+  *,
+  :before,
+  :after,
+  ::backdrop {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-scale-x: 1;
+    --tw-scale-y: 1;
+    --tw-scale-z: 1;
+    --tw-rotate-x: initial;
+    --tw-rotate-y: initial;
+    --tw-rotate-z: initial;
+    --tw-skew-x: initial;
+    --tw-skew-y: initial;
+    --tw-space-y-reverse: 0;
+    --tw-space-x-reverse: 0;
+    --tw-divide-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-gradient-position: initial;
+    --tw-gradient-from: #0000;
+    --tw-gradient-via: #0000;
+    --tw-gradient-to: #0000;
+    --tw-gradient-stops: initial;
+    --tw-gradient-via-stops: initial;
+    --tw-gradient-from-position: 0%;
+    --tw-gradient-via-position: 50%;
+    --tw-gradient-to-position: 100%;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-ordinal: initial;
+    --tw-slashed-zero: initial;
+    --tw-numeric-figure: initial;
+    --tw-numeric-spacing: initial;
+    --tw-numeric-fraction: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-outline-style: solid;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+    --tw-backdrop-blur: initial;
+    --tw-backdrop-brightness: initial;
+    --tw-backdrop-contrast: initial;
+    --tw-backdrop-grayscale: initial;
+    --tw-backdrop-hue-rotate: initial;
+    --tw-backdrop-invert: initial;
+    --tw-backdrop-opacity: initial;
+    --tw-backdrop-saturate: initial;
+    --tw-backdrop-sepia: initial;
+    --tw-duration: initial;
+    --tw-ease: initial;
+    --tw-content: "";
+    --tw-animation-delay: 0s;
+    --tw-animation-direction: normal;
+    --tw-animation-duration: initial;
+    --tw-animation-fill-mode: none;
+    --tw-animation-iteration-count: 1;
+    --tw-enter-blur: 0;
+    --tw-enter-opacity: 1;
+    --tw-enter-rotate: 0;
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-blur: 0;
+    --tw-exit-opacity: 1;
+    --tw-exit-rotate: 0;
+    --tw-exit-scale: 1;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+  }
+}
+
+/* ── HeroUI ↔ shadcn 令牌冲突兜底 ───────────────────────────────
+ * @heroui/styles 会在 `:root,.light,.default,[data-theme=light|default]`
+ * 里把 --accent / --border 设成「已解析颜色」(oklch)，而本项目这两个 token
+ * 是「HSL 通道」形态、经 hsl(var(--xxx)) 消费。若 HeroUI 的值胜出，
+ * hsl(oklch(...)) 非法 → 全局边框 / bg-accent 视觉崩坏。
+ * 这里用「无 layer」规则重新声明本项目的通道值（无 layer 永远压过任何 @layer），
+ * 锁定 shadcn 视觉零改动；HeroUI 自身强调色面已由各替换组件 className 覆盖，不依赖此 token。 */
+:root,
+.light,
+.default,
+[data-theme="light"],
+[data-theme="default"] {
+  --accent: 60 6.67% 94.12%;
+  --border: 0 0% 86%;
+  --goose-menu-surface: var(--goose-editor-bg);
+  --goose-menu-hover: var(--goose-interactive-hover);
+  --goose-menu-border: 0 0% 86%;
+  --goose-menu-radius: 16px;
+  --goose-menu-item-radius: 8px;
+  --goose-menu-item-height: 30px;
+  --goose-menu-item-font-size: 14px;
+  --goose-menu-item-line-height: 20px;
+  --goose-menu-shadow:
+    0 14px 34px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.dark,
+[data-theme="dark"] {
+  --accent: 60 2.4% 16.1%;
+  --border: 0 0% 24%;
+  --goose-menu-surface: 220 13% 14%;
+  --goose-menu-hover: var(--goose-interactive-hover);
+  --goose-menu-border: 215 16% 28%;
+  --goose-menu-radius: 16px;
+  --goose-menu-item-radius: 8px;
+  --goose-menu-item-height: 30px;
+  --goose-menu-item-font-size: 14px;
+  --goose-menu-item-line-height: 20px;
+  --goose-menu-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* HeroUI 的 text-muted 表示弱化文字；本项目 --muted / --color-muted 是底色。
+ * 深色模式下 text-muted 会变成「深色底当字色」，关闭钮、菜单箭头等图标消失。
+ * Tabs 未选中态把 text-muted @apply 进 .tabs__tab，.class 覆盖不到。 */
+.text-muted {
+  color: hsl(var(--muted-foreground));
+}
+
+.close-button.close-button--default {
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.tabs__tab {
+  transition: none;
+}
+
+.tabs__tab:not([data-selected="true"]) {
+  color: hsl(var(--muted-foreground));
+}
+
+.tabs__tab:not([data-disabled="true"]):hover,
+.tabs__tab[data-hovered="true"]:not([data-disabled="true"]) {
+  opacity: 1;
+}
+
+.tabs__indicator {
+  display: none;
+}
+
+.tabs__panel[data-exiting="true"] {
+  position: static;
+}
+
+/* class 模式暗色：等价 v3 darkMode: ["class"] */
+@custom-variant dark (&:is(.dark *));

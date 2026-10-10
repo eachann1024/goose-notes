@@ -1,0 +1,114 @@
+/* 强调色 radio 的状态使用扁平选择器，避免旧 Electron 内核忽略嵌套 hover。 */
+.goose-accent-option:hover {
+  background: var(--goose-accent-option-light-surface) !important;
+}
+
+.goose-accent-option:active {
+  transform: translateY(1px);
+}
+
+.goose-accent-option[data-state="checked"] {
+  background: var(--goose-accent-option-light-surface) !important;
+  color: var(--goose-accent-option-light-fg) !important;
+}
+
+.goose-accent-option:focus-visible {
+  outline: none !important;
+  background: var(--goose-accent-option-light-surface) !important;
+  color: var(--goose-accent-option-light-fg) !important;
+  /* checked 已使用同一底色，文字下划线单独标明键盘焦点。 */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dark .goose-accent-option[data-state="unchecked"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .goose-accent-option:hover,
+.dark .goose-accent-option[data-state="unchecked"]:focus-visible,
+.dark .goose-accent-option[data-state="checked"] {
+  background: var(--goose-accent-option-dark-surface) !important;
+  color: var(--goose-accent-option-dark-fg) !important;
+}
+
+.dark .goose-accent-option:focus-visible {
+  background: var(--goose-accent-option-dark-surface) !important;
+  color: var(--goose-accent-option-dark-fg) !important;
+}
+
+/* Only UI glyphs receive the pencil treatment; user images and diagrams stay intact. */
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .lucide {
+  stroke-width: 1.6;
+}
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) :is(.lucide, .goose-icon) {
+  filter: url("#goose-pencil-stroke");
+}
+
+/* BlockNote adds its own .dark class. Inherit the selected ink instead of
+ * letting that nested class restore the application's blue fallback tokens. */
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .bn-root {
+  --foreground: inherit;
+  --muted-foreground: inherit;
+  --primary: inherit;
+  --goose-interactive-selected: inherit;
+  --goose-interactive-selected-fg: inherit;
+  --goose-interactive-hover: inherit;
+  --goose-interactive-hover-fg: inherit;
+  --goose-accent-focus: inherit;
+  --goose-accent-link: inherit;
+  --goose-accent-link-hover: inherit;
+  --goose-editor-selection-bg: inherit;
+  --goose-inline-code-bg: inherit;
+  --goose-inline-code-fg: inherit;
+  --goose-inline-code-border-hover: inherit;
+  --bn-colors-editor-text: hsl(var(--foreground));
+}
+
+/* Explicit document colors take precedence over the default active-title ink. */
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"])
+  .workspace-editor-surface
+  .bn-block-content[data-content-type="heading"][data-text-color]:not([data-text-color="default"])
+  .bn-inline-content {
+  color: inherit;
+}
+
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .bn-inline-content::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .bn-inline-content *::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .goose-code-pre::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .goose-code-pre *::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .bn-block-content[data-content-type="codeBlock"] pre::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .bn-block-content[data-content-type="codeBlock"] pre *::selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) .goose-fake-selection,
+:root:is([data-goose-accent="amber"], [data-goose-accent="wheat"]) [data-show-selection] {
+  background-color: var(--goose-editor-selection-bg) !important;
+  color: inherit;
+}
+
+/* Shared surfaces fall back to the existing palette. Only the two selected light
+ * presets override them; changing an accent or appearance leaves no inline tint. */
+:root {
+  --goose-shell-surface: hsl(var(--goose-shell-bg));
+  --goose-editor-surface: hsl(var(--goose-editor-bg));
+  --goose-ai-surface: hsl(var(--goose-editor-bg));
+  --goose-input-surface: hsl(var(--goose-editor-bg));
+}
+:root:not(.dark)[data-goose-accent="mono"] {
+  --goose-shell-bg: 44 28.302% 89.608%;
+  --goose-editor-bg: 48 45.455% 97.843%;
+  --foreground: var(--goose-text-primary-channels);
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  /* All accent presets share the global small-text roles. */
+  --muted-foreground: var(--goose-text-secondary-channels);
+  --goose-nav-title: var(--muted-foreground);
+  --popover: 0 0% 100%;
+  --border: 66.667 13.433% 86.863%;
+  --goose-menu-surface: var(--popover);
+  --goose-menu-border: var(--border);
+  --goose-selected-bg: 48.75 32% 90.196%;
+  --goose-shell-surface: linear-gradient(158deg, #ece8dd, #f5f3eb);
+  --goose-editor-surface: linear-gradient(165deg, #fcfbf7, #fffffc);
+  --goose-ai-surface: linear-gradient(165deg, #f6f5f0, #fbfbf7);
+  --goose-input-surface: #ffffff;
+}

@@ -1,0 +1,173 @@
+/* math/mermaid 预览 */
+.goose-code-block-node .goose-code-preview {
+  padding: 8px 16px;
+  background: transparent;
+  min-height: 132px;
+  overflow: auto;
+}
+
+.goose-code-block-node .goose-code-preview .mermaid-preview {
+  min-width: max-content;
+}
+
+.goose-code-preview-lightbox {
+  --goose-preview-toolbar-height: 48px;
+  position: fixed;
+  inset: 0;
+  z-index: 22000;
+  background: hsl(var(--background));
+}
+
+.goose-code-preview-lightbox-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: hsl(var(--background));
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-code-preview-lightbox-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--goose-preview-toolbar-height);
+  padding: 10px 12px 10px 18px;
+  border-bottom: 1px solid var(--goose-block-subtle-border);
+  /* 悬浮在内容之上，必须不透明才不会透出下方图形 */
+  background: hsl(var(--background));
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.goose-code-preview-lightbox-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goose-code-preview-lightbox-zoom {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.goose-code-preview-lightbox-zoom-label {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-code-preview-lightbox-close {
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-code-preview-lightbox-close:hover,
+.goose-code-preview-lightbox-zoom button:hover:not(:disabled) {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-code-preview-lightbox-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: calc(var(--goose-preview-toolbar-height) + 24px) 24px 24px;
+  cursor: text;
+}
+
+/* 覆盖全局 body/img 的 user-select: none，让预览内容可选中复制 */
+.goose-code-preview-lightbox-body,
+.goose-code-preview-lightbox-body * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.goose-code-preview-lightbox-body .mermaid-preview {
+  min-width: max-content;
+  padding: 0;
+}
+
+.goose-code-preview-lightbox-body .katex-display {
+  margin: 0;
+}
+
+.goose-code-preview-lightbox-body.is-media,
+.goose-code-preview-lightbox-body.is-vector {
+  overflow: auto;
+  padding: calc(var(--goose-preview-toolbar-height) + 12px) 16px 12px;
+}
+
+.goose-code-preview-lightbox-body.is-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.goose-preview-zoom-surface {
+  width: 100%;
+}
+
+.goose-code-preview-lightbox-body.is-html .goose-preview-zoom-surface {
+  width: 100%;
+  height: 100%;
+}
+
+.goose-code-preview-lightbox-body.is-vector {
+  display: flex;
+}
+
+/* margin auto 而不是 justify-content，内容超出时才不会裁掉左上角 */
+.goose-preview-vector-sizer {
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+.goose-preview-vector {
+  width: max-content;
+  transform-origin: top left;
+}
+
+.goose-code-preview-lightbox-body.is-vector .goose-preview-svg {
+  line-height: 0;
+}
+
+.goose-code-preview-lightbox-body.is-vector .goose-preview-svg > svg {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.goose-code-preview-lightbox-body.is-html {
+  padding: var(--goose-preview-toolbar-height) 0 0;
+  overflow: hidden;
+}
+
+.goose-code-preview-lightbox-body.is-html iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: hsl(var(--background));
+}

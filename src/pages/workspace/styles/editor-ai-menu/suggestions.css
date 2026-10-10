@@ -1,0 +1,221 @@
+/* ---------- Items 列表 ---------- */
+.bn-mantine .bn-combobox-items:not(:empty) {
+  /* 默认 max-width: 50% 会让列表挤到一边，去掉 */
+  max-width: none !important;
+  width: 100% !important;
+  margin-top: 4px !important;
+  padding: 4px 0 0 !important;
+  gap: 1px !important;
+  border-top: 1px solid rgba(219, 219, 219, 0.5) !important;
+}
+
+.dark .bn-mantine .bn-combobox-items:not(:empty),
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-combobox-items:not(:empty) {
+  border-top-color: rgba(61, 61, 61, 0.5) !important;
+}
+
+/* 当列表为空（仅输入态），藏掉分隔线 */
+.bn-combobox-items:empty {
+  border-top: 0;
+  margin-top: 0;
+  padding: 0;
+}
+
+/*
+ * 特异性至少 .bn-mantine .bn-suggestion-menu-item（0,2,0），
+ * 才能盖过 Mantine：.bn-mantine .bn-suggestion-menu-item {
+ *   color: var(--menu-item-color, var(--mantine-color-text));
+ * }
+ * 以及标题上的 var(--bn-colors-menu-text) 浅色默认值。
+ */
+.bn-mantine .bn-suggestion-menu-item {
+  --group-gap: 10px !important;
+  --menu-item-color: hsl(var(--popover-foreground));
+  --bn-colors-menu-text: hsl(var(--popover-foreground));
+  /* 与 22px 图标槽对齐：上下对称，单行时图标/文字视觉居中 */
+  padding: 5px 8px !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: hsl(var(--popover-foreground));
+  cursor: pointer;
+  transition: background-color 100ms ease-out;
+  flex-wrap: nowrap !important;
+  /* 单行项：图标与标题垂直居中（用户标注的问题） */
+  align-items: center !important;
+  height: auto !important;
+  min-height: 32px;
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item,
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item {
+  --menu-item-color: hsl(var(--popover-foreground));
+  --bn-colors-menu-text: hsl(var(--popover-foreground));
+  color: hsl(var(--popover-foreground));
+}
+
+.bn-mantine .bn-suggestion-menu-item:hover {
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg);
+  --menu-item-color: var(--goose-interactive-hover-fg);
+  --bn-colors-menu-text: var(--goose-interactive-hover-fg);
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item:hover,
+.bn-root[data-color-scheme="dark"] .bn-mantine .bn-suggestion-menu-item:hover {
+  background: var(--goose-interactive-hover) !important;
+  color: var(--goose-interactive-hover-fg);
+  --menu-item-color: var(--goose-interactive-hover-fg);
+  --bn-colors-menu-text: var(--goose-interactive-hover-fg);
+}
+
+/* 键盘选中项与全局列表选中态同级：鸢尾靛蓝浅底 + 强调文字 */
+.bn-mantine .bn-suggestion-menu-item[aria-selected="true"] {
+  background: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg);
+  --menu-item-color: var(--goose-interactive-selected-fg);
+  --bn-colors-menu-text: var(--goose-interactive-selected-fg);
+}
+
+/* 左侧图标：与标题同高 22px 槽，内部居中 glyph */
+.bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  flex: 0 0 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  margin: 0 !important;
+  margin-inline-end: 10px !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  color: hsl(var(--muted-foreground));
+}
+
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"],
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: hsl(var(--muted-foreground));
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: var(--goose-interactive-hover-fg);
+}
+
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"],
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: var(--goose-interactive-hover-fg);
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item[aria-selected="true"]
+  .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-section svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 标题列：与图标垂直居中；line-height 固定等于图标槽，避免字盒偏高 */
+.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-body {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center !important;
+  align-self: center !important;
+  padding: 0 8px 0 0 !important;
+  gap: 0 !important;
+  min-height: 22px;
+}
+
+.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-title {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  /* 与图标槽同高，glyph 在行盒内光学居中 */
+  line-height: 22px !important;
+  height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: hsl(var(--popover-foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-title,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-title {
+  color: hsl(var(--popover-foreground));
+}
+
+/* small 项不展示副标题；若将来有副标题，整行改为顶对齐以免挤扁 */
+.bn-mantine
+  .bn-suggestion-menu-item-small
+  .bn-mt-suggestion-menu-item-subtitle:not(:empty) {
+  display: none;
+}
+
+.bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-title {
+  color: var(--goose-interactive-hover-fg);
+}
+
+.dark
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-title,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item:hover
+  .bn-mt-suggestion-menu-item-title {
+  color: var(--goose-interactive-hover-fg);
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item[aria-selected="true"]
+  .bn-mt-suggestion-menu-item-title {
+  color: var(--goose-interactive-selected-fg);
+}
+
+.bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .bn-mantine .bn-suggestion-menu-item .bn-mt-suggestion-menu-item-subtitle,
+.bn-root[data-color-scheme="dark"]
+  .bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-subtitle {
+  color: hsl(var(--muted-foreground));
+}
+
+.bn-mantine
+  .bn-suggestion-menu-item
+  .bn-mt-suggestion-menu-item-subtitle:empty {
+  display: none;
+}

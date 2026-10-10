@@ -1,0 +1,89 @@
+/* TabRail：1/2/3 等分，4+ 横向滚动；选中只靠浅底胶囊+字色，不要底条。 */
+.tab-rail {
+  padding: 4px;
+  gap: 8px;
+}
+.tab-rail-item {
+  height: 36px;
+  border-radius: 8px;
+  border-bottom: none;
+  text-decoration: none;
+  transition:
+    flex-basis 220ms ease-in-out,
+    background-color 150ms ease;
+}
+.tab-rail-item:focus-visible {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+.tab-rail-item,
+.tab-rail-item span,
+.tab-rail-item input,
+.tab-rail-item [data-page-title-field] {
+  text-decoration: none;
+}
+.tab-rail-item [data-page-title-field],
+.tab-rail-item [data-page-title-field]:focus,
+.tab-rail-item [data-page-title-field]:focus-visible {
+  height: 100%;
+  padding-inline: 0;
+  padding-block: 0;
+  line-height: normal;
+  font-weight: inherit;
+  border-bottom: none;
+  text-decoration: none;
+  box-shadow: none;
+}
+.page-title-edit-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.workspace-shell .page-title-edit-shell [data-page-title-field] {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  line-height: normal;
+  border: 0;
+}
+.workspace-shell .page-title-edit-shell [data-page-title-field]:focus {
+  background: transparent;
+}
+.tab-rail-item:has([data-page-title-field]:focus) {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+.tab-rail-item:has([data-page-title-field]:focus) [aria-label="关闭标签页"] {
+  display: none;
+}
+.page-title-caret {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 1.15em;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--goose-accent-focus);
+  pointer-events: none;
+  animation: page-title-caret-blink 1.1s steps(1) infinite;
+}
+@keyframes page-title-caret-blink {
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-rail-item {
+    transition: none;
+  }
+  .page-title-caret { animation: none; }
+}
+html.is-electron .electron-titlebar .tab-rail-item {
+  height: calc(var(--electron-titlebar-height, 2.75rem) - 8px);
+}
+
+html[data-sidebar-collapsed] .workspace-shell[data-electron-chrome] {
+  --workspace-sidebar-gap: 0px;
+}

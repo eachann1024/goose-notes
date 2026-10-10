@@ -1,0 +1,168 @@
+/* 自定义视频播放器与全屏图片 lightbox。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-preview-toolbar-height / --background / --goose-block-subtle-* / --ring。
+ */
+/* ===== 自定义视频播放器（替代原生 controls） ===== */
+.goose-video-block-shell {
+  position: relative;
+  max-width: 100%;
+}
+
+.goose-video-block-shell[data-alignment="center"] {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.goose-video-block-shell[data-alignment="right"] {
+  margin-left: auto;
+}
+
+.goose-video-player {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #141414;
+  outline: none;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 播放器整体键盘焦点标在控制栏，保留视频本身与常态投影。 */
+.goose-video-player:focus-visible .goose-video-player__bar {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+.goose-video-player__video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 720px);
+  margin: 0;
+  background: #0a0a0a;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.goose-video-player__error {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--goose-text-on-dark);
+  background: #141414;
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.goose-video-player__error svg {
+  width: 24px;
+  height: 24px;
+  color: var(--goose-text-on-dark-secondary);
+}
+
+.goose-video-player__center-play {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.goose-video-player[data-playing="true"][data-controls="hidden"]
+  .goose-video-player__center-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.goose-video-player[data-playing="true"][data-controls="visible"]
+  .goose-video-player__center-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.goose-video-player__center-icon {
+  width: 56px;
+  height: 56px;
+  padding: 14px;
+  border-radius: var(--radius-control);
+  color: var(--goose-text-on-dark);
+  background: rgba(20, 20, 20, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms ease;
+}
+
+.goose-video-player__center-icon--play {
+  padding-left: 16px;
+}
+
+.goose-video-player__center-play:hover .goose-video-player__center-icon {
+  transform: scale(1.05);
+  background: rgba(30, 30, 30, 0.72);
+}
+
+.goose-video-player__chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 0 10px 10px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.goose-video-player[data-playing="true"][data-controls="hidden"]
+  .goose-video-player__chrome {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.goose-video-player__chrome > * {
+  pointer-events: auto;
+}
+
+.goose-video-player__gradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.28) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}

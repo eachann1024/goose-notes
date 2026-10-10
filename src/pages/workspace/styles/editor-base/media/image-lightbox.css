@@ -1,0 +1,100 @@
+/* ===== 全屏图片预览（yet-another-react-lightbox） ===== */
+.goose-image-lightbox.yarl__root {
+  --yarl__color_backdrop: hsl(var(--background));
+  --yarl__color_button: hsl(var(--muted-foreground));
+  --yarl__color_button_active: hsl(var(--foreground));
+}
+
+.goose-image-lightbox .yarl__toolbar {
+  left: 0;
+  right: 0;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--goose-preview-toolbar-height);
+  padding: 6px 12px 6px 18px;
+  border-bottom: 1px solid var(--goose-block-subtle-border);
+  /* 悬浮在图片之上，必须不透明才不会透出下方内容 */
+  background: hsl(var(--background));
+}
+
+.goose-image-lightbox .goose-image-lightbox-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--goose-interactive-hover-fg);
+}
+
+/* 工具条占位，图片不会被压住 */
+.goose-image-lightbox .yarl__slide {
+  padding-top: calc(var(--goose-preview-toolbar-height) + 24px);
+}
+
+.goose-image-lightbox .yarl__button {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border-radius: 9px;
+  filter: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.goose-image-lightbox .yarl__button svg,
+.goose-image-lightbox .yarl__icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: none;
+}
+
+.goose-image-lightbox .yarl__button:hover:not(:disabled) {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-image-lightbox .yarl__button:disabled {
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  opacity: 1; color: var(--goose-text-disabled);
+  cursor: default;
+}
+
+.goose-image-lightbox .yarl__button:focus-visible {
+
+  box-shadow: none;
+}
+
+.goose-image-lightbox .yarl__navigation_prev,
+.goose-image-lightbox .yarl__navigation_next {
+  width: 44px;
+  height: 44px;
+  margin: 0 12px;
+  border-radius: 12px;
+  background: var(--goose-block-subtle-bg);
+  box-shadow: 0 0 0 1px var(--goose-block-subtle-border);
+  filter: none;
+}
+
+.goose-image-lightbox .yarl__navigation_prev:hover,
+.goose-image-lightbox .yarl__navigation_next:hover {
+  background: var(--goose-block-subtle-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goose-image-lightbox .yarl__button,
+  .goose-image-lightbox .yarl__navigation_prev,
+  .goose-image-lightbox .yarl__navigation_next {
+    transition: none;
+  }
+}

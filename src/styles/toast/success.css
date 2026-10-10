@@ -1,0 +1,210 @@
+/* 成功态：勾号保持 success 语义，附带操作按钮使用产品强调色。 */
+.goose-toaster [data-sonner-toast].goose-toast-success,
+.goose-toaster [data-sonner-toast][data-type="success"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success,
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+ background: rgba(255, 255, 255, 0.95) !important;
+ border-color: rgba(15, 23, 42, 0.12) !important;
+ color: var(--goose-text-primary) !important;
+ box-shadow: 0 10px 26px rgba(2, 6, 23, 0.14) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-success,
+.dark .goose-toaster [data-sonner-toast][data-type="success"],
+.dark [data-sonner-toaster] [data-sonner-toast].goose-toast-success,
+.dark [data-sonner-toaster] [data-sonner-toast][data-type="success"],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="success"] {
+ background: rgba(18, 18, 20, 0.92) !important;
+ border-color: rgba(255, 255, 255, 0.14) !important;
+ color: var(--goose-text-primary) !important;
+ box-shadow: 0 10px 28px rgba(2, 6, 23, 0.42) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success [data-title],
+.goose-toaster [data-sonner-toast][data-type="success"] [data-title],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success [data-title],
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-title] {
+ color: inherit !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success [data-description],
+.goose-toaster [data-sonner-toast][data-type="success"] [data-description],
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ [data-description],
+[data-sonner-toaster]
+ [data-sonner-toast][data-type="success"]
+ [data-description] {
+ color: var(--goose-text-secondary) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-success [data-description],
+.dark
+ .goose-toaster
+ [data-sonner-toast][data-type="success"]
+ [data-description],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ [data-description],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="success"]
+ [data-description],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success
+ [data-description],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="success"]
+ [data-description] {
+ color: var(--goose-text-secondary) !important;
+}
+
+/* 成功勾号不随强调色变化。 */
+.goose-toaster [data-sonner-toast].goose-toast-success [data-icon],
+.goose-toaster [data-sonner-toast][data-type="success"] [data-icon],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success [data-icon],
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-icon] {
+ color: var(--goose-color-success) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success [data-icon] svg,
+.goose-toaster [data-sonner-toast][data-type="success"] [data-icon] svg,
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success [data-icon] svg,
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-icon] svg {
+ color: var(--goose-color-success) !important;
+ stroke: var(--goose-color-success) !important;
+}
+
+.dark .goose-toaster [data-sonner-toast].goose-toast-success [data-icon],
+.dark .goose-toaster [data-sonner-toast][data-type="success"] [data-icon],
+.dark [data-sonner-toaster] [data-sonner-toast].goose-toast-success [data-icon],
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="success"]
+ [data-icon],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success
+ [data-icon],
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="success"]
+ [data-icon],
+.dark .goose-toaster [data-sonner-toast].goose-toast-success [data-icon] svg,
+.dark .goose-toaster [data-sonner-toast][data-type="success"] [data-icon] svg,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ [data-icon]
+ svg,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast][data-type="success"]
+ [data-icon]
+ svg,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success
+ [data-icon]
+ svg,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast][data-type="success"]
+ [data-icon]
+ svg {
+ color: var(--goose-color-success) !important;
+ stroke: var(--goose-color-success) !important;
+}
+
+/* 成功操作（如「撤回」）：浅底与选中态一致。 */
+.goose-toaster
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action,
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action {
+ background: var(--goose-interactive-selected) !important;
+ border-color: var(--goose-inline-code-border-hover) !important;
+ color: var(--goose-interactive-selected-fg) !important;
+}
+
+.goose-toaster
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action:hover,
+[data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action:hover {
+ background: var(--goose-inline-code-border-hover) !important;
+}
+
+.dark
+ .goose-toaster
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action {
+ background: var(--goose-interactive-selected) !important;
+ border-color: var(--goose-inline-code-border-hover) !important;
+ color: var(--goose-interactive-selected-fg) !important;
+}
+
+.dark
+ .goose-toaster
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action:hover,
+.dark
+ [data-sonner-toaster]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action:hover,
+[data-sonner-toaster][data-sonner-theme="dark"]
+ [data-sonner-toast].goose-toast-success
+ .goose-toast-success-action:hover {
+ background: var(--goose-inline-code-border-hover) !important;
+}
+
+/* 语义 toast 收敛到浅染、描边、同色文图；放在 Sonner 兼容规则之后覆盖旧实色。 */
+.goose-toaster [data-sonner-toast].goose-toast-error,
+.goose-toaster [data-sonner-toast][data-type="error"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error,
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+  background: var(--goose-interactive-danger) !important;
+  border-color: var(--goose-interactive-danger-border) !important;
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error :is([data-title], [data-description], [data-icon]),
+.goose-toaster [data-sonner-toast][data-type="error"] :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] :is([data-title], [data-description], [data-icon]) {
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-error [data-button][data-action],
+.goose-toaster [data-sonner-toast][data-type="error"] [data-button][data-action],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-error [data-button][data-action],
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-button][data-action] {
+  background: var(--goose-interactive-danger) !important;
+  border-color: var(--goose-interactive-danger-border) !important;
+  color: var(--goose-interactive-danger-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success,
+.goose-toaster [data-sonner-toast][data-type="success"],
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success,
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+  background: var(--goose-interactive-success) !important;
+  border-color: var(--goose-interactive-success-border) !important;
+  color: var(--goose-interactive-success-fg) !important;
+}
+
+.goose-toaster [data-sonner-toast].goose-toast-success :is([data-title], [data-description], [data-icon]),
+.goose-toaster [data-sonner-toast][data-type="success"] :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast].goose-toast-success :is([data-title], [data-description], [data-icon]),
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] :is([data-title], [data-description], [data-icon]) {
+  color: var(--goose-interactive-success-fg) !important;
+}

@@ -1,0 +1,217 @@
+/* 行内代码、待办清单、标题子级缩进、页面字体切换。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-inline-code-* / --editor-inline-code-* / --font-mono / --font-default / --font-serif / --goose-interactive-selected-fg。
+ */
+
+/* ===== 行内代码（跟随当前强调色；变量见 index.css / goose-accent-colors.css） ===== */
+.workspace-editor-surface .bn-inline-content code,
+.quicknote-editor-surface .bn-inline-content code {
+  background-color: var(--goose-inline-code-bg);
+  color: var(--goose-inline-code-fg);
+  padding: var(--editor-inline-code-padding-y, 1px)
+    var(--editor-inline-code-padding-x, 4px);
+  border-radius: var(--editor-inline-code-radius, 4px);
+  border: 1px solid transparent;
+  /* 与两侧正文的固定留白，用户不必自己在反引号外敲空格；em 单位随字号缩放，
+     且不会被 box-decoration-break: clone 在换行处重复出来 */
+  margin-left: 0.2em;
+  margin-right: 0.2em;
+  /* 下划线只留给链接；行内代码自身及继承自 <u> 等的装饰一律去掉 */
+  text-decoration: none;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  ) !important;
+  font-size: 0.85em;
+  line-height: 1;
+  /* 按正文基线对齐后轻微上移：列表 marker / checkbox 锚在首行，
+     `middle` 会把高对比背景盒的视觉中心压低。em 偏移可随编辑器缩放。 */
+  vertical-align: var(--editor-inline-code-baseline-offset, 0.04em);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  caret-color: var(--goose-accent-focus);
+}
+
+/* 当前行底色可能接近代码底色，保留代码边界以免融入整行高亮。 */
+:is(.workspace-editor-surface, .quicknote-editor-surface)
+  .bn-editor:focus-within
+  .bn-block-outer.goose-active-line
+  > .bn-block
+  > .bn-block-content
+  .bn-inline-content code {
+  border-color: var(--goose-inline-code-border-hover);
+}
+
+/* 内容 span 也强制强调色，避免继承链接色/表格色/正文色 */
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
+  background-color: transparent;
+  color: var(--goose-inline-code-fg);
+}
+
+/* 零宽原子行内盒：让「盒内首字符前 / 盒外」在布局上成为两个不同的光标位置。
+   高度必须跟字号走，否则光标钉在 boundary 旁时高度为 0，删到边界/盒内就看不见。 */
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary],
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary] {
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  line-height: 1;
+  overflow: hidden;
+  vertical-align: text-bottom;
+  pointer-events: none;
+  user-select: none;
+}
+
+.workspace-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before,
+.quicknote-editor-surface
+  .bn-inline-content
+  code
+  > [data-goose-inline-code-boundary]::before {
+  content: "\200b";
+}
+
+/* 链接内的行内代码：去掉文字下划线，并保持强调色（不继承链接色） */
+.workspace-editor-surface a[data-inline-content-type="link"] code,
+.quicknote-editor-surface a[data-inline-content-type="link"] code,
+.workspace-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  a[data-inline-content-type="link"]
+  code
+  [data-goose-inline-code-content] {
+  color: var(--goose-inline-code-fg);
+  text-decoration: none;
+}
+
+.workspace-editor-surface .bn-inline-content code:hover,
+.quicknote-editor-surface .bn-inline-content code:hover {
+  border-color: var(--goose-inline-code-border-hover);
+}
+
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code,
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code,
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content],
+.quicknote-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  td
+  .bn-inline-content
+  code
+  [data-goose-inline-code-content] {
+  color: var(--goose-inline-code-fg);
+}
+
+/* ===== 行内代码相对路径 tag：按住 Cmd/Ctrl 时 hover 下划线扫动，点击打开 ===== */
+.workspace-editor-surface .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path {
+  position: relative;
+}
+
+.workspace-editor-surface .goose-inline-code-path::after,
+.quicknote-editor-surface .goose-inline-code-path::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.06em;
+  height: 1px;
+  background-color: currentColor;
+  opacity: 0.7;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+/* armed 态（按住 Cmd/Ctrl）才给出可点击提示 */
+.workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path,
+.quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-editor-surface .goose-inline-code-path::after,
+  .quicknote-editor-surface .goose-inline-code-path::after {
+    transform: scaleX(1);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .workspace-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after,
+  .quicknote-editor-surface .goose-inline-code-path-armed .goose-inline-code-path:hover::after {
+    opacity: 0.7;
+  }
+}

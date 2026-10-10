@@ -1,0 +1,170 @@
+/* ── Tailwind v4 CSS-first 主题映射 ──────────────────────────────
+ * 用 @theme inline：颜色值保持 hsl(var(--xxx)) 引用，
+ * 真正的色值仍由下方 :root/.dark 里的 CSS 变量驱动（与 shadcn v4 一致）。
+ * 这样 bg-background / text-foreground / border-border / rounded-lg /
+ * font-sans 等工具类按 v3 同名规则重新生成，视觉 token 完整保留。 */
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-danger: var(--goose-text-danger);
+  --color-warning: var(--goose-text-warning);
+  --color-success: var(--goose-text-success);
+  --color-info: var(--goose-text-info);
+  --color-link: var(--goose-text-link);
+  --color-disabled: var(--goose-text-disabled);
+  --color-placeholder: var(--goose-text-placeholder);
+  --color-inverse: var(--goose-text-on-dark);
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* borderRadius：v3 lg/md/sm 映射 */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  /* Compact controls reuse the existing menu-row corner shape. */
+  --radius-control: var(--goose-menu-item-radius);
+  --radius-thumb: 4px;
+  --radius-marker: 1px;
+
+  /* fontFamily：v3 sans/serif/mono 映射 */
+  --font-sans: var(--font-ui), sans-serif;
+  --font-serif: var(--font-serif), serif;
+  --font-mono: var(--font-mono), monospace;
+}
+
+/* v4 默认 ring 宽度为 1px、ring 颜色为 currentColor；
+ * 保留 v3 的 3px 默认，避免任何残留 ring 工具类视觉突变
+ * （本项目全局已用 --tw-ring-shadow:0 0 #0000 清掉 focus ring）。 */
+@theme {
+  --default-ring-width: 3px;
+}
+
+/* v4 起 border/divide 默认色为 currentColor。本项目已用
+ * `* { @apply border-border }` 显式指定，下面再兜底一层保险，
+ * 防止任何未被 @apply 覆盖到的元素出现 currentColor 描边突变。 */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+  }
+}
+
+.goose-interactive {
+  box-sizing: border-box;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.goose-interactive:where(
+  :not(:disabled):not([data-disabled="true"]):not([data-selected="true"]):not(
+      [aria-selected="true"]
+    ):not([aria-pressed="true"]):not([data-state="open"]):not(
+      [data-state="checked"]
+    )
+):is(:hover, [data-hovered="true"], [data-focused="true"]) {
+  background-color: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-interactive:is(
+  :hover,
+  [data-hovered="true"],
+  [data-focused="true"],
+  [data-selected="true"],
+  [aria-selected="true"],
+  [aria-pressed="true"],
+  [data-state="open"],
+  [data-state="checked"]
+) :is(svg, .text-muted, .text-muted-foreground) {
+  color: inherit;
+}
+
+.goose-interactive[data-selected="true"],
+.goose-interactive[aria-selected="true"],
+.goose-interactive[aria-pressed="true"],
+.goose-interactive[data-state="open"],
+.goose-interactive[data-state="checked"],
+.goose-interactive--selected {
+  background-color: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+.goose-interactive-primary {
+  background-color: var(--goose-interactive-hover);
+  border-color: var(--goose-interactive-hover-border);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.goose-interactive-primary:hover:not(:disabled),
+.goose-interactive-primary:active:not(:disabled) {
+  background-color: var(--goose-interactive-selected);
+  border-color: var(--goose-interactive-selected-border);
+  color: var(--goose-interactive-selected-fg);
+}
+
+/* 主操作默认已使用 hover 底色，键盘焦点需切到另一层实色以保持可见。 */
+.goose-interactive-primary:focus-visible:where(:not(:disabled):not([data-disabled="true"]):not([aria-disabled="true"])) {
+  background-color: var(--goose-interactive-selected) !important;
+  color: var(--goose-interactive-selected-fg) !important;
+}
+
+.goose-interactive-danger {
+  --goose-interactive-hover: var(--goose-interactive-danger);
+  --goose-interactive-hover-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-hover-border: var(--goose-interactive-danger-border);
+  --goose-interactive-selected: var(--goose-interactive-danger);
+  --goose-interactive-selected-fg: var(--goose-interactive-danger-fg);
+  --goose-interactive-selected-border: var(--goose-interactive-danger-border);
+  background-color: var(--goose-interactive-danger);
+  border-color: var(--goose-interactive-danger-border);
+  color: var(--goose-interactive-danger-fg);
+}
+
+.goose-interactive-danger:hover:not(:disabled),
+.goose-interactive-danger:active:not(:disabled) {
+  background-color: var(--goose-color-danger-subtle-bg);
+}
+
+.goose-interactive-danger:focus-visible:where(:not(:disabled):not([data-disabled="true"]):not([aria-disabled="true"])) {
+  background-color: var(--goose-color-danger-subtle-bg) !important;
+}
+
+.goose-interactive:disabled,
+.goose-interactive[data-disabled="true"],
+.goose-interactive-primary:disabled,
+.goose-interactive-danger:disabled {
+  background-color: hsl(var(--muted));
+  color: var(--goose-text-disabled);
+}
+
+.goose-toolbar-action {
+  --goose-interactive-hover-border: transparent;
+  --goose-interactive-selected-border: transparent;
+}

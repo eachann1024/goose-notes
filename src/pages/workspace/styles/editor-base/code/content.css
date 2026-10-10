@@ -1,0 +1,109 @@
+.goose-code-content-wrapper {
+  --goose-code-font-size: 0.85em;
+  /* 高亮与 pre 共用已计算的字号/行高，避免 em 在不同层级重复缩放。 */
+  font-size: var(--goose-code-font-size);
+  line-height: 1.7;
+  --goose-code-line-box: 1lh;
+  position: relative;
+  overflow: hidden;
+  padding-top: var(--editor-code-toolbar-row-height, 36px);
+}
+
+.goose-code-block-node[data-visual-preview="true"] .goose-code-content-wrapper {
+  padding-top: 0;
+}
+
+.goose-code-pre {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: var(--editor-code-block-padding-y, 12px)
+    var(--editor-code-block-padding-x, 16px);
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: inherit;
+  line-height: inherit;
+  overflow-x: auto;
+}
+
+.goose-code-pre-hidden {
+  display: none;
+}
+
+.goose-code-content-wrapper:has(.goose-code-line-numbers) .goose-code-pre {
+  padding-left: 16px;
+}
+
+.goose-code-content {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* 当前代码行：铺满内容区（含行号列），对齐 pre 的行盒。
+ * 限定到当前代码块的直接内容层；wrapper 自身负责裁切，避免高亮条越出代码块。 */
+.bn-block-outer[data-goose-code-active-line]
+  > .bn-block
+  > .bn-block-content
+  > .goose-code-block-node
+  > .goose-code-content-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+  height: var(--goose-code-line-box);
+  top: calc(
+    var(--editor-code-toolbar-row-height, 36px) +
+      var(--editor-code-block-padding-y, 12px) +
+      (var(--goose-code-active-line, 1) - 1) * var(--goose-code-line-box)
+  );
+  background: var(--code-active-line-bg, var(--goose-active-line-bg));
+}
+
+/* 行号 */
+.goose-code-line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  padding: 12px 8px 12px 0;
+  text-align: right;
+  font-family: var(
+    --font-mono,
+    "DM Mono",
+    "SF Mono",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  font-size: 11px;
+  line-height: 1.7;
+  display: none;
+  color: var(--code-line-number, hsl(var(--muted-foreground) / 0.4));
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.goose-code-line-numbers > div {
+  height: calc(1em * 1.7);
+}

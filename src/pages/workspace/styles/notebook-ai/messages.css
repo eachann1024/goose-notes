@@ -1,0 +1,237 @@
+/* ── 聊天时间分隔条（微信风格，居中） ── */
+.notebook-ai-message-time {
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ margin: 8px 0 4px;
+ font-size: 11px;
+ line-height: 16px;
+ color: hsl(var(--muted-foreground));
+ user-select: none;
+}
+
+/* ── 用户气泡：正文可换行，chip 行内对齐 ──
+ * 不用 flex + inline-flex 文本段：flex 子项 min-width:auto 会按整段
+ * min-content 撑开，窄面板时被 overflow-x 从左侧裁切（右对齐气泡更明显）。
+ * 改为普通行内流：pre-wrap + break-word，chip 用 vertical-align 与行盒居中。
+ */
+.notebook-ai-message-inline {
+ display: block;
+ box-sizing: border-box;
+ min-width: 0;
+ max-width: 100%;
+ /* 正文与 chip 共用精确行盒，避免 CJK 字形和按钮默认行高产生半像素错位。 */
+ min-height: 20px;
+ line-height: 20px;
+ /* anywhere：表格管道/长 token 也能在窄宽里断开 */
+ overflow-wrap: anywhere;
+ word-break: break-word;
+}
+
+.notebook-ai-message-inline-text {
+ /* 保持 inline，才能与 chip 同一行混排；勿用 inline-flex（不换行） */
+ white-space: pre-wrap;
+ overflow-wrap: anywhere;
+ word-break: break-word;
+ line-height: 20px;
+}
+
+/* 气泡内 chip：保留可见边框/背景，禁止 border:0 抹成纯文字 */
+.notebook-ai-message-inline .ai-composer-chip {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ box-sizing: border-box;
+ height: 20px;
+ max-width: 100%;
+ /* mx-1：chip 与左右文字、多个 tag 之间留缝 */
+ margin: 0 4px;
+ padding-top: 0;
+ padding-bottom: 0;
+ padding-left: 6px;
+ padding-right: 6px;
+ border-radius: 6px;
+ border-style: solid;
+ border-width: 1px;
+ line-height: 20px;
+ position: static;
+ top: auto;
+ /* 与 pre-wrap 文本行盒垂直居中 */
+ vertical-align: middle;
+ appearance: none;
+ -webkit-appearance: none;
+ /* 字面量 rgba/hex：Electron 旧内核对 hsl(var(--x)/a) 支持差 */
+}
+
+/* skill：青绿，叠在卡片白气泡上仍有边框与底色差 */
+.notebook-ai-message-inline .ai-composer-chip[data-ai-skill-chip] {
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-interactive-selected-border);
+}
+
+/* @ 引用：跟随当前强调色；可点击打开对应笔记 */
+.notebook-ai-message-inline .ai-composer-chip[data-ai-mention-chip] {
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-inline-code-border-hover);
+ cursor: pointer;
+}
+
+.notebook-ai-message-inline button.ai-composer-chip[data-ai-mention-chip] {
+ font: inherit;
+ /* button UA/reset 常把 margin 清零，这里再锁一次左右缝与行内垂直居中 */
+ margin-left: 4px;
+ margin-right: 4px;
+ vertical-align: middle;
+}
+
+.notebook-ai-message-inline .ai-composer-chip[data-ai-mention-chip]:hover {
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
+}
+
+.notebook-ai-message-inline .ai-composer-chip[data-ai-selection-quote-chip] {
+ background: var(--goose-interactive-selected);
+ color: var(--goose-interactive-selected-fg);
+ border-color: var(--goose-inline-code-border-hover);
+ cursor: default;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-thumb {
+ display: block;
+ flex-shrink: 0;
+ width: 14px;
+ height: 14px;
+ border-radius: 3px;
+ object-fit: cover;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-remove {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ line-height: 0;
+ padding: 0;
+ border: 0;
+ background: transparent;
+}
+
+[data-ai-composer-editor="true"] .ai-composer-chip-remove svg {
+ display: block;
+}
+
+/* ── Composer 图片 chip hover 预览浮层（body portal） ──
+ * 不用 hsl(var(--x)/alpha)；阴影用 rgba，兼容 Electron 旧内核。
+ */
+.ai-composer-image-preview {
+ position: fixed;
+ z-index: 21000;
+ box-sizing: border-box;
+ max-width: 340px;
+ max-height: 300px;
+ padding: 6px;
+ border-radius: 10px;
+ border: 1px solid hsl(var(--border));
+ background: hsl(var(--popover));
+ box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+ pointer-events: auto;
+ overflow: hidden;
+}
+
+.dark .ai-composer-image-preview {
+ border-color: rgba(255, 255, 255, 0.18);
+ box-shadow: 0 10px 32px rgba(2, 6, 23, 0.45);
+}
+
+.ai-composer-image-preview img {
+ display: block;
+ max-width: 328px;
+ max-height: 288px;
+ width: auto;
+ height: auto;
+ border-radius: 6px;
+ object-fit: contain;
+ vertical-align: middle;
+}
+
+/* 消息列 / 气泡 / md：旧 Chromium flex 子项默认 min-width:auto，宽表会撑破链 */
+.notebook-ai-messages,
+.notebook-ai-messages .ai-md,
+.notebook-ai-message,
+.notebook-ai-message-text,
+.ai-md {
+ min-width: 0;
+ max-width: 100%;
+}
+
+.ai-md {
+ line-height: 1.7;
+ word-break: break-word;
+ /* 限制宽度并把溢出收进表内滚动层 */
+ overflow-x: hidden;
+ /* 旧 Chromium flex：形成 BFC，子项百分比宽度更稳 */
+ position: relative;
+}
+
+/* 消息气泡：给子 scroll 确定宽度，防止宽表把 flex 链撑破。
+ * 用户气泡用更高优先级规则覆盖 overflow，避免右对齐长文被左侧裁切。
+ */
+.notebook-ai-message {
+ overflow-x: hidden;
+ position: relative;
+ overflow-anchor: none;
+}
+
+.notebook-ai-messages {
+ overflow-anchor: none;
+}
+
+.notebook-ai-message-assistant {
+ background: transparent;
+ box-shadow: none;
+ /* 给最外层卡片阴影留出空间，避免 overflow-x:hidden 把左右裁成灰横条 */
+ padding: 4px 10px 14px;
+}
+
+/* ── 用户气泡布局（必须写在 .notebook-ai-message 之后，才能覆盖 overflow） ──
+ * 右对齐靠 flex + justify-end，不用 w-fit + max-w%（旧 Chromium 上
+ * fit-content 仍按 max-content 算宽，再被祖先 overflow-x 从左侧裁切）。
+ */
+.notebook-ai-message.notebook-ai-message-user {
+ box-sizing: border-box;
+ overflow-x: visible;
+}
+
+.notebook-ai-message-user > * {
+ /* flex 子项：可在剩余宽度内收缩并换行 */
+ min-width: 0;
+ max-width: 100%;
+ flex: 0 1 auto;
+}
+
+/* 用户气泡跟审批/工作卡同一张纸，不再用青绿底 */
+.notebook-ai-user-bubble {
+ background: hsl(var(--goose-editor-bg));
+ box-shadow:
+  inset 0 0 0 1px var(--goose-block-subtle-bg),
+  0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.dark .notebook-ai-user-bubble {
+ box-shadow:
+  inset 0 0 0 1px var(--goose-block-subtle-bg),
+  0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+/* 用户气泡正文：长串/无空格/表格管道必须在可用宽度内换行 */
+.notebook-ai-message-text {
+ font-family: var(--font-default);
+ font-size: var(--editor-base-font-size, 17px);
+ line-height: var(--editor-line-height, 1.5);
+ box-sizing: border-box;
+ min-width: 0;
+ max-width: 100%;
+ overflow-wrap: anywhere;
+ word-break: break-word;
+}

@@ -1,0 +1,105 @@
+/* ---------- Tag 行（可换行 chip + ➕） ---------- */
+.goose-ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 2px 2px;
+  border-top: 1px solid rgba(219, 219, 219, 0.5);
+}
+
+.dark .goose-ai-tags,
+.bn-root[data-color-scheme="dark"] .goose-ai-tags {
+  border-top-color: rgba(61, 61, 61, 0.5);
+}
+
+.goose-ai-tag {
+  appearance: none;
+  border: 1px solid rgba(219, 219, 219, 0.9);
+  background: transparent;
+  color: hsl(var(--popover-foreground));
+  border-radius: var(--radius-control);
+  padding: 4px 12px;
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color 100ms ease-out,
+    color 100ms ease-out;
+}
+
+.goose-ai-tag:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+}
+
+.dark .goose-ai-tag,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag {
+  border-color: rgba(61, 61, 61, 0.9);
+  color: hsl(var(--popover-foreground));
+}
+
+.dark .goose-ai-tag:hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+}
+
+/* ➕：圆角方形虚线，与普通 tag 区分 */
+.goose-ai-tag--plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-style: dashed;
+  border-radius: var(--radius-control);
+  color: hsl(var(--muted-foreground));
+}
+
+.goose-ai-tag--plus:hover {
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+  background: var(--goose-interactive-hover);
+}
+
+.dark .goose-ai-tag--plus,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag--plus {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .goose-ai-tag--plus:hover,
+.bn-root[data-color-scheme="dark"] .goose-ai-tag--plus:hover {
+  color: var(--goose-interactive-hover-fg);
+  border-color: var(--goose-interactive-hover-border);
+  background: var(--goose-interactive-hover);
+}
+
+/* ---------- AI 结果回显区（thinking / error / 流式文本） ---------- */
+.bn-ai-menu,
+.bn-ai-prompt-suggestion {
+  border-radius: 14px;
+}
+
+/* 修改高亮：与项目 selection 高亮风格保持一致（弱化默认色） */
+ins,
+[data-type="modification"] {
+  color: inherit;
+  background: var(--goose-interactive-selected);
+  border-bottom: 1px solid hsl(var(--border));
+  text-decoration: none;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.dark ins,
+.dark [data-type="modification"] {
+  background: var(--goose-interactive-selected);
+  border-bottom-color: rgba(61, 61, 61, 0.8);
+}

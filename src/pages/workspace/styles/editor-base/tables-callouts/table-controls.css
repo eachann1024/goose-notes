@@ -1,0 +1,111 @@
+/* ===== 表格控件：尺寸来自实际 table border box，不裁成 viewport 尺寸 ===== */
+.goose-table-extend-button,
+.goose-table-handle-btn {
+  --radius-sm: 4px;
+}
+.goose-table-extend-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  zoom: 1;
+  border: 0;
+  border-radius: calc(var(--radius-sm) * var(--editor-scale, 1));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  box-shadow: none;
+}
+.goose-table-extend-button > svg,
+.goose-table-handle-btn > svg {
+  inline-size: var(--editor-control-icon-lg-size);
+  block-size: var(--editor-control-icon-lg-size);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+.goose-table-extend-button:hover,
+.goose-table-extend-button.is-editing,
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  background: var(--goose-table-control-hover);
+  color: hsl(var(--foreground));
+}
+.goose-table-extend-button:focus-visible,
+.goose-table-handle-btn:focus-visible {
+  outline: none !important;
+}
+.goose-table-extend-button-columns {
+  inline-size: calc(24px * var(--editor-scale, 1));
+  block-size: 100%;
+  cursor: col-resize;
+}
+.goose-table-extend-button-rows {
+  inline-size: 100%;
+  block-size: calc(32px * var(--editor-scale, 1));
+  cursor: row-resize;
+}
+.workspace-editor-surface .bn-table-drop-cursor {
+  background-color: var(--goose-accent-drag-line);
+  border-radius: var(--radius-sm);
+}
+/* Real scaled layout boxes preserve Floating UI's 4px gap without CSS zoom. */
+.goose-table-handle-btn.goose-editor-position-safe-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  zoom: 1;
+  transform: none;
+  width: var(--editor-control-height-sm);
+  height: var(--editor-control-height-sm);
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius-sm) * var(--editor-scale, 1));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: grab;
+}
+.goose-table-handle-btn:hover,
+.goose-table-handle-btn[aria-expanded="true"] {
+  background: var(--goose-table-control-hover);
+  color: hsl(var(--foreground));
+}
+.goose-table-menu .goose-table-menu-note {
+  white-space: normal;
+}
+.goose-table-color-menu .goose-table-color-group {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  gap: 4px;
+  padding: 0 8px 8px;
+}
+.goose-table-color-group .goose-table-menu-heading {
+  grid-column: 1 / -1;
+  margin: 0 -8px;
+}
+.goose-table-menu .goose-menu-item.goose-table-color-swatch {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+}
+.goose-table-color-swatch > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid hsl(var(--goose-menu-border));
+  border-radius: var(--goose-menu-item-radius);
+  background-color: var(--goose-table-swatch-bg);
+  color: var(--goose-table-swatch-fg);
+  font-weight: 600;
+}
+
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="image"]),
+.workspace-editor-surface
+  .bn-block-outer:has(.bn-block-content[data-content-type="video"]) {
+  margin-bottom: 0.5em;
+}

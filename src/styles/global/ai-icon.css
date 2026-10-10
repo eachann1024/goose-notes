@@ -1,0 +1,288 @@
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%) scale(1);
+  }
+}
+
+@keyframes ai-icon-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.86;
+    transform: scale(0.965);
+  }
+}
+
+/* 空闲态：极轻的漂浮 + 微旋，让入口始终有“活着”的感觉 */
+@keyframes ai-icon-idle-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  30% {
+    transform: translate3d(0, -0.6px, 0) rotate(2.2deg);
+  }
+  62% {
+    transform: translate3d(0, 0.45px, 0) rotate(-1.6deg);
+  }
+}
+
+@keyframes ai-icon-pop {
+  0% {
+    transform: scale(1);
+  }
+  34% {
+    transform: scale(1.24);
+  }
+  62% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ai-icon-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes ai-icon-flash {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  28% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.95);
+    opacity: 0;
+  }
+}
+
+.ai-icon[data-ai-state="streaming"] .ai-icon-glyph {
+  transform-origin: 12px 12px;
+  transform-box: fill-box;
+  animation: ai-icon-breathe 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* SVG 默认会把滤镜和缩放裁在 viewBox 内，视觉上会形成 24×24 方框。 */
+.ai-icon {
+  overflow: visible;
+}
+
+.ai-icon[data-ai-state="done"] .ai-icon-glyph {
+  transform-origin: 12px 12px;
+  transform-box: fill-box;
+  animation: ai-icon-pop 760ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-icon[data-ai-state="done"] .ai-icon-flash {
+  transform-origin: 12px 12px;
+  transform-box: fill-box;
+  animation: ai-icon-flash 720ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.ai-icon-rings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ai-icon-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-thumb);
+  border: 1.5px solid var(--goose-interactive-hover-border);
+  box-shadow: none;
+  transform-origin: center;
+  animation: ai-icon-ring 980ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ai-icon-ring--delayed {
+  animation-delay: 220ms;
+  border-color: var(--goose-interactive-selected-border);
+}
+
+/* 默认透明底；hover 与顶栏其它图标一致起底；选中用强调色底 + 强调色图标 */
+button.ai-icon-button {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  color: hsl(var(--foreground));
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.ai-icon-button:hover {
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.ai-icon-button:focus-visible {
+  outline: none;
+  background: var(--goose-interactive-hover);
+  color: var(--goose-interactive-hover-fg);
+}
+
+.ai-icon-button[aria-pressed="true"],
+.ai-icon-button[aria-pressed="true"]:hover {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  box-shadow: none;
+}
+
+.ai-icon-button .ai-icon {
+  transition: transform 180ms ease;
+}
+
+/* 空闲：默认静止，避免无限动画常驻合成器；hover / 键盘焦点时再漂浮。
+   streaming / done 走各自关键帧，不叠 idle。 */
+.ai-icon-button .ai-icon[data-ai-state="idle"] .ai-icon-glyph {
+  transform-origin: 12px 12px;
+  transform-box: fill-box;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ai-icon-button:hover .ai-icon[data-ai-state="idle"] .ai-icon-glyph {
+    animation: ai-icon-idle-float 3.8s ease-in-out infinite;
+  }
+}
+
+.ai-icon-button:focus-visible .ai-icon[data-ai-state="idle"] .ai-icon-glyph {
+  animation: ai-icon-idle-float 3.8s ease-in-out infinite;
+}
+
+.ai-icon-button:hover .ai-icon {
+  transform: scale(1.06);
+}
+
+/* 打开面板：空闲星标跟强调色走，不要青绿发光 */
+.ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
+}
+
+.ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  path,
+.ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  circle {
+  stroke: var(--goose-interactive-selected-fg);
+}
+
+.ai-icon-button[aria-pressed="true"]:hover .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
+}
+
+.dark button.ai-icon-button {
+  background: transparent;
+  box-shadow: none;
+  color: hsl(var(--foreground));
+}
+
+.dark .ai-icon-button[aria-pressed="true"],
+.dark .ai-icon-button[aria-pressed="true"]:hover {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  box-shadow: none;
+}
+
+.dark .ai-icon-button .ai-icon {
+  filter: none;
+}
+
+/* 深色选中态必须写在 .dark .ai-icon-button .ai-icon 之后，否则同优先级会被 idle 滤镜盖掉 */
+.dark .ai-icon-button[aria-pressed="true"] .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
+}
+
+.dark
+  .ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  path,
+.dark
+  .ai-icon-button[aria-pressed="true"]
+  .ai-icon[data-ai-state="idle"]
+  .ai-icon-glyph
+  circle {
+  stroke: var(--goose-interactive-selected-fg);
+}
+
+.dark .ai-icon-button:hover .ai-icon {
+  transform: scale(1.06);
+}
+
+.dark
+  .ai-icon-button[aria-pressed="true"]:hover
+  .ai-icon[data-ai-state="idle"] {
+  filter: none;
+  transform: none;
+}
+
+/* AI 运行态沿用产品强调色，不保留独立星云渐变。 */
+.ai-header-nebula-streaming {
+  position: relative;
+  background: var(--goose-interactive-hover);
+  box-shadow: inset 0 -1px var(--goose-interactive-hover-border);
+}
+
+.ai-header-nebula-streaming::before {
+  content: none;
+}
+
+.ai-header-nebula-streaming::after {
+  content: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-icon[data-ai-state] .ai-icon-glyph,
+  .ai-icon[data-ai-state] .ai-icon-flash,
+  .ai-icon-button .ai-icon[data-ai-state="idle"] .ai-icon-glyph,
+  .ai-icon-button:hover .ai-icon[data-ai-state="idle"] .ai-icon-glyph,
+  .ai-icon-button:focus-visible .ai-icon[data-ai-state="idle"] .ai-icon-glyph,
+  .ai-header-nebula-streaming,
+  .ai-header-nebula-streaming::before,
+  .ai-header-nebula-streaming::after,
+  .ai-icon-ring {
+    animation: none;
+  }
+
+  .ai-icon-ring {
+    display: none;
+  }
+}

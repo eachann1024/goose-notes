@@ -1,0 +1,113 @@
+/* ── 1–5 便签切换器 ─────────────────────────────────────────────
+ * 顶栏显示时绝对居中；浅灰分段器内，当前槽位使用白底高亮。
+ * 使用静态 rgba / hex，避免 Electron 旧内核解析 alpha 变量异常。
+ */
+.quicknote-slot-switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 104px;
+  height: 22px;
+  padding: 1px;
+  border: 1px solid var(--goose-interactive-hover-border);
+  border-radius: 7px;
+  background: var(--goose-interactive-hover);
+  box-shadow: none;
+}
+
+.quicknote-slot-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 1;
+  box-shadow: none;
+  transition:
+    opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.quicknote-slot-switcher[data-scrubbing="true"],
+.quicknote-slot-switcher[data-scrubbing="true"] .quicknote-slot-btn {
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.quicknote-slot-btn-label {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.quicknote-slot-name-text,
+.quicknote-slot-btn[data-active="true"] .quicknote-slot-btn-label {
+  animation: quicknote-slot-content-in 180ms ease-out;
+}
+
+@keyframes quicknote-slot-content-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 当前项：白底高亮，与确认稿一致。 */
+.quicknote-slot-btn[data-active="true"] {
+  color: var(--goose-interactive-selected-fg);
+  background: var(--goose-interactive-selected);
+  outline: 1px solid var(--goose-interactive-selected-border);
+  outline-offset: -1px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.quicknote-slot-btn:not([data-active="true"]):hover {
+  color: var(--goose-interactive-hover-fg);
+  background: var(--goose-interactive-hover);
+  outline: 1px solid var(--goose-interactive-hover-border);
+  outline-offset: -1px;
+}
+
+.quicknote-slot-btn:focus-visible {
+  background: var(--goose-interactive-selected);
+  color: var(--goose-interactive-selected-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quicknote-titlebar,
+  .quicknote-slot-switcher,
+  .quicknote-slot-btn,
+  .quicknote-slot-name-text,
+  .quicknote-slot-btn-label,
+  .quicknote-collect-chip,
+  .quicknote-collect-shelf,
+  .quicknote-collect-icon-btn,
+  .quicknote-collect-simulate-btn,
+  .quicknote-collect-stop-text-btn {
+    animation: none;
+    transition: none;
+  }
+}

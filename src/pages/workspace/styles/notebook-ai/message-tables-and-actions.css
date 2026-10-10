@@ -1,0 +1,162 @@
+/*
+ * AI 消息内宽表格：旧 Chromium（Electron）上更稳的写法
+ * - 单层滚动：wrapper 直接 overflow-x:auto（避免「外 hidden + 内 auto」在旧内核失效）
+ * - 不用 grid/minmax/max-content（旧内核组合易把滚动容器撑破后被祖先裁切）
+ * - table 用 width:auto + 单元格 nowrap 按内容撑开，触发横向滚动
+ * - 不依赖 Tailwind 是否扫到 streamdown 源码里的 utility class
+ */
+.notebook-ai-messages .ai-md [data-streamdown="table-wrapper"],
+.notebook-ai-messages .ai-md-table-scroll {
+ display: block;
+ position: relative;
+ width: 100%;
+ max-width: 100%;
+ min-width: 0;
+ box-sizing: border-box;
+ /* 实色，避免 var(...)/alpha 在 Electron 旧内核退化 */
+ margin: 10px 0;
+ padding: 0;
+ border: 1px solid var(--goose-block-subtle-border, hsl(var(--border)));
+ border-radius: 8px;
+ background: hsl(var(--goose-editor-bg));
+ /* 单层横向滚动 */
+ overflow-x: auto;
+ overflow-y: hidden;
+ -webkit-overflow-scrolling: touch;
+ scrollbar-width: thin;
+}
+
+/* 单层结构下不再给 > div 设 width:max-content（会把 scroll 容器撑开导致裁切） */
+
+.notebook-ai-messages .ai-md [data-streamdown="table"],
+.notebook-ai-messages .ai-md-table,
+.notebook-ai-messages .ai-md table {
+ /* auto + nowrap 比 max-content 更兼容；min-width:100% 保证窄表仍铺满 */
+ width: auto !important;
+ min-width: 100% !important;
+ max-width: none !important;
+ table-layout: auto !important;
+ border-collapse: collapse;
+ border-spacing: 0;
+ font-size: inherit;
+ color: hsl(var(--foreground));
+}
+
+.notebook-ai-messages .ai-md [data-streamdown="table-header"],
+.notebook-ai-messages .ai-md thead {
+ background: var(--goose-interactive-hover);
+}
+
+.notebook-ai-messages .ai-md [data-streamdown="table-header-cell"],
+.notebook-ai-messages .ai-md [data-streamdown="table-cell"],
+.notebook-ai-messages .ai-md th,
+.notebook-ai-messages .ai-md td {
+ white-space: normal !important;
+ word-break: break-word !important;
+ overflow-wrap: break-word !important;
+ padding: 8px 12px;
+ text-align: left;
+ vertical-align: top;
+ border-bottom: 1px solid var(--goose-block-subtle-border, hsl(var(--border)));
+ color: hsl(var(--foreground));
+}
+
+.notebook-ai-messages .ai-md [data-streamdown="table-header-cell"],
+.notebook-ai-messages .ai-md th {
+ font-weight: 600;
+ color: hsl(var(--muted-foreground));
+}
+
+.notebook-ai-messages .ai-md tr:last-child th,
+.notebook-ai-messages .ai-md tr:last-child td {
+ border-bottom: 0;
+}
+
+/* 代码块同样允许横向滚动 */
+.notebook-ai-messages .ai-md [data-streamdown="code-block"],
+.notebook-ai-messages .ai-md [data-streamdown="code-block-body"] {
+ max-width: 100%;
+ min-width: 0;
+}
+
+.notebook-ai-messages .ai-md [data-streamdown="code-block-body"] {
+ overflow-x: auto;
+ -webkit-overflow-scrolling: touch;
+}
+
+.notebook-ai-message-actions {
+ opacity: 0;
+ background: transparent;
+ box-shadow: none;
+ transition: opacity 150ms ease;
+}
+
+.notebook-ai-message-actions button:hover,
+.notebook-ai-message-actions button:focus-visible {
+ background: var(--goose-interactive-hover);
+ color: var(--goose-interactive-hover-fg);
+}
+
+.notebook-ai-message:hover > .notebook-ai-message-actions,
+.notebook-ai-message:focus-within > .notebook-ai-message-actions {
+ opacity: 1;
+}
+
+.notebook-ai-messages,
+.notebook-ai-message-text,
+.notebook-ai-message-text *,
+/* 变更预览不经过 message-text，正文需显式开启选择，避免依赖全局 none 的继承覆盖。 */
+.notebook-ai-work-proposal,
+.notebook-ai-work-proposal * {
+ cursor: text;
+ -webkit-user-select: text;
+ user-select: text;
+}
+
+/* 图形 SVG 文字可选中复制；放大平移时由 .is-zoomed 关回 none */
+.notebook-ai-messages .notebook-ai-artifact-svg,
+.notebook-ai-messages .notebook-ai-artifact-svg * {
+ cursor: text;
+ -webkit-user-select: text;
+ user-select: text;
+}
+
+/* 工具栏 / 可点控件：覆盖消息区默认 text 光标 */
+.notebook-ai-messages button,
+.notebook-ai-messages [role="button"],
+.notebook-ai-messages .notebook-ai-artifact-actions,
+.notebook-ai-messages .notebook-ai-artifact-actions *,
+.notebook-ai-messages .notebook-ai-artifact-panzoom-controls,
+.notebook-ai-messages .notebook-ai-artifact-panzoom-controls * {
+ cursor: pointer;
+ -webkit-user-select: none;
+ user-select: none;
+}
+
+.notebook-ai-messages button:disabled,
+.notebook-ai-messages [role="button"][aria-disabled="true"],
+.notebook-ai-messages .notebook-ai-artifact-actions button:disabled,
+.notebook-ai-messages .notebook-ai-artifact-panzoom-controls button:disabled {
+ cursor: default;
+}
+
+/* 图形视口：默认不拦截页面滚动、文字可选中；仅放大后进入拖拽/平移并禁止选中 */
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-zoomed {
+ cursor: grab;
+ touch-action: none;
+ -webkit-user-select: none;
+ user-select: none;
+}
+
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-dragging,
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-dragging * {
+ cursor: grabbing;
+}
+
+/* 放大拖拽时控件仍保持 pointer */
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-dragging button,
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-dragging [role="button"],
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-zoomed button,
+.notebook-ai-messages .notebook-ai-artifact-panzoom.is-zoomed [role="button"] {
+ cursor: pointer;
+}

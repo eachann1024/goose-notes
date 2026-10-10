@@ -1,0 +1,143 @@
+/* Electron 桌面端 chrome：全宽 overlay 顶栏在文档流顶部（覆盖侧栏+主区），
+   shell 改纵向布局，stage 占满剩余高度。仅 Electron 构建渲染该顶栏。
+   标题输入左缘对齐主栏（stage 左垫 + 侧栏宽 + gap），且不小于红绿灯占位。 */
+.workspace-shell[data-electron-chrome] {
+  flex-direction: column;
+}
+.workspace-shell[data-electron-chrome] .workspace-stage,
+.workspace-shell[data-settings] .workspace-stage {
+  --workspace-stage-pad-top: 0px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  padding-top: 0;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar {
+  position: relative;
+  background: transparent;
+  padding-left: max(
+    calc(var(--electron-traffic-inset, 78px) + 7rem + 8px),
+    calc(
+      var(--workspace-stage-pad-left) + var(--workspace-sidebar-width) +
+        var(--workspace-sidebar-gap)
+    )
+  );
+  transition: padding-left var(--workspace-sidebar-motion);
+}
+
+.electron-document-header,
+.electron-ai-header {
+  height: 100%;
+}
+.electron-document-header {
+  padding-inline: 8px;
+}
+.electron-document-header::before,
+.electron-ai-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 24px;
+  transform: translateY(-50%);
+  background: var(--workspace-divider-strong);
+  pointer-events: none;
+}
+.electron-document-header::before {
+  left: -1px;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-ai-side-panel] {
+  padding-right: var(--electron-titlebar-end-inset, 8px);
+}
+.electron-ai-header {
+  width: calc(var(--workspace-ai-width, 338px) + var(--workspace-stage-pad-right) - var(--electron-titlebar-end-inset, 8px) - var(--electron-window-controls-width, 0px));
+}
+.workspace-shell:has(.workspace-sidebar-pane[data-sidebar-resizing]) .electron-titlebar {
+  transition: none;
+}
+
+/* 顶栏默认图标与 AI 入口共用前景色，保留交互态和禁用透明度。 */
+.electron-titlebar button:not(:hover):not([aria-pressed="true"]):not([data-state="open"]) > :is(svg.goose-icon, svg.lucide) {
+  color: hsl(var(--foreground));
+}
+
+.electron-window-controls {
+  position: absolute;
+  left: var(--electron-traffic-inset, 78px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.goose-dev-version {
+  position: absolute;
+  right: calc(100% + 8px);
+  color: var(--sidebar-muted, hsl(var(--muted-foreground)));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+.workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+.workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+  padding-left: calc(var(--electron-traffic-inset, 78px) + 7rem + 8px);
+}
+
+html.is-electron {
+  --electron-traffic-inset: 96px;
+}
+html.is-electron.is-win {
+  --electron-traffic-inset: 12px;
+  --electron-titlebar-end-inset: 0px;
+  /* 三个 w-11 按钮和 ml-1，与 WinWindowControls 共用尺寸。 */
+  --electron-window-controls-width: 8.5rem;
+}
+/* Linux 同为 frameless 且渲染窗控，但左侧 traffic-inset 保持既有 96px，
+   只补右侧窗控占位变量（AI 头部宽度计算需要预留）。 */
+html.is-electron.os-linux {
+  --electron-titlebar-end-inset: 0px;
+  --electron-window-controls-width: 8.5rem;
+}
+
+@media (max-width: 680px) {
+  .electron-window-controls button:is([aria-label="后退"], [aria-label="前进"]) {
+    display: none;
+  }
+  .workspace-shell[data-electron-chrome] .electron-titlebar[data-sidebar-collapsed="true"],
+  .workspace-shell[data-electron-chrome]:has(> .workspace-stage[data-sidebar-overlay]) .electron-titlebar {
+    padding-left: calc(var(--electron-traffic-inset, 78px) + 40px);
+  }
+}
+
+html.is-electron .electron-titlebar {
+  height: var(--electron-titlebar-height, 2.75rem);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+/* Linux：CSS 拖拽区吞掉鼠标事件，双击无法触发最大化；改为 JS 拖拽
+   （bindIdleWindowDrag）+ onDoubleClick 切换最大化，顶栏整体退回 no-drag。 */
+html.is-electron.os-linux .electron-titlebar {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+/* Portal 浮层也要排除拖拽区，否则覆盖标题栏的菜单项收不到点击。 */
+html.is-electron [data-goose-floating-content],
+html.is-electron .electron-titlebar :is(button, input, textarea, a, [data-electron-no-drag], [role="button"]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+/* 仅闲置标题/单标签切换；输入框、关闭按钮仍保留 no-drag。 */
+html.is-electron.option-window-drag .electron-titlebar [data-electron-option-drag] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+html.is-electron.window-dragging,
+html.is-electron.window-dragging * {
+  cursor: grabbing !important;
+}
+/* 编辑框铺满标签栏剩余空间；始终保留原生窗口的非拖动输入区域。 */
+html.is-electron .electron-titlebar [data-page-title-field] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}

@@ -1,0 +1,156 @@
+/* 表格与分割线、链接、标注、表格扩展/拖拽手柄、图视频块间距。
+ * 被 editor-base.css 按序 @import。
+ * 依赖 --goose-editor-selection-bg / --goose-interactive-selected-fg / --goose-accent-link / --border / --primary / --muted-foreground。
+ */
+
+/* Screenshot uses 2× image pixels: 44px rows, 12px inset, 24px append bars.
+   Keep native colgroup widths; only unconstrained tables fill the editor. */
+.workspace-editor-surface {
+  --goose-table-grid: hsl(var(--goose-menu-border));
+  --goose-table-header: var(--goose-block-subtle-bg);
+  --goose-table-selection: var(--goose-accent-focus);
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] .tableWrapper {
+  padding: calc(28px * var(--editor-scale, 1));
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] table {
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  table:not(:has(col[style*="width:"])) {
+  width: 100% !important;
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] :is(th, td) {
+  height: calc(44px * var(--editor-scale, 1));
+  box-sizing: border-box;
+  padding: calc(9px * var(--editor-scale, 1))
+    calc(12px * var(--editor-scale, 1));
+  border: 1px solid var(--goose-table-grid);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--editor-scale, 1));
+  line-height: calc(24px * var(--editor-scale, 1));
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  :is(th, td)
+  > .bn-inline-content {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  line-height: inherit;
+}
+.workspace-editor-surface
+  .bn-editor
+  [data-content-type="table"]
+  th:is(:not([data-background-color]), [data-background-color="default"]) {
+  background-color: var(--goose-table-header);
+}
+.workspace-editor-surface .bn-editor [data-content-type="table"] th {
+  font-weight: 600;
+}
+
+/* CellSelection 时隐藏原生文字高亮，避免和格子装饰叠在一起。
+   :has() 给新内核；.goose-table-cell-grid 给旧 Chromium。
+   选择器要比 goose-accent-colors.css 的 ::selection 更高，才能盖住后加载的强调色。 */
+:root .workspace-editor-surface .bn-editor table:has(.selectedCell) ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor
+  table:has(.selectedCell)
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid ::selection,
+:root .workspace-editor-surface .bn-editor.goose-table-cell-grid *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+/* 文档跨表选区保留强调底色。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  th,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  td {
+  background-color: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  );
+}
+
+/* 只叠加选区底，不改保存的标题/自定义底色；取消选择立即恢复。 */
+:root .workspace-editor-surface .bn-editor .selectedCell {
+  --goose-table-selection-bg: var(
+    --goose-editor-selection-bg,
+    var(--goose-interactive-selected)
+  );
+  background-image: linear-gradient(
+    var(--goose-table-selection-bg),
+    var(--goose-table-selection-bg)
+  );
+}
+
+/* 相邻格不描边；跨过原网格边缘接合外轮廓，不改变布局盒或文字。 */
+:root .workspace-editor-surface .bn-editor .selectedCell::after {
+  background: transparent;
+  background-color: transparent;
+  border: 0 solid var(--goose-table-selection);
+  inset: -1px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-top::after {
+  border-top-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-right::after {
+  border-right-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-bottom::after {
+  border-bottom-width: 2px;
+}
+:root .workspace-editor-surface .bn-editor .selectedCell.goose-table-selection-left::after {
+  border-left-width: 2px;
+}
+
+/* 跨表格文档选区用单元格背景连成一片；同时压住文字级
+   ::selection，避免 token 背景被重复叠加。 */
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  ::selection,
+:root
+  .workspace-editor-surface
+  .bn-editor.goose-table-span-select
+  [data-content-type="table"]
+  *::selection {
+  background: transparent;
+  background-color: transparent;
+  color: inherit;
+}
+
+.workspace-editor-surface .bn-editor .selectedCell {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.55);
+}
+
+.dark .workspace-editor-surface [data-content-type="divider"] hr {
+  border-top-color: hsl(var(--border) / 0.4);
+}
