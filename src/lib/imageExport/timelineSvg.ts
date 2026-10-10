@@ -5,21 +5,15 @@
 
 import {
   MERMAID_FONT,
-  stripMermaidInitDirectives,
   type MermaidThemeMode,
 } from "./mermaidTheme";
 import { TEXT_COLORS } from "@/lib/textColors";
 
-export type TimelineItem = {
-  section: string;
-  period: string;
-  events: string[];
-};
-
-export type TimelineModel = {
-  title: string;
-  items: TimelineItem[];
-};
+import { escapeXml, measure, wrapText } from "./timelineText";
+import { isMermaidTimeline, parseMermaidTimeline, type TimelineModel } from "./timelineModel";
+export { escapeXml, wrapText } from "./timelineText";
+export { isMermaidTimeline, parseMermaidTimeline } from "./timelineModel";
+export type { TimelineItem, TimelineModel } from "./timelineModel";
 
 const WIDTH = 560;
 const PAD_X = 24;
@@ -68,133 +62,6 @@ function palette(mode: MermaidThemeMode): Palette {
     axis: "#d4d2ca",
     accent: "#4f46e5",
   };
-}
-
-export function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function charWidth(ch: string, fontSize: number): number {
-  return /[\u0020-\u007e]/.test(ch) ? fontSize * 0.58 : fontSize;
-}
-
-function measure(text: string, fontSize: number): number {
-  let width = 0;
-  for (const ch of text) width += charWidth(ch, fontSize);
-  return width;
-}
-
-export function wrapText(
-  text: string,
-  maxWidth: number,
-  fontSize: number,
-): string[] {
-  const trimmed = text.trim();
-  if (!trimmed) return [""];
-  if (measure(trimmed, fontSize) <= maxWidth) return [trimmed];
-
-  const lines: string[] = [];
-  let rest = trimmed;
-  while (rest.length > 0) {
-    if (measure(rest, fontSize) <= maxWidth) {
-      lines.push(rest);
-      break;
-    }
-    let lo = 1;
-    let hi = rest.length;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (measure(rest.slice(0, mid), fontSize) <= maxWidth) lo = mid;
-      else hi = mid - 1;
-    }
-    let cut = Math.max(1, lo);
-    const slice = rest.slice(0, cut);
-    const breakAt = Math.max(
-      slice.lastIndexOf(" "),
-      slice.lastIndexOf("，"),
-      slice.lastIndexOf("、"),
-      slice.lastIndexOf("："),
-      slice.lastIndexOf("（"),
-      slice.lastIndexOf("/"),
-      slice.lastIndexOf(";"),
-      slice.lastIndexOf(","),
-    );
-    if (breakAt >= Math.floor(cut * 0.4)) cut = breakAt + 1;
-    lines.push(rest.slice(0, cut).trimEnd());
-    rest = rest.slice(cut).trimStart();
-  }
-  return lines;
-}
-
-function isNoiseLine(line: string): boolean {
-  return (
-    line.length === 0 ||
-    line.startsWith("%%") ||
-    line.startsWith("#") ||
-    /^(accTitle|accDescr)\b/i.test(line)
-  );
-}
-
-export function isMermaidTimeline(source: string): boolean {
-  const text = stripMermaidInitDirectives(source);
-  for (const raw of text.split(/\n/)) {
-    const line = raw.trim();
-    if (isNoiseLine(line)) continue;
-    return /^timeline\b/i.test(line);
-  }
-  return false;
-}
-
-export function parseMermaidTimeline(source: string): TimelineModel | null {
-  const text = stripMermaidInitDirectives(source).replace(/\r\n/g, "\n");
-  const lines: string[] = [];
-  for (const raw of text.split("\n")) {
-    const line = raw.trim();
-    if (isNoiseLine(line)) continue;
-    lines.push(line);
-  }
-  if (lines.length === 0 || !/^timeline\b/i.test(lines[0])) return null;
-
-  let title = "";
-  let section = "";
-  const items: TimelineItem[] = [];
-
-  for (const line of lines.slice(1)) {
-    const titleMatch = line.match(/^title\s+(.*)$/i);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
-      continue;
-    }
-    const sectionMatch = line.match(/^section\s+(.*)$/i);
-    if (sectionMatch) {
-      section = sectionMatch[1].trim();
-      continue;
-    }
-    if (/^:\s*/.test(line)) {
-      const event = line.replace(/^:\s*/, "").trim();
-      if (event && items.length > 0) items[items.length - 1].events.push(event);
-      continue;
-    }
-    const colon = line.indexOf(":");
-    if (colon === -1) {
-      items.push({ section, period: line, events: [] });
-      continue;
-    }
-    const period = line.slice(0, colon).trim();
-    const events = line
-      .slice(colon + 1)
-      .split(/\s+:\s+/)
-      .map((part) => part.trim())
-      .filter(Boolean);
-    items.push({ section, period, events });
-  }
-
-  if (items.length === 0) return null;
-  return { title, items };
 }
 
 function tspans(

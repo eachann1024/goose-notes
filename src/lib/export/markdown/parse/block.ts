@@ -1,10 +1,12 @@
-import { isGeneratedDataImageName } from "@/components/editor/blocks/image/imageCaption";
+import { indentLevel, parseNestedList } from "./nestedList";
+import { parseHtmlBlock } from "./htmlBlocks";
+import { parseCodeBlock } from "./codeBlocks";
+import { parseFileBlock, parseImageBlock } from "./mediaBlocks";
 import { frontmatterBodyHasUserVisibleKeys } from "@/lib/local-frontmatter";
 import { parseInlineMarkdown } from "./inline";
 import {
   isLegacyCodeBlockMetaComment,
   isThematicBreakLine,
-  parseCodeFenceInfo,
   parseTableBlock,
 } from "./blockHelpers";
 
@@ -18,111 +20,6 @@ import {
  * 并把 details/video/file 压成纯文本或直接丢掉。直接输出 BlockNote 格式可彻底
  * 绕开这条有损路径，保证 scanner 读入的 page.content 与磁盘 md 零损对应。
  */
-
-/** 计算行的缩进空格数（tab 记 2） */
-function indentLevel(line: string): number {
-  let count = 0;
-  for (const ch of line) {
-    if (ch === " ") count++;
-    else if (ch === "\t") count += 2;
-    else break;
-  }
-  return count;
-}
-
-function decodeHtmlAttribute(value: string): string {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-}
-
-/**
- * 解析嵌套列表（bullet / ordered / checkbox 混嵌），输出 BlockNote 块格式：
- * { type: "bulletListItem"|"numberedListItem"|"checkListItem", props?, content, children? }
- *
- * 有序编号约定（与 BlockNote 一致）：仅每段连续 numbered run 的首项在编号 ≠ 1 时
- * 写 props.start；后续项编号由序列化时递增推得。
- *
- * 空行结束当前列表（loose list 的空行由外层主循环补 spacer 段落，
- * 序列化时 spacer 会把两段列表隔开，保住原文的空行）。
- */
-function parseNestedList(
-  lines: string[],
-  startI: number,
-  baseIndent: number,
-  parseInline: (t: string) => any[],
-): { items: any[]; nextIndex: number } {
-  const items: any[] = [];
-  let i = startI;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    if (!line.trim()) break; // 空行结束本层列表
-    const lvl = indentLevel(line);
-    if (lvl < baseIndent) break;
-    if (lvl > baseIndent) {
-      // 理论上子层已被 collectChildren 消耗；防御性交还外层处理，不丢行
-      break;
-    }
-
-    const stripped = line.slice(lvl);
-
-    const taskM = stripped.match(/^-\s+\[([ xX])\](?:\s+(.*))?$/);
-    const orderedM = !taskM && stripped.match(/^(\d+)\.\s+(.+)$/);
-    const bulletM = !taskM && !orderedM && stripped.match(/^[-*+]\s+(.+)$/);
-
-    if (!taskM && !orderedM && !bulletM) break;
-
-    let item: any;
-    if (taskM) {
-      item = {
-        type: "checkListItem",
-        props: { checked: taskM[1].toLowerCase() === "x" },
-        content: parseInline(taskM[2] ?? ""),
-      };
-    } else if (orderedM) {
-      const num = parseInt(orderedM[1], 10);
-      item = { type: "numberedListItem", content: parseInline(orderedM[2]) };
-      const prevType = items[items.length - 1]?.type;
-      if (num !== 1 && prevType !== "numberedListItem") {
-        item.props = { start: num };
-      }
-    } else {
-      item = {
-        type: "bulletListItem",
-        content: parseInline((bulletM as RegExpMatchArray)[1]),
-      };
-    }
-    i++;
-
-    const sub = collectChildren(lines, i, lvl + 1, parseInline);
-    if (sub.items.length) {
-      item.children = sub.items;
-      i = sub.nextIndex;
-    }
-
-    items.push(item);
-  }
-
-  return { items, nextIndex: i };
-}
-
-/** 收集缩进比 minIndent 更深的行作为子列表 */
-function collectChildren(
-  lines: string[],
-  startI: number,
-  minIndent: number,
-  parseInline: (t: string) => any[],
-): { items: any[]; nextIndex: number } {
-  const i = startI;
-  if (i >= lines.length || !lines[i].trim())
-    return { items: [], nextIndex: startI };
-  const childIndent = indentLevel(lines[i]);
-  if (childIndent < minIndent) return { items: [], nextIndex: startI };
-  return parseNestedList(lines, i, childIndent, parseInline);
-}
 
 // 返回类型标 any（运行时恒为 PartialBlock[] 数组）：调用方 entry.ts 仍有
 // `Array.isArray(parsed) ? parsed : parsed?.content` 的双形状兼容分支，
@@ -167,87 +64,17 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    // ── video 块（serialize 写出的 <video src="…" controls ...></video> 单行）
-    // video 在 raw-guard allowlist 中不会被包成 goose-raw-block，这里映射回 video 块
-    const videoLineMatch = trimmedLine.match(
-      /^<video\s+src="([^"]*)"[^>]*>\s*<\/video>$/i,
-    );
-    if (videoLineMatch) {
-      content.push({
-        type: "video",
-        props: { url: decodeHtmlAttribute(videoLineMatch[1]) },
-      });
-      i++;
+    const parseHtmlBlockResult = parseHtmlBlock(lines, i, markdownToJsonContent);
+    if (parseHtmlBlockResult) {
+      content.push(parseHtmlBlockResult.block);
+      i = parseHtmlBlockResult.nextIndex;
       continue;
     }
 
-    // ── details 折叠块 → BlockNote toggleListItem（editor schema 没有 details 块，
-    // toggleListItem 是「可折叠 + summary 行 + 子块」的对称表示）
-    if (trimmedLine.startsWith("<details>")) {
-      const detailsLines: string[] = [];
-      let summaryText = "详情";
-      i++;
-      while (i < lines.length && !lines[i].trim().includes("</details>")) {
-        const l = lines[i].trim();
-        if (l.startsWith("<summary>") && l.endsWith("</summary>")) {
-          summaryText = l.replace("<summary>", "").replace("</summary>", "");
-        } else {
-          detailsLines.push(lines[i]);
-        }
-        i++;
-      }
-
-      const childBlocks = markdownToJsonContent(detailsLines.join("\n"));
-      content.push({
-        type: "toggleListItem",
-        content: parseInlineMarkdown(summaryText),
-        ...(childBlocks.length ? { children: childBlocks } : {}),
-      });
-      i++;
-      continue;
-    }
-
-    if (trimmedLine === "$$") {
-      const mathLines: string[] = [];
-      i++;
-      while (i < lines.length && lines[i].trim() !== "$$") {
-        mathLines.push(lines[i]);
-        i++;
-      }
-      content.push({
-        type: "codeBlock",
-        props: { language: "math" },
-        content: mathLines.join("\n"),
-      });
-      i++;
-      continue;
-    }
-
-    const fenceOpen = line.match(/^(```|~~~)(.*)$/);
-    if (fenceOpen) {
-      const fence = fenceOpen[1];
-      const fenceInfo = parseCodeFenceInfo(fenceOpen[2].trim());
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith(fence)) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      const codeBlockProps: Record<string, unknown> = {
-        language: fenceInfo.language,
-      };
-      if (fenceInfo.summary) {
-        codeBlockProps.summary = fenceInfo.summary;
-      }
-      if (fenceInfo.collapsed) {
-        codeBlockProps.collapsed = true;
-      }
-      content.push({
-        type: "codeBlock",
-        props: codeBlockProps,
-        content: codeLines.join("\n"),
-      });
-      i++;
+    const parseCodeBlockResult = parseCodeBlock(lines, i);
+    if (parseCodeBlockResult) {
+      content.push(parseCodeBlockResult.block);
+      i = parseCodeBlockResult.nextIndex;
       continue;
     }
 
@@ -345,17 +172,10 @@ export function markdownToJsonContent(markdown: string): any {
       continue;
     }
 
-    // 文件附件（旧 serializer 写出的 [📎 name](url) 形式）→ BlockNote file 块
-    const fileMatch = trimmedLine.match(/^\[📎\s+([^\]]*)\]\(([^)]*)\)$/);
-    if (fileMatch) {
-      content.push({
-        type: "file",
-        props: {
-          name: fileMatch[1].trim(),
-          url: fileMatch[2],
-        },
-      });
-      i++;
+    const parseFileBlockResult = parseFileBlock(lines, i);
+    if (parseFileBlockResult) {
+      content.push(parseFileBlockResult.block);
+      i = parseFileBlockResult.nextIndex;
       continue;
     }
 
@@ -380,40 +200,10 @@ export function markdownToJsonContent(markdown: string): any {
       }
     }
 
-    // 图片：![alt](url){width=N align=X}（width → previewWidth，align → textAlignment）
-    const imgMatch = trimmedLine.match(
-      /^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]+)\})?$/,
-    );
-    if (imgMatch) {
-      const metaRaw = imgMatch[3] || "";
-      const metaMap = new Map<string, string>();
-      metaRaw
-        .split(/\s+/)
-        .map((chunk) => chunk.trim())
-        .filter(Boolean)
-        .forEach((chunk) => {
-          const [key, value] = chunk.split("=");
-          if (key && value) metaMap.set(key, value);
-        });
-
-      const width = metaMap.get("width");
-      const widthValue = width ? Number(width) : undefined;
-      const align = metaMap.get("align");
-      const alt = imgMatch[1];
-      const isGeneratedName = isGeneratedDataImageName(alt, imgMatch[2]);
-      content.push({
-        type: "image",
-        props: {
-          url: imgMatch[2],
-          // Markdown alt 同时供编辑器的 img alt（name）使用。剪贴板生成的
-          // image.png 一类默认文件名不应升级为可见 caption；name 仍保留。
-          ...(alt ? { name: alt } : {}),
-          ...(alt && !isGeneratedName ? { caption: alt } : {}),
-          ...(Number.isFinite(widthValue) ? { previewWidth: widthValue } : {}),
-          ...(align && align !== "left" ? { textAlignment: align } : {}),
-        },
-      });
-      i++;
+    const parseImageBlockResult = parseImageBlock(lines, i);
+    if (parseImageBlockResult) {
+      content.push(parseImageBlockResult.block);
+      i = parseImageBlockResult.nextIndex;
       continue;
     }
 
