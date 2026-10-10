@@ -1,4 +1,5 @@
-import { LocalFontInput } from "../../shared/LocalFontInput";
+import { Label } from "@/components/ui/label";
+import { LocalFontSelect } from "../../shared/LocalFontSelect";
 import type { useAppearanceSettings } from "./useAppearanceSettings";
 
 export function renderInterfaceFontSettings(
@@ -12,28 +13,28 @@ export function renderInterfaceFontSettings(
   } = context;
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-3">
           <Label htmlFor="appearance-ui-font">界面字体</Label>
-          <LocalFontInput
+          <LocalFontSelect
             id="appearance-ui-font"
-            value={uiFontFamily ?? ""}
+            label="界面字体"
+            value={uiFontFamily}
             onChange={setUIFontFamily}
-            placeholder="默认"
           />
         </div>
-        <div className="space-y-2">
+        <div className="flex min-w-0 flex-col gap-3">
           <Label htmlFor="appearance-sidebar-font">侧栏字体</Label>
-          <LocalFontInput
+          <LocalFontSelect
             id="appearance-sidebar-font"
-            value={sidebarFontFamily ?? ""}
+            label="侧栏字体"
+            value={sidebarFontFamily}
             onChange={setSidebarFontFamily}
-            placeholder="默认"
           />
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        作为所有笔记的基础排版字体；单篇笔记仍可在阅读菜单中单独切换无衬线、衬线或等宽。
+        正文默认字体与首次引导共用；单篇笔记仍可单独切换默认、衬线或等宽字体。
       </p>
     </>
   );

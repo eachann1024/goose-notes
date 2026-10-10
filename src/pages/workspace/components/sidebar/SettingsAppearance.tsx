@@ -57,7 +57,7 @@ export function SettingsAppearance(props: SettingsAppearanceProps) {
             title="字体与阅读"
             description={
               section === "all"
-                ? "界面、侧栏与正文字体独立生效；选择预设即时应用，输入自定义字体后按回车保存。"
+                ? "界面、侧栏与正文字体彼此独立；从可用的本机字体中选择，即时应用并保存。"
                 : undefined
             }
             className="border border-border/60"
