@@ -353,6 +353,7 @@ export function SingleTabTitle({
     <span className="page-title-edit-shell">
       <input
         ref={inputRef}
+        data-goose-inline-input=""
         value={value}
         {...imeInputProps}
         size={1}

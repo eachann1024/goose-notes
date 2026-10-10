@@ -68,6 +68,7 @@ function RenameInput({ context }: { context: NonNullable<React.ContextType<typeo
       finish(document.activeElement === inputRef.current);
       return;
     }
+    // eslint-disable-next-line no-control-regex -- 文件名校验需要明确拒绝控制字符。
     if (/[\\/:*?"<>|\x00-\x1f\x7f]/.test(next) || /^\.+$/.test(next)) {
       setError("名称不能包含路径分隔符或非法字符");
       toast.error("名称不能包含路径分隔符或非法字符");
@@ -100,6 +101,7 @@ function RenameInput({ context }: { context: NonNullable<React.ContextType<typeo
     <span className="relative z-20 flex h-full min-w-0 flex-1 items-center">
     <input
       ref={inputRef}
+      data-goose-inline-input=""
       className="relative z-20 h-full w-full min-w-0 flex-1 cursor-text select-text"
       style={{ font: "inherit", lineHeight: "inherit", color: "inherit", caretColor: nativeCaret ? "var(--goose-accent-focus)" : "transparent",
         background: "transparent", border: 0, borderRadius: 0, padding: 0, margin: 0,

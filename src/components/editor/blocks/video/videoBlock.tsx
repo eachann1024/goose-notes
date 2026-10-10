@@ -41,6 +41,7 @@ function VideoUrlInput({
       <GooseIcons.Link className="h-4 w-4 shrink-0 text-muted-foreground" />
       <input
         type="text"
+        data-goose-inline-input=""
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         onKeyDown={(e) => {

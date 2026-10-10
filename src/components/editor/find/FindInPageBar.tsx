@@ -170,6 +170,7 @@ export function FindInPageBar({
             <GooseIcons.Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
+              data-goose-inline-input=""
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
@@ -240,6 +241,7 @@ export function FindInPageBar({
               <GooseIcons.Replace className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <input
                 ref={replaceInputRef}
+                data-goose-inline-input=""
                 value={replacement}
                 onChange={(event) => setReplacement(event.target.value)}
                 onKeyDown={(event) => {

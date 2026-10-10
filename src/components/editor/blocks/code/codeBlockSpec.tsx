@@ -982,6 +982,7 @@ function CodeBlockComponent({
               </Button>
               <Input
                 ref={summaryInputRef}
+                data-goose-inline-input=""
                 value={isEditingSummary ? summaryDraft : summary}
                 readOnly={!isEditable || !isEditingSummary}
                 placeholder="添加代码说明"

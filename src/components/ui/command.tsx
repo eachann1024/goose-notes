@@ -36,6 +36,7 @@ const CommandInput = React.forwardRef<
     <GooseIcons.Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
     <CommandPrimitive.Input
       ref={ref}
+      data-goose-inline-input=""
       className={cn(
         "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:text-disabled",
         className,
