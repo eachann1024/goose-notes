@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { Settings as SettingsIcon, X } from "@/components/ui/icons";
+import { X } from "@/components/ui/icons";
 import type { SettingsTab, SettingsTabConfig } from "./types";
 import { cn } from "@/lib/utils";
 import "./settings-layout.css";
@@ -63,7 +63,7 @@ export function SettingsScaffold({
       {sidebarContainer && createPortal(
         <div ref={navigationRef} className="settings-sidebar-navigation flex h-full min-h-0 flex-col px-3 py-4 text-foreground" data-settings-navigation="" hidden={!visible} inert={!visible} aria-hidden={!visible}>
           <div className="flex shrink-0 items-center px-2 pb-4">
-            <h1 className="text-base font-semibold">设置</h1>
+            <h1 className="text-xl font-semibold">设置</h1>
           </div>
           <nav aria-label="设置分类" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
             {tabs.map((tab) => {
@@ -99,25 +99,14 @@ export function SettingsScaffold({
           data-settings=""
           data-settings-tab={activeTab}
         >
-          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/70 bg-[hsl(var(--goose-raised-bg))] px-5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70">
-              <SettingsIcon className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <h2 className="text-base font-semibold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
-            <button
-              type="button"
-              className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
-              aria-label="关闭设置"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </header>
-          {feedbackBanner || appsBanner ? (
-            <div className="shrink-0 border-b border-border/70 px-5 py-2">
-              {feedbackBanner}{appsBanner}
-            </div>
-          ) : null}
+          <button
+            type="button"
+            className="settings-close absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)]"
+            aria-label="关闭设置"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
           <div className="min-h-0 flex-1 bg-[hsl(var(--goose-settings-bg))]">
             <div
               ref={scrollContainerRef}
@@ -126,7 +115,15 @@ export function SettingsScaffold({
               }}
               className="settings-scroll h-full overflow-y-auto"
             >
-              <div className="settings-panel min-h-0">{children}</div>
+              <div className="settings-panel min-h-0">
+                <header className="settings-page-header">
+                  <h2 className="text-3xl font-semibold tracking-tight">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
+                  {feedbackBanner || appsBanner ? (
+                    <div className="mt-6">{feedbackBanner}{appsBanner}</div>
+                  ) : null}
+                </header>
+                {children}
+              </div>
             </div>
           </div>
         </div>,

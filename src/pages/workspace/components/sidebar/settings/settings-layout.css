@@ -1,6 +1,15 @@
 .settings-shell[hidden], .settings-sidebar-navigation[hidden] { display: none !important; }
-.settings-shell { container-type: inline-size; container-name: settings; }
-.settings-scroll { padding: 2rem 2.5rem 2.5rem; }
+.settings-shell { container-type: inline-size; container-name: settings; background: hsl(var(--goose-settings-bg)); }
+.settings-scroll { padding: 4rem 2.5rem 2.5rem; }
+.settings-panel { position: relative; max-width: 1120px; margin: 0 auto; }
+.settings-page-header { flex-shrink: 0; margin-bottom: 2.5rem; }
+/* 分类名称由正文页头统一显示，设置项中的分组标题仍保持原样。 */
+.settings-groups > div > h3,
+.settings-shortcuts > div:first-child > h3,
+.settings-shell[data-settings-tab="git-sync"] .settings-panel > div > div:first-child > h3 { display: none; }
+.settings-groups > div > h3 + * { margin-top: 0; }
+.settings-shortcuts > div:first-child { position: absolute; top: 0; right: 0; }
+.settings-shell[data-settings-tab="shortcuts"] .settings-page-header { padding-right: 12rem; }
 .settings-groups > div {
   max-width: 1120px;
   margin: 0 auto;
@@ -17,6 +26,7 @@
   gap: 20px;
 }
 .settings-shortcuts-columns { margin-top: 24px; }
+.settings-shell .settings-shortcuts-columns { margin-top: 0; }
 .settings-card-columns > div,
 .settings-shortcuts-columns > div { min-width: 0; }
 .settings-card-columns section,
@@ -33,11 +43,12 @@
   container-type: inline-size;
   container-name: settings;
 }
-.settings-shell[data-settings-tab="appearance"] .settings-scroll { overflow: hidden; padding: 0; }
-.settings-shell[data-settings-tab="appearance"] .settings-panel { height: 100%; }
+.settings-shell[data-settings-tab="appearance"] .settings-scroll { overflow: hidden; padding: 4rem 0 0; }
+.settings-shell[data-settings-tab="appearance"] .settings-panel { display: flex; flex-direction: column; height: 100%; max-width: none; }
+.settings-shell[data-settings-tab="appearance"] .settings-page-header { width: min(1120px, calc(100% - 5rem)); margin-inline: auto; }
 .settings-appearance-layout {
   display: grid;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -71,13 +82,17 @@
 .settings-appearance-layout[data-scale-drag-layout="options"] > [aria-label="编辑器即时预览"] { display: none; }
 .settings-appearance-layout[data-scale-drag-layout="options"] .settings-appearance-options { grid-column: 1; }
 @container settings (max-width: 76rem) {
-  .settings-scroll { padding: 1.5rem; }
+  .settings-scroll { padding: 3rem 1.5rem 1.5rem; }
+  .settings-shell[data-settings-tab="appearance"] .settings-scroll { padding-top: 3rem; }
+  .settings-shell[data-settings-tab="appearance"] .settings-page-header { width: calc(100% - 3rem); }
   .settings-card-columns { grid-template-columns: minmax(0, 1fr); }
   .settings-shortcuts-columns { grid-template-columns: minmax(0, 1fr); }
   .settings-data-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @container settings (max-width: 40rem) {
-  .settings-scroll { padding: 1rem; }
+  .settings-scroll { padding: 3rem 1rem 1rem; }
+  .settings-page-header { margin-bottom: 2rem; }
+  .settings-shell[data-settings-tab="appearance"] .settings-page-header { width: calc(100% - 2rem); }
   .settings-appearance-options { padding-inline: 1rem; }
   .settings-ai-pick-row { flex-wrap: wrap; }
   .settings-ai-pick-row > :last-child,
