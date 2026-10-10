@@ -5,12 +5,25 @@ type AccentRuntimeTokens = {
   dark: Record<string, string>;
 };
 
+// 深色交互表面与 CSS 的中性灰角色同步，强调色仅控制其余强调元素。
+const NEUTRAL_DARK_RUNTIME_TOKENS: Record<string, string> = {
+  "--goose-interactive-selected": "var(--goose-dark-selected-bg, #343434)",
+  "--goose-interactive-selected-fg": "var(--goose-text-primary)",
+  "--goose-interactive-selected-border": "var(--goose-dark-interactive-border, #4a4a4a)",
+  "--goose-sidebar-hover": "var(--goose-dark-hover-bg, #2c2c2c)",
+  "--goose-interactive-hover": "var(--goose-dark-hover-bg, #2c2c2c)",
+  "--goose-interactive-hover-fg": "var(--goose-text-primary)",
+  "--goose-interactive-hover-border": "var(--goose-dark-interactive-border, #4a4a4a)",
+  "--goose-inline-code-bg": "var(--goose-dark-inline-code-bg, #333333)",
+  "--goose-inline-code-fg": "var(--goose-text-primary)",
+  "--goose-inline-code-border-hover": "var(--goose-dark-interactive-border, #4a4a4a)",
+  "--goose-editor-selection-bg": "var(--goose-dark-selection-bg, #444444)",
+};
+
 /**
- * 运行时直接写入的强调色 token。
- * 侧栏选中与行内代码等关键表面依赖这些变量；仅靠 CSS 选择器时，
- * 旧内核 / 缓存 CSS 可能只命中部分 token，导致侧栏已跟随 accent、
- * 行内代码仍停在 .dark 的 iris fallback。
- * hover 与侧栏浅染底完全同步；文字前景统一消费全局可读性色表。
+ * 运行时直接写入的交互 token。
+ * 浅色表面跟随强调色，深色表面共用中性灰；直接写入可避免
+ * 旧内核 / 缓存 CSS 只命中部分变量。文字消费全局可读性色表。
  */
 const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
   iris: {
@@ -27,19 +40,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#c7d2fe",
       "--goose-editor-selection-bg": "#e0e7ff",
     },
-    dark: {
-      "--goose-interactive-selected": "#34304e",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#9484e5",
-      "--goose-sidebar-hover": "#2c293d",
-      "--goose-interactive-hover": "#2c293d",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#9484e5",
-      "--goose-inline-code-bg": "#3d3e64",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#6366f1",
-      "--goose-editor-selection-bg": "rgba(99, 102, 241, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   ocean: {
     light: {
@@ -55,19 +56,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#bfdbfe",
       "--goose-editor-selection-bg": "#dbeafe",
     },
-    dark: {
-      "--goose-interactive-selected": "#273750",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#779de8",
-      "--goose-sidebar-hover": "#29313d",
-      "--goose-interactive-hover": "#29313d",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#779de8",
-      "--goose-inline-code-bg": "#324665",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#3b82f6",
-      "--goose-editor-selection-bg": "rgba(59, 130, 246, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   mono: {
     light: {
@@ -83,19 +72,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#756b42",
       "--goose-editor-selection-bg": "#eeebde",
     },
-    dark: {
-      "--goose-interactive-selected": "#363636",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#a0a0a0",
-      "--goose-sidebar-hover": "#2f2f2f",
-      "--goose-interactive-hover": "#2f2f2f",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#a0a0a0",
-      "--goose-inline-code-bg": "#3a3a3a",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#737373",
-      "--goose-editor-selection-bg": "rgba(255, 255, 255, 0.22)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   pine: {
     light: {
@@ -111,19 +88,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#bbf7d0",
       "--goose-editor-selection-bg": "#dcfce7",
     },
-    dark: {
-      "--goose-interactive-selected": "#273e31",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#6aae83",
-      "--goose-sidebar-hover": "#29342e",
-      "--goose-interactive-hover": "#29342e",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#6aae83",
-      "--goose-inline-code-bg": "#2b4a37",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#22c55e",
-      "--goose-editor-selection-bg": "rgba(34, 197, 94, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   amber: {
     light: {
@@ -139,19 +104,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#c9b894",
       "--goose-editor-selection-bg": "#e9dfc7",
     },
-    dark: {
-      "--goose-interactive-selected": "#39352a",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#928365",
-      "--goose-sidebar-hover": "#302d25",
-      "--goose-interactive-hover": "#302d25",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#928365",
-      "--goose-inline-code-bg": "#39352a",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#928365",
-      "--goose-editor-selection-bg": "#39352a",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   wheat: {
     light: {
@@ -167,19 +120,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#aeb18e",
       "--goose-editor-selection-bg": "#e0ddc8",
     },
-    dark: {
-      "--goose-interactive-selected": "#33382a",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#838d69",
-      "--goose-sidebar-hover": "#2b3025",
-      "--goose-interactive-hover": "#2b3025",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#838d69",
-      "--goose-inline-code-bg": "#33382a",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#838d69",
-      "--goose-editor-selection-bg": "#33382a",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   coral: {
     light: {
@@ -195,19 +136,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#fed7aa",
       "--goose-editor-selection-bg": "#ffedd5",
     },
-    dark: {
-      "--goose-interactive-selected": "#463128",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#d28f68",
-      "--goose-sidebar-hover": "#372c28",
-      "--goose-interactive-hover": "#372c28",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#d28f68",
-      "--goose-inline-code-bg": "#4f3425",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#f97316",
-      "--goose-editor-selection-bg": "rgba(249, 115, 22, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   rose: {
     light: {
@@ -223,19 +152,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#fecdd3",
       "--goose-editor-selection-bg": "#ffe4e6",
     },
-    dark: {
-      "--goose-interactive-selected": "#462e37",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#d486a0",
-      "--goose-sidebar-hover": "#382a30",
-      "--goose-interactive-hover": "#382a30",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#d486a0",
-      "--goose-inline-code-bg": "#66333b",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#f43f5e",
-      "--goose-editor-selection-bg": "rgba(244, 63, 94, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
   grape: {
     light: {
@@ -251,19 +168,7 @@ const ACCENT_RUNTIME_TOKENS: Record<AccentColor, AccentRuntimeTokens> = {
       "--goose-inline-code-border-hover": "#e9d5ff",
       "--goose-editor-selection-bg": "#f3e8ff",
     },
-    dark: {
-      "--goose-interactive-selected": "#3d2e4a",
-      "--goose-interactive-selected-fg": "var(--goose-text-primary)",
-      "--goose-interactive-selected-border": "#b088cc",
-      "--goose-sidebar-hover": "#302837",
-      "--goose-interactive-hover": "#302837",
-      "--goose-interactive-hover-fg": "var(--goose-text-primary)",
-      "--goose-interactive-hover-border": "#b088cc",
-      "--goose-inline-code-bg": "#46305d",
-      "--goose-inline-code-fg": "var(--goose-text-info)",
-      "--goose-inline-code-border-hover": "#a855f7",
-      "--goose-editor-selection-bg": "rgba(168, 85, 247, 0.35)",
-    },
+    dark: NEUTRAL_DARK_RUNTIME_TOKENS,
   },
 };
 
@@ -308,7 +213,7 @@ function writeAccentRuntimeTokens(
   if (!root?.style?.setProperty) return;
   const tokens = resolveAccentRuntimeTokens(accentColor, isDarkDocument(root));
   for (const [name, value] of Object.entries(tokens)) {
-    // 旧内核 / 后续 CSS 偶发盖掉自定义属性时，important 保证行内代码跟强调色
+    // 旧内核 / 后续 CSS 偶发盖掉自定义属性时，important 保证交互表面一致
     root.style.setProperty(name, value, "important");
   }
 

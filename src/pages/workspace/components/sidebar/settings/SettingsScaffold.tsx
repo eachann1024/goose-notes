@@ -99,7 +99,7 @@ export function SettingsScaffold({
           data-settings=""
           data-settings-tab={activeTab}
         >
-          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/70 bg-[hsl(var(--goose-editor-bg))] px-5">
+          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/70 bg-[hsl(var(--goose-raised-bg))] px-5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70">
               <SettingsIcon className="h-4 w-4" aria-hidden="true" />
             </span>
@@ -118,7 +118,7 @@ export function SettingsScaffold({
               {feedbackBanner}{appsBanner}
             </div>
           ) : null}
-          <div className="min-h-0 flex-1 bg-[hsl(var(--goose-shell-bg))]">
+          <div className="min-h-0 flex-1 bg-[hsl(var(--goose-settings-bg))]">
             <div
               ref={scrollContainerRef}
               onScroll={(event) => {

@@ -37,16 +37,16 @@
   --goose-interactive-warning-fg: var(--goose-text-warning);
 }
 .dark, [data-theme="dark"], [data-sonner-theme="dark"] {
-  --goose-text-primary: #f1f4f8;
-  --goose-text-secondary: #bac3d0;
-  --goose-text-disabled: #aab4c3;
+  --goose-text-primary: #ececec;
+  --goose-text-secondary: #b4b4b4;
+  --goose-text-disabled: #999999;
   --goose-text-danger: #ffb4ab;
   --goose-text-warning: #f3d17c;
   --goose-text-success: #8ce0b1;
   --goose-text-info: #a8c8ff;
   --goose-text-on-dark: #ffffff;
   --goose-text-on-light: #000000;
-  --goose-text-on-dark-secondary: #d3dce8;
+  --goose-text-on-dark-secondary: #d1d1d1;
   --goose-editor-highlight-gray-text: var(--goose-text-secondary);
   --goose-editor-highlight-brown-text: #e7c1ad;
   --goose-editor-highlight-red-text: var(--goose-text-danger);
@@ -56,8 +56,8 @@
   --goose-editor-highlight-blue-text: var(--goose-text-info);
   --goose-editor-highlight-purple-text: #d0baf8;
   --goose-editor-highlight-pink-text: #f1b6d7;
-  --goose-text-primary-channels: 214.2857 33.3333% 95.8824%;
-  --goose-text-secondary-channels: 215.4545 18.9655% 77.2549%;
+  --goose-text-primary-channels: 0.0000 0.0000% 92.5490%;
+  --goose-text-secondary-channels: 0.0000 0.0000% 70.5882%;
   --goose-text-on-dark-channels: 0.0000 0.0000% 100.0000%;
   --goose-text-on-light-channels: 0.0000 0.0000% 0.0000%;
   --foreground: var(--goose-text-primary-channels);

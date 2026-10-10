@@ -23,16 +23,16 @@
     }
   },
   "dark": {
-    "primary": "#f1f4f8",
-    "secondary": "#bac3d0",
-    "disabled": "#aab4c3",
+    "primary": "#ececec",
+    "secondary": "#b4b4b4",
+    "disabled": "#999999",
     "danger": "#ffb4ab",
     "warning": "#f3d17c",
     "success": "#8ce0b1",
     "info": "#a8c8ff",
     "onDark": "#ffffff",
     "onLight": "#000000",
-    "onDarkSecondary": "#d3dce8",
+    "onDarkSecondary": "#d1d1d1",
     "documentText": {
       "gray": "$secondary",
       "brown": "#e7c1ad",

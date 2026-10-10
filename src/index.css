@@ -21,6 +21,7 @@
 @import "./styles/range.css";
 @import "./styles/goose-accent-colors.css";
 @import "./styles/goose-text-colors.css";
+@import "./styles/goose-dark-theme.css";
 
 /* 让 Tailwind v4 扫描 streamdown 发出的 class，避免被摇树掉 */
 @source "../node_modules/streamdown/dist/index.js";

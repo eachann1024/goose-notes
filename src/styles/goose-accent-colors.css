@@ -361,8 +361,7 @@
 /*
  * 编辑器文字选区（::selection / ShowSelection / fake-selection）。
  * 旧 Chromium 上 ::selection 对继承来的 CSS 变量不稳定，会掉回 .dark 的 iris 默认紫，
- * 与侧栏强调色（如橙）不一致。这里按 data-goose-accent 写死实色，确保跟强调色。
- * 深色用 0.35 透明度（比侧栏选中 0.2 略实），浅字可读。
+ * 与交互配色不一致。浅色按 data-goose-accent 写实色，深色统一中性灰。
  */
 :root[data-goose-accent="iris"] {
   --goose-editor-selection-bg: #e0e7ff;
@@ -446,12 +445,12 @@
 :root.dark[data-goose-accent="iris"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="iris"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="iris"] .bn-editor .goose-fake-selection {
-  background-color: rgba(99, 102, 241, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="iris"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="iris"] .bn-editor [data-show-selection] {
-  background-color: rgba(99, 102, 241, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -491,12 +490,12 @@
 :root.dark[data-goose-accent="ocean"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="ocean"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="ocean"] .bn-editor .goose-fake-selection {
-  background-color: rgba(59, 130, 246, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="ocean"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="ocean"] .bn-editor [data-show-selection] {
-  background-color: rgba(59, 130, 246, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -536,12 +535,12 @@
 :root.dark[data-goose-accent="mono"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="mono"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="mono"] .bn-editor .goose-fake-selection {
-  background-color: rgba(255, 255, 255, 0.22);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="mono"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="mono"] .bn-editor [data-show-selection] {
-  background-color: rgba(255, 255, 255, 0.22) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -581,12 +580,12 @@
 :root.dark[data-goose-accent="pine"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="pine"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="pine"] .bn-editor .goose-fake-selection {
-  background-color: rgba(34, 197, 94, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="pine"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="pine"] .bn-editor [data-show-selection] {
-  background-color: rgba(34, 197, 94, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -627,12 +626,12 @@
 :root.dark[data-goose-accent="coral"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="coral"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="coral"] .bn-editor .goose-fake-selection {
-  background-color: rgba(249, 115, 22, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="coral"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="coral"] .bn-editor [data-show-selection] {
-  background-color: rgba(249, 115, 22, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -672,12 +671,12 @@
 :root.dark[data-goose-accent="rose"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="rose"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="rose"] .bn-editor .goose-fake-selection {
-  background-color: rgba(244, 63, 94, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="rose"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="rose"] .bn-editor [data-show-selection] {
-  background-color: rgba(244, 63, 94, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 
@@ -717,12 +716,12 @@
 :root.dark[data-goose-accent="grape"] .bn-editor .bn-block-content[data-content-type="codeBlock"] pre *::selection,
 :root.dark[data-goose-accent="grape"] .goose-blocknote-editor .goose-fake-selection,
 :root.dark[data-goose-accent="grape"] .bn-editor .goose-fake-selection {
-  background-color: rgba(168, 85, 247, 0.35);
+  background-color: #444444;
   color: inherit;
 }
 :root.dark[data-goose-accent="grape"] .goose-blocknote-editor [data-show-selection],
 :root.dark[data-goose-accent="grape"] .bn-editor [data-show-selection] {
-  background-color: rgba(168, 85, 247, 0.35) !important;
+  background-color: #444444 !important;
   color: inherit;
 }
 

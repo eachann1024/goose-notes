@@ -25,8 +25,8 @@ export function SettingsSectionCard({
   return (
     <section
       className={cn(
-        "rounded-[14px] bg-[hsl(var(--goose-editor-bg))] p-5",
-        tone === "danger" ? "bg-[hsl(var(--goose-editor-bg))]" : "",
+        "rounded-[14px] bg-[hsl(var(--goose-raised-bg))] p-5",
+        tone === "danger" ? "bg-[hsl(var(--goose-raised-bg))]" : "",
         className,
       )}
     >

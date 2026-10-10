@@ -1,0 +1,79 @@
+/* 设置画布与抬升表面在浅色下沿用原有角色。 */
+:root {
+  --goose-settings-bg: var(--goose-shell-bg);
+  --goose-raised-bg: var(--goose-editor-bg);
+}
+
+/* 深色统一使用参考图的中性灰。覆盖完整主题的染色表面，
+ * 强调色仍负责链接、光标、焦点和语义状态；不改变浅色主题。 */
+:root.dark,
+:root.dark[data-goose-accent],
+:root[data-theme="dark"],
+.dark:not(:root),
+[data-theme="dark"]:not(:root) {
+  color-scheme: dark;
+  --goose-shell-bg: 0 0% 20.392%; /* #343434 外壳 */
+  --goose-editor-bg: 0 0% 9.412%; /* #181818 正文 */
+  --goose-raised-bg: 0 0% 13.333%; /* #222222 卡片 / 菜单 */
+  --goose-selected-bg: 0 0% 20.392%;
+  --background: var(--goose-shell-bg);
+  --card: var(--goose-editor-bg);
+  --popover: var(--goose-raised-bg);
+  --secondary: var(--goose-selected-bg);
+  --muted: var(--goose-selected-bg);
+  --accent: var(--goose-selected-bg);
+  --border: 0 0% 23.529%;
+  --input: 0 0% 26.667%;
+  --goose-menu-surface: var(--popover);
+  --goose-menu-border: var(--border);
+
+  --goose-shell-surface: hsl(var(--goose-shell-bg));
+  --goose-sidebar-surface: #222222;
+  --goose-editor-surface: hsl(var(--goose-editor-bg));
+  --goose-ai-surface: var(--goose-editor-surface);
+  --goose-secondary-surface: var(--goose-editor-surface);
+  --goose-input-surface: #363636;
+  --goose-settings-bg: var(--goose-editor-bg);
+
+  /* 运行时强调色映射也消费这些角色，切换主题后仍保持灰阶。 */
+  --goose-dark-selected-bg: #343434;
+  --goose-dark-hover-bg: #2c2c2c;
+  --goose-dark-interactive-border: #4a4a4a;
+  --goose-dark-inline-code-bg: #333333;
+  --goose-dark-selection-bg: #444444;
+  --goose-interactive-selected: var(--goose-dark-selected-bg);
+  --goose-interactive-selected-fg: var(--goose-text-primary);
+  --goose-interactive-selected-border: var(--goose-dark-interactive-border);
+  --goose-interactive-hover: var(--goose-dark-hover-bg);
+  --goose-interactive-hover-fg: var(--goose-text-primary);
+  --goose-interactive-hover-border: var(--goose-dark-interactive-border);
+  --goose-sidebar-hover: var(--goose-interactive-hover);
+  --goose-control-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-hover-bg: var(--goose-interactive-hover);
+  --goose-primary-active-bg: var(--goose-interactive-selected);
+  --goose-icon-chip-on-selected: var(--goose-interactive-selected);
+  --goose-editor-selection-bg: var(--goose-dark-selection-bg);
+  --goose-inline-code-bg: var(--goose-dark-inline-code-bg);
+  --goose-inline-code-fg: var(--goose-text-primary);
+  --goose-inline-code-border-hover: var(--goose-dark-interactive-border);
+
+  --goose-block-subtle-bg: #222222;
+  --goose-block-subtle-border: #3c3c3c;
+  --goose-block-subtle-hover: #2c2c2c;
+  --goose-block-subtle-inset: #1c1c1c;
+  --goose-table-control-hover: #343434;
+  --goose-active-line-bg: #222222;
+  --goose-callout-bg: #222222;
+  --goose-callout-border: #3c3c3c;
+}
+
+/* BlockNote 正文与 portal 会再挂 .dark；强调色沿用外层选择。 */
+:root.dark .bn-root.dark {
+  --primary: inherit;
+  --ring: inherit;
+  --goose-accent-focus: inherit;
+  --goose-accent-link: inherit;
+  --goose-accent-link-hover: inherit;
+  --goose-callout-accent: inherit;
+  --goose-ai-approval-check-bg: inherit;
+}
