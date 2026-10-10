@@ -80,7 +80,7 @@ export function renderWebdavRemoteBackups(
                 暂无远端备份
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                保存连接配置后，点击「生成并上传」即可创建云端备份
+                保存连接配置后，点击「立即备份到云端」即可创建云端备份
               </p>
             </div>
           ) : (

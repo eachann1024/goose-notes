@@ -126,8 +126,7 @@ export function renderWebdavConfiguration(
               自动云备份
             </Label>
             <p className="text-[11px] text-muted-foreground">
-              应用启动且闲置时，若距离上次备份已超过 24
-              小时，自动在后台生成并上传备份
+              应用启动且闲置时，若距离上次备份已超过 24 小时，将自动在后台打包并上传最新备份。
             </p>
           </div>
           <Switch
@@ -174,7 +173,7 @@ export function renderWebdavConfiguration(
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            生成并上传
+            立即备份到云端
           </Button>
           <Button
             variant="secondary"

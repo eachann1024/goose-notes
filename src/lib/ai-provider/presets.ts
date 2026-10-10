@@ -42,7 +42,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   {
     id: "deepseek",
     label: "DeepSeek",
-    description: "官方 · 填 Key 即用",
+    description: "官方 API（填入 Key 即用）",
     baseURL: DEEPSEEK_BASE_URL,
     protocol: "openai-responses",
     allowCustomBaseURL: false,
@@ -53,8 +53,8 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   },
   {
     id: "glm",
-    label: "GLM（智谱）",
-    description: "智谱官方",
+    label: "GLM (智谱)",
+    description: "智谱 BigModel 开放平台",
     baseURL: GLM_BASE_URL,
     protocol: "openai",
     allowCustomBaseURL: false,
@@ -66,7 +66,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   {
     id: "minimax",
     label: "MiniMax",
-    description: "国内官方",
+    description: "官方开放平台",
     baseURL: MINIMAX_BASE_URL,
     protocol: "openai",
     allowCustomBaseURL: false,
@@ -78,7 +78,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   {
     id: "custom-openai-responses",
     label: "自定义 OpenAI Responses",
-    description: "Responses 协议",
+    description: "兼容 OpenAI Responses 协议",
     baseURL: null,
     protocol: "openai-responses",
     allowCustomBaseURL: true,
@@ -86,7 +86,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   {
     id: "custom-openai",
     label: "自定义 OpenAI 兼容",
-    description: "Chat Completions",
+    description: "兼容 Chat Completions 标准协议",
     baseURL: null,
     protocol: "openai",
     allowCustomBaseURL: true,
@@ -94,7 +94,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
   {
     id: "custom-claude",
     label: "自定义 Anthropic",
-    description: "Messages API",
+    description: "兼容 Claude Messages 协议",
     baseURL: null,
     protocol: "claude",
     allowCustomBaseURL: true,

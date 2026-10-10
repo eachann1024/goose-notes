@@ -37,7 +37,7 @@ export function renderAppearanceTheme(
                 <Button
                   size="icon"
                   variant="ghost"
-                  aria-label="跟随系统"
+                  aria-label="自动"
                   aria-pressed={theme === "system"}
                   className={cn(
                     "h-7 w-7 rounded-control transition-all duration-200",
@@ -50,7 +50,7 @@ export function renderAppearanceTheme(
                   <GooseIcons.Laptop className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">跟随系统</TooltipContent>
+              <TooltipContent side="bottom">自动（跟随外观）</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -192,11 +192,10 @@ export function renderAppearanceTheme(
                     {option.fullTheme}
                   </p>
                   <p className="mt-2">
-                    更换：侧栏与纸面底色、菜单与 AI
-                    面板、选中与文字高亮、功能图标的铅笔描边。支持浅色与深色。
+                    包含完整的纸面底色、侧栏、文字高亮与手绘铅笔质感图标。支持浅色与深色模式。
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    保留现有布局、字体与图标大小，以及自选的页面图标。
+                    现有布局、字体与自定义图标均不受影响。
                   </p>
                 </TooltipContent>
               </Tooltip>

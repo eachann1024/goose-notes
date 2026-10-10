@@ -121,8 +121,8 @@ export function renderDataImportExport(
             >
               <FileText className="h-5 w-5 shrink-0" />
               <div className="text-left">
-                <div className="text-sm font-medium">Markdown</div>
-                <div className="text-xs text-muted-foreground">.md 文件</div>
+                <div className="text-sm font-medium">Markdown (.md)</div>
+                <div className="text-xs text-muted-foreground">通用纯文本格式，包含独立资源文件</div>
               </div>
             </SelectableCard>
             <SelectableCard
@@ -137,8 +137,8 @@ export function renderDataImportExport(
             >
               <Globe className="h-5 w-5 shrink-0" />
               <div className="text-left">
-                <div className="text-sm font-medium">HTML</div>
-                <div className="text-xs text-muted-foreground">网页文件</div>
+                <div className="text-sm font-medium">HTML (.html)</div>
+                <div className="text-xs text-muted-foreground">富文本网页格式，完整保留排版与样式</div>
               </div>
             </SelectableCard>
           </div>
@@ -169,7 +169,7 @@ export function renderDataImportExport(
             重置所有数据
           </span>
         }
-        description="会清空内部笔记本、页面、历史记录、AI 会话、标签与应用设置；不会删除本地文件夹中的文件。操作前建议先导出备份。"
+        description="此操作将清空内部笔记本、页面、编辑历史、AI 对话及偏好设置；本地文件夹中的物理文件不受影响。操作前建议先导出备份。"
         actions={
           <Button variant="destructive" size="sm" onClick={onOpenResetDialog}>
             重置所有数据

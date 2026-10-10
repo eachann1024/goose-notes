@@ -55,7 +55,7 @@ export function renderShortcutSettingsColumns(
             <ShortcutField
               id="shortcut-toggle-ai-panel"
               title="展开 / 收起 AI 助手"
-              description="展开或折叠右侧 AI 助手面板。"
+              description="快速呼出或隐藏右侧 AI 助手面板。"
               value={
                 appShortcuts.toggleAIPanel ??
                 DEFAULT_APP_SHORTCUTS.toggleAIPanel
@@ -80,7 +80,7 @@ export function renderShortcutSettingsColumns(
             <ShortcutField
               id="shortcut-toggle-theme"
               title="切换深色模式"
-              description="按 跟随系统 → 浅色 → 深色 循环切换主题。"
+              description="按 自动 → 浅色 → 深色 循环切换主题。"
               value={
                 appShortcuts.toggleTheme ?? DEFAULT_APP_SHORTCUTS.toggleTheme
               }
@@ -116,7 +116,7 @@ export function renderShortcutSettingsColumns(
                 <ShortcutField
                   id="shortcut-new-tab"
                   title="新建标签页"
-                  description="打开欢迎页作为新标签页，可从中搜索或新建笔记。"
+                  description="开启新标签页并进入欢迎主页，支持快速检索与新建笔记。"
                   value={appShortcuts.newTab ?? DEFAULT_APP_SHORTCUTS.newTab}
                   onChange={safeSetAppShortcut("newTab")}
                   resetValue={DEFAULT_APP_SHORTCUTS.newTab}
@@ -156,9 +156,8 @@ export function renderShortcutSettingsColumns(
       <div className="space-y-5">
         <SettingsSectionCard title="关闭行为（固定）">
           <p className="mb-3 text-xs text-muted-foreground">
-            按一次依次关闭：通知 → 弹窗 → 当前分屏格（如有）→ 当前标签页。
-            搜索面板打开时先关闭面板，不会同时关闭笔记；编辑器内部操作优先消费
-            Escape。 桌面端 {formatShortcut("Mod+W")} 保留相同关闭顺序。
+            按 Esc 依次关闭：通知 → 弹窗 → 当前分屏 → 当前标签页。
+            正在编辑正文或搜索时优先退出当前焦点；桌面端快捷键遵循相同退出层级。
           </p>
           <div className="space-y-1">
             <FixedShortcutRow
@@ -176,7 +175,7 @@ export function renderShortcutSettingsColumns(
 
         <SettingsSectionCard title="固定快捷键">
           <p className="mb-3 text-xs text-muted-foreground">
-            按系统查看固定键；编辑器与侧栏快捷键只在对应位置生效。
+            按当前平台查看固定快捷键；编辑器与侧栏快捷键仅在对应区域生效。
           </p>
           <div
             role="group"

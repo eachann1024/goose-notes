@@ -72,7 +72,7 @@ function AssetMaintenanceApp() {
     setBusy(true); setError(""); setMessage("");
     try {
       const result = await bridge.trash(scan.token, [...selected]);
-      if (!result.canceled) { clearScan(); setMessage(`已将 ${result.deleted} 个文件移入系统废纸篓。继续清理请重新扫描。`); }
+      if (!result.canceled) { clearScan(); setMessage(`已将 ${result.deleted} 个文件移入废纸篓。继续清理请重新扫描。`); }
     } catch (error) { clearScan(); setError(String(error)); }
     finally { setBusy(false); }
   };
@@ -84,8 +84,8 @@ function AssetMaintenanceApp() {
   return <main className="flex h-screen flex-col gap-4 bg-background p-6 text-foreground">
     <header className="space-y-2">
       <h1 className="text-xl font-semibold">清理未引用图片与视频</h1>
-      <p className="text-sm text-muted-foreground">先选择一个本地文件夹笔记本，再扫描其中 assets 目录的图片和视频。不处理脚本、样式、网页、PDF、音频或其他文件。</p>
-      <p className="text-xs text-muted-foreground">检查磁盘全部 Markdown（含隐藏目录）及所有工作区未保存编辑。读取失败会停止；扫描不会自动恢复废纸篓。</p>
+      <p className="text-sm text-muted-foreground">选择本地文件夹笔记本，扫描并清理 assets 目录下未被任何笔记引用的图片与视频。</p>
+      <p className="text-xs text-muted-foreground">全面检索本地所有 Markdown 文件及未保存草稿，确保引用的媒体资源不被误删。</p>
     </header>
     <div className="flex items-end gap-3">
       <div className="min-w-0 flex-1 space-y-2">
@@ -101,7 +101,7 @@ function AssetMaintenanceApp() {
               className="w-full justify-between text-left font-normal"
             >
               <span id="asset-notebook-value" className="truncate" title={selectedNotebook?.localPath}>
-                {selectedNotebook ? `${selectedNotebook.name} — ${selectedNotebook.localPath}` : loading ? "正在读取笔记本…" : "请选择笔记本（不会自动扫描）"}
+                {selectedNotebook ? `${selectedNotebook.name} — ${selectedNotebook.localPath}` : loading ? "正在读取笔记本…" : "选择笔记本"}
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             </Button>
@@ -111,7 +111,7 @@ function AssetMaintenanceApp() {
               value={notebookId}
               onValueChange={(value) => { setNotebookId(value); clearScan(); setError(""); setMessage(""); }}
             >
-              <DropdownMenuRadioItem value="" textValue="请选择笔记本（不会自动扫描）">请选择笔记本（不会自动扫描）</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="" textValue="选择笔记本">选择笔记本</DropdownMenuRadioItem>
               {notebooks.map((notebook) => (
                 <DropdownMenuRadioItem key={notebook.id} value={notebook.id} textValue={`${notebook.name} — ${notebook.localPath}`}>
                   <span className="min-w-0" title={notebook.localPath}>
@@ -147,7 +147,7 @@ function AssetMaintenanceApp() {
         </div>
         <ScrollArea className="min-h-0 flex-1">
           <div className="p-2">
-            {!scan && <p className="p-6 text-sm text-muted-foreground">{busy ? "正在检查引用，请稍候…" : "选择笔记本并点击「扫描资源」后显示结果。"}</p>}
+            {!scan && <p className="p-6 text-sm text-muted-foreground">{busy ? "正在检查引用，请稍候…" : "请选择笔记本后点击「扫描资源」。"}</p>}
             {scan?.assets.length === 0 && <p className="p-6 text-sm text-muted-foreground">没有发现未引用的图片或视频。</p>}
             {scan?.assets.map((asset) => <div key={asset.path} className={`mb-2 flex items-center gap-3 rounded-lg p-2 ${previewPath === asset.path ? "bg-accent" : "hover:bg-muted"}`}>
               <Checkbox aria-label={`选择 ${asset.name}`} isSelected={selected.has(asset.path)} isDisabled={busy} onChange={() => toggle(asset.path)} className="min-h-6 min-w-6 shrink-0 justify-center">
@@ -168,7 +168,7 @@ function AssetMaintenanceApp() {
         {preview && <div className="space-y-2 text-sm"><p className="break-all font-medium">{preview.name}</p><p className="break-all text-xs text-muted-foreground">{preview.path}</p><p className="text-muted-foreground">{formatSize(preview.size)}</p></div>}
       </section>
     </div>
-    <footer className="flex items-center justify-between gap-4"><p className="text-xs text-muted-foreground">已选择 {selected.size} 个。删除前再次检查引用；扫描结果 10 分钟内有效。</p><Button variant="destructive" disabled={busy || !selected.size} onClick={() => void trash()}><Trash2 />移入系统废纸篓</Button></footer>
+    <footer className="flex items-center justify-between gap-4"><p className="text-xs text-muted-foreground">已选择 {selected.size} 个。删除前再次检查引用；扫描结果 10 分钟内有效。</p><Button variant="destructive" disabled={busy || !selected.size} onClick={() => void trash()}><Trash2 />移入废纸篓</Button></footer>
   </main>;
 }
 

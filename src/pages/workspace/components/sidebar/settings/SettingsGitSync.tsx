@@ -149,11 +149,11 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
   for (const folder of rows) nameCounts.set(folder.name, (nameCounts.get(folder.name) ?? 0) + 1);
 
   return <div className="min-w-0 space-y-5">
-    <div><h3 className="text-xl font-semibold tracking-tight text-foreground">Git 同步</h3><p className="mt-1 text-sm text-muted-foreground">添加 GitHub 或 Gitee 仓库，为每个仓库选择多个本地笔记本。</p></div>
+    <div><h3 className="text-xl font-semibold tracking-tight text-foreground">Git 同步</h3><p className="mt-1 text-sm text-muted-foreground">绑定 GitHub 或 Gitee 仓库，自动同步本地笔记本与 Markdown 文件。</p></div>
     {!bridge ? <SettingsSectionCard><p className="text-sm text-muted-foreground">Git 同步仅在桌面版应用中可用。</p></SettingsSectionCard> : <>
       {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">{spinner}正在读取同步配置…</p>}
       {loadError && <div role="alert" className="space-y-2 text-sm"><p className="git-sync-error">读取配置失败：{loadError}</p><Button variant="outline" onClick={() => { setLoadError(""); setLoading(true); setReload((value) => value + 1); }}>重新读取</Button></div>}
-      <SettingsSectionCard title="仓库" description="建议使用私有仓库，避免笔记被公开。">
+      <SettingsSectionCard title="仓库" description="建议使用私有仓库以保障笔记内容隐私安全。">
         <div className="space-y-2">
           {state.configs.map((item) => <Button key={item.id} variant={config?.id === item.id ? "secondary" : "outline"} aria-pressed={config?.id === item.id} onClick={() => { setSelectedId(item.id); setAdding(false); setRemoveConfirmation(""); }} className="h-auto w-full min-w-0 flex-wrap justify-start gap-2 p-3 text-left">
             <span className="min-w-0 flex-1"><span className="block truncate" title={item.remoteUrl}>{item.remoteUrl}</span><span className="block truncate text-xs font-normal text-muted-foreground">{item.branch} · {item.folders.length} 个文件夹{busy[item.id] ? ` · ${busy[item.id]}…` : state.statuses.find((entry) => entry.repositoryId === item.id)?.phase === "syncing" ? " · 同步中…" : ""}</span></span>
@@ -170,18 +170,18 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
         </SettingsSectionCard>}
       {(config || (adding && !loading && !loadError)) && <SettingsSectionCard title="自动同步">
         <div className="space-y-2"><Label htmlFor="git-sync-interval">自动同步间隔（分钟）</Label><Input id="git-sync-interval" type="number" min={1} max={1440} step={1} value={draft.intervalMinutes} disabled={disabled} onChange={(event) => updateDraft("intervalMinutes", Number(event.target.value))} /></div>
-        <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 p-4"><div><Label htmlFor="git-sync-enabled">自动同步</Label><p className="mt-1 text-xs text-muted-foreground">应用运行期间定时同步；新增勾选始终立即同步一次。</p></div><Switch id="git-sync-enabled" checked={draft.enabled} disabled={disabled} onCheckedChange={(checked) => updateDraft("enabled", checked)} /></div>
+        <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 p-4"><div><Label htmlFor="git-sync-enabled">自动同步</Label><p className="mt-1 text-xs text-muted-foreground">应用后台运行时按设定间隔自动同步；新关联笔记本时将立即执行一次初始同步。</p></div><Switch id="git-sync-enabled" checked={draft.enabled} disabled={disabled} onCheckedChange={(checked) => updateDraft("enabled", checked)} /></div>
         <div className="flex flex-wrap items-center gap-2"><Button onClick={save} disabled={disabled || (Boolean(config) && !dirty)}>{config ? "保存同步设置" : "添加仓库"}</Button>{adding && state.configs.length > 0 && <Button variant="outline" disabled={disabled} onClick={() => setAdding(false)}>取消添加</Button>}{dirty && <><span className="text-xs text-muted-foreground">有未保存的设置</span><Button variant="ghost" disabled={disabled} onClick={() => setDrafts((current) => { const next = { ...current }; delete next[id]; return next; })}>撤销编辑</Button></>}</div>
       </SettingsSectionCard>}
       {config && <>
         <SettingsSectionCard title="仓库可见性">
           <div className="flex flex-wrap items-center gap-2"><VisibilityBadge config={config} checking={checking(config)} />{config.visibility.checkedAt && <span className="text-xs text-muted-foreground">检查于 {new Date(config.visibility.checkedAt).toLocaleString()}</span>}</div>
           <p className="break-words text-sm text-muted-foreground">{checking(config) ? "正在检查仓库元数据…" : config.visibility.value === "public" ? "该仓库公开可见，推送的笔记可能被任何人阅读。建议先在平台改为私有仓库，再重新检查。" : config.visibility.reason || (config.visibility.value === "private" ? "平台已确认该仓库为私有。" : "尚未确认仓库可见性，请检查。")}</p>
-          <div className="space-y-2"><Label htmlFor="git-sync-token">API Token（可选，仅用于检查可见性）</Label><Input id="git-sync-token" type="password" autoComplete="off" spellCheck={false} value={tokens[id] ?? ""} disabled={disabled} onChange={(event) => setTokens((current) => ({ ...current, [id]: event.target.value }))} placeholder={config.hasToken ? "已安全保存凭据，留空可复用" : "私有仓库可能需要读取仓库元数据的权限"} /><p className="text-xs text-muted-foreground">Token 仅用于查询仓库是否私有，会由系统加密保存，不用于传输笔记；文件始终通过 SSH 同步。检查后输入框清空，不显示已保存的 Token。</p></div>
+          <div className="space-y-2"><Label htmlFor="git-sync-token">API Token（可选，仅用于检查可见性）</Label><Input id="git-sync-token" type="password" autoComplete="off" spellCheck={false} value={tokens[id] ?? ""} disabled={disabled} onChange={(event) => setTokens((current) => ({ ...current, [id]: event.target.value }))} placeholder={config.hasToken ? "已安全保存凭据，留空可复用" : "私有仓库可能需要读取仓库元数据的权限"} /><p className="text-xs text-muted-foreground">Token 仅用于查询仓库是否私有，由本机凭据库加密保存，不用于传输笔记；文件始终通过 SSH 同步。检查后输入框清空，不显示已保存的 Token。</p></div>
           <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled} onClick={() => checkVisibility()}>{checking(config) ? spinner : null}{checking(config) ? "检查中…" : "重新检查可见性"}</Button>{config.hasToken && <Button variant="ghost" disabled={disabled} onClick={() => checkVisibility(true)}>清除凭据并重新检查</Button>}</div>
         </SettingsSectionCard>
         <SettingsSectionCard title="同步文件夹" description="勾选后立即保存并同步；取消勾选不会删除文件。" contentClassName="space-y-2" actions={<Button variant="ghost" size="sm" disabled={disabled} onClick={() => setCheckRevision((value) => value + 1)}>重新检查</Button>}>
-          {config.layout === "legacy-root" && <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">这是旧版根目录布局，仅支持原来的一个文件夹，远端路径保持仓库根目录。要同步多个文件夹，请添加另一个仓库的配置；不会自动迁移旧布局。</p>}
+          {config.layout === "legacy-root" && <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">此仓库采用旧版单根目录模式。如需同步多个笔记本，请新建多目录模式的同步配置。</p>}
           {!rows.length && <p className="text-sm text-muted-foreground">暂无本地文件夹笔记本，请先在侧栏添加本地笔记本。</p>}
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-2">{rows.map((folder) => {
             const selected = config.folders.some((item) => item.notebookId === folder.notebookId);
@@ -202,11 +202,11 @@ export function SettingsGitSync({ visible = true }: { visible?: boolean }) {
           <div role="status" aria-live="polite" className="space-y-2 text-sm"><p className="flex items-center gap-2">{(pending || syncing) && spinner}{syncing ? "正在同步所选文件夹…" : pending ? `${pending}…` : status?.phase === "error" ? "同步失败" : "等待同步"}</p><p className="text-muted-foreground">上次成功：{status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "尚无记录"}</p></div>
           {status?.error && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{status.error}</p>}
           <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled || !config.folders.length || selectedFolderError} onClick={() => void run(id, "同步", () => bridge.syncNow(id))}>{status?.phase === "error" ? "重试同步" : "立即同步"}</Button><Button variant="ghost" disabled={disabled} onClick={() => setRemoveConfirmation(id)}>移除配置</Button></div>
-          {removeConfirmation === id && <div className="space-y-2 rounded-lg border border-border p-3"><p className="text-sm text-muted-foreground">仅移除本应用的同步配置和检查凭据，保留本地与远端文件。</p><div className="flex flex-wrap gap-2"><Button variant="destructive" disabled={disabled} onClick={() => void run(id, "移除配置", () => bridge.remove(id), () => { setRemoveConfirmation(""); setSelectedId(""); setNewId(crypto.randomUUID()); })}>确认移除</Button><Button variant="outline" disabled={disabled} onClick={() => setRemoveConfirmation("")}>取消</Button></div></div>}
+          {removeConfirmation === id && <div className="space-y-2 rounded-lg border border-border p-3"><p className="text-sm text-muted-foreground">仅移除本应用的同步配置与访问凭据，本地与远端文件均会完整保留。</p><div className="flex flex-wrap gap-2"><Button variant="destructive" disabled={disabled} onClick={() => void run(id, "移除配置", () => bridge.remove(id), () => { setRemoveConfirmation(""); setSelectedId(""); setNewId(crypto.randomUUID()); })}>确认移除</Button><Button variant="outline" disabled={disabled} onClick={() => setRemoveConfirmation("")}>取消</Button></div></div>}
         </SettingsSectionCard>
       </>}
       {errors[id] && <p role="alert" className="git-sync-error rounded-lg border p-3 text-sm">{errors[id]}</p>}
     </>}
-    <SettingsSectionCard title="连接说明"><ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground"><li>需要本机安装 Git，并将 SSH 公钥添加到 GitHub 或 Gitee。</li><li>首次连接平台请先在终端完成 SSH 主机信任确认；加密私钥需要由 SSH agent 解锁。</li><li>成功同步不会弹出通知，异常可在同步状态中查看并重试。</li></ul></SettingsSectionCard>
+    <SettingsSectionCard title="连接说明"><ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground"><li>需要本机安装 Git，并将 SSH 公钥添加到 GitHub 或 Gitee。</li><li>首次连接请先在终端完成 SSH 主机公钥信任确认；若私钥设有密码，需确保 SSH agent 已解锁。</li><li>正常同步在后台静默完成；若遇网络或鉴权异常，可在下方同步状态中查看详情并重试。</li></ul></SettingsSectionCard>
   </div>;
 }

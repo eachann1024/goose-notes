@@ -150,14 +150,14 @@ function DesktopGlobalHotkeysCard({
               void getGooseDesktop()?.requestAccessibility?.();
             }}
           >
-            打开系统设置
+            前往辅助功能设置
           </Button>
         </div>
       )}
       <ShortcutField
         id="wake-hotkey"
         title="唤出 / 隐藏主窗口"
-        description="全局唤出或隐藏 Goose Note 主窗口。"
+        description="在任意应用前台时快速呼出或收起主窗口。"
         value={desktop.wakeHotkeyEnabled ? desktop.wakeHotkey : ""}
         onChange={makeDesktopSetter(
           "wake-hotkey",
@@ -177,7 +177,7 @@ function DesktopGlobalHotkeysCard({
         <ShortcutField
           id="quicknote-hotkey"
           title="唤出 / 隐藏速记小窗"
-          description="全局唤出或隐藏速记小窗，随手记录草稿。"
+          description="随时随地呼出独立悬浮便签，随手记录灵感。"
           value={desktop.quicknoteHotkeyEnabled ? desktop.quicknoteHotkey : ""}
           onChange={makeDesktopSetter(
             "quicknote-hotkey",
@@ -198,7 +198,7 @@ function DesktopGlobalHotkeysCard({
         <ShortcutField
           id="search-hotkey"
           title="全局唤出搜索面板"
-          description="在其他应用前台时也可唤出搜索。点击输入框修改，清空即停用，不影响应用内快捷键。"
+          description="在其他应用前台时快速呼出搜索面板。清空输入框可停用；与应用内搜索相互独立。"
           value={desktop.searchHotkeyEnabled ? desktop.searchHotkey : ""}
           onChange={makeDesktopSetter(
             "search-hotkey",

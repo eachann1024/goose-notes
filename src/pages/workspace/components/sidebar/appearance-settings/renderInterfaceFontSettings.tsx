@@ -34,7 +34,7 @@ export function renderInterfaceFontSettings(
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        正文默认字体与首次引导共用；单篇笔记仍可单独切换默认、衬线或等宽字体。
+        作为所有笔记的基础排版字体；单篇笔记仍可在阅读菜单中单独切换无衬线、衬线或等宽。
       </p>
     </>
   );

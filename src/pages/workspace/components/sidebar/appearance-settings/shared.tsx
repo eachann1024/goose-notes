@@ -136,7 +136,7 @@ export function EditorLayoutSettings() {
   return (
     <SettingsSectionCard
       title="编辑布局"
-      description="未单独设置布局的笔记使用此项；单篇笔记可在右上角菜单覆盖。"
+      description="新笔记的默认排版宽度；单篇笔记可在右上角菜单单独调整。"
     >
       <div
         role="group"
@@ -145,8 +145,8 @@ export function EditorLayoutSettings() {
       >
         {(
           [
-            ["full", "全宽", "铺满可用编辑区域"],
-            ["standard", "标准", "均衡留白，日常编辑"],
+            ["full", "全宽", "铺满编辑窗口，适合长表格与宽文档"],
+            ["standard", "标准", "居中自适应留白，提供舒适阅读节奏"],
           ] as const
         ).map(([value, label, description]) => (
           <SelectableCard
