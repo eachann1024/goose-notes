@@ -1,12 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
+import { PortalHoverTip } from "./history/PortalHoverTip";
+import { requestDeleteConversation } from "./history/historyActions";
+import { useMemo, type MouseEvent, useState } from "react";
 import {
   Check,
   Clock3,
@@ -14,8 +8,6 @@ import {
   MessageSquareText,
   Trash2,
 } from "@/components/ui/icons";
-import { toast } from "@/components/ui/sonner";
-import { TOOLTIP_DELAY_MS } from "@/components/ui/tooltip-delay";
 import {
   Popover,
   PopoverContent,
@@ -69,111 +61,6 @@ function formatConversationTime(timestamp: number) {
   });
 
   return `${datePart} ${time}`;
-}
-
-/**
- * Dropdown / 溢出容器内 Radix Tooltip 常被 pointer 捕获拦掉。
- * 用 body portal + 固定定位，延迟与全局 Tooltip 一致。
- */
-function PortalHoverTip({
-  content,
-  children,
-}: {
-  content: string;
-  children: (handlers: {
-    onMouseEnter: (event: MouseEvent<HTMLElement>) => void;
-    onMouseLeave: () => void;
-  }) => ReactNode;
-}) {
-  const [tip, setTip] = useState<{ top: number; left: number } | null>(null);
-  const showTimerRef = useRef<number>(0);
-
-  const clearShowTimer = () => {
-    if (showTimerRef.current) {
-      window.clearTimeout(showTimerRef.current);
-      showTimerRef.current = 0;
-    }
-  };
-
-  useEffect(() => () => clearShowTimer(), []);
-
-  return (
-    <>
-      {children({
-        onMouseEnter: (event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const maxWidth = 288;
-          const left = Math.min(
-            Math.max(8, rect.left),
-            window.innerWidth - maxWidth - 8,
-          );
-          const nextTip = { top: rect.bottom + 6, left };
-          clearShowTimer();
-          showTimerRef.current = window.setTimeout(() => {
-            setTip(nextTip);
-          }, TOOLTIP_DELAY_MS);
-        },
-        onMouseLeave: () => {
-          clearShowTimer();
-          setTip(null);
-        },
-      })}
-      {tip && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              role="tooltip"
-              className="pointer-events-none fixed z-[30000] max-w-xs select-none whitespace-normal break-words rounded-control border border-border/80 bg-popover px-2.5 py-1.5 text-[12px] font-medium leading-snug text-popover-foreground shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:border-white/20"
-              style={{ top: tip.top, left: tip.left }}
-            >
-              {content}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
-  );
-}
-
-/** 正在等待 toast 确认的会话删除，防止重复触发 */
-const conversationDeleteInFlight = new Set<string>();
-
-/** 删除会话：走全局 sonner toast 确认，确认后回调执行真实删除 */
-function requestDeleteConversation(
-  conversationId: string,
-  summary: string,
-  onConfirm: () => void,
-) {
-  if (conversationDeleteInFlight.has(conversationId)) return;
-  const trimmedSummary = summary.trim() || "新会话";
-  const displaySummary =
-    trimmedSummary.length > 20
-      ? `${trimmedSummary.slice(0, 20)}…`
-      : trimmedSummary;
-  const toastId = `delete-ai-conversation:${conversationId}`;
-
-  // 从弹出确认 toast 起就占位，保证同一会话同时只有一个待确认 toast
-  conversationDeleteInFlight.add(conversationId);
-  toast.warning(`删除会话「${displaySummary}」？`, {
-    id: toastId,
-    duration: 8000,
-    onDismiss: () => {
-      conversationDeleteInFlight.delete(conversationId);
-    },
-    onAutoClose: () => {
-      conversationDeleteInFlight.delete(conversationId);
-    },
-    action: {
-      label: "确认删除",
-      onClick: () => {
-        try {
-          onConfirm();
-          toast.success("已删除会话", { id: toastId });
-        } finally {
-          conversationDeleteInFlight.delete(conversationId);
-        }
-      },
-    },
-  });
 }
 
 export function ConversationHistoryList({
@@ -254,9 +141,7 @@ export function ConversationHistoryList({
                 aria-current={isActive ? "true" : undefined}
               >
                 <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="block w-full truncate text-sm">
-                    {summary}
-                  </div>
+                  <div className="block w-full truncate text-sm">{summary}</div>
                   <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-[var(--goose-interactive-hover-fg)]">
                     <Clock3 className="h-3 w-3 shrink-0" strokeWidth={1.75} />
                     <span className="truncate">

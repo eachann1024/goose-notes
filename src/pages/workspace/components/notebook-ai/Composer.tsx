@@ -1,123 +1,29 @@
-/**
- * Notebook AI composer — 附件（页面引用 + 图片）以 chip 形式内联在输入框中。
- * 文本与 @ 引用草稿按 notebook 持久化，切页 / 关面板 / 退出插件后可恢复。
- */
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+/** Notebook AI 输入条：草稿、附件、布局与原生引用动作各自维护。 */
+import { forwardRef, useCallback } from "react";
 import { ArrowUp, Plus } from "@/components/ui/icons";
 import { ComposerPrimitive } from "@assistant-ui/react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { LoadingState } from "./beautiful-ui/LoadingState";
 import { PromptBar } from "./beautiful-ui/PromptBar";
-import {
-  AiComposerInput,
-  type AiComposerInputHandle,
-} from "@/components/editor/ai/composer/AiComposerInput";
-import { isEditorDomEmpty } from "@/components/editor/ai/composer/composerChipDom";
-import { isComposerPayloadEmpty } from "@/components/editor/ai/composer/composerTokens";
-import {
-  measureNowrapContentSize,
-  measureSingleLineSlot,
-  shouldExpandComposer,
-} from "@/components/editor/ai/composer/composerExpandLayout";
-import {
-  normalizeAiComposerPayload,
-  type AiComposerPayload,
-  type AiFileReferenceAttrs,
-  type AiReferenceSuggestionItem,
-} from "@/components/editor/ai/composer/referenceLookup";
-import {
-  APPEND_COMPOSER_SELECTION_EVENT,
-  SELECTION_QUOTE_DUPLICATE_TOAST,
-  buildSelectionQuoteAttrs,
-  consumePendingAppendComposerSelections,
-  shouldDeferPendingSelectionQuote,
-  type AppendComposerSelectionDetail,
-  type AiSelectionQuoteAttrs,
-} from "@/components/editor/ai/composer/selectionQuote";
-import {
-  extractClipboardImageFiles,
-  isImageUploadFile,
-  resolveImageMimeForUpload,
-} from "@/components/editor/utils/pasteClipboardImage";
-import {
-  composerDraftHasContent,
-  useNotebookAiChats,
-} from "@/stores/useNotebookAiChats";
-import type { JSONContent } from "@/types";
+import { AiComposerInput } from "@/components/editor/ai/composer/AiComposerInput";
 import { ModelSelectorPopover } from "./ModelSelectorPopover";
-import {
-  matchComposerPayloadSlashCommand,
-  type ComposerSlashBuiltinId,
-} from "@/lib/notebook-ai/composerSlashCommands";
-
+import { useComposerSurface } from "./composer/useComposerSurface";
+import { useComposerDraft } from "./composer/useComposerDraft";
+import { useComposerSubmission } from "./composer/useComposerSubmission";
+import { useComposerAttachments } from "./composer/useComposerAttachments";
+import { useComposerSelectionHandle } from "./composer/useComposerSelectionHandle";
+import type { ComposerHandle, ComposerProps } from "./composer/types";
+export type {
+  NotebookAiImageAttachment,
+  ComposerHandle,
+} from "./composer/types";
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
-/** 草稿走 zustand persist → Electron 同步写盘，必须防抖（含整行删除后的清空） */
-const COMPOSER_DRAFT_PERSIST_MS = 500;
-const SUPPORTED_IMAGE_MEDIA_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-]);
-
-export interface NotebookAiImageAttachment {
-  file: File;
-  previewUrl: string;
-}
-
-export interface ComposerHandle {
-  /** 聚焦输入框 */
-  focus: () => void;
-  /** 打开面板后立即给输入框植入初始引用（当前页上下文） */
-  insertReference: (reference: AiFileReferenceAttrs) => void;
-  /** 空会话默认 @ 仍可替换时，改成最新当前页 */
-  replaceDefaultPageReference: (
-    reference: AiFileReferenceAttrs,
-  ) => "applied" | "already" | "skipped";
-  /** 把选区引用 chip 追加到输入框末尾；加入对话路径由外层聚焦 */
-  appendSelectionQuote: (
-    quote: AiSelectionQuoteAttrs,
-    options?: { restoreCaret?: boolean; animate?: boolean },
-  ) => "appended" | "duplicate" | "skipped";
-}
-
-interface ComposerProps {
-  /** 用于按笔记本持久化输入草稿 */
-  notebookId: string;
-  /** 当前会话；切换会话时推迟消费加入对话队列 */
-  conversationId?: string;
-  /** 面板解析后的初始草稿；不传则读 store */
-  initialContent?: JSONContent | null;
-  onSend: (
-    payload: AiComposerPayload,
-    images: NotebookAiImageAttachment[],
-  ) => boolean | void;
-  onSlashCommand?: (id: ComposerSlashBuiltinId) => void;
-  isStreaming: boolean;
-  disabled?: boolean;
-  placeholder?: string;
-  searchPages?: (query: string) => AiReferenceSuggestionItem[];
-  onEscape?: () => void;
-  /** 全屏时输入区居中加宽 */
-  layout?: "side-panel" | "fullscreen";
-}
-
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(
-  function Composer(
-    {
+  function Composer({ ...props }, ref) {
+    const {
       notebookId,
-      conversationId,
-      initialContent,
-      onSend,
       onSlashCommand,
       isStreaming,
       disabled,
@@ -125,322 +31,44 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       searchPages,
       onEscape,
       layout = "side-panel",
-    },
-    ref,
-  ) {
+    } = props;
     const isFullscreen = layout === "fullscreen";
-    const inputRef = useRef<AiComposerInputHandle>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const draftSeqRef = useRef(0);
-    const [autoFocusToken, setAutoFocusToken] = useState(disabled ? 0 : 1);
-    const [dropActive, setDropActive] = useState(false);
-    // 仅在挂载时读一次草稿作种子；运行中由 onContentChange 写回 store，
-    // 避免把 store 回灌成受控值导致 contenteditable 选区被重建。
-    const [seedContent] = useState<JSONContent | null>(() =>
-      initialContent !== undefined
-        ? initialContent
-        : useNotebookAiChats.getState().getComposerDraft(notebookId),
-    );
-    // 切回面板时草稿已在 DOM 水合前就决定发送按钮高亮，避免先暗后亮。
-    const [isEmpty, setIsEmpty] = useState(
-      () => !composerDraftHasContent(seedContent),
-    );
-    // 输入区超一行 → data-multiline 标记（高度由 --ai-composer-h 管）
-    const [multiline, setMultiline] = useState(false);
-    // chrome 两行展开：内容到模型选择器位置或有硬换行时，输入独占上行
-    const [expanded, setExpanded] = useState(false);
-    const shellRef = useRef<HTMLDivElement | null>(null);
-    const plusWrapRef = useRef<HTMLSpanElement | null>(null);
-    const modelWrapRef = useRef<HTMLSpanElement | null>(null);
-    const sendWrapRef = useRef<HTMLSpanElement | null>(null);
-    const expandedRef = useRef(false);
-
-    const collapseChrome = useCallback(() => {
-      if (!expandedRef.current) {
-        setMultiline(false);
-        return;
-      }
-      expandedRef.current = false;
-      setExpanded(false);
-      setMultiline(false);
-    }, []);
-
-    /**
-     * 展开判断永远用「单行槽宽度」，不用展开后的全宽，避免
-     * 「展开变宽 → 文字缩回一行 → 收起」来回振荡。
-     * 空 payload 不等于单行：Shift+Enter 留下的空行也展开，单个占位 br 收回。
-     */
-    const recomputeExpanded = useCallback(() => {
-      const shell = shellRef.current;
-      const el = inputRef.current?.getEditorEl();
-      if (!shell || !el) return;
-      const content = measureNowrapContentSize(el, shell);
-      const next = shouldExpandComposer({
-        isEmpty: isEditorDomEmpty(el),
-        contentWidth: content.width,
-        slotWidth: measureSingleLineSlot({
-          shell,
-          plusWidth: plusWrapRef.current?.offsetWidth ?? 0,
-          modelWidth: modelWrapRef.current?.offsetWidth ?? 0,
-          sendWidth: sendWrapRef.current?.offsetWidth ?? 0,
-        }),
-        // 不读取受当前软换行/固定高度影响的 live scrollHeight。
-        scrollHeight: content.height,
-        lineHeight: parseFloat(getComputedStyle(el).lineHeight) || 24,
-      });
-      if (expandedRef.current !== next) {
-        expandedRef.current = next;
-        setExpanded(next);
-      }
-    }, []);
-
-    // 侧栏拖宽、换模型名导致 chrome 变宽 → 重算
-    useEffect(() => {
-      const nodes = [
-        shellRef.current,
-        plusWrapRef.current,
-        modelWrapRef.current,
-        sendWrapRef.current,
-      ].filter((node): node is HTMLElement => node != null);
-      if (nodes.length === 0) return;
-      const observer = new ResizeObserver(() => recomputeExpanded());
-      for (const node of nodes) observer.observe(node);
-      return () => observer.disconnect();
-    }, [recomputeExpanded]);
-
-    const cancelPendingDraftPersist = useCallback(() => {
-      draftSeqRef.current += 1;
-      if (draftTimerRef.current != null) {
-        clearTimeout(draftTimerRef.current);
-        draftTimerRef.current = null;
-      }
-    }, []);
-
-    useEffect(() => {
-      return () => {
-        cancelPendingDraftPersist();
-      };
-    }, [cancelPendingDraftPersist]);
-
+    const surface = useComposerSurface(props);
+    const {
+      inputRef,
+      fileInputRef,
+      autoFocusToken,
+      seedContent,
+      isEmpty,
+      setIsEmpty,
+      multiline,
+      setMultiline,
+      expanded,
+      shellRef,
+      plusWrapRef,
+      modelWrapRef,
+      sendWrapRef,
+      recomputeExpanded,
+    } = surface;
+    const { cancelPendingDraftPersist, handleContentChange } =
+      useComposerDraft(notebookId);
     const handleEscape = useCallback(() => {
       onEscape?.();
     }, [onEscape]);
-
-    const handleContentChange = useCallback(
-      (content: JSONContent | null) => {
-        // 防抖写 Electron：英文快打也会打到同步 dbStorage；拼音中间态已在 input 层跳过
-        const seq = ++draftSeqRef.current;
-        if (draftTimerRef.current != null) {
-          clearTimeout(draftTimerRef.current);
-        }
-        draftTimerRef.current = setTimeout(() => {
-          draftTimerRef.current = null;
-          if (seq !== draftSeqRef.current) return;
-          useNotebookAiChats.getState().setComposerDraft(notebookId, content);
-        }, COMPOSER_DRAFT_PERSIST_MS);
-      },
-      [notebookId],
-    );
-
-    const handleSubmit = useCallback(() => {
-      if (disabled || isStreaming) return;
-      const input = inputRef.current;
-      const payload = input?.getPayload();
-      if (!payload) return;
-
-      const images = input?.resolveImages(payload) ?? [];
-      const slashCommand = matchComposerPayloadSlashCommand(payload);
-      if (slashCommand && images.length === 0) {
-        input?.clear();
-        cancelPendingDraftPersist();
-        useNotebookAiChats.getState().clearComposerDraft(notebookId);
-        setIsEmpty(true);
-        collapseChrome();
-        setAutoFocusToken((token) => token + 1);
-        onSlashCommand?.(slashCommand);
-        return;
-      }
-
-      if (isComposerPayloadEmpty(payload) && images.length === 0) return;
-
-      const normalized = normalizeAiComposerPayload(payload);
-      const accepted = onSend(normalized.payload, images);
-      if (accepted === false) return;
-
-      input?.clear();
-      cancelPendingDraftPersist();
-      useNotebookAiChats.getState().clearComposerDraft(notebookId);
-      setIsEmpty(true);
-      collapseChrome();
-      setAutoFocusToken((token) => token + 1);
-    }, [
-      disabled,
-      isStreaming,
-      onSend,
-      onSlashCommand,
-      notebookId,
+    const handleSubmit = useComposerSubmission(
+      props,
+      surface,
       cancelPendingDraftPersist,
-      collapseChrome,
-    ]);
-
-    const addImageFiles = useCallback((selectedFiles: File[]) => {
-      if (selectedFiles.length === 0) return;
-
-      const accepted = selectedFiles
-        .filter(isImageUploadFile)
-        .filter((file) =>
-          SUPPORTED_IMAGE_MEDIA_TYPES.has(resolveImageMimeForUpload(file)),
-        )
-        .map((file) => {
-          const mediaType = resolveImageMimeForUpload(file);
-          return file.type === mediaType
-            ? file
-            : new File([file], file.name, {
-                type: mediaType,
-                lastModified: file.lastModified,
-              });
-        });
-
-      if (accepted.length === 0) {
-        toast.error("请选择 PNG、JPEG、WebP 或 GIF 图片。");
-        return;
-      }
-
-      inputRef.current?.insertImages(accepted);
-    }, []);
-
-    const handleImageInput = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFiles = Array.from(event.target.files ?? []);
-        event.target.value = "";
-        addImageFiles(selectedFiles);
-      },
-      [addImageFiles],
     );
-
-    /** 粘贴图片 → 插入到光标处（Mac 截图常只有 items，files 为空） */
-    const handleDockPaste = useCallback(
-      (event: React.ClipboardEvent) => {
-        if (disabled || isStreaming) return;
-        const imageFiles = extractClipboardImageFiles(event.clipboardData);
-        if (imageFiles.length === 0) return;
-        event.preventDefault();
-        event.stopPropagation();
-        addImageFiles(imageFiles);
-      },
-      [addImageFiles, disabled, isStreaming],
-    );
-
-    /** 拖入图片：允许 drop + 轻量高亮 */
-    const handleDockDragOver = useCallback(
-      (event: React.DragEvent) => {
-        if (disabled || isStreaming) return;
-        const types = Array.from(event.dataTransfer?.types ?? []);
-        if (
-          !types.includes("Files") &&
-          !types.some((t) => t.startsWith("image/"))
-        ) {
-          return;
-        }
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-        setDropActive(true);
-      },
-      [disabled, isStreaming],
-    );
-
-    const handleDockDragLeave = useCallback((event: React.DragEvent) => {
-      const related = event.relatedTarget as Node | null;
-      if (related && event.currentTarget.contains(related)) return;
-      setDropActive(false);
-    }, []);
-
-    const handleDockDrop = useCallback(
-      (event: React.DragEvent) => {
-        setDropActive(false);
-        if (disabled || isStreaming) return;
-        const imageFiles = extractClipboardImageFiles(event.dataTransfer);
-        if (imageFiles.length === 0) return;
-        event.preventDefault();
-        event.stopPropagation();
-        addImageFiles(imageFiles);
-      },
-      [addImageFiles, disabled, isStreaming],
-    );
-
-    useEffect(() => {
-      let cancelled = false;
-      const applyDetail = (detail: AppendComposerSelectionDetail) => {
-        if (
-          shouldDeferPendingSelectionQuote({
-            composerConversationId: conversationId,
-            activeConversationId: useNotebookAiChats
-              .getState()
-              .getActiveConversationId(notebookId),
-          })
-        ) {
-          return false;
-        }
-        const attrs = buildSelectionQuoteAttrs({
-          pageId: detail?.pageId ?? "",
-          pageTitle: detail?.pageTitle ?? "",
-          text: detail?.text ?? "",
-        });
-        if (!attrs) return true;
-        const result = inputRef.current?.appendSelectionQuote(attrs, {
-          animate: detail.animate === true,
-          restoreCaret: false,
-        });
-        if (result === "duplicate") {
-          toast(SELECTION_QUOTE_DUPLICATE_TOAST);
-          inputRef.current?.focus();
-          return true;
-        }
-        if (result === "appended") {
-          inputRef.current?.focus();
-          return true;
-        }
-        return false;
-      };
-      const flushPending = () => {
-        const run = (tries: number) => {
-          if (cancelled) return;
-          const remaining = consumePendingAppendComposerSelections(applyDetail);
-          if (remaining > 0 && tries > 0) {
-            window.requestAnimationFrame(() => run(tries - 1));
-          }
-        };
-        run(8);
-      };
-      window.addEventListener(APPEND_COMPOSER_SELECTION_EVENT, flushPending);
-      flushPending();
-      return () => {
-        cancelled = true;
-        window.removeEventListener(
-          APPEND_COMPOSER_SELECTION_EVENT,
-          flushPending,
-        );
-      };
-    }, [conversationId, notebookId]);
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        focus: () => {
-          inputRef.current?.focus();
-        },
-        insertReference: (reference: AiFileReferenceAttrs) => {
-          inputRef.current?.insertReference(reference);
-        },
-        replaceDefaultPageReference: (reference: AiFileReferenceAttrs) =>
-          inputRef.current?.replaceDefaultPageReference(reference) ?? "skipped",
-        appendSelectionQuote: (quote, options) =>
-          inputRef.current?.appendSelectionQuote(quote, options) ?? "skipped",
-      }),
-      [],
-    );
-
+    const {
+      dropActive,
+      handleImageInput,
+      handleDockPaste,
+      handleDockDragOver,
+      handleDockDragLeave,
+      handleDockDrop,
+    } = useComposerAttachments(props, surface);
+    useComposerSelectionHandle(props, surface, ref);
     // isEmpty 在 IME 会话里会滞后；发送按钮不因 isEmpty 禁用，避免「有字点不了」
     // 真正空内容由 handleSubmit 读 DOM 拦截。
     const canClickSend = !isStreaming && !disabled;
@@ -554,9 +182,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               </span>
 
               {/* 仅 spacer：两行时把发送按钮顶到最右，不是输入 */}
-              {expanded ? (
-                <div className="min-w-0 flex-1" aria-hidden />
-              ) : null}
+              {expanded ? <div className="min-w-0 flex-1" aria-hidden /> : null}
 
               <span ref={sendWrapRef} className="flex shrink-0 items-center">
                 {isStreaming ? (

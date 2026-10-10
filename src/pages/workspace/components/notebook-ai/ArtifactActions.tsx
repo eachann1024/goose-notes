@@ -1,5 +1,13 @@
+import { copyText, downloadText, copyImagePayload } from "./artifactClipboard";
 import { useState } from "react";
-import { Copy, Download, FilePlus2, Image as ImageIcon, Loader2, Maximize2 } from "@/components/ui/icons";
+import {
+  Copy,
+  Download,
+  FilePlus2,
+  Image as ImageIcon,
+  Loader2,
+  Maximize2,
+} from "@/components/ui/icons";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,69 +24,7 @@ import {
   previewPointerHandlers,
   type PreviewContent,
 } from "@/lib/preview/previewAction";
-import { getEditorPlatform } from "@/components/editor/platform/context";
-import { shell } from "@/lib/electron-platform/shell";
-import type { ArtifactInsertResult } from "./insertArtifact";
-
-interface ArtifactActionsProps {
-  /** 复制源码（Mermaid DSL / SVG 文本等） */
-  copySource?: string;
-  /** 下载文件内容（SVG 文本等）；与 onDownloadImage 二选一优先图片 */
-  downloadSource?: string;
-  filename?: string;
-  mimeType?: string;
-  /** 复制渲染图为 PNG（返回 data URL 或 Blob） */
-  onCopyImage?: () => Promise<string | Blob>;
-  /** 下载渲染图为 PNG */
-  onDownloadImage?: () => Promise<Blob>;
-  downloadImageFilename?: string;
-  /** 生成预览内容；左键全屏、右键系统。优先于 onPreviewImage */
-  onPreview?: () => Promise<PreviewContent>;
-  /** 生成预览图（data URL 或 Blob）；没有 onPreview 时作为图片预览 */
-  onPreviewImage?: () => Promise<string | Blob>;
-  previewFilename?: string;
-  onInsert?: () => Promise<ArtifactInsertResult> | ArtifactInsertResult;
-}
-
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard?.writeText(text);
-    toast.success("已复制");
-    return;
-  } catch {
-    shell.copyText(text);
-    toast.success("已复制");
-  }
-}
-
-async function downloadText(text: string, filename: string, mimeType: string) {
-  try {
-    const blob = new Blob([text], { type: mimeType });
-    await saveBlobAndReveal(blob, filename);
-    toast.success("已保存");
-  } catch {
-    toast.error("保存失败");
-  }
-}
-
-async function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("图片编码失败"));
-    };
-    reader.onerror = () => reject(new Error("图片编码失败"));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function copyImagePayload(payload: string | Blob) {
-  const dataUrl =
-    typeof payload === "string" ? payload : await blobToDataUrl(payload);
-  await getEditorPlatform().clipboard.copyImage(dataUrl);
-  toast.success("已复制到剪贴板");
-}
+import type { ArtifactActionsProps } from "./artifactActionTypes";
 
 const iconBtnClass =
   "h-7 w-7 cursor-pointer rounded-[7px] text-muted-foreground hover:bg-[var(--goose-interactive-hover)] hover:text-[var(--goose-interactive-hover-fg)] dark:hover:bg-[var(--goose-interactive-hover)]";
@@ -106,7 +52,8 @@ export function ArtifactActions({
   const hasSourceCopy = Boolean(copySource?.trim());
   const hasImageCopy = Boolean(onCopyImage);
   const hasImageDownload = Boolean(onDownloadImage);
-  const hasSourceDownload = Boolean(downloadSource?.trim()) && !hasImageDownload;
+  const hasSourceDownload =
+    Boolean(downloadSource?.trim()) && !hasImageDownload;
   const hasPreview = Boolean(onPreview || onPreviewImage);
 
   if (
@@ -163,7 +110,10 @@ export function ArtifactActions({
                 }}
               >
                 {copyingImage ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-spin"
+                    strokeWidth={1.75}
+                  />
                 ) : (
                   <ImageIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
                 )}
@@ -258,7 +208,10 @@ export function ArtifactActions({
                 })}
               >
                 {previewing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-spin"
+                    strokeWidth={1.75}
+                  />
                 ) : (
                   <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                 )}
@@ -295,7 +248,10 @@ export function ArtifactActions({
             }}
           >
             {downloadingImage ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                strokeWidth={1.75}
+              />
             ) : (
               <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
             )}
