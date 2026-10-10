@@ -52,6 +52,7 @@ type AccentOption = {
   lightSurface: string;
   darkSurface: string;
   fullTheme?: string;
+  pro?: boolean;
 };
 
 const accentOptions: AccentOption[] = [
@@ -62,14 +63,6 @@ const accentOptions: AccentOption[] = [
     previewDark: "#93c5fd",
     lightSurface: "#dbeafe",
     darkSurface: "rgba(59, 130, 246, 0.2)",
-  },
-  {
-    value: "mono",
-    label: "叶脉",
-    previewLight: "#756b42",
-    previewDark: "#f5f5f5",
-    lightSurface: "#eeebde",
-    darkSurface: "rgba(255, 255, 255, 0.16)",
   },
   {
     value: "iris",
@@ -86,24 +79,6 @@ const accentOptions: AccentOption[] = [
     previewDark: "#86efac",
     lightSurface: "#dcfce7",
     darkSurface: "rgba(34, 197, 94, 0.2)",
-  },
-  {
-    value: "amber",
-    label: "浅秋",
-    previewLight: "#e9dcb8",
-    previewDark: "#c8b889",
-    lightSurface: "#e9dfc7",
-    darkSurface: "#39352a",
-    fullTheme: "浅奶油黄与暖白纸面，像秋日里的一点淡淡日光。",
-  },
-  {
-    value: "wheat",
-    label: "麦笺",
-    previewLight: "#d9d7bd",
-    previewDark: "#b8b99a",
-    lightSurface: "#e0ddc8",
-    darkSurface: "#33382a",
-    fullTheme: "灰麦黄与米白纸面，像铅笔画在一张安静的素描纸上。",
   },
   {
     value: "coral",
@@ -128,6 +103,35 @@ const accentOptions: AccentOption[] = [
     previewDark: "#d8b4fe",
     lightSurface: "#f3e8ff",
     darkSurface: "rgba(168, 85, 247, 0.2)",
+  },
+  {
+    value: "mono",
+    label: "叶脉",
+    previewLight: "#756b42",
+    previewDark: "#f5f5f5",
+    lightSurface: "#eeebde",
+    darkSurface: "rgba(255, 255, 255, 0.16)",
+    pro: true,
+  },
+  {
+    value: "amber",
+    label: "浅秋",
+    previewLight: "#e9dcb8",
+    previewDark: "#c8b889",
+    lightSurface: "#e9dfc7",
+    darkSurface: "#39352a",
+    fullTheme: "浅奶油黄与暖白纸面，像秋日里的一点淡淡日光。",
+    pro: true,
+  },
+  {
+    value: "wheat",
+    label: "麦笺",
+    previewLight: "#d9d7bd",
+    previewDark: "#b8b99a",
+    lightSurface: "#e0ddc8",
+    darkSurface: "#33382a",
+    fullTheme: "灰麦黄与米白纸面，像铅笔画在一张安静的素描纸上。",
+    pro: true,
   },
 ];
 
@@ -565,8 +569,13 @@ export function SettingsAppearance({
                         style={{ backgroundColor: option.previewDark }}
                       />
                     </span>
-                    <span className="flex flex-1 items-center gap-1 whitespace-nowrap">
+                    <span className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
                       {option.label}
+                      {option.pro && (
+                        <span className="shrink-0 rounded-control bg-[var(--goose-interactive-hover)] px-1 py-px text-[9px] font-semibold leading-none tracking-wide text-[var(--goose-interactive-hover-fg)]">
+                          Pro
+                        </span>
+                      )}
                       {option.fullTheme && (
                         <GooseIcons.Pencil aria-hidden="true" className="h-3 w-3 shrink-0" />
                       )}
