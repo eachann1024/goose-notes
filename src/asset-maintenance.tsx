@@ -180,7 +180,7 @@ async function start() {
   useSettings.getState().setAccentColor(appearance.accentColor);
   const settings = useSettings.getState();
   applyFontVariables(settings.customFonts, settings);
-  applyAppearanceScaleVariables({ uiFontSize: settings.uiFontSize, editorFontSize: settings.editorFontSize, editorLineHeight: settings.editorLineHeight, sidebarFontSize: settings.sidebarFontSize });
+  applyAppearanceScaleVariables({ uiFontSize: settings.uiFontSize, editorFontSize: settings.editorFontSize, editorLineHeight: settings.editorLineHeight });
   createRoot(document.getElementById("root")!).render(<AssetMaintenanceApp />);
 }
 void start().catch((error) => { document.getElementById("root")!.textContent = `资源清理窗口初始化失败：${String(error)}`; });

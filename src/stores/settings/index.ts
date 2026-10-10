@@ -132,7 +132,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "goose-note-settings",
-      version: 10,
+      version: 11,
       merge: (persisted, current) => ({
         ...current,
         ...normalizeFixedShortcutSettings((persisted ?? {}) as Partial<SettingsState>),
@@ -176,7 +176,7 @@ export const useSettings = create<SettingsState>()(
         }
 
         const normalizedUIFontSize = normalizeUIFontSize(
-          state?.uiFontSize as string | undefined,
+          state?.uiFontSize,
         );
         if (state && state.uiFontSize !== normalizedUIFontSize) {
           useSettings.setState({ uiFontSize: normalizedUIFontSize });

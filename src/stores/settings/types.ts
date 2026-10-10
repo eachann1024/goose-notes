@@ -112,8 +112,11 @@ export interface CustomAction {
   isEnabled: boolean;
 }
 
-// 界面缩放：低、中、高，保持侧栏与编辑器字号独立。
-export type UIFontSize = "small" | "normal" | "large";
+// 界面缩放百分比：界面和侧栏同步，正文保持独立字号。
+export type UIFontSize = number;
+export const UI_SCALE_MIN = 85;
+export const UI_SCALE_MAX = 130;
+export const UI_FONT_SIZE_BASE = 14;
 
 function clampFontSize(
   value: unknown,
@@ -174,7 +177,7 @@ export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MIN = 1;
 export const AUTO_CLOSE_INACTIVE_TABS_HOURS_MAX = 720;
 export const AUTO_CLOSE_INACTIVE_TABS_HOURS_DEFAULT = 24;
 
-export const DEFAULT_UI_FONT_SIZE: UIFontSize = "small";
+export const DEFAULT_UI_FONT_SIZE: UIFontSize = 100;
 export const LEGACY_DEFAULT_CUSTOM_ACTION_ID = "default-translate";
 
 export const DEFAULT_SEARCH_PROVIDERS: SearchProvider[] = [
@@ -291,12 +294,12 @@ export function resolveCodeTheme(isDark: boolean): CodeTheme {
   return isDark ? "github-dark" : "github-light";
 }
 
-export function normalizeUIFontSize(
-  uiFontSize: string | undefined,
-): UIFontSize {
-  if (uiFontSize === "small") return "small";
-  if (uiFontSize === "normal" || uiFontSize === "large") return uiFontSize;
-  return DEFAULT_UI_FONT_SIZE;
+export function normalizeUIFontSize(value: unknown): UIFontSize {
+  // 兼容旧版三档设置，保留用户原来的界面大小。
+  if (value === "small") return 100;
+  if (value === "normal") return 114;
+  if (value === "large") return 129;
+  return clampFontSize(value, UI_SCALE_MIN, UI_SCALE_MAX, DEFAULT_UI_FONT_SIZE);
 }
 
 export function normalizeAutoCloseInactiveTabsHours(hours: unknown): number {

@@ -1,17 +1,20 @@
 import {
   EDITOR_FONT_SIZE_DEFAULT,
   SIDEBAR_FONT_SIZE_DEFAULT,
-  normalizeSidebarFontSize,
+  normalizeUIFontSize,
+  UI_FONT_SIZE_BASE,
   normalizeEditorLineHeight,
   type UIFontSize,
 } from "@/stores/settings/types";
 import { titleBarHeightPx } from "@/lib/electron/titlebarLayout";
 
-export const UI_FONT_SIZE_MAP: Record<UIFontSize, number> = {
-  small: 14,
-  normal: 16,
-  large: 18,
-};
+export function computeUiFontSize(uiFontSize: UIFontSize): number {
+  return UI_FONT_SIZE_BASE * normalizeUIFontSize(uiFontSize) / 100;
+}
+
+export function computeSidebarFontSize(uiFontSize: UIFontSize): number {
+  return SIDEBAR_FONT_SIZE_DEFAULT * normalizeUIFontSize(uiFontSize) / 100;
+}
 
 export const EDITOR_UI_SCALE_CHANGE_EVENT = "goose-editor-ui-scale-change";
 
@@ -50,8 +53,8 @@ function applyEditorUiScale(root: HTMLElement, scale: string): void {
 }
 
 export function computeSidebarRowHeight(sidebarFontSize: number): number {
-  // +6：约 4px 垂直内边距余量（py +0.5）+ 2px 行间透明边。
-  return Math.round(normalizeSidebarFontSize(sidebarFontSize) * 2 + 6);
+  // 默认 32px 行高；文字与上下间距使用同一缩放比例。
+  return Math.round(sidebarFontSize / SIDEBAR_FONT_SIZE_DEFAULT * 32);
 }
 
 /**
@@ -65,15 +68,11 @@ export function applyAppearanceScaleVariables(options: {
   uiFontSize: UIFontSize;
   editorFontSize: number;
   editorLineHeight?: number;
-  sidebarFontSize?: number;
 }): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const targetUiSize =
-    UI_FONT_SIZE_MAP[options.uiFontSize] ?? UI_FONT_SIZE_MAP.small;
-  const sidebarFontSize = normalizeSidebarFontSize(
-    options.sidebarFontSize ?? SIDEBAR_FONT_SIZE_DEFAULT,
-  );
+  const targetUiSize = computeUiFontSize(options.uiFontSize);
+  const sidebarFontSize = computeSidebarFontSize(options.uiFontSize);
   root.style.setProperty("font-size", `${targetUiSize}px`);
   root.style.setProperty("--editor-font-size", `${options.editorFontSize}px`);
   root.style.setProperty("--editor-line-height", String(normalizeEditorLineHeight(options.editorLineHeight)));

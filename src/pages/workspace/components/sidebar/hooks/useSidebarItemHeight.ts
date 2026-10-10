@@ -1,11 +1,11 @@
-import { computeSidebarRowHeight } from "@/lib/appearance";
+import { computeSidebarFontSize, computeSidebarRowHeight } from "@/lib/appearance";
 import { useSettings } from "@/stores/useSettings";
 
 export function useSidebarItemHeight() {
-  const sidebarFontSize = useSettings((s) => s.sidebarFontSize);
+  const uiFontSize = useSettings((s) => s.uiFontSize);
 
   return useMemo(
-    () => computeSidebarRowHeight(sidebarFontSize),
-    [sidebarFontSize],
+    () => computeSidebarRowHeight(computeSidebarFontSize(uiFontSize)),
+    [uiFontSize],
   );
 }

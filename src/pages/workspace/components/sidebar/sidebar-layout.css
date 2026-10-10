@@ -1,12 +1,11 @@
-/* Scheme A uses CSS pixels so the app's rem scale does not enlarge its spacing.
- * Keep the footer outside this scope; sidebar font preferences still apply. */
+/* 侧栏文字、图标和间距随界面根字号同步缩放；100% 保持原有几何。 */
 .workspace-shell .workspace-sidebar-pane .sidebar-design {
-  --radius-lg: 8px;
-  --sidebar-body-size: calc(var(--sidebar-font-size, 13px) + 1px);
-  --sidebar-label-size: 12px;
+  --radius-lg: 0.571429rem;
+  --sidebar-body-size: calc(var(--sidebar-font-size, 13px) + 0.071429rem);
+  --sidebar-label-size: 0.857143rem;
   --sidebar-foreground: hsl(var(--foreground));
   --sidebar-muted: hsl(var(--muted-foreground));
-  padding: 16px 8px 0;
+  padding: 1.142857rem 0.571429rem 0;
   font-family: var(--font-sidebar, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif);
   font-size: var(--sidebar-body-size);
   line-height: 1.5;
@@ -38,9 +37,9 @@
   --goose-interactive-selected-border: #577ee8;
 }
 
-.sidebar-design .sidebar-tree-heading { margin: 0 4px 10px; }
+.sidebar-design .sidebar-tree-heading { margin: 0 0.285714rem 0.714286rem; }
 .workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-tree-heading .sidebar-section-label {
-  height: 28px;
+  height: 2rem;
   padding: 0;
   font-size: var(--sidebar-body-size);
   font-weight: 400;
@@ -48,11 +47,11 @@
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-design .sidebar-section-label[data-outline-header="true"] {
   height: auto;
-  min-height: 44px;
-  padding-block: 4px;
+  min-height: 3.142857rem;
+  padding-block: 0.285714rem;
 }
 .sidebar-design .sidebar-section-label[data-outline-header="true"] .sidebar-heading-copy {
-  gap: 4px;
+  gap: 0.285714rem;
 }
 .sidebar-design .sidebar-heading-copy {
   display: flex;
@@ -63,19 +62,19 @@
 }
 .sidebar-design .sidebar-heading-eyebrow {
   color: var(--sidebar-muted);
-  font-size: 10px;
-  line-height: 12px;
+  font-size: 0.714286rem;
+  line-height: 0.857143rem;
 }
 .sidebar-design .sidebar-tree-heading .sidebar-heading-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 16px;
+  line-height: 1.142857rem;
 }
-.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:last-child { gap: 2px; }
+.sidebar-design .sidebar-tree-heading .sidebar-section-label > div:last-child { gap: 0.142857rem; }
 .sidebar-design .sidebar-tree-heading button[aria-label="收起全部页面"],
-.sidebar-design .sidebar-tree-heading button[aria-label^="新建"] { width: 24px; height: 24px; min-width: 24px; }
+.sidebar-design .sidebar-tree-heading button[aria-label^="新建"] { width: 1.714286rem; height: 1.714286rem; min-width: 1.714286rem; }
 .sidebar-design[hidden],
 .sidebar-content-pane[hidden] { display: none !important; }
 .workspace-shell .workspace-stage[data-sidebar-overlay] { position: relative; }
@@ -90,13 +89,13 @@
 .workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] {
   position: absolute;
   z-index: 30;
-  inset: 10px auto 12px var(--workspace-stage-pad-left);
-  width: min(var(--sidebar-configured-width), calc(100vw - 56px)) !important;
+  inset: 0.714286rem auto 0.857143rem var(--workspace-stage-pad-left);
+  width: min(var(--sidebar-configured-width), calc(100vw - 4rem)) !important;
   height: auto !important;
   overflow: hidden;
 }
 .workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] > [role="separator"] {
-  right: -24px !important;
+  right: -1.714286rem !important;
 }
 .workspace-shell .workspace-sidebar-pane[data-sidebar-overlay] > [role="separator"] > div {
   left: 0;
@@ -116,8 +115,8 @@
   min-height: 0;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
+  gap: 0.285714rem;
+  padding: 0.571429rem 0.285714rem;
   background: transparent;
 }
 .sidebar-mode-rail {
@@ -127,29 +126,29 @@
   flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 0.285714rem;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 .sidebar-mode-rail[hidden] { display: none !important; }
 .sidebar-mode-rail-button {
   display: flex;
-  width: 48px;
-  min-height: 44px;
+  width: 3.428571rem;
+  min-height: 3.142857rem;
   flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0.285714rem;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0.571429rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
-  line-height: 12px;
-  padding: 4px 0;
+  font-size: 0.714286rem;
+  line-height: 0.857143rem;
+  padding: 0.285714rem 0;
 }
 .sidebar-mode-rail-label {
   max-width: 100%;
@@ -167,8 +166,8 @@
 }
 .sidebar-mode-rail-button:focus-visible .sidebar-mode-rail-label {
   text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 2px;
+  text-underline-offset: 0.214286rem;
+  text-decoration-thickness: 0.142857rem;
 }
 .sidebar-rail-footer {
   display: flex;
@@ -176,44 +175,44 @@
   flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 0.285714rem;
   margin-top: auto;
-  padding-bottom: 4px;
+  padding-bottom: 0.285714rem;
 }
 .sidebar-rail-footer .sidebar-footer-control {
   box-sizing: border-box;
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
-  flex-basis: 32px;
+  width: 2.285714rem;
+  min-width: 2.285714rem;
+  height: 2.285714rem;
+  min-height: 2.285714rem;
+  flex-basis: 2.285714rem;
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-rail-footer .sidebar-footer-control:is(:hover, :focus-visible, :active, [data-active="true"]) {
   color: var(--goose-interactive-selected-fg);
 }
 .workspace-shell .workspace-sidebar-pane .sidebar-design :is(.main-tree-row, .sidebar-tree-row) {
-  border-radius: 8px;
+  border-radius: 0.571429rem;
   font-size: var(--sidebar-body-size);
   font-weight: 400;
-  line-height: 21px;
-  padding-right: 10px;
+  line-height: 1.5rem;
+  padding-right: 0.714286rem;
   color: var(--sidebar-foreground);
 }
 .sidebar-design .main-tree-row.main-tree-row {
-  height: calc(var(--main-tree-row-height) - 2px);
-  min-height: calc(var(--main-tree-row-height) - 2px);
-  margin: 0 0 2px;
+  height: calc(var(--main-tree-row-height) - 0.142857rem);
+  min-height: calc(var(--main-tree-row-height) - 0.142857rem);
+  margin: 0 0 0.142857rem;
   border-block: 0 !important;
-  gap: 10px;
+  gap: 0.714286rem;
 }
 .sidebar-design .sidebar-tree-row.sidebar-tree-row { border-block: 0; }
-.sidebar-design .sidebar-tree-row > div:first-child { gap: 10px; }
+.sidebar-design .sidebar-tree-row > div:first-child { gap: 0.714286rem; }
 .sidebar-design .sidebar-tree-row > div:first-child > div:last-child { font-size: inherit; line-height: inherit; }
-.sidebar-design :is(.main-tree-row, .sidebar-tree-row) svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.6; }
+.sidebar-design :is(.main-tree-row, .sidebar-tree-row) svg { width: 1.285714rem; height: 1.285714rem; flex-shrink: 0; stroke-width: 1.6; }
 .sidebar-design .main-tree-row:not(.main-tree-row--selected):not(.main-tree-row--hovered) svg:not([class*="text-danger"]),
 .sidebar-design .sidebar-tree-row:not(.sidebar-tree-row--selected):not(.sidebar-tree-row--hovered) svg:not([class*="text-danger"]) { color: var(--sidebar-muted); }
-.sidebar-design .main-tree-row-icon-group :is(.main-tree-row-icon-slot, .main-tree-row-disclosure, .main-tree-row-disclosure-placeholder) { width: 18px; height: 18px; }
-.main-tree-row-icon-group .main-tree-row-disclosure::before { content: ""; position: absolute; inset: -3px; }
-.sidebar-design :is(.main-tree-row-disclosure, .goose-hidden-expand-icon) > svg { width: 12px; height: 12px; translate: -4px 0; }
-.sidebar-design .sidebar-tree-row > div:first-child > .pointer-events-none { width: 18px; height: 18px; margin-right: 0; }
-.sidebar-design .sidebar-tree-row > div:first-child .goose-hidden-expand-icon { width: 24px; height: 18px; margin-right: 0; }
+.sidebar-design .main-tree-row-icon-group :is(.main-tree-row-icon-slot, .main-tree-row-disclosure, .main-tree-row-disclosure-placeholder) { width: 1.285714rem; height: 1.285714rem; }
+.main-tree-row-icon-group .main-tree-row-disclosure::before { content: ""; position: absolute; inset: -0.214286rem; }
+.sidebar-design :is(.main-tree-row-disclosure, .goose-hidden-expand-icon) > svg { width: 0.857143rem; height: 0.857143rem; translate: -0.285714rem 0; }
+.sidebar-design .sidebar-tree-row > div:first-child > .pointer-events-none { width: 1.285714rem; height: 1.285714rem; margin-right: 0; }
+.sidebar-design .sidebar-tree-row > div:first-child .goose-hidden-expand-icon { width: 1.714286rem; height: 1.285714rem; margin-right: 0; }

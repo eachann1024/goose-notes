@@ -40,7 +40,7 @@
   --workspace-stage-pad-bottom: 8px;
   --workspace-sidebar-gap: 0px;
   --workspace-sidebar-width: 240px;
-  --workspace-rail-width: 56px;
+  --workspace-rail-width: 4rem;
   --workspace-sidebar-motion: 200ms cubic-bezier(0.16, 1, 0.3, 1);
   --workspace-resize-line: linear-gradient(
     180deg,

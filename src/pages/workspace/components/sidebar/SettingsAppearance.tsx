@@ -3,14 +3,14 @@ import { useSettings } from "@/stores/useSettings";
 import {
   type CSSProperties,
   type KeyboardEvent,
-  type ReactNode,
 } from "react";
 import type { UIFontSize } from "@/stores/settings/types";
 import type { AccentColor } from "@/stores/useSettings";
 import {
-  SIDEBAR_FONT_SIZE_MAX,
-  SIDEBAR_FONT_SIZE_MIN,
-} from "@/stores/useSettings";
+  DEFAULT_UI_FONT_SIZE,
+  UI_SCALE_MIN,
+  UI_SCALE_MAX,
+} from "@/stores/settings/types";
 import { SelectableCard } from "@/components/ui/selectable-card";
 import { SettingsSectionCard } from "./settings/SettingsSectionCard";
 import { DEFAULT_FONT_NAMES } from "@/lib/fontLoader";
@@ -34,9 +34,6 @@ interface SettingsAppearanceProps {
   ) => void;
   uiFontSize: UIFontSize;
   setUIFontSize: (size: UIFontSize) => void;
-  sidebarFontSize: number;
-  increaseSidebarFontSize: () => void;
-  decreaseSidebarFontSize: () => void;
   editorFontSize: number;
   increaseEditorFontSize: () => void;
   decreaseEditorFontSize: () => void;
@@ -146,68 +143,6 @@ const defaultLabels = { serif: "衬线体", mono: "等宽体" };
 const APPEARANCE_OPTION_ROW_CLASS =
   "rounded-[12px] bg-[hsl(var(--goose-selected-bg)/0.58)] dark:bg-[hsl(var(--foreground)/0.08)]";
 
-function FontSizeStepper({
-  label,
-  description,
-  icon,
-  value,
-  min,
-  max,
-  onDecrease,
-  onIncrease,
-}: {
-  label: string;
-  description: string;
-  icon: ReactNode;
-  value: number;
-  min: number;
-  max: number;
-  onDecrease: () => void;
-  onIncrease: () => void;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-    >
-      <div>
-        <div className="flex items-center gap-3">
-          {icon}
-          <Label>{label}</Label>
-        </div>
-        <p className="mt-1 pl-7 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <div className="flex items-center gap-1 rounded-control bg-[hsl(var(--goose-selected-bg)/0.76)] p-1">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7 rounded-control"
-          aria-label={`减小${label}`}
-          disabled={value <= min}
-          onClick={onDecrease}
-        >
-          <GooseIcons.Minus className="h-3.5 w-3.5" />
-        </Button>
-        <span
-          className="min-w-8 text-center text-xs tabular-nums text-foreground"
-          aria-live="polite"
-        >
-          {value}
-        </span>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7 rounded-control"
-          aria-label={`增大${label}`}
-          disabled={value >= max}
-          onClick={onIncrease}
-        >
-          <GooseIcons.Plus className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function SettingsAppearance({
   theme,
   setTheme,
@@ -217,9 +152,6 @@ export function SettingsAppearance({
   setCustomFont,
   uiFontSize,
   setUIFontSize,
-  sidebarFontSize,
-  increaseSidebarFontSize,
-  decreaseSidebarFontSize,
   editorFontSize,
   section = "all",
   showPreview = true,
@@ -343,24 +275,6 @@ export function SettingsAppearance({
     </div>
   );
 
-  const sidebarFontSizeSettings = (
-    <FontSizeStepper
-      label="侧栏字体大小"
-      description="只影响左侧栏的页面树、分区标题和笔记本名称。"
-      icon={
-        <GooseIcons.PanelLeft
-          className="h-4 w-4 shrink-0 text-muted-foreground"
-          strokeWidth={1.75}
-        />
-      }
-      value={sidebarFontSize}
-      min={SIDEBAR_FONT_SIZE_MIN}
-      max={SIDEBAR_FONT_SIZE_MAX}
-      onDecrease={decreaseSidebarFontSize}
-      onIncrease={increaseSidebarFontSize}
-    />
-  );
-
   const readingSettings = (
     <div className={`p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
       <ReadingPreferences
@@ -377,42 +291,34 @@ export function SettingsAppearance({
   );
 
   const uiFontSizeSettings = (
-    <div
-      className={`flex items-center justify-between gap-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}
-    >
-      <div>
-        <div className="flex items-center gap-3">
-          <GooseIcons.AppWindow
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-            strokeWidth={1.75}
-          />
-          <Label>界面缩放</Label>
-        </div>
-        <p className="mt-1 pl-7 text-xs text-muted-foreground">
-          调整标题栏、设置等整体界面，不影响侧栏树和编辑器正文。
-        </p>
+    <div className={`space-y-4 p-4 ${APPEARANCE_OPTION_ROW_CLASS}`}>
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor="interface-scale" className="flex items-center gap-3">
+          <GooseIcons.AppWindow className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+          界面缩放
+        </Label>
+        <output htmlFor="interface-scale" className="text-sm tabular-nums">{uiFontSize}%</output>
       </div>
-      <div
-        role="group"
-        aria-label="界面缩放"
-        className="flex shrink-0 items-center gap-1 rounded-control bg-[hsl(var(--goose-selected-bg)/0.76)] p-1"
-      >
-        {([["small", "低"], ["normal", "中"], ["large", "高"]] as const).map(([value, label]) => (
-          <Button
-            key={value}
-            size="sm"
-            variant="ghost"
-            aria-pressed={uiFontSize === value}
-            className={cn(
-              "h-7 rounded-control px-3 text-xs transition-all duration-200",
-              uiFontSize === value &&
-                "bg-[var(--goose-interactive-selected)] text-[var(--goose-interactive-selected-fg)] shadow-sm",
-            )}
-            onClick={() => setUIFontSize(value)}
-          >
-            {label}
-          </Button>
-        ))}
+      <p className="text-xs text-muted-foreground">
+        调整标题栏、设置和侧栏，正文保留独立字号。
+      </p>
+      <input
+        id="interface-scale"
+        type="range"
+        min={UI_SCALE_MIN}
+        max={UI_SCALE_MAX}
+        step={1}
+        value={uiFontSize}
+        aria-valuetext={`${uiFontSize}%`}
+        className="block h-6 w-full cursor-pointer accent-primary"
+        onChange={(event) => setUIFontSize(Number(event.target.value))}
+      />
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{UI_SCALE_MIN}%</span>
+        <Button size="sm" variant="ghost" disabled={uiFontSize === DEFAULT_UI_FONT_SIZE} onClick={() => setUIFontSize(DEFAULT_UI_FONT_SIZE)}>
+          恢复默认（100%）
+        </Button>
+        <span>{UI_SCALE_MAX}%</span>
       </div>
     </div>
   );
@@ -425,7 +331,6 @@ export function SettingsAppearance({
       {showPreview && (
         <AppearanceEditorPreview
           editorOnly
-          sidebarFontSize={sidebarFontSize}
           editorFontSize={editorFontSize}
           editorLineHeight={editorLineHeight}
           uiFontSize={uiFontSize}
@@ -624,7 +529,6 @@ export function SettingsAppearance({
                   <div className="mt-4 space-y-4">
                     {interfaceFontSettings}
                     {additionalFontSettings}
-                    {sidebarFontSizeSettings}
                     {uiFontSizeSettings}
                   </div>
                 </details>
@@ -635,7 +539,6 @@ export function SettingsAppearance({
                 {defaultFontSettings}
                 {additionalFontSettings}
                 <div className="space-y-3 border-t border-border/60 pt-4">
-                  {sidebarFontSizeSettings}
                   {readingSettings}
                   {uiFontSizeSettings}
                 </div>

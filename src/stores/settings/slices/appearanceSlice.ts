@@ -13,6 +13,7 @@ import {
   SIDEBAR_FONT_SIZE_DEFAULT,
   normalizeEditorFontSize,
   normalizeSidebarFontSize,
+  normalizeUIFontSize,
 } from "../types";
 import type { CardThemeId } from "@/lib/imageExport/themes";
 import { normalizeLocalFontName } from "@/lib/fontLoader";
@@ -32,7 +33,7 @@ export interface AppearanceSliceState {
   uiFontSize: UIFontSize;
   editorFontSize: number;
   editorLineHeight: number;
-  /** 左侧栏树/分区标题字号（px），与编辑器字号独立。 */
+  /** 旧版侧栏字号，仅保留存储兼容；当前侧栏跟随界面缩放。 */
   sidebarFontSize: number;
   /** AI 聊天界面字号缩放比。可选值：0.8 / 0.9 / 1.0 / 1.1 / 1.2。副作用：影响 AI 聊天面板所有文字大小。 */
   aiChatScale: number;
@@ -171,7 +172,7 @@ export function createAppearanceSlice(
       set({ uiFontFamily: normalizeLocalFontName(font) }),
     setSidebarFontFamily: (font) =>
       set({ sidebarFontFamily: normalizeLocalFontName(font) }),
-    setUIFontSize: (uiFontSize) => set({ uiFontSize }),
+    setUIFontSize: (uiFontSize) => set({ uiFontSize: normalizeUIFontSize(uiFontSize) }),
     setEditorFontSize: (size) =>
       set({
         editorFontSize: normalizeEditorFontSize(size),

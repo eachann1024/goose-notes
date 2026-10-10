@@ -57,9 +57,6 @@ function SetupGuideFlow() {
       setCustomFont: settings.setCustomFont,
       uiFontSize: settings.uiFontSize,
       setUIFontSize: settings.setUIFontSize,
-      sidebarFontSize: settings.sidebarFontSize,
-      increaseSidebarFontSize: settings.increaseSidebarFontSize,
-      decreaseSidebarFontSize: settings.decreaseSidebarFontSize,
       editorFontSize: settings.editorFontSize,
       editorLineHeight: settings.editorLineHeight,
       increaseEditorFontSize: settings.increaseEditorFontSize,
@@ -157,7 +154,6 @@ function SetupGuideFlow() {
       <div className="setup-guide-content">
         <section className="setup-guide-preview" aria-label="外观即时预览">
           <AppearanceEditorPreview
-            sidebarFontSize={appearance.sidebarFontSize}
             editorFontSize={appearance.editorFontSize}
             editorLineHeight={appearance.editorLineHeight}
             uiFontSize={appearance.uiFontSize}

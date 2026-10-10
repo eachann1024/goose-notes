@@ -197,7 +197,6 @@ declare global {
   const TooltipProvider: typeof import('./components/ui/tooltip').TooltipProvider
   const TooltipTrigger: typeof import('./components/ui/tooltip').TooltipTrigger
   const TriggerChild: typeof import('./components/ui/trigger-child').TriggerChild
-  const UI_FONT_SIZE_MAP: typeof import('./lib/appearance').UI_FONT_SIZE_MAP
   const UNTITLED_PAGE_TITLE: typeof import('./components/editor/utils/page-title').UNTITLED_PAGE_TITLE
   const VALID_BLOCK_TYPES: typeof import('./components/editor/utils/blocknote-content/index').VALID_BLOCK_TYPES
   const VIDEO_OUTPUT_MIME: typeof import('./lib/videoProcessor').VIDEO_OUTPUT_MIME
@@ -274,7 +273,9 @@ declare global {
   const compressImage: typeof import('./lib/imageProcessor').compressImage
   const computeEditorUiScale: typeof import('./lib/appearance').computeEditorUiScale
   const computeSidebarEscapeExpandedIds: typeof import('./lib/sidebarListCollapse').computeSidebarEscapeExpandedIds
+  const computeSidebarFontSize: typeof import('./lib/appearance').computeSidebarFontSize
   const computeSidebarRowHeight: typeof import('./lib/appearance').computeSidebarRowHeight
+  const computeUiFontSize: typeof import('./lib/appearance').computeUiFontSize
   const computeWorkspaceViewportCollapse: typeof import('./lib/workspaceViewport').computeWorkspaceViewportCollapse
   const consumeDiskWriteFailure: typeof import('./lib/diskWriteError').consumeDiskWriteFailure
   const consumePendingAssociatedMarkdownFiles: typeof import('./lib/openAssociatedMarkdown').consumePendingAssociatedMarkdownFiles

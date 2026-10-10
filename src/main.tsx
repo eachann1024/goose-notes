@@ -519,7 +519,6 @@ export const bootstrap = async (
       uiFontSize: settings.uiFontSize,
       editorFontSize: settings.editorFontSize,
       editorLineHeight: settings.editorLineHeight,
-      sidebarFontSize: settings.sidebarFontSize,
     });
 
     const renderApplication = () => {

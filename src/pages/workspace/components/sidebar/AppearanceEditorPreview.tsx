@@ -1,9 +1,8 @@
-import { UI_FONT_SIZE_MAP } from "@/lib/appearance";
+import { computeUiFontSize, computeSidebarFontSize } from "@/lib/appearance";
 import type { UIFontSize } from "@/stores/settings/types";
 import { useSettings } from "@/stores/useSettings";
 
 interface Props {
-  sidebarFontSize: number;
   editorFontSize: number;
   editorLineHeight: number;
   uiFontSize: UIFontSize;
@@ -12,7 +11,6 @@ interface Props {
 }
 
 function EditorSample({
-  sidebarFontSize,
   editorFontSize,
   editorLineHeight,
   uiFontSize,
@@ -31,7 +29,7 @@ function EditorSample({
         style={{
           background: "var(--goose-shell-surface)",
           fontFamily: "var(--font-ui)",
-          fontSize: UI_FONT_SIZE_MAP[uiFontSize],
+          fontSize: computeUiFontSize(uiFontSize),
         }}
       >
         <span className="font-semibold">📁 当前文件夹</span>
@@ -45,7 +43,7 @@ function EditorSample({
           style={{
             background: "var(--goose-shell-surface)",
             fontFamily: "var(--font-sidebar)",
-            fontSize: sidebarFontSize,
+            fontSize: computeSidebarFontSize(uiFontSize),
           }}
         >
           <p className="mb-5 truncate font-semibold">本地</p>

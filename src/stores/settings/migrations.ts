@@ -6,6 +6,7 @@ import {
   SIDEBAR_FONT_SIZE_DEFAULT,
   EDITOR_FONT_SIZE_DEFAULT,
   EDITOR_LINE_HEIGHT_DEFAULT,
+  normalizeUIFontSize,
 } from "./types";
 
 const LEGACY_HARMONY_FONTS = new Set([
@@ -79,6 +80,8 @@ export function migrateSettingsPersistedState(
     state.sidebarFontSize =
       state.uiFontSize === "normal" || state.uiFontSize === "large" ? 15 : SIDEBAR_FONT_SIZE_DEFAULT;
   }
+
+  state.uiFontSize = normalizeUIFontSize(state.uiFontSize);
 
   // ponytail: 旧设置没有“是否自定义”标记，只迁移旧默认值；以后显式记录用户覆盖。
   if (version < 6) {

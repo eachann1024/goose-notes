@@ -167,9 +167,6 @@ export function SettingsDialog({
     setCustomFont,
     uiFontSize,
     setUIFontSize,
-    sidebarFontSize,
-    increaseSidebarFontSize,
-    decreaseSidebarFontSize,
     editorFontSize,
     increaseEditorFontSize,
     decreaseEditorFontSize,
@@ -211,9 +208,6 @@ export function SettingsDialog({
       setCustomFont: s.setCustomFont,
       uiFontSize: s.uiFontSize,
       setUIFontSize: s.setUIFontSize,
-      sidebarFontSize: s.sidebarFontSize,
-      increaseSidebarFontSize: s.increaseSidebarFontSize,
-      decreaseSidebarFontSize: s.decreaseSidebarFontSize,
       editorFontSize: s.editorFontSize,
       increaseEditorFontSize: s.increaseEditorFontSize,
       decreaseEditorFontSize: s.decreaseEditorFontSize,
@@ -737,9 +731,6 @@ export function SettingsDialog({
               setCustomFont={setCustomFont}
               uiFontSize={uiFontSize}
               setUIFontSize={setUIFontSize}
-              sidebarFontSize={sidebarFontSize}
-              increaseSidebarFontSize={increaseSidebarFontSize}
-              decreaseSidebarFontSize={decreaseSidebarFontSize}
               editorFontSize={editorFontSize}
               increaseEditorFontSize={increaseEditorFontSize}
               decreaseEditorFontSize={decreaseEditorFontSize}

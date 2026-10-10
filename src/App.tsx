@@ -22,20 +22,19 @@ import { PencilIconDefinitions } from "@/components/theme/PencilIconDefinitions"
 // Appearance changes update CSS without re-rendering the whole workspace.
 function AppearanceSync() {
   const {
-    uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize,
+    uiFontSize, editorFontSize, editorLineHeight,
     customFonts, uiFontFamily, sidebarFontFamily,
   } = useSettings(useShallow((state) => ({
       uiFontSize: state.uiFontSize,
       editorFontSize: state.editorFontSize,
       editorLineHeight: state.editorLineHeight,
-      sidebarFontSize: state.sidebarFontSize,
       customFonts: state.customFonts,
       uiFontFamily: state.uiFontFamily,
       sidebarFontFamily: state.sidebarFontFamily,
     })));
   useEffect(() => {
-    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize });
-  }, [uiFontSize, editorFontSize, editorLineHeight, sidebarFontSize]);
+    applyAppearanceScaleVariables({ uiFontSize, editorFontSize, editorLineHeight });
+  }, [uiFontSize, editorFontSize, editorLineHeight]);
 
   useEffect(() => {
     applyFontVariables(customFonts, { uiFontFamily, sidebarFontFamily });
