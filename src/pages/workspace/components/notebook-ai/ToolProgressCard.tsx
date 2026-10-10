@@ -1,8 +1,9 @@
 /**
- * 处理进度：与审批卡同一套纸面（字距 kicker + 大标题 + 可展开步骤）。
+ * 处理进度：运行中使用主题色状态标签，结束后显示结果标题与可展开步骤。
  * 工具调用与思考汇总成一行；思考只在行内截成一句，不另开折叠。
  */
 import { useMemo, useState, type ReactNode } from "react";
+import { LoaderCircle } from "lucide-react";
 import { visibleBusyTickerLine } from "@/components/editor/ai/inlineBusyTicker";
 import {
   ORB_VISIBLE_MIN_MS,
@@ -21,6 +22,7 @@ import {
   getWorkCardHeading,
   getWorkCardPhase,
 } from "./workCardHeading";
+import "./tool-progress.css";
 
 export {
   getToolProgressStepStatus,
@@ -137,11 +139,11 @@ export function ToolProgressCard({
   const showRunning = resolveLoaderHold(isRunning, heldRunning);
   const phase = getWorkCardPhase(steps, showRunning);
   const heading = getWorkCardHeading(steps, phase);
+  const showProcessing = phase === "running";
   // 步骤默认收起，不随 running/error 自动展开
   const [open, setOpen] = useState(false);
   const foldable = steps.length > 0;
-  const toggleText = heading.toggle || (showRunning ? "正在处理" : "");
-  const traceLabel = foldable ? toggleText : hasThinking ? "思考" : toggleText;
+  const traceLabel = foldable ? heading.toggle : hasThinking ? "思考" : "";
   const showTraceRow = foldable || hasThinking;
   // 纯问答纸：无步骤且非 running 时不出抬头，避免伪造「处理完成」
   const hasHeading = foldable || showRunning;
@@ -150,11 +152,19 @@ export function ToolProgressCard({
 
   return (
     <section
-      className="bui-root bui-approval notebook-ai-work-card"
+      className={cn(
+        "bui-root bui-approval notebook-ai-work-card",
+        showProcessing && "notebook-ai-work-card--running",
+      )}
       aria-label="处理进度"
-      aria-busy={showRunning || undefined}
+      aria-busy={showProcessing || undefined}
     >
-      {hasHeading ? (
+      {hasHeading && showProcessing ? (
+        <h3 className="notebook-ai-work-status">
+          <LoaderCircle className="notebook-ai-work-status-spinner" aria-hidden />
+          <span>处理中</span>
+        </h3>
+      ) : hasHeading ? (
         <>
           <p
             className={cn(
@@ -166,9 +176,6 @@ export function ToolProgressCard({
             {heading.kicker}
           </p>
           <h3 className="mt-2 flex min-w-0 items-start gap-2 text-[20px] font-semibold leading-tight tracking-[-0.04em] text-foreground">
-            {showRunning && steps.length === 0 ? (
-              <span className="bui-think-spinner notebook-ai-work-mark mt-1" aria-hidden />
-            ) : null}
             <span className="notebook-ai-work-title" title={heading.title}>
               {heading.title}
             </span>
@@ -226,7 +233,7 @@ export function ToolProgressCard({
       ) : null}
       {hasHeading || thinkingLine ? (
         <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {hasHeading ? `${heading.kicker}${heading.title}` : ""}
+          {hasHeading ? (showProcessing ? "处理中" : `${heading.kicker}${heading.title}`) : ""}
           {thinkingLine}
         </span>
       ) : null}

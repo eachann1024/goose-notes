@@ -1,0 +1,71 @@
+/* 运行态使用独立标签，背景和边框始终跟随当前 primary；不复用中性选中色。 */
+.notebook-ai-work-card.notebook-ai-work-card--running.bui-approval {
+  padding-top: 20px;
+  padding-bottom: 14px;
+}
+
+.notebook-ai-work-status {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 8px 20px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: hsl(var(--primary));
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+/* 分层透明度保留现有 HSL 通道兼容性，文字与图标保持不透明。 */
+.notebook-ai-work-status::before,
+.notebook-ai-work-status::after {
+  position: absolute;
+  z-index: -1;
+  inset: -1px;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.notebook-ai-work-status::before {
+  background: hsl(var(--primary));
+  opacity: 0.12;
+}
+
+.notebook-ai-work-status::after {
+  border: 1px solid hsl(var(--primary));
+  opacity: 0.36;
+}
+
+/* 浅色蓝紫文字降低明度，深色文字提高明度，保持小字号状态的对比度。 */
+:root:not(.dark)[data-goose-accent="ocean"] .notebook-ai-work-status { color: #1d4ed8; }
+:root:not(.dark)[data-goose-accent="iris"] .notebook-ai-work-status { color: #4338ca; }
+:root:not(.dark)[data-goose-accent="grape"] .notebook-ai-work-status { color: #7e22ce; }
+.dark .notebook-ai-work-status { color: #93c5fd; }
+.dark[data-goose-accent="iris"] .notebook-ai-work-status { color: #a5b4fc; }
+.dark[data-goose-accent="mono"] .notebook-ai-work-status { color: #e5e5e5; }
+.dark[data-goose-accent="pine"] .notebook-ai-work-status { color: #86efac; }
+.dark[data-goose-accent="amber"] .notebook-ai-work-status { color: #e0c39a; }
+.dark[data-goose-accent="wheat"] .notebook-ai-work-status { color: #d7dbb8; }
+.dark[data-goose-accent="coral"] .notebook-ai-work-status { color: #fdba74; }
+.dark[data-goose-accent="rose"] .notebook-ai-work-status { color: #fda4af; }
+.dark[data-goose-accent="grape"] .notebook-ai-work-status { color: #d8b4fe; }
+
+.notebook-ai-work-status-spinner {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: hsl(var(--primary));
+  stroke-width: 2.4;
+  animation: bui-spin 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notebook-ai-work-status-spinner { animation: none; }
+}
