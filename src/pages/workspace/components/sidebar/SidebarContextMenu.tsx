@@ -1,180 +1,54 @@
-import * as GooseIcons from "@/components/ui/icons";
+import { renderSidebarContextGroups } from "./sidebar-context-menu/renderSidebarContextGroups";
 import { SidebarRenameContext } from "./SidebarInlineRename";
-import type { ReactNode } from "react";
-import type { Page } from "@/types";
-import {
-  deletePageWithUndo,
-  permanentlyDeletePageWithCleanup,
-  restorePageWithToast,
-} from "@/lib/page-delete-actions";
-import { getFixedAppShortcuts } from "@/lib/fixed-app-shortcuts";
-import { formatShortcut } from "@/lib/utils";
-import { useNotebooks } from "@/stores/useNotebooks";
-import { useTabs } from "@/stores/useTabs";
-import { useSettings } from "@/stores/useSettings";
-import { effectiveSingleTabMode } from "@/lib/tabMode";
-import {
-  LOCAL_FOLDER_FILE_SHORTCUTS,
-  copyLocalFolderPagePath,
-  openLocalFolderPageInExternalApp,
-  openLocalFolderPageInTerminal,
-  revealLocalFolderPageInFileManager,
-} from "@/lib/local-folder-file-actions";
-import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
-import { toast } from "@/components/ui/sonner";
-import { closeNotebookAiIfFullscreen } from "@/pages/workspace/components/notebook-ai/useNotebookAiPanel";
-import { openPageFromSidebar } from "@/lib/sidebarPageNavigation";
-import { isElectronHost } from "@/lib/local-vault";
-import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker";
-import {
-  clearLocalFolderOrder,
-  useLocalFolderManualOrder,
-} from "@/stores/localFolderOrder";
+import { type SidebarContextMenuProps } from "./sidebar-context-menu/shared";
+import { useSidebarContextMenu } from "./sidebar-context-menu/useSidebarContextMenu";
 
-const _platform = navigator.platform || navigator.userAgent;
-const _isMac = /Mac/i.test(_platform);
-const _isWin = /Win/i.test(_platform);
-function getFinderLabel(isFolder: boolean) {
-  const action = isFolder ? "打开" : "显示";
-  if (_isMac) return `在访达中${action}`;
-  if (_isWin) return `在资源管理器中${action}`;
-  return `在文件管理器中${action}`;
-}
-
-function MenuShortcut({ shortcut }: { shortcut: string }) {
-  return (
-    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-      {formatShortcut(shortcut)}
-    </span>
-  );
-}
-
-function getExternalAppLabel(app: string): string {
-  if (!app.trim()) return "用系统默认打开";
-  return `用 ${formatLocalFolderOpenAppName(app, "外部应用")} 打开`;
-}
-
-function getFileManagerLabel(isFolder: boolean, fileManager: string): string {
-  if (!fileManager.trim()) return getFinderLabel(isFolder);
-  return `用 ${formatLocalFolderOpenAppName(fileManager, "文件管理器")} 打开`;
-}
-
-function getTerminalLabel(terminal: string): string {
-  if (!terminal.trim()) return "在终端中打开";
-  return `在 ${formatLocalFolderOpenAppName(terminal, "终端")} 中打开`;
-}
-
-function scheduleAfterMenuClose(action: () => void) {
-  window.setTimeout(action, 0);
-}
-
-interface SidebarContextMenuProps {
-  page: Page;
-  children: React.ReactNode;
-  /** 该行在侧栏里是不是文件夹行 */
-  isFolderRow?: boolean;
-  onCreateLocalFile?: (parentId?: string) => void;
-  onCreateLocalFolder?: (parentId?: string) => void;
-}
-
-export function SidebarContextMenu({
-  page,
-  children,
-  onCreateLocalFile,
-  onCreateLocalFolder,
-}: SidebarContextMenuProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const updatePage = usePages((s) => s.updatePage);
-  const duplicatePage = usePages((s) => s.duplicatePage);
-  const movePageTreeToNotebook = usePages((s) => s.movePageTreeToNotebook);
-  const undoMovePageTree = usePages((s) => s.undoMovePageTree);
-  const notebooks = useNotebooks((state) => state.notebooks);
-  const notebook = notebooks[page.workspaceId];
-  const isLocalFolder = notebook?.source === "local-folder";
-  const isTrashed = !!page.trashedAt;
-  // 只有进入手动顺序的目录才需要「恢复名称排序」（非目录页面恒为 false）
-  const folderHasManualOrder = useLocalFolderManualOrder(
-    page.workspaceId,
-    page.isFolder ? page.id : undefined,
-  );
-  const movableNotebooks = Object.values(notebooks).filter(
-    (item) => item.id !== page.workspaceId && item.source !== "local-folder",
-  );
-
-  const handleMoveToTopLevel = () => {
-    updatePage(page.id, { parentId: undefined });
-  };
-
-  const handleDuplicatePage = async () => {
-    const newId = await duplicatePage(page.id);
-    if (!newId || newId === page.id) return;
-    openPageFromSidebar(newId, "permanent");
-  };
-
-  const handleRestore = () => restorePageWithToast(page.id);
-
-  const handleMoveToNotebook = (targetNotebookId: string) => {
-    const result = movePageTreeToNotebook(page.id, targetNotebookId);
-    if (!result.ok) {
-      if (result.reason === "same-notebook") {
-        toast.error("页面已在当前笔记本");
-      } else if (result.reason === "target-not-supported") {
-        toast.error("目标笔记本不支持移动");
-      } else {
-        toast.error("移动失败，请重试");
-      }
-      return;
-    }
-
-    const targetNotebook = notebooks[targetNotebookId];
-    const targetName = targetNotebook?.name || "目标笔记本";
-    toast.success(`已移动到「${targetName}」`, {
-      description: `共移动 ${result.movedCount} 个页面`,
-      duration: 5000,
-      action: {
-        label: "撤回",
-        onClick: () => {
-          const ok = undoMovePageTree(
-            result.undoSnapshots,
-            result.sourceNotebookId,
-            result.prevActivePageId,
-          );
-          if (!ok) {
-            toast.error("撤回失败：源笔记本不存在");
-          }
-        },
-      },
-    });
-  };
-
-  const localFolderFileManager = useSettings((s) => s.localFolderFileManager);
-  const localFolderExternalEditor = useSettings(
-    (s) => s.localFolderExternalEditor,
-  );
-  const localFolderTerminal = useSettings((s) => s.localFolderTerminal);
-  const singleTabMode = effectiveSingleTabMode(
-    useSettings((s) => s.singleTabMode),
-  );
-  const [renaming, setRenaming] = useState(false);
-  const rowRef = useRef<HTMLDivElement>(null);
-  const canRename = !isTrashed && !page.localPendingCreate && !page.localUnsaved;
-  const hasParent = !!page.parentId;
-  const createParentId = page.isFolder ? page.id : page.parentId;
+export function SidebarContextMenu(props: SidebarContextMenuProps) {
+  const sidebarContextMenuContext = useSidebarContextMenu(props);
+  const context = sidebarContextMenuContext;
+  const {
+    page,
+    children,
+    menuOpen,
+    setMenuOpen,
+    renaming,
+    setRenaming,
+    rowRef,
+    canRename,
+  } = context;
 
   return (
-    <SidebarRenameContext.Provider value={{ page, renaming, setRenaming, rowRef }}>
+    <SidebarRenameContext.Provider
+      value={{ page, renaming, setRenaming, rowRef }}
+    >
       <ContextMenu onOpenChange={setMenuOpen}>
         <ContextMenuTrigger asChild className="w-full">
           <div
             ref={rowRef}
             tabIndex={-1}
             onDragStartCapture={(event) => {
-              if (renaming) { event.preventDefault(); event.stopPropagation(); }
+              if (renaming) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
             }}
             onKeyDownCapture={(event) => {
-              if (!canRename || renaming || event.target instanceof HTMLInputElement ||
-                  (event.target as HTMLElement).closest("button, [contenteditable=true]")) return;
-              if (event.key === "F2" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+              if (
+                !canRename ||
+                renaming ||
+                event.target instanceof HTMLInputElement ||
+                (event.target as HTMLElement).closest(
+                  "button, [contenteditable=true]",
+                )
+              )
+                return;
+              if (
+                event.key === "F2" &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.altKey &&
+                !event.shiftKey
+              ) {
                 event.preventDefault();
                 event.stopPropagation();
                 setRenaming(true);
@@ -191,310 +65,7 @@ export function SidebarContextMenu({
           className="goose-sidebar-context-menu w-60"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          {(() => {
-            const showCreate =
-              isLocalFolder &&
-              !isTrashed &&
-              !!page.localFilePath &&
-              (!!onCreateLocalFile || !!onCreateLocalFolder);
-            const showOpenTab =
-              !singleTabMode &&
-              !(isElectronHost && isLocalFolder && page.isFolder);
-            const showLocalOpen =
-              isLocalFolder && !isTrashed && !!page.localFilePath;
-            const showOpen = showOpenTab || showLocalOpen;
-            const showOrganize = !isTrashed && !page.isFolder;
-            const showMoveTop = hasParent && !isTrashed && !isLocalFolder;
-            const showMoveNotebook =
-              !isTrashed && !isLocalFolder && movableNotebooks.length > 0;
-            const showMoveLocal =
-              isLocalFolder && !isTrashed && !!page.localFilePath;
-            const showMove = showMoveTop || showMoveNotebook || showMoveLocal;
-            const showRestoreOrder =
-              isLocalFolder &&
-              !isTrashed &&
-              !!page.isFolder &&
-              folderHasManualOrder;
-            const showCopy = showLocalOpen;
-            const sections: ReactNode[] = [];
-
-            if (!isTrashed && !page.localPendingCreate && !page.localUnsaved) {
-              sections.push(
-                <ContextMenuGroup key="rename">
-                  <ContextMenuItem onSelect={() => scheduleAfterMenuClose(() => setRenaming(true))}>
-                    <GooseIcons.Pencil className="h-4 w-4" />
-                    <span>重命名</span>
-                    <MenuShortcut shortcut="F2" />
-                  </ContextMenuItem>
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showCreate) {
-              sections.push(
-                <ContextMenuGroup key="create">
-                  <ContextMenuLabel>新建</ContextMenuLabel>
-                  {onCreateLocalFile ? (
-                    <ContextMenuItem
-                      onSelect={() =>
-                        scheduleAfterMenuClose(() =>
-                          onCreateLocalFile(createParentId),
-                        )
-                      }
-                    >
-                      <GooseIcons.FilePlus2 className="h-4 w-4" />
-                      <span className="min-w-0 truncate">新建文件</span>
-                      <MenuShortcut shortcut={getFixedAppShortcuts().newNote} />
-                    </ContextMenuItem>
-                  ) : null}
-                  {onCreateLocalFolder ? (
-                    <ContextMenuItem
-                      onSelect={() =>
-                        scheduleAfterMenuClose(() =>
-                          onCreateLocalFolder(createParentId),
-                        )
-                      }
-                    >
-                      <GooseIcons.FolderPlus className="h-4 w-4" />
-                      <span>新建文件夹</span>
-                    </ContextMenuItem>
-                  ) : null}
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showRestoreOrder) {
-              sections.push(
-                <ContextMenuGroup key="sort">
-                  <ContextMenuItem
-                    onSelect={() =>
-                      scheduleAfterMenuClose(() => {
-                        if (
-                          clearLocalFolderOrder(page.workspaceId, page.id)
-                        ) {
-                          toast.success("已恢复名称排序");
-                        }
-                      })
-                    }
-                  >
-                    <GooseIcons.ArrowDownAZ className="h-4 w-4" />
-                    <span className="min-w-0 truncate">恢复名称排序</span>
-                  </ContextMenuItem>
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showOpen) {
-              sections.push(
-                <ContextMenuGroup key="open" className="mt-2">
-                  <ContextMenuLabel>打开</ContextMenuLabel>
-                  {showOpenTab ? (
-                    <ContextMenuItem
-                      onSelect={() => {
-                        if (isTrashed) return;
-                        closeNotebookAiIfFullscreen();
-                        useTabs.getState().openPermanentTab(page.id);
-                      }}
-                      disabled={isTrashed}
-                    >
-                      <GooseIcons.PanelTopOpen className="h-4 w-4" />
-                      <span className="min-w-0 truncate">在新标签页打开</span>
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        {formatShortcut("Mod")}+点击
-                      </span>
-                    </ContextMenuItem>
-                  ) : null}
-                  {showLocalOpen ? (
-                    <ContextMenuItem
-                      onSelect={() =>
-                        void openLocalFolderPageInExternalApp(page)
-                      }
-                    >
-                      <GooseIcons.SquareArrowOutUpRight className="h-4 w-4" />
-                      <span className="min-w-0 truncate">
-                        {getExternalAppLabel(localFolderExternalEditor)}
-                      </span>
-                      <MenuShortcut
-                        shortcut={LOCAL_FOLDER_FILE_SHORTCUTS.openInExternalApp}
-                      />
-                    </ContextMenuItem>
-                  ) : null}
-                  {showLocalOpen ? (
-                    <ContextMenuItem
-                      onSelect={() =>
-                        void revealLocalFolderPageInFileManager(page)
-                      }
-                    >
-                      <GooseIcons.FolderOpen className="h-4 w-4" />
-                      <span className="min-w-0 truncate">
-                        {getFileManagerLabel(
-                          !!page.isFolder,
-                          localFolderFileManager,
-                        )}
-                      </span>
-                      <MenuShortcut
-                        shortcut={
-                          LOCAL_FOLDER_FILE_SHORTCUTS.revealInFileManager
-                        }
-                      />
-                    </ContextMenuItem>
-                  ) : null}
-                  {showLocalOpen ? (
-                    <ContextMenuItem
-                      onSelect={() => void openLocalFolderPageInTerminal(page)}
-                    >
-                      <GooseIcons.Terminal className="h-4 w-4" />
-                      <span className="min-w-0 truncate">
-                        {getTerminalLabel(localFolderTerminal)}
-                      </span>
-                      <MenuShortcut
-                        shortcut={LOCAL_FOLDER_FILE_SHORTCUTS.openInTerminal}
-                      />
-                    </ContextMenuItem>
-                  ) : null}
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showOrganize) {
-              sections.push(
-                <ContextMenuGroup key="organize" className="mt-2">
-                  <ContextMenuLabel>整理</ContextMenuLabel>
-                  <ContextMenuItem onSelect={handleDuplicatePage}>
-                    <GooseIcons.Copy className="h-4 w-4" />
-                    <span>创建副本</span>
-                  </ContextMenuItem>
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showMove) {
-              sections.push(
-                <ContextMenuGroup
-                  key="move"
-                  className={showOrganize ? undefined : "mt-2"}
-                >
-                  {showMoveTop ? (
-                    <ContextMenuItem onSelect={handleMoveToTopLevel}>
-                      <GooseIcons.ArrowUpToLine className="h-4 w-4" />
-                      <span>移至顶层</span>
-                    </ContextMenuItem>
-                  ) : null}
-                  {showMoveNotebook ? (
-                    <ContextMenuSub>
-                      <ContextMenuSubTrigger>
-                        <GooseIcons.FolderOutput className="h-4 w-4" />
-                        <span>移动到笔记本</span>
-                      </ContextMenuSubTrigger>
-                      <ContextMenuPortal>
-                        <ContextMenuSubContent
-                          sideOffset={8}
-                          alignOffset={-4}
-                          collisionPadding={12}
-                          className="w-56 max-h-[min(18rem,calc(100dvh-16px))]"
-                        >
-                          {movableNotebooks.map((item) => (
-                            <ContextMenuItem
-                              key={item.id}
-                              onSelect={() => handleMoveToNotebook(item.id)}
-                            >
-                              <span className="truncate">{item.name}</span>
-                            </ContextMenuItem>
-                          ))}
-                        </ContextMenuSubContent>
-                      </ContextMenuPortal>
-                    </ContextMenuSub>
-                  ) : null}
-                  {showMoveLocal ? (
-                    <ContextMenuItem
-                      onSelect={() =>
-                        scheduleAfterMenuClose(() =>
-                          useLocalFolderTargetPicker
-                            .getState()
-                            .openMovePicker(page.workspaceId, page.id),
-                        )
-                      }
-                    >
-                      <GooseIcons.FolderInput className="h-4 w-4" />
-                      <span className="min-w-0 truncate">移动到…</span>
-                      <MenuShortcut
-                        shortcut={LOCAL_FOLDER_FILE_SHORTCUTS.moveItem}
-                      />
-                    </ContextMenuItem>
-                  ) : null}
-                </ContextMenuGroup>,
-              );
-            }
-
-            if (showCopy) {
-              sections.push(
-                <ContextMenuGroup key="clipboard">
-                  <ContextMenuItem
-                    onSelect={() => void copyLocalFolderPagePath(page)}
-                  >
-                    <GooseIcons.ClipboardCopy className="h-4 w-4" />
-                    <span className="min-w-0 truncate">
-                      {page.isFolder ? "复制文件夹路径" : "复制文件路径"}
-                    </span>
-                    <MenuShortcut
-                      shortcut={LOCAL_FOLDER_FILE_SHORTCUTS.copyFilePath}
-                    />
-                  </ContextMenuItem>
-                </ContextMenuGroup>,
-              );
-            }
-
-            sections.push(
-              <ContextMenuGroup key="danger">
-                {isTrashed ? (
-                  <>
-                    <ContextMenuItem onSelect={handleRestore}>
-                      <GooseIcons.RotateCcw className="h-4 w-4" />
-                      <span>
-                        {isLocalFolder
-                          ? page.isFolder
-                            ? "恢复文件夹"
-                            : "恢复文件"
-                          : "恢复页面"}
-                      </span>
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onSelect={() =>
-                        void permanentlyDeletePageWithCleanup(page.id)
-                      }
-                      className="text-foreground dark:text-foreground focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
-                    >
-                      <GooseIcons.Trash2 className="h-4 w-4" />
-                      <span>永久删除</span>
-                    </ContextMenuItem>
-                  </>
-                ) : (
-                  <ContextMenuItem
-                    onSelect={() => void deletePageWithUndo(page.id)}
-                    className="text-foreground dark:text-foreground focus:text-[var(--goose-color-danger-focus)] focus:bg-[var(--goose-color-danger-subtle-bg)]"
-                  >
-                    {isLocalFolder ? (
-                      <GooseIcons.FileX className="h-4 w-4" />
-                    ) : (
-                      <GooseIcons.Trash2 className="h-4 w-4" />
-                    )}
-                    <span className="min-w-0 truncate">
-                      {isLocalFolder ? "移到系统废纸篓" : "删除"}
-                    </span>
-                    <MenuShortcut shortcut="Mod+Backspace" />
-                  </ContextMenuItem>
-                )}
-              </ContextMenuGroup>,
-            );
-
-            // 保留「新建 / 打开 / 整理」的语义标题；常规组用留白区分，避免
-            // 本地目录里的每个动作组都再切一条线。危险操作仍单独成组。
-            return sections.flatMap((section, index) =>
-              index === sections.length - 1 && index > 0
-                ? [<ContextMenuSeparator key="sep-danger" />, section]
-                : [section],
-            );
-          })()}
+          {renderSidebarContextGroups(context)}
         </ContextMenuContent>
       </ContextMenu>
     </SidebarRenameContext.Provider>
