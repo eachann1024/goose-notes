@@ -1,3 +1,4 @@
+import { windowsProbes, linuxProbes, type AppProbe } from "./appsCatalog";
 import { existsSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
@@ -7,130 +8,17 @@ import { spawn } from "node:child_process";
 
 export type OpenApp = { name: string; path: string; icon?: string };
 
-type AppKind = "editor" | "file-manager" | "terminal";
-
-type AppProbe = {
-  name: string;
-  aliases?: string[];
-  commands?: string[];
-  winPaths?: string[];
-  kind: AppKind;
-};
-
-function envPath(name: string): string {
-  return process.env[name] ?? "";
-}
-
-function windowsProbes(): AppProbe[] {
-  const local = envPath("LOCALAPPDATA");
-  const programs = envPath("ProgramFiles");
-  const programsX86 = envPath("ProgramFiles(x86)");
-  const systemRoot = envPath("SystemRoot") || "C:\\Windows";
-  return [
-    {
-      name: "Explorer",
-      aliases: ["explorer", "资源管理器"],
-      commands: ["explorer"],
-      winPaths: [path.join(systemRoot, "explorer.exe")],
-      kind: "file-manager",
-    },
-    {
-      name: "Notepad",
-      commands: ["notepad"],
-      winPaths: [path.join(systemRoot, "System32", "notepad.exe")],
-      kind: "editor",
-    },
-    {
-      name: "Notepad++",
-      commands: ["notepad++"],
-      winPaths: [
-        path.join(programs, "Notepad++", "notepad++.exe"),
-        path.join(programsX86, "Notepad++", "notepad++.exe"),
-      ],
-      kind: "editor",
-    },
-    {
-      name: "Visual Studio Code",
-      aliases: ["Code", "VS Code"],
-      commands: ["code"],
-      winPaths: [path.join(local, "Programs", "Microsoft VS Code", "Code.exe")],
-      kind: "editor",
-    },
-    {
-      name: "Cursor",
-      commands: ["cursor"],
-      winPaths: [path.join(local, "Programs", "cursor", "Cursor.exe")],
-      kind: "editor",
-    },
-    {
-      name: "Typora",
-      commands: ["typora"],
-      winPaths: [path.join(local, "Programs", "Typora", "Typora.exe")],
-      kind: "editor",
-    },
-    {
-      name: "Obsidian",
-      commands: ["obsidian"],
-      winPaths: [path.join(local, "Obsidian", "Obsidian.exe")],
-      kind: "editor",
-    },
-    {
-      name: "Windows Terminal",
-      aliases: ["wt"],
-      commands: ["wt"],
-      kind: "terminal",
-    },
-    {
-      name: "WezTerm",
-      commands: ["wezterm"],
-      winPaths: [
-        path.join(programs, "WezTerm", "wezterm.exe"),
-        path.join(local, "Programs", "WezTerm", "wezterm.exe"),
-      ],
-      kind: "terminal",
-    },
-    {
-      name: "Command Prompt",
-      aliases: ["cmd", "命令提示符"],
-      commands: ["cmd"],
-      winPaths: [envPath("ComSpec") || path.join(systemRoot, "System32", "cmd.exe")],
-      kind: "terminal",
-    },
-    {
-      name: "PowerShell",
-      commands: ["powershell", "pwsh"],
-      kind: "terminal",
-    },
-  ];
-}
-
-function linuxProbes(): AppProbe[] {
-  return [
-    { name: "Files", aliases: ["Nautilus", "文件"], commands: ["nautilus", "gio"], kind: "file-manager" },
-    { name: "Dolphin", commands: ["dolphin"], kind: "file-manager" },
-    { name: "Nemo", commands: ["nemo"], kind: "file-manager" },
-    { name: "Thunar", commands: ["thunar"], kind: "file-manager" },
-    { name: "PCManFM", commands: ["pcmanfm"], kind: "file-manager" },
-    { name: "Visual Studio Code", aliases: ["Code"], commands: ["code"], kind: "editor" },
-    { name: "Cursor", commands: ["cursor"], kind: "editor" },
-    { name: "Typora", commands: ["typora"], kind: "editor" },
-    { name: "Obsidian", commands: ["obsidian"], kind: "editor" },
-    { name: "GNOME Terminal", commands: ["gnome-terminal"], kind: "terminal" },
-    { name: "Konsole", commands: ["konsole"], kind: "terminal" },
-    { name: "Alacritty", commands: ["alacritty"], kind: "terminal" },
-    { name: "Kitty", commands: ["kitty"], kind: "terminal" },
-    { name: "WezTerm", commands: ["wezterm"], kind: "terminal" },
-    { name: "x-terminal-emulator", commands: ["x-terminal-emulator"], kind: "terminal" },
-  ];
-}
-
 function macApplicationRoots(): string[] {
   return ["/Applications", path.join(homedir(), "Applications")];
 }
 
 function spawnDetached(command: string, args: string[]): boolean {
   try {
-    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
     child.unref();
     return true;
   } catch {
@@ -167,7 +55,11 @@ function firstExisting(paths: string[] | undefined): string | null {
 }
 
 function normalizeMatch(value: string): string {
-  return value.trim().replace(/\.app$/i, "").replace(/\.exe$/i, "").toLowerCase();
+  return value
+    .trim()
+    .replace(/\.app$/i, "")
+    .replace(/\.exe$/i, "")
+    .toLowerCase();
 }
 
 async function listMacApps(): Promise<OpenApp[]> {
@@ -206,7 +98,9 @@ function listProbedApps(probes: AppProbe[]): OpenApp[] {
   for (const probe of probes) {
     const resolved =
       firstExisting(probe.winPaths) ??
-      (probe.commands ?? []).map(resolveCommand).find((value): value is string => Boolean(value)) ??
+      (probe.commands ?? [])
+        .map(resolveCommand)
+        .find((value): value is string => Boolean(value)) ??
       null;
     if (!resolved) continue;
     const key = probe.name.toLowerCase();
@@ -221,7 +115,10 @@ export async function listOpenApps(): Promise<OpenApp[]> {
   return listProbedApps(linuxProbes());
 }
 
-function parseAppInvocation(app: string): { command: string; extraArgs: string[] } {
+function parseAppInvocation(app: string): {
+  command: string;
+  extraArgs: string[];
+} {
   const trimmed = app.trim();
   if (existsSync(trimmed)) return { command: trimmed, extraArgs: [] };
   const parts = trimmed.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [trimmed];
@@ -240,7 +137,11 @@ function matchProbe(app: string): AppProbe | null {
   const token = normalizeMatch(app);
   const basename = normalizeMatch(path.basename(app));
   for (const probe of catalogForPlatform()) {
-    const names = [probe.name, ...(probe.aliases ?? []), ...(probe.commands ?? [])].map(normalizeMatch);
+    const names = [
+      probe.name,
+      ...(probe.aliases ?? []),
+      ...(probe.commands ?? []),
+    ].map(normalizeMatch);
     if (names.includes(token) || names.includes(basename)) return probe;
   }
   return null;
@@ -273,10 +174,21 @@ export function openWithApp(app: string, targetPath: string): boolean {
 
   if (process.platform === "darwin") {
     const invocation = parseAppInvocation(appName);
-    if (existsSync(invocation.command) && !invocation.command.endsWith(".app")) {
-      return spawnDetached(invocation.command, [...invocation.extraArgs, targetPath]);
+    if (
+      existsSync(invocation.command) &&
+      !invocation.command.endsWith(".app")
+    ) {
+      return spawnDetached(invocation.command, [
+        ...invocation.extraArgs,
+        targetPath,
+      ]);
     }
-    return spawnDetached("/usr/bin/open", ["-a", invocation.command, ...invocation.extraArgs, targetPath]);
+    return spawnDetached("/usr/bin/open", [
+      "-a",
+      invocation.command,
+      ...invocation.extraArgs,
+      targetPath,
+    ]);
   }
 
   const probe = matchProbe(appName);
@@ -293,7 +205,9 @@ export function openWithApp(app: string, targetPath: string): boolean {
     (existsSync(invocation.command) ? invocation.command : null) ??
     firstExisting(probe?.winPaths) ??
     resolveCommand(invocation.command) ??
-    (probe?.commands ?? []).map(resolveCommand).find((value): value is string => Boolean(value)) ??
+    (probe?.commands ?? [])
+      .map(resolveCommand)
+      .find((value): value is string => Boolean(value)) ??
     null;
   if (!resolved) return openWithDefault(targetPath);
   return spawnDetached(resolved, [...invocation.extraArgs, targetPath]);
@@ -326,12 +240,17 @@ function openDefaultTerminal(dir: string): boolean {
 function openNamedTerminal(terminal: string, dir: string): boolean {
   const token = normalizeMatch(terminal);
   if (process.platform === "darwin") {
-    return spawnDetached("/usr/bin/open", ["-a", parseAppInvocation(terminal).command, dir]);
+    return spawnDetached("/usr/bin/open", [
+      "-a",
+      parseAppInvocation(terminal).command,
+      dir,
+    ]);
   }
   if (process.platform === "win32") {
     if (token === "wezterm") {
       const probe = matchProbe(terminal);
-      const wezterm = firstExisting(probe?.winPaths) ?? resolveCommand("wezterm");
+      const wezterm =
+        firstExisting(probe?.winPaths) ?? resolveCommand("wezterm");
       if (wezterm) return spawnDetached(wezterm, ["start", "--cwd", dir]);
       return false;
     }
@@ -340,7 +259,9 @@ function openNamedTerminal(terminal: string, dir: string): boolean {
       if (wt) return spawnDetached(wt, ["-d", dir]);
     }
     if (token.includes("powershell") || token === "pwsh") {
-      const shellPath = resolveCommand(token === "pwsh" ? "pwsh" : "powershell");
+      const shellPath = resolveCommand(
+        token === "pwsh" ? "pwsh" : "powershell",
+      );
       if (shellPath) {
         return spawnDetached(shellPath, [
           "-NoExit",
@@ -366,7 +287,10 @@ function openNamedTerminal(terminal: string, dir: string): boolean {
   return spawnDetached(resolved, ["--working-directory", dir]);
 }
 
-export function openTerminalAtPath(targetPath: string, terminal?: string): boolean {
+export function openTerminalAtPath(
+  targetPath: string,
+  terminal?: string,
+): boolean {
   if (!targetPath) return false;
   const dir = resolveDirectoryTarget(targetPath);
   const named = terminal?.trim();

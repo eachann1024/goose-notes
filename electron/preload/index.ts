@@ -1,87 +1,24 @@
-import type { GitSyncBridge } from "../../src/lib/git-sync-contract";
-import type { AssetMaintenanceBridge, AssetWorkspaceSnapshot } from "../../src/lib/asset-maintenance-contract";
+import { invoke, assetMaintenance, gitSync } from "./services";
+import type {
+  FsChange,
+  WindowTabSnapshot,
+  WindowInitPayload,
+  AcceptTabPayload,
+  TabDockPreviewPayload,
+  FinishTabDragResult,
+} from "./types";
 import { contextBridge, ipcRenderer } from "electron";
-
-type FsChange = { path: string; type: string };
-
-type WindowTabSnapshot = {
-  id: string;
-  pageId: string;
-  type?: string;
-  pinned?: boolean;
-  workspaceId?: string;
-};
-
-type WindowInitPayload = {
-  takeTab?: WindowTabSnapshot;
-  restoredTabs?: WindowTabSnapshot[];
-};
-
-type AcceptTabPayload = {
-  tab: WindowTabSnapshot;
-  contentX: number;
-};
-
-type TabDockPreviewPayload = {
-  contentX: number | null;
-};
-
-type FinishTabDragResult =
-  | { action: "none" }
-  | { action: "tearOff"; windowId: string }
-  | { action: "docked"; windowId: string };
-
-const invoke = (channel: string, ...args: unknown[]) =>
-  ipcRenderer.invoke(channel, ...args);
 
 let pendingWindowInit: WindowInitPayload | null = null;
 ipcRenderer.on("desktop:window-init", (_event, payload: WindowInitPayload) => {
   pendingWindowInit = payload;
 });
 
-const assetMaintenance: AssetMaintenanceBridge = {
-  open: () => invoke("asset-maintenance:open"),
-  appearance: () => invoke("asset-maintenance:appearance"),
-  notebooks: () => invoke("asset-maintenance:notebooks"),
-  scan: (notebookId) => invoke("asset-maintenance:scan", notebookId),
-  trash: (token, paths) => invoke("asset-maintenance:trash", token, paths),
-  onSnapshotRequest: (callback) => {
-    const listener = (_event: unknown, requestId: string) => callback(requestId);
-    ipcRenderer.on("asset-maintenance:snapshot-request", listener);
-    return () => ipcRenderer.removeListener("asset-maintenance:snapshot-request", listener);
-  },
-  replySnapshot: (requestId: string, snapshot: AssetWorkspaceSnapshot | null) => ipcRenderer.send("asset-maintenance:snapshot-reply", requestId, snapshot),
-};
-
-const gitSync: GitSyncBridge = {
-  getState: () => invoke("git-sync:state"),
-  checkFolder: (localPath) => invoke("git-sync:check-folder", localPath),
-  save: (config) => invoke("git-sync:save", config),
-  checkVisibility: (request) => invoke("git-sync:visibility", request),
-  remove: (notebookId) => invoke("git-sync:remove", notebookId),
-  syncNow: (notebookId) => invoke("git-sync:now", notebookId),
-  onState: (callback) => {
-    const listener = (_event: unknown, state: Parameters<typeof callback>[0]) => callback(state);
-    ipcRenderer.on("git-sync:state", listener);
-    return () => ipcRenderer.removeListener("git-sync:state", listener);
-  },
-  onPrepare: (callback) => {
-    const listener = (_event: unknown, requestId: string, localPaths: string[]) => callback(requestId, localPaths);
-    ipcRenderer.on("git-sync:prepare", listener);
-    return () => ipcRenderer.removeListener("git-sync:prepare", listener);
-  },
-  replyPrepare: (requestId, error) => ipcRenderer.send("git-sync:prepare-reply", requestId, error),
-  onFinish: (callback) => {
-    const listener = (_event: unknown, requestId: string) => callback(requestId);
-    ipcRenderer.on("git-sync:finish", listener);
-    return () => ipcRenderer.removeListener("git-sync:finish", listener);
-  },
-};
-
 const gooseDesktop = {
   gitSync,
   assetMaintenance,
-  selectDirectory: () => invoke("desktop:selectDirectory") as Promise<string | null>,
+  selectDirectory: () =>
+    invoke("desktop:selectDirectory") as Promise<string | null>,
   showOpenDialog: (opts: {
     filters?: { name: string; extensions: string[] }[];
     multiple?: boolean;
@@ -112,8 +49,10 @@ const gooseDesktop = {
   fsRename: (from: string, to: string) =>
     invoke("desktop:fsRename", from, to) as Promise<void>,
   fsRemove: (p: string) => invoke("desktop:fsRemove", p) as Promise<void>,
-  fsTrashWithUndo: (p: string) => invoke("desktop:fsTrashWithUndo", p) as Promise<string>,
-  fsUndoTrash: (token: string) => invoke("desktop:fsUndoTrash", token) as Promise<string>,
+  fsTrashWithUndo: (p: string) =>
+    invoke("desktop:fsTrashWithUndo", p) as Promise<string>,
+  fsUndoTrash: (token: string) =>
+    invoke("desktop:fsUndoTrash", token) as Promise<string>,
   restoreFromTrash: (p: string) =>
     invoke("desktop:restoreFromTrash", p) as Promise<boolean>,
   fsWatch: (p: string) => invoke("desktop:fsWatch", p) as Promise<string>,
@@ -136,7 +75,9 @@ const gooseDesktop = {
   showItemInFolder: (p: string) =>
     invoke("desktop:showItemInFolder", p) as Promise<void>,
   listOpenApps: (names: string[]) =>
-    invoke("desktop:listOpenApps", names) as Promise<{ name: string; path: string; icon?: string }[]>,
+    invoke("desktop:listOpenApps", names) as Promise<
+      { name: string; path: string; icon?: string }[]
+    >,
   openWithApp: (app: string, p: string) =>
     invoke("desktop:openWithApp", app, p) as Promise<void>,
   openTerminalAtPath: (p: string, terminal?: string) =>
@@ -166,7 +107,8 @@ const gooseDesktop = {
         }
     >,
   getReadyUpdate: () => invoke("desktop:getReadyUpdate") as Promise<string>,
-  installReadyUpdate: () => invoke("desktop:installReadyUpdate") as Promise<void>,
+  installReadyUpdate: () =>
+    invoke("desktop:installReadyUpdate") as Promise<void>,
   onUpdateReady: (cb: (version: string) => void) => {
     const listener = (_event: unknown, version: string) => cb(version);
     ipcRenderer.on("desktop:update-ready", listener);
@@ -290,7 +232,8 @@ const gooseDesktop = {
   startWindowDrag: () => invoke("desktop:startWindowDrag") as Promise<void>,
   endWindowDrag: () => invoke("desktop:endWindowDrag") as Promise<void>,
   onAcceptTab: (cb: (payload: AcceptTabPayload) => void) => {
-    const listener = (_event: unknown, payload: AcceptTabPayload) => cb(payload);
+    const listener = (_event: unknown, payload: AcceptTabPayload) =>
+      cb(payload);
     ipcRenderer.on("desktop:accept-tab", listener);
     return () => {
       ipcRenderer.removeListener("desktop:accept-tab", listener);
