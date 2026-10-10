@@ -1,15 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  useBlockNoteEditor,
-  useExtension,
-} from "@blocknote/react";
+import { useBlockNoteEditor, useExtension } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { Plus, GripVertical, ChevronRight } from "@/components/ui/icons";
 import { cn } from "@/components/editor/utils/cn";
@@ -21,148 +12,33 @@ import {
   TooltipTrigger,
 } from "@/components/editor/ui/tooltip";
 import {
-  isFoldableHeadingBlock,
   queryHeadingTextRect,
   readHeadingCollapsed,
   toggleHeadingCollapsed,
 } from "@/components/editor/core/toggleHeadingGutter";
 import { getSectionInsertAnchorId } from "@/components/editor/core/headingSectionFold";
-import {
-  HEADING_SIDE_MENU_EXTRA_GAP,
-  SIDE_MENU_CONTENT_GAP,
-  isPointerInSideMenuCorridor,
-  isPointerOverBlockContent,
-} from "@/components/editor/core/sideMenuHover";
+import { useEditorSideMenuTarget } from "./useEditorSideMenuTarget";
 
 const isMac = /Mac/i.test(navigator.platform);
 const altKeyLabel = isMac ? "⌥" : "Alt";
-
-const SIDEBAR_INTERACTION_SELECTOR = ".workspace-sidebar-pane, .rct-main-tree";
-const SIDEBAR_HOVER_SELECTOR =
-  ".workspace-sidebar-pane:hover, .rct-main-tree:hover";
 
 export function EditorSideMenu() {
   const editor = useBlockNoteEditor<any, any, any>();
   const sideMenu = useExtension(SideMenuExtension);
   const menuRef = useRef<HTMLDivElement>(null);
   const pressedHandle = useRef(false);
-  const [hoveredBlockId, setHoveredBlockId] = useState<string>();
   const [addTipOpen, setAddTipOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [sidebarInteracting, setSidebarInteracting] = useState(false);
   const [foldHot, setFoldHot] = useState(false);
-  const [foldTick, setFoldTick] = useState(0);
-  const dragBlockId = useRef(hoveredBlockId);
-  if (!isDragging) dragBlockId.current = hoveredBlockId;
-  const blockId = isDragging ? dragBlockId.current : hoveredBlockId;
-  const block = blockId ? editor.getBlock(blockId) : undefined;
-  const [referencePos, setReferencePos] = useState<DOMRect | null>(null);
-  const corridor = useRef<{ rect: DOMRect | null; gap: number }>({ rect: null, gap: 0 });
-
-  // Anchor to the content under the pointer, not the editor's blank canvas.
-  useLayoutEffect(() => {
-    const element =
-      blockId &&
-      editor.prosemirrorView.dom.querySelector<HTMLElement>(
-        `[data-node-type="blockContainer"][data-id="${CSS.escape(blockId)}"]`,
-      );
-    if (!element) {
-      setReferencePos(null);
-      return;
-    }
-    const content =
-      element.querySelector<HTMLElement>(":scope > .bn-block-content") ??
-      element;
-    const update = () => {
-      const rect = content.getBoundingClientRect();
-      const column = element.closest('[data-node-type="column"]');
-      const left =
-        (
-          column?.firstElementChild ??
-          editor.prosemirrorView.dom.firstElementChild
-        )?.getBoundingClientRect().left ?? rect.left;
-      setReferencePos(new DOMRect(left, rect.top, rect.width, rect.height));
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(content);
-    window.addEventListener("resize", update);
-    document.addEventListener("scroll", update, true);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-      document.removeEventListener("scroll", update, true);
-    };
-  }, [editor, blockId, foldTick]);
-
-  const firstBlockId = editor.document[0]?.id as string | undefined;
-  const showHeadingToggle = isFoldableHeadingBlock(block, firstBlockId);
-  const liveHeading = block ? (editor.getBlock(block.id) ?? block) : undefined;
-  const headingExpanded = liveHeading
-    ? !readHeadingCollapsed(liveHeading)
-    : false;
-  void foldTick;
-
-  const sideMenuGap =
-    SIDE_MENU_CONTENT_GAP +
-    (block?.type === "table" ? 0 : HEADING_SIDE_MENU_EXTRA_GAP);
-  corridor.current = { rect: referencePos, gap: sideMenuGap };
-  useEffect(() => {
-    const updateSidebarInteracting = (
-      target: EventTarget | null = document.activeElement,
-    ) => {
-      const element = target instanceof Element ? target : null;
-      const activeElement = document.activeElement;
-      const next =
-        Boolean(element?.closest(SIDEBAR_INTERACTION_SELECTOR)) ||
-        Boolean(activeElement?.closest?.(SIDEBAR_INTERACTION_SELECTOR)) ||
-        Boolean(document.querySelector(SIDEBAR_HOVER_SELECTOR));
-      setSidebarInteracting(next);
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      updateSidebarInteracting(event.target);
-      if (pressedHandle.current) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (menuRef.current?.contains(target)) return;
-      if (isPointerInSideMenuCorridor(event.clientX, event.clientY,
-          corridor.current.rect ?? undefined, corridor.current.gap, 32)) return;
-      const content = target?.closest<HTMLElement>(".bn-block-content");
-      if (content && editor.prosemirrorView.dom.contains(content) &&
-          isPointerOverBlockContent(content, event.clientX, event.clientY)) {
-        setHoveredBlockId(content.closest<HTMLElement>('[data-node-type="blockContainer"]')?.dataset.id);
-      } else {
-        setHoveredBlockId(undefined);
-      }
-    };
-    const handleFocusChange = (event: FocusEvent) => {
-      updateSidebarInteracting(event.target);
-    };
-    const handleWindowBlur = () => {
-      pressedHandle.current = false;
-      setHoveredBlockId(undefined);
-    };
-    const handlePointerUp = () => { pressedHandle.current = false; };
-    window.addEventListener("blur", handleWindowBlur);
-
-    document.addEventListener("pointermove", handlePointerMove, true);
-    document.addEventListener("pointerup", handlePointerUp, true);
-    document.addEventListener("focusin", handleFocusChange, true);
-    document.addEventListener("focusout", handleFocusChange, true);
-    return () => {
-      window.removeEventListener("blur", handleWindowBlur);
-      document.removeEventListener("pointermove", handlePointerMove, true);
-      document.removeEventListener("pointerup", handlePointerUp, true);
-      document.removeEventListener("focusin", handleFocusChange, true);
-      document.removeEventListener("focusout", handleFocusChange, true);
-    };
-  }, [editor]);
-
-  const shouldShow =
-    Boolean(referencePos && block) &&
-    editor.isEditable &&
-    (!sidebarInteracting || isDragging) &&
-    (Boolean(hoveredBlockId) || isDragging);
+  const {
+    block,
+    referencePos,
+    shouldShow,
+    showHeadingToggle,
+    headingExpanded,
+    sideMenuGap,
+    setFoldTick,
+  } = useEditorSideMenuTarget(editor, isDragging, menuRef, pressedHandle);
 
   const handleToggleHeading = useCallback(
     (e: React.MouseEvent) => {
@@ -171,7 +47,7 @@ export function EditorSideMenu() {
       toggleHeadingCollapsed(editor, block.id);
       setFoldTick((tick) => tick + 1);
     },
-    [block, editor],
+    [block, editor, setFoldTick],
   );
 
   const handleDragStart = useCallback(
@@ -246,10 +122,11 @@ export function EditorSideMenu() {
   const top = textRect
     ? textRect.top + textRect.height / 2
     : referencePos.top + referencePos.height / 2;
-  const onHeading = block.type === "heading";
   const anchorLeft = referencePos.left - sideMenuGap;
   // Workspace sidebar and main sheet have separate stacking contexts; escape the main sheet.
-  const portalTarget = editor.prosemirrorView.dom.closest(".workspace-main-sheet")
+  const portalTarget = editor.prosemirrorView.dom.closest(
+    ".workspace-main-sheet",
+  )
     ? document.body
     : (editor.portalElement ?? document.body);
   return createPortal(
@@ -272,7 +149,8 @@ export function EditorSideMenu() {
       }}
       onMouseDown={(e) => {
         // Native drag needs mousedown; only non-draggable actions preserve focus.
-        if (!(e.target as Element).closest("[draggable='true']")) e.preventDefault();
+        if (!(e.target as Element).closest("[draggable='true']"))
+          e.preventDefault();
         e.stopPropagation();
       }}
       onContextMenu={(e) => {
@@ -349,7 +227,9 @@ export function EditorSideMenu() {
           type="button"
           draggable
           aria-label="拖动移动块"
-          onPointerDown={() => { pressedHandle.current = true; }}
+          onPointerDown={() => {
+            pressedHandle.current = true;
+          }}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           className={cn(
