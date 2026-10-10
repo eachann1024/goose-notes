@@ -1,3 +1,4 @@
+import { electronGooseFsShell } from "./gooseFsShell";
 /**
  * Electron 桌面端的 window.gooseFs 同构实现。
  *
@@ -13,206 +14,19 @@ import {
   toDiskWriteError,
 } from "@/lib/diskWriteError";
 
-const LAST_DIRECTORY_KEY = "goose-note:electron-last-directory";
-
-const existsCache = new Map<string, boolean>();
-const rememberExists = (path: string, value: boolean) => {
-  existsCache.set(path, value);
-};
-
-const bytesToBase64 = (data: Uint8Array): string => {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < data.length; index += chunkSize) {
-    binary += String.fromCharCode(...data.subarray(index, index + chunkSize));
-  }
-  return btoa(binary);
-};
-
-const base64ToBytes = (base64: string): Uint8Array => {
-  const binary = atob(base64);
-  const out = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++) {
-    out[index] = binary.charCodeAt(index);
-  }
-  return out;
-};
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
-const writeFileImpl = async (
-  path: string,
-  content: string,
-  encoding?: string,
-): Promise<boolean> => {
-  const api = getGooseDesktop();
-  if (!api) return false;
-  try {
-    if (encoding === "base64") {
-      await api.fsWrite(path, base64ToBytes(content));
-    } else {
-      await api.fsWriteText(path, content);
-    }
-    rememberExists(path, true);
-    return true;
-  } catch (err) {
-    const diskError = toDiskWriteError(err, path);
-    rememberDiskWriteFailure(diskError);
-    console.warn("[electron-gooseFs] writeFile 失败", path, err);
-    return false;
-  }
-};
-
-const dirWatchIds = new Map<string, string>();
-const dirWatchCbs = new Map<string, (eventType: string, filename: string) => void>();
-let fsChangeUnlisten: (() => void) | null = null;
-
-const ensureFsChangeBridge = () => {
-  if (fsChangeUnlisten) return;
-  const api = getGooseDesktop();
-  if (!api) return;
-  fsChangeUnlisten = api.onFsChange((event) => {
-    for (const [dir, cb] of dirWatchCbs) {
-      const prefix = dir.endsWith("/") || dir.endsWith("\\") ? dir : `${dir}/`;
-      const changed = event.path;
-      if (changed !== dir && !changed.startsWith(prefix) && !changed.startsWith(`${dir}\\`)) {
-        continue;
-      }
-      const filename = changed.startsWith(prefix)
-        ? changed.slice(prefix.length)
-        : changed.startsWith(`${dir}\\`)
-          ? changed.slice(dir.length + 1)
-          : changed === dir
-            ? ""
-            : changed;
-      const eventType = event.type === "rename" ? "rename" : "change";
-      if (!filename && changed === dir) continue;
-      try {
-        cb(eventType, filename || changed);
-      } catch {
-        // ignore
-      }
-      window.dispatchEvent(
-        new CustomEvent("goose-note:file-changed", {
-          detail: { eventType, filename: filename || changed, dirPath: dir },
-        }),
-      );
-    }
-  });
-};
-
-const watchImpl = (dir: string, cb: (eventType: string, filename: string) => void) => {
-  if (dirWatchIds.has(dir)) return null;
-  dirWatchCbs.set(dir, cb);
-  void (async () => {
-    const api = getGooseDesktop();
-    if (!api) return;
-    try {
-      ensureFsChangeBridge();
-      const id = await api.fsWatch(dir);
-      dirWatchIds.set(dir, id);
-    } catch (err) {
-      console.warn("[electron-gooseFs] watch 失败", dir, err);
-    }
-  })();
-  return null;
-};
-
-const unwatchImpl = (dir: string) => {
-  dirWatchCbs.delete(dir);
-  const id = dirWatchIds.get(dir);
-  dirWatchIds.delete(dir);
-  if (!id) return;
-  const api = getGooseDesktop();
-  void api?.fsUnwatch(id).catch(() => {});
-};
-
-const writeTempFileImpl = async (
-  relativePath: string,
-  contentBase64: string,
-): Promise<string | null> => {
-  const api = getGooseDesktop();
-  if (!api) return null;
-  try {
-    const base = await api.getUserDataPath();
-    const segments = relativePath.split("/").filter(Boolean);
-    const target = await api.joinPath(base, ...segments);
-    const parent = await api.joinPath(base, ...segments.slice(0, -1));
-    await api.fsMkdir(parent);
-    await api.fsWrite(target, base64ToBytes(contentBase64));
-    return target;
-  } catch (err) {
-    console.warn("[electron-gooseFs] writeTempFile 失败", relativePath, err);
-    return null;
-  }
-};
-
-const cleanupTempFilesImpl = async (
-  prefix: string,
-  maxAgeMs: number,
-): Promise<void> => {
-  const api = getGooseDesktop();
-  if (!api) return;
-  try {
-    const base = await api.joinPath(
-      await api.getUserDataPath(),
-      ...prefix.split("/").filter(Boolean),
-    );
-    const entries = await api.fsReadDir(base);
-    const now = Date.now();
-    for (const entry of entries) {
-      try {
-        const info = await api.fsStat(entry.path);
-        if (info.mtimeMs > 0 && now - info.mtimeMs > maxAgeMs) {
-          await api.fsRemove(entry.path);
-        }
-      } catch {
-        // ignore
-      }
-    }
-  } catch {
-    // ignore
-  }
-};
-
-const selectDirectoryImpl = async (): Promise<string | null> => {
-  const api = getGooseDesktop();
-  if (!api) return null;
-  try {
-    const dir = await api.selectDirectory();
-    if (!dir) return null;
-    try {
-      window.localStorage.setItem(LAST_DIRECTORY_KEY, dir);
-    } catch {
-      // ignore
-    }
-    rememberExists(dir, true);
-    return dir;
-  } catch (err) {
-    console.warn("[electron-gooseFs] selectDirectory 失败", err);
-    return null;
-  }
-};
-
-const restoreLastDirectoryImpl = async (): Promise<string | null> => {
-  const api = getGooseDesktop();
-  if (!api) return null;
-  try {
-    const dir = window.localStorage.getItem(LAST_DIRECTORY_KEY);
-    if (!dir) return null;
-    if (await api.fsExists(dir)) {
-      rememberExists(dir, true);
-      return dir;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-const normalizeAppName = (value: string): string =>
-  value.trim().replace(/\.app$/i, "").toLowerCase();
+import {
+  existsCache,
+  rememberExists,
+  bytesToBase64,
+  toErrorMessage,
+  writeFileImpl,
+  watchImpl,
+  unwatchImpl,
+  writeTempFileImpl,
+  cleanupTempFilesImpl,
+  selectDirectoryImpl,
+  restoreLastDirectoryImpl,
+} from "./gooseFsHelpers";
 
 export const electronGooseFs = {
   readDir: () => [] as unknown[],
@@ -412,75 +226,7 @@ export const electronGooseFs = {
   selectDirectory: selectDirectoryImpl,
   restoreLastDirectory: restoreLastDirectoryImpl,
 
-  revealItemInFolder: async (path: string) => {
-    const api = getGooseDesktop();
-    if (!api) return false;
-    try {
-      await api.showItemInFolder(path);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-
-  listAvailableOpenApps: async <T extends { appName: string; aliases?: string[]; commands?: string[] }>(
-    candidates: T[],
-  ): Promise<T[]> => {
-    const api = getGooseDesktop();
-    if (!api) return [];
-    try {
-      const installed = await api.listOpenApps(candidates.flatMap((candidate) => [
-        candidate.appName, ...(candidate.aliases ?? []), ...(candidate.commands ?? []),
-      ]));
-      const names = new Map<string, string | undefined>();
-      for (const app of installed) {
-        names.set(normalizeAppName(app.name), app.icon);
-        const base = app.path.split(/[\\/]/).pop() ?? "";
-        names.set(normalizeAppName(base.replace(/\.(exe|app)$/i, "")), app.icon);
-      }
-      return candidates.flatMap((candidate) => {
-        const aliases = candidate.aliases ?? [];
-        const commands = candidate.commands ?? [];
-        const options = [candidate.appName, ...aliases, ...commands].map(normalizeAppName);
-        const matched = options.find((name) => names.has(name));
-        return matched ? [{ ...candidate, icon: names.get(matched) }] : [];
-      });
-    } catch (err) {
-      console.warn("[electron-gooseFs] listAvailableOpenApps 失败", err);
-      return [];
-    }
-  },
-  openWithApp: async (path: string, app: string) => {
-    const api = getGooseDesktop();
-    if (!api) return false;
-    try {
-      await api.openWithApp(app, path);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  openTerminalAtPath: async (path: string, terminal?: string) => {
-    const api = getGooseDesktop();
-    if (!api) return false;
-    try {
-      await api.openTerminalAtPath(path, terminal);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-
-  printHtmlToPdf: async (html: string) => {
-    const api = getGooseDesktop();
-    if (!api?.printHtmlToPdf) return null;
-    try {
-      return await api.printHtmlToPdf(html);
-    } catch (err) {
-      console.warn("[electron-gooseFs] printHtmlToPdf 失败", err);
-      return null;
-    }
-  },
+  ...electronGooseFsShell,
 } as unknown as GooseFs;
 
 export function installElectronGooseFs(): boolean {

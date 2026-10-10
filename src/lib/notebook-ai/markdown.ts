@@ -1,7 +1,7 @@
 /**
  * markdown.ts — AI 输出 markdown 归一化 + 页面内容构建
  *
- * write.ts（工具最终落盘）与 liveWriter.ts（流式中间帧）共用，
+ * batch-plan（工具最终落盘）与 liveWriter.ts（流式中间帧）共用，
  * 保证两条写入路径对模型输出做完全一致的清洗。
  */
 import { importMarkdownFragment } from "@/lib/export/markdown/parse";

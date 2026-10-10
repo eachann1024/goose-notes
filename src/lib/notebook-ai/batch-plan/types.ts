@@ -95,6 +95,8 @@ export interface BatchPlanJournal {
   after: Record<string, PageRevision>;
   createdPageIds: Record<string, string>;
   results: BatchOperationResult[];
+  /** 失败后补偿的结果；成功操作记录不能据此当作仍然生效。 */
+  rollbackStatus?: "complete" | "incomplete";
   error?: string;
   createdAt: number;
   updatedAt: number;

@@ -2,16 +2,16 @@
  * 行内 AI：将选区/光标块序列化为 markdown，并把模型返回的 markdown 写回对应块。
  * 与面板 agent 的 markdown 局部改写对齐，避免单块 update 无法扩列表的限制。
  */
-import { importMarkdownFragment } from "@/lib/export/markdown/parse";
-import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
-import { encodeBlockPropsMarkers } from "@/lib/export/markdown/blockPropsMarker";
+import { normalizeAiMarkdown } from "./markdown";
+import { inheritPresentationFromSource } from "./inheritPresentation";
 import {
-  normalizeAiMarkdown,
-  parseAiMarkdownToBlocks,
-} from "@/lib/notebook-ai/markdown";
-import { explodeAiGeneratedBlocks } from "@/lib/ai-write/explodeAiGeneratedBlocks";
-import { inheritPresentationFromSource } from "@/lib/notebook-ai/inheritPresentation";
-import type { BlockNoteContent } from "@/components/editor/utils/blocknote-content";
+  serializeBlocksToMarkdown,
+  parseMarkdownToBlocks,
+} from "./inlineMarkdownCodec";
+export {
+  serializeBlocksToMarkdown,
+  parseMarkdownToBlocks,
+} from "./inlineMarkdownCodec";
 
 export type InlineEditMode = "selection" | "cursor";
 
@@ -35,7 +35,10 @@ export type InlineMarkdownEditor = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transact: (callback: any) => unknown;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  replaceBlocks: (sourceBlockIds: string[], replacementBlocks: any[]) => unknown;
+  replaceBlocks: (
+    sourceBlockIds: string[],
+    replacementBlocks: any[],
+  ) => unknown;
   undo?: () => boolean;
 };
 
@@ -60,53 +63,6 @@ function cloneValue<T>(value: T): T {
     return structuredClone(value);
   }
   return JSON.parse(JSON.stringify(value)) as T;
-}
-
-export function serializeBlocksToMarkdown(
-  editor: InlineMarkdownEditor,
-  blocks: unknown[],
-): string {
-  try {
-    return jsonContentToMarkdown(
-      encodeBlockPropsMarkers(blocks as BlockNoteContent),
-    );
-  } catch {
-    // fall through
-  }
-  if (typeof editor.blocksToMarkdownLossy === "function") {
-    try {
-      return editor.blocksToMarkdownLossy(blocks as never);
-    } catch {
-      // fall through
-    }
-  }
-  return jsonContentToMarkdown(blocks as BlockNoteContent);
-}
-
-export function parseMarkdownToBlocks(
-  editor: InlineMarkdownEditor,
-  markdown: string,
-): unknown[] {
-  const fromAi = parseAiMarkdownToBlocks(markdown);
-  if (fromAi.length > 0) return fromAi;
-
-  if (typeof editor.tryParseMarkdownToBlocks === "function") {
-    try {
-      const parsed = editor.tryParseMarkdownToBlocks(markdown);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const exploded = explodeAiGeneratedBlocks(parsed);
-        return exploded.length > 0 ? exploded : parsed;
-      }
-    } catch {
-      // fall through
-    }
-  }
-  const fragment = importMarkdownFragment(markdown);
-  if (!fragment || fragment.length === 0) {
-    throw new Error("AI 返回的内容无法解析为有效块。");
-  }
-  const exploded = explodeAiGeneratedBlocks(fragment);
-  return exploded.length > 0 ? exploded : fragment;
 }
 
 /** 去掉解析结果上的 id，交给 replaceBlocks 生成新块，避免与源 id 冲突。 */
@@ -291,7 +247,12 @@ export function applyMarkdownToInlineTarget(
         ? newBlockIds
         : // 若定位失败，用 replace 后文档中紧跟原位置的块数量仍可能不足；
           // 再试一次：去掉仍存在的旧 id 后，按 diff 取新增
-          collectNewBlockIds(docBefore, docAfter, sourceBlockIds, replacementBlocks.length),
+          collectNewBlockIds(
+            docBefore,
+            docAfter,
+            sourceBlockIds,
+            replacementBlocks.length,
+          ),
   };
 }
 
@@ -308,7 +269,9 @@ function collectNewBlockIds(
   const sourceSet = new Set(sourceBlockIds);
   const added = after
     .map((b) => b?.id)
-    .filter((id): id is string => !!id && !beforeIds.has(id) && !sourceSet.has(id));
+    .filter(
+      (id): id is string => !!id && !beforeIds.has(id) && !sourceSet.has(id),
+    );
   if (added.length === expectedCount) return added;
 
   // 若 id 复用（部分实现会保留首块 id），按文档位置推断

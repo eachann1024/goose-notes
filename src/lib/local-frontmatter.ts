@@ -1,3 +1,8 @@
+import { parseLocalFrontmatterBlob } from "./local-frontmatter/parser";
+export {
+  parseLocalFrontmatterBlob,
+  pageSettingsFromMarkdown,
+} from "./local-frontmatter/parser";
 /**
  * 本地文件夹页面设置 ↔ YAML frontmatter（方案 A）
  *
@@ -8,201 +13,35 @@
  *
  * 未知键原样保留；解析失败时不改写原文 blob。
  */
-import { isMap, parseDocument, stringify as stringifyYaml } from "yaml";
-import type { FontFamily, PageLayout } from "@/types";
+import { stringify as stringifyYaml } from "yaml";
 import type { PageContent } from "@/components/editor/utils/blocknote-content";
 import { extractFrontmatter } from "./markdown-raw-guard";
-
-export const GOOSE_LAYOUT_KEY = "goose-layout";
-export const GOOSE_FONT_KEY = "goose-font";
-export const GOOSE_LOCKED_KEY = "goose-locked";
-export const GOOSE_PINNED_KEY = "goose-pinned";
-export const GOOSE_FAVORITE_KEY = "goose-favorite";
-
-/** 会写入 / 从 frontmatter 恢复的 Page 字段 */
-export const LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS = [
-  "fontFamily",
-  "pageLayout",
-  "isLocked",
-  "isPinned",
-  "isFavorite",
-] as const;
-
-export type LocalPageFrontmatterSettingsKey =
-  (typeof LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS)[number];
-
-export type LocalPageFrontmatterSettings = {
-  fontFamily: FontFamily;
-  pageLayout?: PageLayout;
-  isLocked: boolean;
-  isPinned: boolean;
-  isFavorite: boolean;
-};
-
-const DEFAULT_SETTINGS: LocalPageFrontmatterSettings = {
-  fontFamily: "default",
-  pageLayout: undefined,
-  isLocked: false,
-  isPinned: false,
-  isFavorite: false,
-};
-
-const VALID_FONTS = new Set<FontFamily>(["default", "serif", "mono"]);
-
-export function isLocalPageFrontmatterSettingsUpdate(
-  updates: Partial<Record<string, unknown>>,
-): boolean {
-  return LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS.some((key) =>
-    Object.prototype.hasOwnProperty.call(updates, key),
-  );
-}
-
-function stripFrontmatterDelimiters(blob: string): string {
-  const lines = blob.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  if (lines.length >= 2 && lines[0].trim() === "---") {
-    let endIdx = -1;
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim() === "---") {
-        endIdx = i;
-        break;
-      }
-    }
-    if (endIdx !== -1) {
-      return lines.slice(1, endIdx).join("\n");
-    }
-  }
-  return blob;
-}
+import {
+  GOOSE_LAYOUT_KEY,
+  GOOSE_FONT_KEY,
+  GOOSE_LOCKED_KEY,
+  GOOSE_PINNED_KEY,
+  GOOSE_FAVORITE_KEY,
+  VALID_FONTS,
+  normalizePageLayout,
+  type LocalPageFrontmatterSettings,
+} from "./local-frontmatter/settings";
+export {
+  GOOSE_LAYOUT_KEY,
+  GOOSE_FONT_KEY,
+  GOOSE_LOCKED_KEY,
+  GOOSE_PINNED_KEY,
+  GOOSE_FAVORITE_KEY,
+  LOCAL_PAGE_FRONTMATTER_SETTINGS_KEYS,
+  isLocalPageFrontmatterSettingsUpdate,
+  normalizePageLayout,
+  type LocalPageFrontmatterSettingsKey,
+  type LocalPageFrontmatterSettings,
+} from "./local-frontmatter/settings";
 
 function wrapFrontmatter(yamlBody: string): string {
   const body = yamlBody.replace(/\s+$/, "");
   return body ? `---\n${body}\n---` : "---\n---";
-}
-
-export function normalizePageLayout(value: unknown): PageLayout {
-  return value === "full" ? "full" : "standard";
-}
-
-function normalizeFont(value: unknown): FontFamily {
-  if (typeof value !== "string") return "default";
-  const trimmed = value.trim().toLowerCase();
-  // 兼容早期/手写 default、sans
-  if (trimmed === "sans" || trimmed === "default") return "default";
-  if (trimmed === "serif" || trimmed === "mono") return trimmed;
-  return "default";
-}
-
-function normalizeLocked(value: unknown): boolean {
-  if (value === true || value === 1) return true;
-  if (value === false || value === 0 || value == null) return false;
-  if (typeof value === "string") {
-    const t = value.trim().toLowerCase();
-    if (t === "true" || t === "yes" || t === "1") return true;
-    if (t === "false" || t === "no" || t === "0" || t === "") return false;
-  }
-  return Boolean(value);
-}
-
-function normalizePinned(value: unknown): boolean {
-  if (value === true || value === 1) return true;
-  if (value === false || value === 0 || value == null) return false;
-  if (typeof value === "string") {
-    const t = value.trim().toLowerCase();
-    if (t === "true" || t === "yes" || t === "1") return true;
-    if (t === "false" || t === "no" || t === "0" || t === "") return false;
-  }
-  return Boolean(value);
-}
-
-function normalizeFavorite(value: unknown): boolean {
-  if (value === true || value === 1) return true;
-  if (value === false || value === 0 || value == null) return false;
-  if (typeof value === "string") {
-    const t = value.trim().toLowerCase();
-    if (t === "true" || t === "yes" || t === "1") return true;
-    if (t === "false" || t === "no" || t === "0" || t === "") return false;
-  }
-  return Boolean(value);
-}
-
-function settingsFromData(
-  data: Record<string, unknown>,
-): LocalPageFrontmatterSettings {
-  const fontRaw = data[GOOSE_FONT_KEY];
-  const lockedRaw = data[GOOSE_LOCKED_KEY];
-  const pinnedRaw = data[GOOSE_PINNED_KEY];
-  const favoriteRaw = data[GOOSE_FAVORITE_KEY];
-  return {
-    pageLayout: data[GOOSE_LAYOUT_KEY] === undefined ? undefined : normalizePageLayout(data[GOOSE_LAYOUT_KEY]),
-    fontFamily: fontRaw === undefined ? "default" : normalizeFont(fontRaw),
-    isLocked: lockedRaw === undefined ? false : normalizeLocked(lockedRaw),
-    isPinned: pinnedRaw === undefined ? false : normalizePinned(pinnedRaw),
-    isFavorite:
-      favoriteRaw === undefined ? false : normalizeFavorite(favoriteRaw),
-  };
-}
-
-/**
- * 解析 frontmatter 原文 blob（可含 --- 定界符）。
- * 失败时 settings 回退默认，调用方应保留原 blob 不覆盖。
- */
-export function parseLocalFrontmatterBlob(blob: string | null | undefined): {
-  ok: boolean;
-  data: Record<string, unknown>;
-  settings: LocalPageFrontmatterSettings;
-  error?: string;
-} {
-  if (!blob || !blob.trim()) {
-    return { ok: true, data: {}, settings: { ...DEFAULT_SETTINGS } };
-  }
-
-  if (/^---\s*(?:\n|$)/.test(blob.replace(/\r\n?/g, "\n")) && !extractFrontmatter(blob).frontmatter) {
-    return { ok: false, data: {}, settings: { ...DEFAULT_SETTINGS }, error: "YAML 前置区未闭合" };
-  }
-  const yamlText = stripFrontmatterDelimiters(blob);
-  if (!yamlText.trim()) {
-    return { ok: true, data: {}, settings: { ...DEFAULT_SETTINGS } };
-  }
-
-  try {
-    const document = parseDocument(yamlText);
-    if (document.errors.length) throw document.errors[0];
-    if (!document.contents) {
-      return { ok: true, data: {}, settings: { ...DEFAULT_SETTINGS } };
-    }
-    if (!isMap(document.contents)) {
-      return {
-        ok: false,
-        data: {},
-        settings: { ...DEFAULT_SETTINGS },
-        error: "frontmatter 根节点必须是对象",
-      };
-    }
-    const parsed = document.toJS() as Record<string, unknown>;
-    return {
-      ok: true,
-      data: { ...parsed },
-      settings: settingsFromData(parsed),
-    };
-  } catch {
-    return {
-      ok: false,
-      data: {},
-      settings: { ...DEFAULT_SETTINGS },
-      error: "YAML 解析失败",
-    };
-  }
-}
-
-/**
- * 从完整 markdown 文本恢复页面设置（扫描/reload 用）。
- */
-export function pageSettingsFromMarkdown(
-  markdown: string | null | undefined,
-): LocalPageFrontmatterSettings {
-  if (markdown == null) return { ...DEFAULT_SETTINGS };
-  const { frontmatter } = extractFrontmatter(markdown);
-  return parseLocalFrontmatterBlob(frontmatter).settings;
 }
 
 export type MergeFrontmatterResult = {
@@ -238,7 +77,9 @@ export function getContentFrontmatterBody(
   if (!content || typeof content !== "object") return null;
   const blocks = Array.isArray(content) ? content : content?.content;
   if (!Array.isArray(blocks)) return null;
-  const first = blocks[0] as { type?: string; props?: Record<string, unknown>; content?: unknown } | undefined;
+  const first = blocks[0] as
+    | { type?: string; props?: Record<string, unknown>; content?: unknown }
+    | undefined;
   if (first?.type !== "codeBlock") return null;
   if (first?.props?.language !== "yaml-frontmatter") return null;
   const c = first.content;
@@ -257,21 +98,34 @@ export function applyFrontmatterBodyToContent(
 ): PageContent {
   const blocks = Array.isArray(content)
     ? content
-    : (content?.content as any[] | undefined) ?? [];
+    : ((content?.content as any[] | undefined) ?? []);
   const trimmed = (yamlBody ?? "").replace(/\s+$/, "");
-  const shouldShow = Boolean(trimmed) && frontmatterBodyHasUserVisibleKeys(trimmed);
+  const shouldShow =
+    Boolean(trimmed) && frontmatterBodyHasUserVisibleKeys(trimmed);
   const fmBlock = shouldShow
-    ? { type: "codeBlock", props: { language: "yaml-frontmatter" }, content: trimmed }
+    ? {
+        type: "codeBlock",
+        props: { language: "yaml-frontmatter" },
+        content: trimmed,
+      }
     : null;
 
-  if (blocks[0]?.type === "codeBlock" && blocks[0]?.props?.language === "yaml-frontmatter") {
+  if (
+    blocks[0]?.type === "codeBlock" &&
+    blocks[0]?.props?.language === "yaml-frontmatter"
+  ) {
     if (!fmBlock) {
       return blocks.slice(1) as PageContent;
     }
-    return [{ ...blocks[0], content: trimmed }, ...blocks.slice(1)] as PageContent;
+    return [
+      { ...blocks[0], content: trimmed },
+      ...blocks.slice(1),
+    ] as PageContent;
   }
 
-  return fmBlock ? ([fmBlock, ...blocks] as PageContent) : (blocks as PageContent);
+  return fmBlock
+    ? ([fmBlock, ...blocks] as PageContent)
+    : (blocks as PageContent);
 }
 
 /**
@@ -309,7 +163,10 @@ export function mergeLocalPageSettingsIntoFrontmatter(
   const fontFamily = VALID_FONTS.has(settings.fontFamily)
     ? settings.fontFamily
     : "default";
-  const pageLayout = settings.pageLayout === undefined ? undefined : normalizePageLayout(settings.pageLayout);
+  const pageLayout =
+    settings.pageLayout === undefined
+      ? undefined
+      : normalizePageLayout(settings.pageLayout);
   const isLocked = Boolean(settings.isLocked);
   const isPinned = Boolean(settings.isPinned);
   const isFavorite = Boolean(settings.isFavorite);
