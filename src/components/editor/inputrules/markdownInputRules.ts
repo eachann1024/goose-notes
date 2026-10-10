@@ -1,19 +1,6 @@
 import { createExtension } from "@blocknote/core";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
+import { Plugin } from "@tiptap/pm/state";
 import { jsonContentToMarkdown } from "@/lib/export/markdown/serialize";
-
-type RestoreState = {
-  /** 块内容节点的位置；转换不会改变该位置。 */
-  pos: number;
-  /** 删除触发空格后应恢复的原始前缀，例如 `1.`、`1。`、`[]`、`【】`、`#`。 */
-  triggerText: string;
-  /** 转换前的块类型与属性，退格时精确恢复，避免丢失颜色等通用属性。 */
-  originalType: string;
-  originalAttrs: Record<string, unknown>;
-  /** 用于确认 Backspace 仍停留在这次刚转换出的目标块中。 */
-  convertedType: string;
-};
 
 type BlockTrigger = {
   type: string;
@@ -22,53 +9,9 @@ type BlockTrigger = {
   afterTransform?: () => void;
 };
 
-const markdownBlockTriggerKey = new PluginKey<RestoreState | null>(
-  "goose-markdown-block-trigger",
-);
-
-/**
- * 转换后立刻在空块开头退格时，还原触发前缀（不含触发空格）。
- * 供本插件 handleKeyDown 与 emptyBlockBackspace 共用，避免插件顺序导致
- * 列表项原生降级抢走退格、触发字符（`【】` / `1。` 等）丢失。
- */
-export function tryUndoMarkdownBlockTrigger(view: EditorView): boolean {
-  const stored = markdownBlockTriggerKey.getState(view.state);
-  if (!stored) return false;
-
-  const { state } = view;
-  const node = state.doc.nodeAt(stored.pos);
-  const { $from, empty } = state.selection;
-  // 边界：非空内容 / 非空选区 / 光标不在块首 / 已离开该块 → 一律放行默认删除。
-  if (
-    !node ||
-    node.type.name !== stored.convertedType ||
-    node.textContent.length > 0 ||
-    !empty ||
-    $from.parentOffset !== 0 ||
-    $from.before($from.depth) !== stored.pos
-  ) {
-    return false;
-  }
-
-  const originalType = state.schema.nodes[stored.originalType];
-  if (!originalType) return false;
-
-  const tr = state.tr;
-  // 先还原块类型，再写回触发前缀（不含触发空格），避免 `【】 ` / `1。 ` 退格变成双空格。
-  tr.setNodeMarkup(stored.pos, originalType, stored.originalAttrs);
-  const insertAt = stored.pos + 1;
-  tr.insertText(stored.triggerText, insertAt);
-  // 光标固定在还原前缀之后；docChanged 会清掉 restore 状态，再次退格走普通删除。
-  tr.setSelection(
-    TextSelection.create(tr.doc, insertAt + stored.triggerText.length),
-  );
-  view.dispatch(tr);
-  return true;
-}
-
 /**
  * 行首待办触发匹配：半角 `[]`/`[x]` 与中文 `【】`/`【x】`。
- * 导出供单测；转换与退格还原都依赖同一规则。
+ * 转换使用同一规则。
  */
 export function matchCheckListTrigger(
   textBefore: string,
@@ -84,7 +27,7 @@ export function matchCheckListTrigger(
 
 /**
  * 行首引用触发匹配：`>` / `＞` / `|` / `｜`。
- * 导出供单测；转换与退格还原都依赖同一规则。
+ * 转换使用同一规则。
  */
 export function matchQuoteTrigger(
   textBefore: string,
@@ -99,8 +42,9 @@ export function matchQuoteTrigger(
  *
  * BlockNote 原生及 createExtension.inputRules 最终都会使用同一个 undoable input-rule
  * 通道。该通道撤销块转换时会额外回填本次输入的空格，因此 `1. ` 退格会成为 `1.  `。
- * 这里自行处理转换，并记录转换前的块；只要用户立刻在空块开头按 Backspace，就还原
- * 精确的触发文本（不含触发空格）。有其它编辑动作后记录自动失效，退格回到正常行为。
+ * 这里自行处理转换，不注册输入规则撤销状态。空块的 Backspace 统一交给
+ * emptyBlockBackspace 与 BlockNote 原生逻辑，直接退出块，不回填 Markdown 前缀；
+ * 正常的撤销/重做仍由编辑历史处理。
  *
  * 此插件由共享 Editor 挂载，主窗与速记小窗完全一致。特殊块的 markdown 屏蔽仍由
  * suppressMarkdownInSpecialBlocks 负责，并因注册顺序优先于本插件执行。
@@ -164,18 +108,7 @@ function getBlockTrigger(
 }
 
 function createMarkdownBlockTrigger(editor: any) {
-  return new Plugin<RestoreState | null>({
-    key: markdownBlockTriggerKey,
-    state: {
-      init: () => null,
-      apply(tr, previous) {
-        const stored = tr.getMeta(markdownBlockTriggerKey) as
-          | RestoreState
-          | undefined;
-        if (stored) return stored;
-        return tr.selectionSet || tr.docChanged ? null : previous;
-      },
-    },
+  return new Plugin({
     props: {
       handleTextInput(view, from, to, text) {
         if (text !== " " || from !== to) return false;
@@ -246,20 +179,9 @@ function createMarkdownBlockTrigger(editor: any) {
           ...trigger.props,
         });
         tr.delete(from - trigger.triggerText.length, from);
-        tr.setMeta(markdownBlockTriggerKey, {
-          pos: blockPos,
-          triggerText: trigger.triggerText,
-          originalType: parent.type.name,
-          originalAttrs: { ...parent.attrs },
-          convertedType: trigger.type,
-        } satisfies RestoreState);
         view.dispatch(tr);
         trigger.afterTransform?.();
         return true;
-      },
-      handleKeyDown(view, event) {
-        if (event.key !== "Backspace") return false;
-        return tryUndoMarkdownBlockTrigger(view);
       },
     },
   });
