@@ -633,7 +633,10 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 .notebook-ai-messages,
 .notebook-ai-message-text,
-.notebook-ai-message-text * {
+.notebook-ai-message-text *,
+/* 变更预览不经过 message-text，正文需显式开启选择，避免依赖全局 none 的继承覆盖。 */
+.notebook-ai-work-proposal,
+.notebook-ai-work-proposal * {
  cursor: text;
  -webkit-user-select: text;
  user-select: text;
@@ -1061,6 +1064,7 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
 
 .notebook-ai-plan-diff-line > span:first-child {
  flex: 0 0 12px;
+ -webkit-user-select: none;
  user-select: none;
 }
 
@@ -1144,13 +1148,14 @@ html.is-electron .electron-titlebar[data-ai-conversation-header] {
  }
 }
 
+/* 新增片段底色也使用 interactive-selected；文字选区改用正文选区色，保证拖选可见。 */
 .notebook-ai-messages ::selection {
- background-color: var(--goose-interactive-selected);
+ background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
  color: inherit;
 }
 
 .dark .notebook-ai-messages ::selection {
- background-color: var(--goose-interactive-selected);
+ background-color: var(--goose-editor-selection-bg, var(--goose-interactive-selected));
  color: inherit;
 }
 
