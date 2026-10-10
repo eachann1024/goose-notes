@@ -117,8 +117,8 @@ export function useWebdavSyncActions(
       const latest = list[0];
       setConfirmConfig({
         open: true,
-        title: "从云端拉取恢复",
-        description: `确认从云端恢复备份 ${latest.basename}？此操作将以该备份覆盖本地当前数据。恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
+        title: "从云端恢复",
+        description: `确定从云端恢复最新备份「${latest.basename}」？此操作将覆盖本地当前数据。恢复前将先校验完整性；若恢复中断，将自动还原当前本地数据。`,
         isDestructive: true,
         onConfirm: async () => {
           if (!isCurrentActivation(epoch)) return;

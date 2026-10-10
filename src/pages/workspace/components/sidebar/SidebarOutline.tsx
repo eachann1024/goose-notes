@@ -122,7 +122,7 @@ export function SidebarOutline({
     : !page || page.trashedAt
       ? "当前笔记不可用"
       : page.isFolder
-          ? "文件夹没有正文大纲"
+          ? "文件夹无大纲结构"
           : !paneMatches
             ? registry
               ? "正在载入大纲…"

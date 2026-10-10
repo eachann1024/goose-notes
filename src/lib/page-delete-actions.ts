@@ -58,19 +58,19 @@ export function permanentlyDeletePageWithCleanup(pageId: string) {
   const title = getPageTitle(page) || "无标题";
   const toastId = `permanent-delete:${pageId}`;
 
-  toast.warning(`永久删除「${title}」？`, {
+  toast.warning(`彻底删除「${title}」？`, {
     id: toastId,
     duration: 8000,
     description: page.isFolder
-      ? "该页面及其子页面会被永久删除，此操作无法撤回。"
-      : "此操作无法撤回。",
+      ? "删除后将连同全部子项一并移除，且无法恢复。"
+      : "删除后无法恢复。",
     action: {
-      label: "确认永久删除",
+      label: "彻底删除",
       onClick: (event) => {
         event.preventDefault();
         if (permanentDeleteInFlight.has(pageId)) return;
         permanentDeleteInFlight.add(pageId);
-        toast.loading(`正在永久删除「${title}」…`, { id: toastId });
+        toast.loading(`正在彻底删除「${title}」…`, { id: toastId });
         void usePages
           .getState()
           .permanentlyDeletePage(pageId)
@@ -79,11 +79,11 @@ export function permanentlyDeletePageWithCleanup(pageId: string) {
               throw new Error("页面仍然存在");
             }
             useTabs.getState().removeDeletedPage(pageId);
-            toast.success(`已永久删除「${title}」`, { id: toastId });
+            toast.success(`已彻底删除「${title}」`, { id: toastId });
           })
           .catch((error) => {
             console.error("[page-delete] permanently delete failed", error);
-            toast.error(`无法永久删除「${title}」`, {
+            toast.error(`无法彻底删除「${title}」`, {
               id: toastId,
               description: "请稍后重试。",
             });
@@ -149,7 +149,7 @@ export async function undoLocalTrash(token: string, notebookId: string) {
       await usePages.getState().loadLocalFolderPages(notebookId, notebook.localPath);
     } catch (error) {
       console.warn("[page-delete] restored file but could not refresh sidebar", error);
-      toast.warning("文件已恢复，侧栏暂未刷新");
+      toast.warning("文件已恢复，请刷新目录查看");
     }
   }
 }

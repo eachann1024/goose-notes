@@ -35,8 +35,8 @@ export function useWebdavRemoteActions(
     const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
-      title: "恢复备份",
-      description: `确认从远端备份 ${file.basename} 恢复数据？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`,
+      title: "恢复云端备份",
+      description: `确定使用云端备份「${file.basename}」恢复数据？恢复前将先校验完整性；若恢复中断，将自动还原当前本地数据。`,
       isDestructive: true,
       onConfirm: async () => {
         if (!isCurrentActivation(epoch)) return;
@@ -74,8 +74,8 @@ export function useWebdavRemoteActions(
     const epoch = activationRef.current.epoch;
     setConfirmConfig({
       open: true,
-      title: "删除备份",
-      description: `确认删除远端备份 ${file.basename}？该操作无法撤销。`,
+      title: "删除云端备份",
+      description: `确定删除云端备份「${file.basename}」？删除后无法从云端找回。`,
       isDestructive: true,
       onConfirm: async () => {
         if (!isCurrentActivation(epoch)) return;
@@ -88,7 +88,7 @@ export function useWebdavRemoteActions(
             webdavRemoteDir,
             file.basename,
           );
-          toast.success("远端备份已删除");
+          toast.success("云端备份已删除");
           const list = await listWebdavBackups(
             webdavUrl,
             webdavUsername,

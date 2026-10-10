@@ -120,7 +120,7 @@ export function ShortcutField({
           value={displayValue}
           readOnly
           data-shortcut-recorder
-          placeholder={isCapturing ? "请按下按键…" : "点击录制快捷键"}
+          placeholder={isCapturing ? "请按下组合键（按 Esc 取消）…" : "点击此处录制快捷键"}
           className={cn(
             "h-9 text-sm transition-colors",
             isCapturing && "placeholder:text-[var(--goose-color-capture-hint)]",

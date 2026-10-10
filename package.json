@@ -1,7 +1,7 @@
 {
   "name": "goose-note-app",
   "private": true,
-  "version": "1.7.57",
+  "version": "1.7.60",
   "type": "module",
   "packageManager": "bun@1.3.14",
   "description": "A local-first, Notion-style Electron desktop note-taking app built on the BlockNote block editor with built-in AI.",
@@ -15,13 +15,10 @@
     "build": "node scripts/generate-text-colors.mjs && node src/lib/vite-stubs/assert-present.mjs && vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs",
     "build:debug": "node scripts/generate-text-colors.mjs && GOOSE_DEBUG=1 vite build && GOOSE_DEBUG=1 node scripts/compile-electron.mjs && GOOSE_DEBUG=1 node scripts/prepare-electron-pack.mjs",
     "mac": "python3 build_mac.py",
-
     "win": "bun run build:electron && node scripts/electron-build-win.mjs && node scripts/collect-desktop-artifacts.mjs",
     "build:win": "bun run win",
-
     "linux": "bun run build:electron && node scripts/electron-build-linux.mjs && node scripts/collect-desktop-artifacts.mjs",
     "build:linux": "bun run linux",
-
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "build:electron": "node scripts/generate-text-colors.mjs && GOOSE_BUILD_TARGET=electron vite build && node scripts/compile-electron.mjs && node scripts/prepare-electron-pack.mjs"
@@ -44,8 +41,6 @@
     "@handlewithcare/prosemirror-inputrules": "^0.1.4",
     "@heroui/react": "^3",
     "@heroui/styles": "^3",
-    "@json-render/core": "0.19.0",
-    "@json-render/react": "0.19.0",
     "@react-pdf/renderer": "^4.5.1",
     "@sentry/browser": "^10.70.0",
     "@streamdown/cjk": "^1.0.3",
@@ -128,7 +123,6 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.2",
     "globals": "17.6.0",
-    "playwright": "1.60.0",
     "postcss": "8.5.15",
     "tailwindcss": "^4",
     "typescript": "6.0.3",
@@ -137,8 +131,7 @@
     "electron": "^44.0.0",
     "electron-builder": "^26",
     "esbuild": "^0.25.0",
-    "concurrently": "^9.2.1",
-    "wait-on": "^8.0.4"
+    "unimport": "5.6.0"
   },
   "main": "dist-electron/main/index.js",
   "patchedDependencies": {

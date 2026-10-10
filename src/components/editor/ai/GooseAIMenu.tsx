@@ -110,7 +110,7 @@ export function GooseAIMenu() {
       )}
       {state.status === "error" && (
         <p role="alert" className="goose-inline-ai-error">
-          {formatAiMenuError(state.error) || "改写失败，内容未修改。"}
+          {formatAiMenuError(state.error) || "生成中断，未对正文进行修改"}
         </p>
       )}
       <GoosePromptSuggestionMenu
@@ -119,10 +119,10 @@ export function GooseAIMenu() {
         onPromptTextChange={ai.setInput}
         placeholder={
           busy
-            ? "思考中"
+            ? "正在思考并生成…"
             : state.status === "user-reviewing"
-              ? "继续调整，例如：再自然一点"
-              : "你想如何改写这段内容？"
+              ? "输入进一步修改要求（如：再简短一些）…"
+              : "告诉 AI 如何处理这段内容（如：润色、精简、翻译）…"
         }
         disabled={busy}
         busy={busy}

@@ -76,26 +76,26 @@ export function describeDiskWriteError(error: unknown, path?: string): string {
 
   if (code === "EACCES" || code === "EPERM" || /permission denied/i.test(text)) {
     return cloud
-      ? "仓库目录当前无法写入（权限不足）。若笔记在 iCloud 等云盘上，请先恢复云盘登录后再保存。"
-      : "仓库目录当前无法写入（权限不足）。请检查文件夹权限后再保存。";
+      ? "笔记文件夹当前无法写入（权限不足）。若笔记在 iCloud 等云盘上，请先恢复云盘登录后再保存。"
+      : "笔记文件夹当前无法写入（权限不足）。请检查系统文件夹权限后再保存。";
   }
   if (code === "EROFS" || /read-only file system/i.test(text)) {
-    return "仓库目录是只读的，无法保存。";
+    return "笔记文件夹处于只读状态，无法保存更改。";
   }
   if (code === "ENOSPC") {
-    return "磁盘空间不足，无法保存。";
+    return "磁盘可用空间不足，无法保存更改，请清理空间后重试。";
   }
   if (code === "ENOENT") {
-    return "保存路径不存在，仓库可能已被移动或卸载。";
+    return "保存路径不存在，所属文件夹可能已被移动或重命名。";
   }
   if (code === "EBUSY" || code === "EAGAIN") {
-    return "仓库目录正忙，请稍后重试保存。";
+    return "文件系统正忙，请稍后重试保存。";
   }
   if (code === "EIO") {
-    return "磁盘读写出错，请检查云盘或磁盘状态后重试。";
+    return "磁盘读写出错，请检查驱动器或云盘状态后重试。";
   }
   if (text.includes("本地页面保存未完成") || text.includes("manual save failed")) {
-    return "笔记未能写入磁盘。请检查仓库目录是否可写后重试。";
+    return "笔记未能写入磁盘，请检查文件夹是否具备写入权限。";
   }
   if (text) return text;
   return "笔记未能写入磁盘，请重试。";

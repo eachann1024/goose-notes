@@ -126,8 +126,8 @@ export function useFileDrop() {
     clearLocalFolderFileDropTarget();
 
     if (files.length === 0) {
-      toast.error("不支持该文件格式", {
-        description: "可以拖入 .md、.markdown 或 .txt 文本文件。",
+      toast.error("暂不支持此文件格式", {
+        description: "请拖入 .md、.markdown 或 .txt 纯文本文件。",
       });
       return;
     }
@@ -139,8 +139,8 @@ export function useFileDrop() {
     const isLocalFolder = currentNotebook?.source === "local-folder";
 
     if (__HOST_TARGET__ === "electron" && !isLocalFolder) {
-      toast.error("请先打开文件夹", {
-        description: "Electron 桌面端仅支持本地文件夹仓库。",
+      toast.error("请先关联本地文件夹", {
+        description: "导入前请先在左侧栏打开或关联一个本地文件夹。",
       });
       return;
     }
@@ -162,8 +162,8 @@ export function useFileDrop() {
       });
 
       if (importedIds.length === 0) {
-        toast.error("导入失败", {
-          description: "文件内容无法解析为笔记。",
+        toast.error("无法导入该文件", {
+          description: "文件内容可能损坏或编码异常，无法解析为笔记。",
         });
         return;
       }

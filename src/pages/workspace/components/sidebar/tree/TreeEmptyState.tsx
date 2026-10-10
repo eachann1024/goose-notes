@@ -23,10 +23,10 @@ export function TreeEmptyState({
     >
       <p className="text-center text-xs font-normal text-muted-foreground">
         {isLocalNotebook
-          ? "暂无文件可选"
+          ? "暂无笔记，点击上方 ＋ 新建"
           : isElectronHost
-            ? "尚未打开仓库"
-            : "暂无页面可选"}
+            ? "请先关联本地文件夹"
+            : "暂无笔记，点击上方 ＋ 新建"}
       </p>
     </div>
   );

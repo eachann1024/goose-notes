@@ -21,15 +21,15 @@ function createNoticeContent(handleClose: () => void) {
   return (
     <FeatureToastCard
       icon={<GooseIcons.Sparkles className="h-5 w-5" />}
-      title="✨ AI 写作助手已上线"
+      title="✨ AI 写作助手已就绪"
       actions={[
         {
-          label: "设置",
+          label: "去配置",
           onPointerDown: (e) => { e.preventDefault(); settingsRef.current = true; openAISettings(); handleClose(); },
           onClick: () => { if (settingsRef.current) { settingsRef.current = false; return; } openAISettings(); handleClose(); },
         },
         {
-          label: "我知道了",
+          label: "知道了",
           onPointerDown: (e) => { e.preventDefault(); closeRef.current = true; handleClose(); },
           onClick: () => { if (closeRef.current) { closeRef.current = false; return; } handleClose(); },
           variant: "ghost",
@@ -37,9 +37,9 @@ function createNoticeContent(handleClose: () => void) {
         },
       ]}
     >
-      <p>· 空白段落按空格 → 唤起行内 AI</p>
-      <p>· 选中文字后直接润色改写</p>
-      <p>支持 DeepSeek、GLM、MiniMax 等供应商，在设置中填写 API Key 即可使用。</p>
+      <p>· 空白行按空格或输入 / 即可唤起 AI 续写</p>
+      <p>· 选中文字即可进行润色、精简或翻译</p>
+      <p>支持 DeepSeek、Claude、OpenAI 等主流模型，配置 API Key 即可开启体验。</p>
     </FeatureToastCard>
   );
 }

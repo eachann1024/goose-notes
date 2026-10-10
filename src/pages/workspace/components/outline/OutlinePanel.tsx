@@ -27,8 +27,8 @@ export function OutlinePanel({
   activeId,
   onHeadingClick,
   onHeadingToggle,
-  emptyMessage = "暂无标题",
-  emptyHint = "使用 ## 或 ### 添加章节",
+  emptyMessage = "正文暂无标题",
+  emptyHint = "在正文输入 # 或 ## 即可生成大纲导航",
 }: OutlinePanelProps) {
   const itemHeight = useSidebarItemHeight();
   const [locallyCollapsedIds, setLocallyCollapsedIds] = useState<Set<string>>(

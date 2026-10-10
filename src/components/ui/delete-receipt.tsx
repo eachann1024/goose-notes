@@ -12,7 +12,7 @@ export function showDeleteReceipt(
   if (!items.length) return;
   const done = items.filter((item) => item.deleted).length;
   const failed = items.length - done;
-  const destination = isLocalFolder ? "系统废纸篓" : "应用垃圾箱";
+  const destination = isLocalFolder ? "系统废纸篓" : "回收站";
   let undoing = false;
   // ponytail: the receipt shows only outcome and undo; add a detail view if item-level diagnostics become necessary.
   const label = failed
@@ -42,7 +42,7 @@ export function showDeleteReceipt(
               await onUndo();
               toast.dismiss(id);
             } catch (error) {
-              toast.error("撤回失败", { description: error instanceof Error ? error.message : "请稍后重试" });
+              toast.error("撤回失败", { description: error instanceof Error ? error.message : "请稍后重试，或前往回收站手动恢复" });
             } finally {
               undoing = false;
             }

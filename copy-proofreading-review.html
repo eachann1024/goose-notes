@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goose Notes · 文案校对与优化工作台</title>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      --bg-canvas: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-subtle: #f1f5f9;
+      --bg-card-hover: #f8fafc;
+      --border-color: #e2e8f0;
+      --border-subtle: #edf2f7;
+
+      --text-main: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --primary-text: #1d4ed8;
+
+      --success-bg: #f0fdf4;
+      --success-border: #bbf7d0;
+      --success-text: #15803d;
+      --success-badge: #dcfce7;
+
+      --warning-bg: #fffbeb;
+      --warning-border: #fef08a;
+      --warning-text: #b45309;
+      --warning-badge: #fef9c3;
+
+      --danger-bg: #fef2f2;
+      --danger-border: #fecaca;
+      --danger-text: #b91c1c;
+      --danger-badge: #fee2e2;
+
+      --diff-before-bg: #fef2f2;
+      --diff-before-border: #fecaca;
+      --diff-before-text: #991b1b;
+      --diff-before-title: #dc2626;
+
+      --diff-after-bg: #f0fdf4;
+      --diff-after-border: #bbf7d0;
+      --diff-after-text: #166534;
+      --diff-after-title: #16a34a;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+      --shadow-sticky: 0 4px 12px 0 rgb(0 0 0 / 0.05);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-full: 9999px;
+    }
+
+    [data-theme="dark"] {
+      --bg-canvas: #0b0f19;
+      --bg-card: #131b2e;
+      --bg-card-subtle: #1e293b;
+      --bg-card-hover: #1a243b;
+      --border-color: #243049;
+      --border-subtle: #1e293b;
+
+      --text-main: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --primary: #3b82f6;
+      --primary-hover: #60a5fa;
+      --primary-light: #1e293b;
+      --primary-text: #60a5fa;
+
+      --success-bg: #064e3b22;
+      --success-border: #065f46;
+      --success-text: #34d399;
+      --success-badge: #064e3b55;
+
+      --warning-bg: #78350f22;
+      --warning-border: #92400e;
+      --warning-text: #fbbf24;
+      --warning-badge: #78350f55;
+
+      --danger-bg: #7f1d1d22;
+      --danger-border: #991b1b;
+      --danger-text: #f87171;
+      --danger-badge: #7f1d1d55;
+
+      --diff-before-bg: #2d1519;
+      --diff-before-border: #4c1d24;
+      --diff-before-text: #fca5a5;
+      --diff-before-title: #f87171;
+
+      --diff-after-bg: #0d281e;
+      --diff-after-border: #134e3a;
+      --diff-after-text: #86efac;
+      --diff-after-title: #4ade80;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+      --shadow-sticky: 0 4px 16px 0 rgb(0 0 0 / 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      line-height: 1.6;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 20px 80px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .header-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+      padding: 4px 12px;
+      border-radius: var(--radius-lg);
+      letter-spacing: -0.5px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+    }
+    .main-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+    }
+    .header-subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .btn:hover {
+      background: var(--bg-card-subtle);
+      border-color: var(--text-dim);
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      color: white;
+    }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: var(--radius-md);
+    }
+    .btn-success {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      color: var(--success-text);
+    }
+    .btn-success:hover {
+      background: var(--success-badge);
+    }
+
+    /* Principles Banner */
+    .principles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .principle-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .principle-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+      opacity: 0.8;
+    }
+    .principle-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--primary);
+    }
+    .principle-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .principle-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Stats Dashboard */
+    .stats-dashboard {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .metric-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .metric-val {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+    }
+    .metric-val small {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-left: 2px;
+    }
+    .metric-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border-color);
+    }
+
+    /* Progress bar */
+    .progress-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .progress-track {
+      height: 8px;
+      background: var(--bg-card-subtle);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      display: flex;
+    }
+    .progress-segment {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .segment-accepted {
+      background: #22c55e;
+    }
+    .segment-discuss {
+      background: #f59e0b;
+    }
+    .segment-pending {
+      background: var(--border-color);
+    }
+
+    /* Sticky Bar: Filters & Search */
+    .sticky-bar-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 40;
+      margin-bottom: 24px;
+    }
+    .sticky-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 12px 16px;
+      box-shadow: var(--shadow-sticky);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .filter-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .tab-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-lg);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab-btn:hover {
+      background: var(--bg-card-subtle);
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      background: var(--primary-light);
+      color: var(--primary-text);
+      font-weight: 600;
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+    .tab-count {
+      background: rgba(0, 0, 0, 0.06);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+    }
+    [data-theme="dark"] .tab-count {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 240px;
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 34px;
+      font-size: 13px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card-subtle);
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.15s;
+    }
+    .search-input:focus {
+      border-color: var(--primary);
+      background: var(--bg-card);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+      width: 16px;
+      height: 16px;
+    }
+    .select-filter {
+      padding: 7px 10px;
+      font-size: 12.5px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      outline: none;
+      cursor: pointer;
+    }
+    .select-filter:focus {
+      border-color: var(--primary);
+    }
+
+    /* Proofreading List */
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Single Card */
+    .proof-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .proof-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #cbd5e1;
+    }
+    [data-theme="dark"] .proof-card:hover {
+      border-color: #334155;
+    }
+    .proof-card.status-accepted {
+      border-left: 4px solid #22c55e;
+    }
+    .proof-card.status-discuss {
+      border-left: 4px solid #f59e0b;
+    }
+    .proof-card.status-pending {
+      border-left: 4px solid var(--text-dim);
+    }
+
+    /* Card Header */
+    .card-header {
+      padding: 14px 18px;
+      background: var(--bg-card-subtle);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-meta-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge-id {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-md);
+      background: var(--primary);
+      color: white;
+      letter-spacing: 0.5px;
+    }
+    .badge-tag {
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+    }
+    .badge-severity {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: var(--radius-md);
+      text-transform: uppercase;
+    }
+    .severity-high {
+      background: var(--danger-badge);
+      color: var(--danger-text);
+      border: 1px solid var(--danger-border);
+    }
+    .severity-medium {
+      background: var(--warning-badge);
+      color: var(--warning-text);
+      border: 1px solid var(--warning-border);
+    }
+    .severity-low {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+    .badge-issue {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-md);
+      background: #fdf2f8;
+      color: #be185d;
+      border: 1px solid #fbcfe8;
+    }
+    [data-theme="dark"] .badge-issue {
+      background: #50072433;
+      color: #f472b6;
+      border-color: #831843;
+    }
+
+    .card-actions-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-btn {
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-btn:hover {
+      background: var(--bg-card-subtle);
+    }
+    .status-btn.active-accepted {
+      background: #22c55e;
+      color: white;
+      border-color: #22c55e;
+      font-weight: 600;
+    }
+    .status-btn.active-discuss {
+      background: #f59e0b;
+      color: white;
+      border-color: #f59e0b;
+      font-weight: 600;
+    }
+
+    /* Card Body */
+    .card-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Code Source Tracing */
+    .source-box {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card-subtle);
+      overflow: hidden;
+    }
+    .source-header {
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.02);
+      border-bottom: 1px solid transparent;
+    }
+    .source-header.open {
+      border-bottom-color: var(--border-color);
+    }
+    .source-file {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      word-break: break-all;
+    }
+    .source-why {
+      color: var(--text-muted);
+      font-size: 11.5px;
+      margin-left: auto;
+    }
+    .toggle-code-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+    .toggle-code-btn:hover {
+      text-decoration: underline;
+    }
+    .source-snippet {
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      background: #0f172a;
+      color: #e2e8f0;
+      overflow-x: auto;
+      display: none;
+    }
+    .source-snippet.show {
+      display: block;
+    }
+
+    /* Diff Comparison Grid */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 768px) {
+      .diff-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .diff-col {
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px solid;
+    }
+    .diff-col-before {
+      background: var(--diff-before-bg);
+      border-color: var(--diff-before-border);
+      color: var(--diff-before-text);
+    }
+    .diff-col-after {
+      background: var(--diff-after-bg);
+      border-color: var(--diff-after-border);
+      color: var(--diff-after-text);
+      position: relative;
+    }
+    .diff-col-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .diff-col-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .diff-col-before .diff-col-title {
+      color: var(--diff-before-title);
+    }
+    .diff-col-after .diff-col-title {
+      color: var(--diff-after-title);
+    }
+    .diff-content {
+      font-size: 13.5px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--font-sans);
+    }
+    .copy-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--diff-after-border);
+      background: var(--bg-card);
+      color: var(--diff-after-title);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover {
+      background: var(--diff-after-border);
+      color: #0f172a;
+    }
+
+    /* Analysis & Rationale */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+    }
+    @media (max-width: 768px) {
+      .analysis-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .analysis-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .analysis-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .analysis-text {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-xl);
+      color: var(--text-muted);
+    }
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    /* Toast notification */
+    .toast-popup {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: var(--radius-lg);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+    .toast-popup.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Modal for Markdown Report */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 90;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.show {
+      display: flex;
+    }
+    .modal-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      max-width: 800px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .modal-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .modal-textarea {
+      width: 100%;
+      height: 420px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+      padding: 12px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      color: var(--text-main);
+      resize: vertical;
+      outline: none;
+    }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--bg-card-subtle);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-titles">
+        <div class="header-logo-row">
+          <span class="logo-badge">GOOSE</span>
+          <h1 class="main-title">文案校对与优化工作台</h1>
+        </div>
+        <p class="header-subtitle">面向全量代码库的文案品质巡检 · 告别研发黑话，重塑原生克制、优雅一致的交互体验</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-sm" id="themeToggleBtn" title="切换深色/浅色主题">
+          <span id="themeIcon">🌙</span> <span id="themeText">深色模式</span>
+        </button>
+        <button class="btn btn-sm btn-success" id="acceptAllBtn">
+          ✓ 全部设为已采纳
+        </button>
+        <button class="btn btn-sm btn-primary" id="exportReportBtn">
+          📄 导出 Markdown 报告
+        </button>
+      </div>
+    </header>
+
+    <!-- 文案设计四大基准原则 -->
+    <section class="principles-grid">
+      <div class="principle-card">
+        <span class="principle-num">Principle 01</span>
+        <div class="principle-title">告别研发黑话与机翻感</div>
+        <div class="principle-desc">杜绝「payload」「未配置」「格式非法」等生硬开发术语，转译为用户真实行为场景的自然中文。</div>
+      </div>
+      <div class="principle-card">
+        <span class="principle-num">Principle 02</span>
+        <div class="principle-title">术语全局统一，杜绝同物异名</div>
+        <div class="principle-desc">全局统摄核心概念（例如「知识库」「回收站」「快速记录」），杜绝一处叫仓库一处叫笔记库的混乱。</div>
+      </div>
+      <div class="principle-card">
+        <span class="principle-num">Principle 03</span>
+        <div class="principle-title">破坏性操作兜底安抚与克制</div>
+        <div class="principle-desc">告别感叹号连发与恐吓式警告，清晰告知影响范围（如连同子页面一并移除）并提供可信赖的安全边界。</div>
+      </div>
+      <div class="principle-card">
+        <span class="principle-num">Principle 04</span>
+        <div class="principle-title">空状态与引导的正向行动驱动</div>
+        <div class="principle-desc">拒绝「暂无数据」等冰冷句点，通过启发式文案与直接可点击的操作链接指引下一步行动。</div>
+      </div>
+    </section>
+
+    <!-- 顶部总览看板 Dashboard -->
+    <section class="stats-dashboard">
+      <div class="stats-row">
+        <div class="metric-group">
+          <div class="metric-item">
+            <span class="metric-label">总校对项</span>
+            <span class="metric-val" id="metricTotal">0</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">弹窗与通知 (dialog)</span>
+            <span class="metric-val" id="metricDialog">0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">界面与设置 (ui)</span>
+            <span class="metric-val" id="metricUi">0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">犄角旮旯微文案 (nook)</span>
+            <span class="metric-val" id="metricNook">0</span>
+          </div>
+        </div>
+
+        <div class="metric-group">
+          <div class="metric-item">
+            <span class="metric-label">高优待解 (High)</span>
+            <span class="metric-val" style="color: var(--danger-text);" id="metricHigh">0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">已采纳</span>
+            <span class="metric-val" style="color: var(--success-text);" id="metricAccepted">0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">需讨论</span>
+            <span class="metric-val" style="color: var(--warning-text);" id="metricDiscuss">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="progress-section">
+        <div class="progress-meta">
+          <span>校对完成进度：<strong id="progressPercent">0%</strong></span>
+          <span id="progressRatio">已采纳 0 / 总计 0</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-segment segment-accepted" id="barAccepted" style="width: 0%"></div>
+          <div class="progress-segment segment-discuss" id="barDiscuss" style="width: 0%"></div>
+          <div class="progress-segment segment-pending" id="barPending" style="width: 100%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 吸顶过滤栏 Sticky Controls -->
+    <div class="sticky-bar-wrapper">
+      <div class="sticky-bar">
+        <div class="filter-tabs" id="categoryTabs">
+          <button class="tab-btn active" data-category="all">
+            全部维度 <span class="tab-count" id="countCatAll">0</span>
+          </button>
+          <button class="tab-btn" data-category="dialog">
+            💬 弹窗提示与通知 (dialog) <span class="tab-count" id="countCatDialog">0</span>
+          </button>
+          <button class="tab-btn" data-category="ui">
+            🖥 界面与设置描述 (ui) <span class="tab-count" id="countCatUi">0</span>
+          </button>
+          <button class="tab-btn" data-category="nook">
+            🔍 犄角旮旯微文案 (nook) <span class="tab-count" id="countCatNook">0</span>
+          </button>
+        </div>
+
+        <div class="filter-controls">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="实时过滤文件、原文、建议、问题诊断、代码片段...">
+          </div>
+
+          <select class="select-filter" id="severityFilter">
+            <option value="all">优先级：全部</option>
+            <option value="high">🔴 高优 (high)</option>
+            <option value="medium">🟡 中优 (medium)</option>
+            <option value="low">⚪ 低优 (low)</option>
+          </select>
+
+          <select class="select-filter" id="statusFilter">
+            <option value="all">审阅状态：全部</option>
+            <option value="pending">待审阅</option>
+            <option value="accepted">✓ 已采纳</option>
+            <option value="discuss">? 需讨论</option>
+          </select>
+
+          <button class="btn btn-sm" id="resetFiltersBtn" title="清空全部过滤条件">
+            重置筛选
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片列表容器 -->
+    <main class="card-list" id="cardContainer">
+      <!-- 动态注入卡片 -->
+    </main>
+
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast-popup" id="toast">已复制到剪贴板</div>
+
+  <!-- Markdown 导出弹窗 -->
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Markdown 格式校对评审报告</h3>
+        <button class="btn btn-sm" id="closeModalBtn">✕ 关闭</button>
+      </div>
+      <div class="modal-body">
+        <textarea class="modal-textarea" id="markdownOutput" readonly></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="copyMarkdownBtn">📋 复制 Markdown 内容</button>
+        <button class="btn btn-primary" id="downloadMarkdownBtn">⬇️ 下载 .md 文件</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const AUDIT_DATA = [{"id":"DLG-01","category":"dialog","subCategory":"破坏性确认 · 页面删除","severity":"high","issueType":"恐吓生硬 / 句式重复","file":"src/lib/page-delete-actions.ts","lines":"61-68","whyMatched":"永久删除页面/文件夹时的二次确认警告 Toast 及确认按钮","snippet":"toast.warning(`永久删除「${title}」？`, {\n  description: page.isFolder\n    ? \"该页面及其子页面会被永久删除，此操作无法撤回。\"\n    : \"此操作无法撤回。\",\n  action: { label: \"确认永久删除\", ... }\n});","before":"标题：永久删除「xxx」？\n描述：该页面及其子页面会被永久删除，此操作无法撤回。\n按钮：确认永久删除","after":"标题：彻底删除「xxx」？\n描述：删除后将连同全部子页面一并移除，且无法恢复。\n按钮：彻底删除","problem":"1. 「永久删除」在标题、描述、按钮中三次密集重复，视觉与心理压迫感过强；\n2. 文件夹却被称为「该页面及其子页面」，概念自相矛盾。","rationale":"将标题与按钮收敛为「彻底删除」，描述明确范围（含全部子页面）与不可恢复后果，语言克制、清晰且去除了三次复读。"},{"id":"DLG-02","category":"dialog","subCategory":"恢复结果提示 · 页面恢复","severity":"medium","issueType":"表达冗长 / 标点生硬","file":"src/lib/page-delete-actions.ts","lines":"44-48, 134-152","whyMatched":"从回收站恢复页面或本地文件后的成功/警告 Toast","snippet":"toast.success(`已恢复${result.itemLabel || \"页面\"}「${result.pageTitle || \"无标题\"}」`, {\n  description: `位置：${result.notebookName || \"未命名笔记本\"} / ${parentPath}${restoredChildrenText}`\n});\n...\ntoast.warning(\"文件已恢复，侧栏暂未刷新\");","before":"已恢复页面「xxx」 / 位置：未命名笔记本 / ...\n警告：文件已恢复，侧栏暂未刷新","after":"已恢复「xxx」至「笔记本名 / 路径」\n警告：文件已恢复，请稍后刷新目录查看","problem":"「侧栏暂未刷新」属于把内部渲染状态直接抛给用户的程序员视角表达，用户不知道自己该做什么。","rationale":"将内部组件状态翻译为用户可理解的引导动作，同时精简恢复路径的层级展示。"},{"id":"DLG-03","category":"dialog","subCategory":"删除回执 · 废纸篓与垃圾箱","severity":"medium","issueType":"术语割裂","file":"src/components/ui/delete-receipt.tsx","lines":"14-20, 45","whyMatched":"删除笔记后的底部回执卡片，包含移入位置说明与撤回失败提示","snippet":"const destination = isLocalFolder ? \"系统废纸篓\" : \"应用垃圾箱\";\n? `已移入${destination} · ${items[0].title}`\n: `${done} 项已移入${destination}`;\n...\ntoast.error(\"撤回失败\", { description: error instanceof Error ? error.message : \"请稍后重试\" });","before":"已移入应用垃圾箱 · xxx\n错误：撤回失败（请稍后重试）","after":"已移入回收站 · xxx（本地模式：已移入系统废纸篓）\n错误：未能撤回删除（请稍后重试，或前往回收站手动恢复）","problem":"应用内其他位置多处使用「回收站」，此处却叫「应用垃圾箱」，术语前后不一致；撤回失败时未告知用户仍可去回收站找回。","rationale":"统一应用内术语为「回收站」（macOS 本地目录保持「系统废纸篓」），并在撤回失败时提供兜底路径，消除丢稿焦虑。"},{"id":"DLG-04","category":"dialog","subCategory":"原生确认框 · 历史版本还原","severity":"high","issueType":"技术黑话暴露 / 原生弹窗突兀","file":"src/pages/workspace/components/history/HistoryView.tsx","lines":"240-241, 274-295","whyMatched":"历史版本覆盖确认框及 YAML 解析失败报错 Toast","snippet":"const ok = window.confirm(\n  \"将当前内容覆盖为此版本？\\n当前内容会自动保留为一次「操作前」快照，可随时撤回。\"\n);\n...\ntoast.error(\"历史版本 YAML 格式异常，未还原\");\ntoast.success(\"已还原，当前内容已保留为「操作前」版本\");","before":"确认：将当前内容覆盖为此版本？当前内容会自动保留为一次「操作前」快照，可随时撤回。\n报错：历史版本 YAML 格式异常，未还原\n成功：已还原，当前内容已保留为「操作前」版本","after":"确认：还原到此历史版本？\n说明：当前正文将自动存为「还原前快照」，随时可找回。\n报错：该历史版本的头部属性格式损坏，无法还原\n成功：已还原至所选版本（原内容已备份为快照）","problem":"1. 直接向普通用户抛出「YAML 格式异常」底层序列化名词；\n2. 「覆盖为此版本」语感生硬；\n3. 成功提示里「操作前版本」略显生造。","rationale":"用「还原到此历史版本」替代「覆盖」，用「头部属性格式损坏」替代「YAML 异常」，让非技术用户也能一眼理解。"},{"id":"DLG-05","category":"dialog","subCategory":"原生确认框 · 取消里程碑","severity":"low","issueType":"句式绕口","file":"src/pages/workspace/components/history/HistoryView.tsx","lines":"324-336","whyMatched":"历史记录中取消里程碑保护时的二次确认与成功提示","snippet":"const ok = window.confirm(\n  \"取消后该版本不再受保护，历史数量超限时可能被自动清理。确定取消里程碑？\"\n);\nif (willBe) toast.success(\"已标记为里程碑，清理历史时会保留此版本\");\nelse toast.success(\"已取消里程碑\");","before":"取消后该版本不再受保护，历史数量超限时可能被自动清理。确定取消里程碑？\nToast：已标记为里程碑，清理历史时会保留此版本","after":"确定取消里程碑标记？\n取消后该版本将恢复为普通快照，超出数量上限时可能被自动清理。\nToast：已设为里程碑，该版本将长期保留","problem":"确认框把结论问句放在最后，阅读重心倒置；「清理历史时会保留此版本」表述略显被动。","rationale":"结论先行（先问是否取消，再补充后果），正向传达「长期保留」的价值感。"},{"id":"DLG-06","category":"dialog","subCategory":"高危弹窗 · 云端备份同步与删除","severity":"high","issueType":"术语混杂 / 语病","file":"src/pages/workspace/components/sidebar/settings/SettingsDataPanel.tsx","lines":"300, 349, 380","whyMatched":"WebDAV 远端备份的拉取、恢复与删除三个高危确认弹窗","snippet":"description: `确认拉取最新的远端备份 ${latest.basename} 并同步到本地？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`\n...\ndescription: `确认从远端备份 ${file.basename} 恢复数据？恢复前会先校验备份，失败时自动回滚覆盖前的数据。`\n...\ndescription: `确认删除远端备份 ${file.basename}？该操作无法撤销。`","before":"确认拉取最新的远端备份 xxx 并同步到本地？恢复前会先校验备份，失败时自动回滚覆盖前的数据。\n确认删除远端备份 xxx？该操作无法撤销。","after":"确定使用最新云端备份「xxx」恢复本地数据？\n系统会在恢复前校验完整性；若恢复中断，将自动还原当前本地数据。\n确定删除云端备份「xxx」？删除后无法从云端找回。","problem":"1. 「拉取」「远端」属于 Git/研发术语；\n2. 「回滚覆盖前的数据」存在明显语病（回滚的是操作，还原的才是覆盖前的数据）。","rationale":"将「远端拉取」统一为更亲切的「云端备份」，修正「回滚覆盖前的数据」语法错误，增强数据安全信任感。"},{"id":"DLG-07","category":"dialog","subCategory":"高危弹窗 · 重置所有数据","severity":"high","issueType":"长句堆砌 / 内部概念暴露","file":"src/pages/workspace/components/sidebar/SettingsDialog.tsx","lines":"790-812","whyMatched":"设置面板中清空并重置所有应用数据的最终确认弹窗","snippet":"<h1 className=\"text-2xl font-bold text-foreground mb-2\">确认重置所有数据？</h1>\n<p className=\"text-muted-foreground\">\n  这将永久删除内部笔记本、页面、历史记录、AI 会话、标签和应用设置；不会删除本地文件夹中的文件。\n</p>\n<div className=\"text-sm font-medium text-danger select-none\">\n  请输入以下短语以确认重置：<span className=\"ml-1 select-text font-bold text-foreground\">{resetPhrase}</span>\n</div>","before":"这将永久删除内部笔记本、页面、历史记录、AI 会话、标签和应用设置；不会删除本地文件夹中的文件。\n请输入以下短语以确认重置：","after":"此操作将彻底清空应用内的所有笔记本、历史版本、AI 对话及偏好设置（您硬盘上的本地文件夹不受影响）。\n请在下方输入确认短语以继续：","problem":"「内部笔记本」是研发用于区分 IndexedDB 与本地 FS 的内部词汇，普通用户难以理解什么是“内部”。","rationale":"用「应用内的所有笔记本」对比「硬盘上的本地文件夹」，边界一目了然，同时优化短语输入引导。"},{"id":"DLG-08","category":"dialog","subCategory":"AI 会话通知 · 超时与压缩","severity":"medium","issueType":"标点不一致 / 语气生硬","file":"src/pages/workspace/components/notebook-ai/NotebookAiSession.tsx","lines":"388-390, 599-636, 809, 861","whyMatched":"AI 助手流式响应超时、上下文压缩、批量计划失效等全套 Toast","snippet":"toast.error(\"AI 响应长时间没有更新，已停止本轮任务。\", {\n  description: \"已保留完成的步骤，可以直接重试。\",\n});\ntoast.warning(\"正在生成回复，请稍后再压缩\");\ntoast.info(\"当前会话为空，无需压缩\");\ntoast.error(\"批量计划已失效，请让 AI 重新生成计划。\");","before":"AI 响应长时间没有更新，已停止本轮任务。（已保留完成的步骤，可以直接重试。）\n正在生成回复，请稍后再压缩\n批量计划已失效，请让 AI 重新生成计划。","after":"AI 响应超时，已暂停本次任务（已完成的内容已保留，可随时重试）\nAI 正在回复中，请待生成结束后再压缩上下文\n当前执行计划已过期，请重新发起指令生成新计划","problem":"1. Toast 主标题有的带句号，有的不带句号，视觉规范不统一；\n2. 「长时间没有更新」「让 AI 重新生成计划」口语化且略显啰嗦。","rationale":"统一 Toast 规范：单句主标题不加句号；精简超时描述，明确操作时机。"},{"id":"DLG-09","category":"dialog","subCategory":"导入导出提示 · 架构术语暴露","severity":"high","issueType":"技术术语暴露","file":"src/pages/workspace/components/page/PageMenu.tsx","lines":"319-320, 367","whyMatched":"未打开本地文件夹时导入报错（useFileDrop.ts:142 同文）及导出文件夹拦截提示","snippet":"toast.error(\"请先打开文件夹\", {\n  description: \"Electron 桌面端仅支持本地文件夹仓库。\",\n});\n...\ntoast.error(\"文件夹不能直接导出，请打开其中的笔记再导出\");","before":"标题：请先打开文件夹\n描述：Electron 桌面端仅支持本地文件夹仓库。\n导出错误：文件夹不能直接导出，请打开其中的笔记再导出","after":"标题：请先关联本地文件夹\n描述：导入前请先在左侧栏打开或创建一个本地文件夹作为存储位置。\n导出提示：暂不支持整夹导出，请先打开具体笔记再执行导出","problem":"直接把「Electron 桌面端」「仓库」这种底层运行时框架名称暴露在给最终用户的错误提示里，非常出戏且毫无引导价值。","rationale":"彻底移除「Electron 桌面端」字样，改为直接告诉用户如何操作（在左侧栏打开或新建本地文件夹）。"},{"id":"DLG-10","category":"dialog","subCategory":"文件拖拽与导入 · 解析异常","severity":"medium","issueType":"表述生硬 / 缺乏排错建议","file":"src/pages/workspace/hooks/useFileDrop.ts","lines":"129-130, 165-166, 191","whyMatched":"拖拽文件进入工作区时的格式拦截与解析失败 Toast","snippet":"toast.error(\"不支持该文件格式\", {\n  description: \"可以拖入 .md、.markdown 或 .txt 文本文件。\",\n});\ntoast.error(\"导入失败\", {\n  description: \"文件内容无法解析为笔记。\",\n});\ntoast.error(\"导入失败\", { description: \"导入模块加载失败，请重试。\" });","before":"不支持该文件格式（可以拖入 .md、.markdown 或 .txt 文本文件。）\n导入失败（文件内容无法解析为笔记。）\n导入失败（导入模块加载失败，请重试。）","after":"暂不支持此文件格式（请拖入 .md、.markdown 或 .txt 纯文本文件）\n无法导入该文件（文件可能已损坏或编码非 UTF-8，请检查后重试）\n导入组件初始化失败，请稍后重试","problem":"「文件内容无法解析为笔记」未提供任何排查方向；「可以拖入...」语气散漫。","rationale":"说明不支持时的正确替代方案，并在解析失败时提示检查编码或文件完整性。"},{"id":"DLG-11","category":"dialog","subCategory":"磁盘写入异常 · 错误构造器","severity":"medium","issueType":"术语生硬","file":"src/lib/diskWriteError.ts","lines":"83-86","whyMatched":"底层文件保存失败时的统一错误描述生成函数","snippet":"if (code === \"EROFS\" || code === \"EACCES\" || code === \"EPERM\") {\n  return \"仓库目录是只读的，无法保存。\";\n}\nif (code === \"ENOSPC\") {\n  return \"磁盘空间不足，无法保存。\";\n}","before":"仓库目录是只读的，无法保存。\n磁盘空间不足，无法保存。","after":"当前文件夹无写入权限（只读），请检查系统权限设置。\n磁盘可用空间不足，无法保存更改，请清理空间后重试。","problem":"用户感知的是「本地文件夹」而非「仓库目录」；只说「是只读的」没有提示检查系统权限。","rationale":"将「仓库目录」统一为「当前文件夹」，并补充「检查系统权限设置」的解决路径。"},{"id":"DLG-12","category":"dialog","subCategory":"功能上线公告 · AI 引导卡片","severity":"low","issueType":"排版符号混用","file":"src/pages/workspace/components/AIFeatureNotice.tsx","lines":"27-43","whyMatched":"首次启动右下角常驻的 AI 写作助手功能上线通知卡片","snippet":"title=\"✨ AI 写作助手已上线\"\n...\n<p>· 空白段落按空格 → 唤起行内 AI</p>\n<p>· 选中文字后直接润色改写</p>\n支持 DeepSeek、GLM、MiniMax 等供应商，在设置中填写 API Key 即可使用。","before":"· 空白段落按空格 → 唤起行内 AI\n· 选中文字后直接润色改写\n支持 DeepSeek、GLM、MiniMax 等供应商，在设置中填写 API Key 即可使用。","after":"· 空白行按「空格键」即可唤起 AI 续写\n· 选中任意段落可快速润色、翻译或改写\n支持 DeepSeek、GLM、MiniMax 等模型，配置 API Key 后即刻开启。","problem":"第一行用了箭头「→」，第二行直接叙述，句式结构不对称；「供应商」偏商业采购词汇。","rationale":"统一两行特性点句式，用「模型服务」或「模型」替代生硬的「供应商」。"},{"id":"UI-01","category":"ui","subCategory":"侧边栏导航 · 顶栏标题与模式切换","severity":"high","issueType":"概念分裂 / 语义模糊","file":"src/pages/workspace/components/sidebar/Sidebar.tsx","lines":"366-371, 433-493, 517-527","whyMatched":"侧栏顶部主标题、窄轨模式按钮文字及新建按钮 Tooltip","snippet":"const headerTitle =\n  currentView === \"search\" ? \"搜索\"\n  : currentView === \"outline\" ? (outlinePage ? getPageTitle(outlinePage) : \"大纲\")\n  : isLocalFolder ? \"本地\" : electronNoVault ? \"仓库\" : \"页面\";\n...\n<span className=\"sidebar-mode-rail-label\">本地</span> ... <span>本地页面</span>\n...\ncreateTitle={isLocalFolder ? \"新建文件\" : \"新建页面\"}","before":"标题：本地 / 仓库 / 页面\n窄轨标签：本地（Tooltip：本地页面）\n新建按钮：新建文件 / 新建页面","after":"标题：文档库（或直接显示当前文件夹名） / 笔记\n窄轨标签：笔记（Tooltip：文件目录）\n新建按钮：新建笔记","problem":"同一块区域在「本地」「仓库」「页面」「本地页面」「新建文件」「新建页面」6 个词之间反复横跳，用户心智负担极重。","rationale":"在笔记软件语境中，无论底层存在 IndexedDB 还是本地 Markdown，面向用户的核心创作对象都应统一为「笔记」（或「文档」）。"},{"id":"UI-02","category":"ui","subCategory":"侧边栏底栏 · 版本更新提示","severity":"low","issueType":"标点与语序","file":"src/pages/workspace/components/sidebar/SidebarFooter.tsx","lines":"52, 68","whyMatched":"侧栏左下角检测到新版本或下载完成时的状态提示","snippet":"title={`更新 ${readyVersion} 已下载，点击重启安装`}\n...\n<TooltipContent side=\"right\">发现新版本 {availableVersion}，打开更新说明</TooltipContent>","before":"更新 v1.x.x 已下载，点击重启安装\n发现新版本 v1.x.x，打开更新说明","after":"新版本 v1.x.x 已就绪，点击重启并更新\n发现新版本 v1.x.x，点击查看更新日志","problem":"「更新 1.7.x 已下载」中“更新”既像动词又像名词；「打开更新说明」缺少触发动作“点击”。","rationale":"改为「新版本 v1.x.x 已就绪，点击重启并更新」，语义顺畅且行动感明确。"},{"id":"UI-03","category":"ui","subCategory":"命令面板 · 搜索分组与空态","severity":"medium","issueType":"分类命名不对称","file":"src/pages/workspace/components/command/CommandPalette.tsx","lines":"330-365","whyMatched":"⌘+K 命令面板的搜索范围切换与结果列表","snippet":"placeholder={!scopedNotebookId && searchAllNotebooks ? \"搜索所有笔记本…\" : `搜索「${currentNotebookName}」…`}\n...\n搜索范围：所有笔记本 / 当前笔记本 · {currentNotebookName}","before":"搜索「xxx」…\n范围：所有笔记本 / 当前笔记本 · xxx","after":"在「xxx」中搜索笔记或输入指令…\n范围：全部笔记本 / 仅当前「xxx」","problem":"命令面板既能搜索笔记又能执行命令，仅写「搜索 xxx」掩盖了快捷命令的能力。","rationale":"在占位符中点出「搜索笔记或输入指令」，帮助用户发现命令面板的双重价值。"},{"id":"UI-04","category":"ui","subCategory":"单标签标题编辑 · 占位与校验","severity":"medium","issueType":"文案冗长啰嗦","file":"src/pages/workspace/components/page/SingleTabTitle.tsx","lines":"206, 398-402","whyMatched":"正文顶部大标题内联重命名输入框占位符及空标题报错","snippet":"toast.error(\"请输入文件名称\");\n...\nplaceholder={\n  newTitleRequestedRef.current\n    ? \"输入文件名称，按回车开始编辑正文\"\n    : \"修改文件名称，按回车到正文末尾继续编辑\"\n}","before":"占位1：输入文件名称，按回车开始编辑正文\n占位2：修改文件名称，按回车到正文末尾继续编辑\n报错：请输入文件名称","after":"占位1：输入笔记标题，按 Enter 进入正文\n占位2：输入新标题，按 Enter 返回正文\n报错：笔记标题不能为空","problem":"「修改文件名称，按回车到正文末尾继续编辑」长达 18 个字，作为标题框 placeholder 显得拥挤且像说明书。","rationale":"大幅压缩字数，把「文件名称」统一为「笔记标题」，视觉清爽且提示精准。"},{"id":"UI-05","category":"ui","subCategory":"设置面板 · 通用设置项说明","severity":"medium","issueType":"表达啰嗦 / 否定句式绕口","file":"src/pages/workspace/components/sidebar/SettingsGeneral.tsx","lines":"27-60","whyMatched":"设置 › 通用设置中的行为与搜索开关描述","snippet":"<Label htmlFor=\"auto-open-last-note\">自动打开上次笔记</Label>\n<p>启动应用时自动打开上次编辑的笔记。</p>\n<Label htmlFor=\"notebook-hover-expand\">悬停展开笔记本切换</Label>\n<p>鼠标悬停在笔记本名称上自动展开切换菜单。</p>\n<Label htmlFor=\"show-recent-in-search\">搜索框显示最近访问</Label>\n<p>关闭后搜索框里不再出现「最近访问」分组，只显示搜索结果。</p>","before":"搜索框显示最近访问：关闭后搜索框里不再出现「最近访问」分组，只显示搜索结果。\n悬停展开笔记本切换：鼠标悬停在笔记本名称上自动展开切换菜单。","after":"搜索面板显示「最近访问」：开启时，打开搜索面板会默认展示最近浏览的笔记。\n悬停切换笔记本：鼠标移至左下角笔记本名称时，自动展开切换列表。","problem":"开关本身是正向命名的（「显示最近访问」），说明文字却用「关闭后不再出现…」的反面否定句解释，违背表单设计直觉。","rationale":"所有开关描述统一采用正向陈述（说明开启后的效果），降低认知反转成本。"},{"id":"UI-06","category":"ui","subCategory":"设置面板 · 外观与字体说明","severity":"medium","issueType":"内部实现逻辑外露","file":"src/pages/workspace/components/sidebar/SettingsAppearance.tsx","lines":"255-365, 556-562, 600-613","whyMatched":"外观主题、字体与阅读、界面缩放、编辑布局的辅助说明文案","snippet":"<p>正文默认字体与首次引导共用；页面仍可单独切换默认、衬线或等宽字体。</p>\n...\ndescription=\"界面、侧栏与正文默认字体彼此独立；选择后保存，自定义字体按 Enter 或移开焦点应用。\"\n...\ndescription=\"未单独设置布局的笔记使用此项；单篇笔记可在右上角菜单覆盖。\"","before":"正文默认字体与首次引导共用；页面仍可单独切换默认、衬线或等宽字体。\n界面、侧栏与正文默认字体彼此独立；选择后保存，自定义字体按 Enter 或移开焦点应用。\n未单独设置布局的笔记使用此项；单篇笔记可在右上角菜单覆盖。","after":"作为所有笔记的默认正文字体；您仍可在单篇笔记右上角菜单中单独切换衬线或等宽字体。\n分别定制界面、侧栏与正文的显示字体。输入自定义字体名后按 Enter 即可生效。\n新笔记的默认版式宽度；单篇笔记可通过右上角「···」菜单单独调整。","problem":"「正文默认字体与首次引导共用」完全是代码复用层面的内部备注，对已进入设置面板的用户毫无意义；「移开焦点应用」是前端 DOM 术语（blur）。","rationale":"删去「与首次引导共用」和「移开焦点」等工程师语言，聚焦用户可感知的全局默认与单篇覆盖关系。"},{"id":"UI-07","category":"ui","subCategory":"设置面板 · AI 助手配置说明","severity":"medium","issueType":"术语生僻 / 句式碎片化","file":"src/pages/workspace/components/sidebar/SettingsAI.tsx","lines":"995-1045, 1235-1250, 1300-1360","whyMatched":"AI 助手设置页中本地上下文、保存配置、连接测试的卡片描述","snippet":"本地 AI 上下文: description=\"开启后，全局提示词与本地 Skill 会参与 AI 对话。\"\n读取全局提示词: \"并入 AI 系统提示词\"\n读取本地 Skill: \"输入 / 调用\"\n...\n连接测试: description=\"仅发送固定测试文本，不读取笔记、全局提示词或本地 Skill。\"","before":"读取全局提示词：并入 AI 系统提示词\n读取本地 Skill：输入 / 调用\n连接测试：仅发送固定测试文本，不读取笔记、全局提示词或本地 Skill。","after":"全局角色指令（System Prompt）：在每次对话中自动附加您的个人偏好与写作规范\n本地技能扩展（Skills）：支持在对话框输入 / 快速调用本地自定义技能\n连接测试：发送一条简短问候以验证接口连通性，不会读取任何笔记或本地配置。","problem":"「并入 AI 系统提示词」「输入 / 调用」过于简略且生硬，新用户完全不明白「全局提示词」和「本地 Skill」能带来什么好处。","rationale":"补充功能价值说明，并解释连接测试的目的是「验证接口连通性且保护隐私」。"},{"id":"UI-08","category":"ui","subCategory":"设置面板 · 本地文件夹维护","severity":"medium","issueType":"过渡期技术用语","file":"src/pages/workspace/components/sidebar/SettingsLocalFolder.tsx","lines":"380-424, 541","whyMatched":"旧内置笔记迁移导出与隐藏目录刷新提示","snippet":"toast.success(`已导出 ${exported} 篇旧内置笔记`);\n...\ntoast.warning(\"部分本地文件夹仍有未保存内容，已暂缓刷新隐藏目录\");","before":"已导出 x 篇旧内置笔记\n部分本地文件夹仍有未保存内容，已暂缓刷新隐藏目录","after":"已成功导出 x 篇早期应用内笔记\n当前有笔记正在保存中，待写入完成后将自动更新隐藏目录设置","problem":"「旧内置笔记」听起来像废弃功能；「暂缓刷新隐藏目录」让用户不知道之后需不需要手动再点一次。","rationale":"明确告知系统会在写入完成后处理或请稍候重试，消除不确定性。"},{"id":"NOOK-01","category":"nook","subCategory":"空状态（Empty State） · 侧栏目录树","severity":"high","issueType":"冰冷死胡同 / 缺少引导","file":"src/pages/workspace/components/sidebar/tree/TreeEmptyState.tsx","lines":"24-30","whyMatched":"侧栏页面树无内容时的三种空状态文案","snippet":"{isLocalNotebook\n  ? \"暂无文件可选\"\n  : isElectronHost\n    ? \"尚未打开仓库\"\n    : \"暂无页面可选\"}","before":"本地模式：暂无文件可选\n无仓库：尚未打开仓库\n默认：暂无页面可选","after":"本地模式：文件夹为空，点击右上角「+」新建第一篇笔记\n无文件夹：尚未打开本地文件夹，请点击左下方切换或新建\n默认：还没有笔记，点击「+」开始记录","problem":"「暂无文件可选」「尚未打开仓库」不仅冰冷生硬（「可选」一词莫名其妙，侧栏是用来管理与创作的，不是下拉选择器），而且没有任何下一步操作指引。","rationale":"空状态是引导用户完成核心动作（激活率）的关键触点，应结合「现状 + 立即行动指引」。"},{"id":"NOOK-02","category":"nook","subCategory":"占位符（Placeholder） · 行内 AI 改写","severity":"medium","issueType":"标点缺失 / 引导不足","file":"src/components/editor/ai/GooseAIMenu.tsx","lines":"120-127","whyMatched":"选中文本唤起行内 AI 润色浮层时的输入框占位符","snippet":"placeholder={\n  busy\n    ? \"思考中\"\n    : state.status === \"user-reviewing\"\n      ? \"继续调整，例如：再自然一点\"\n      : \"你想如何改写这段内容？\"\n}","before":"生成中：思考中\n审阅中：继续调整，例如：再自然一点\n初始态：你想如何改写这段内容？","after":"生成中：正在思考并生成…\n审阅中：输入修改意见，例如：语气再精炼一些…\n初始态：告诉 AI 如何处理这段文字（如：润色、精简、译为英文）…","problem":"「思考中」缺少省略号，显得像静态文字而非加载状态；「你想如何改写这段内容？」过于宽泛，不如直接给出高频指令示例。","rationale":"动态过程统一加「…」，初始占位符提供具体动词示例（润色、精简、翻译），降低输入门槛。"},{"id":"NOOK-03","category":"nook","subCategory":"悬停提示（Tooltip） · 侧栏分隔条与产物缩放","severity":"low","issueType":"标点杂乱 / 说明生硬","file":"src/pages/workspace/components/sidebar/SidebarResizeEdge.tsx","lines":"32","whyMatched":"侧栏右边缘拖拽分隔条的原生 title 提示及 AI 产物缩放提示","snippet":"// SidebarResizeEdge.tsx:32\ntitle=\"调整侧栏宽度：左右方向键；Home 最窄，End 最宽\"\n// ArtifactPanZoom.tsx:455\n<TooltipContent>放大后可拖动/滚轮平移</TooltipContent>","before":"调整侧栏宽度：左右方向键；Home 最窄，End 最宽\n放大后可拖动/滚轮平移","after":"拖拽调整侧栏宽度（支持 ←/→ 微调，双击恢复默认）\n放大视图（放大后可按住拖拽或滚轮平移）","problem":"侧栏分隔条用户最常用的操作是鼠标拖拽，提示里却只字未提拖拽，反而写了一串生僻的 Home/End 键盘说明；放大按钮的 Tooltip 直接写了操作说明而丢了按钮本身的名称「放大」。","rationale":"Tooltip 应先标明控件主功能，再括号补充快捷技巧。"},{"id":"NOOK-04","category":"nook","subCategory":"右键菜单（Context Menu） · 编辑器与表格","severity":"medium","issueType":"macOS/Win 用词混杂 / 表述生涩","file":"src/components/editor/menus/EditorContextMenu.tsx","lines":"324-364","whyMatched":"编辑器正文右键菜单与表格手柄操作菜单","snippet":"// EditorContextMenu.tsx:324-364\n剪切 / 拷贝 / 粘贴 / 生成选中图片\n// GooseTableHandle.tsx:550\n含合并单元格，暂不支持复制行列","before":"剪切 / 拷贝 / 粘贴 / 生成选中图片\n表格提示：含合并单元格，暂不支持复制行列","after":"剪切 / 复制 / 粘贴 / 将选中内容转为卡片图\n表格提示：当前表格包含合并单元格，暂无法整行或整列复制","problem":"1. 全站其他所有地方（代码块、图片、AI 面板）都叫「复制」，唯独编辑器右键菜单叫「拷贝」，术语分裂；\n2. 「生成选中图片」语意不明（不知是 AI 文生图还是导出分享图）。","rationale":"全站统一使用「复制」；将「生成选中图片」明确为「将选中内容转为卡片图」（或「导出所选内容为图片」）。"},{"id":"NOOK-05","category":"nook","subCategory":"占位符（Placeholder） · Git 同步与 WebDAV","severity":"low","issueType":"提示语不像占位符","file":"src/pages/workspace/components/sidebar/settings/SettingsGitSync.tsx","lines":"180","whyMatched":"Git 同步 Token 输入框与 WebDAV 密码输入框的 placeholder","snippet":"// SettingsGitSync.tsx:180\nplaceholder={config.hasToken ? \"已安全保存凭据，留空可复用\" : \"私有仓库可能需要读取仓库元数据的权限\"}\n// SettingsDataPanel.tsx:586\nplaceholder={webdavPassword ? \"已保存，留空保持不变\" : \"第三方应用密码\"}","before":"未填时：私有仓库可能需要读取仓库元数据的权限\n已存时：已安全保存凭据，留空可复用","after":"未填时：输入 Personal Access Token（如 ghp_xxxx…）\n已存时：已加密保存，留空则保持原凭据不变","problem":"「私有仓库可能需要读取仓库元数据的权限」是一句背景解释，不是输入框应该填什么的示例，放在密码框 placeholder 里让人摸不着头脑。","rationale":"输入框 Placeholder 应提示应填入的内容格式（如 Token 示例），将权限要求移至输入框下方的辅助说明文字。"},{"id":"NOOK-06","category":"nook","subCategory":"侧栏右键菜单 · 删除项命名分叉","severity":"medium","issueType":"菜单项层级冗余","file":"src/pages/workspace/components/sidebar/SidebarContextMenu.tsx","lines":"470-500","whyMatched":"侧栏文件树右键菜单底部的恢复与删除操作项","snippet":"恢复页面 / 恢复文件夹 / 恢复文件\n永久删除 / 删除 / 移到系统废纸篓","before":"恢复页面 / 恢复文件夹 / 恢复文件\n永久删除 / 删除 / 移到系统废纸篓","after":"恢复\n彻底删除 / 移入回收站 / 移入系统废纸篓","problem":"右键菜单已经是在具体条目上触发的，无需区分「恢复页面/恢复文件/恢复文件夹」三种文案；普通「删除」与「永久删除」并存时，不如「移入回收站」更能给用户安全感。","rationale":"右键上下文明确时直接用简洁动词「恢复」；非永久删除明确标为「移入回收站 / 移入系统废纸篓」，降低误删恐慌。"},{"id":"NOOK-07","category":"nook","subCategory":"空状态（Empty State） · 文档大纲面板","severity":"low","issueType":"缺乏操作引导","file":"src/pages/workspace/components/sidebar/SidebarOutline.tsx","lines":"85-98","whyMatched":"侧栏切换至「大纲」视图但当前笔记无标题块时的空态提示","snippet":"<div className=\"text-xs text-muted-foreground\">当前文档暂无标题大纲</div>","before":"当前文档暂无标题大纲","after":"暂无大纲结构\n在正文中使用 # 一级、二级或三级标题，即可在此自动生成目录导航","problem":"仅告知「暂无标题大纲」，新用户不知道大纲是如何生成的。","rationale":"在空状态下方补充简短的一句话用法提示（使用 # 标题自动生成），将死胡同转化为功能教学。"},{"id":"NOOK-08","category":"nook","subCategory":"悬停提示（Tooltip） · 块级手柄加号菜单","severity":"low","issueType":"按键组合阅读费力","file":"src/components/editor/core/EditorSideMenu.tsx","lines":"302-315","whyMatched":"编辑器左侧块手柄「+」按钮的悬停操作说明","snippet":"<span><span>点击</span> 在下方添加块</span>\n<span><span>{altKeyLabel} 点击</span> 在上方添加块</span>","before":"点击 在下方添加块\nOption 点击 在上方添加块","after":"点击：在下方插入新块\n⌥ + 点击：在上方插入新块","problem":"「块（Block）」偏重底层富文本概念，且「Option 点击」无连接符时视觉粘连。","rationale":"使用标准修饰键符号或「+」连接符，用「插入新行 / 新块」提升可读性。"},{"id":"NOOK-09","category":"nook","subCategory":"占位符（Placeholder） · 快捷键录制框","severity":"low","issueType":"表述重复","file":"src/pages/workspace/components/sidebar/settings/ShortcutField.tsx","lines":"123","whyMatched":"设置 › 快捷键列表中点击录制自定义快捷键时的输入框占位符","snippet":"placeholder={isCapturing ? \"请按下快捷键…\" : \"点击后按下快捷键\"}","before":"默认：点击后按下快捷键\n录制中：请按下快捷键…","after":"默认：点击此处录入快捷键\n录制中：请按下组合键（按 Esc 取消）…","problem":"「点击后按下快捷键」与「请按下快捷键」高度雷同，且进入录制状态后未提示如何退出录制。","rationale":"录制态明确提示「按下组合键（按 Esc 取消）」，给予用户清晰的退出机制。"},{"id":"DLG-13","category":"dialog","subCategory":"保存与复制反馈 · 全站轻提示收口","severity":"medium","issueType":"同义提示碎片化","file":"src/components/editor/image/ImageLightbox.tsx","lines":"289, 333 (及 ArtifactActions.tsx:46, DatavizToolbar.tsx:70)","whyMatched":"全站图片、图表、代码块、AI 产物的复制与下载成功提示","snippet":"// ImageLightbox.tsx:289, 333\ntoast.success(\"图片已保存到下载文件夹\");\ntoast.success(\"已复制到剪贴板\");\n// ArtifactActions.tsx:46, 58\ntoast.success(\"已复制\");\ntoast.success(\"已保存\");","before":"存在「已复制」「已复制到剪贴板」「已保存」「图片已保存到下载文件夹」4 种不同颗粒度的提示","after":"复制统一：已复制到剪贴板\n下载统一：已保存至系统「下载」目录","problem":"相同性质的操作在不同组件里提示长短不一，有的写「已保存」却没写保存在哪，用户不知道去哪个目录找。","rationale":"全站收口轻提示规范：剪贴板操作统一为「已复制到剪贴板」，文件落地操作明确指出「已保存至系统『下载』目录」。"}];
+
+    const STORAGE_KEY = 'goose_copy_proofread_status_v1';
+    let userStatusMap = {};
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        userStatusMap = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load status from localStorage', e);
+    }
+
+    // 主题管理
+    const THEME_KEY = 'goose_copy_theme_v1';
+    function initTheme() {
+      const savedTheme = localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      setTheme(savedTheme);
+    }
+
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeText').textContent = '浅色模式';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('themeIcon').textContent = '🌙';
+        document.getElementById('themeText').textContent = '深色模式';
+      }
+      localStorage.setItem(THEME_KEY, theme);
+    }
+
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // 辅助函数
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    }
+
+    function saveStatus() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userStatusMap));
+      } catch (e) {
+        console.warn('Failed to save status', e);
+      }
+      updateDashboard();
+      applyFilters();
+    }
+
+    // 状态管理
+    function setItemStatus(id, status) {
+      if (userStatusMap[id] === status) {
+        delete userStatusMap[id];
+      } else {
+        userStatusMap[id] = status;
+      }
+      saveStatus();
+      renderCardStatus(id);
+    }
+
+    function renderCardStatus(id) {
+      const card = document.getElementById('card-' + id);
+      if (!card) return;
+      const status = userStatusMap[id] || 'pending';
+
+      card.classList.remove('status-accepted', 'status-discuss', 'status-pending');
+      card.classList.add('status-' + status);
+
+      const acceptBtn = card.querySelector('.btn-accept');
+      const discussBtn = card.querySelector('.btn-discuss');
+      const resetBtn = card.querySelector('.btn-reset');
+
+      acceptBtn.classList.toggle('active-accepted', status === 'accepted');
+      discussBtn.classList.toggle('active-discuss', status === 'discuss');
+      resetBtn.style.display = status === 'pending' ? 'none' : 'inline-flex';
+    }
+
+    // 更新 Dashboard 指标
+    function updateDashboard() {
+      const total = AUDIT_DATA.length;
+      let acceptedCount = 0;
+      let discussCount = 0;
+      let dialogCount = 0;
+      let uiCount = 0;
+      let nookCount = 0;
+      let highCount = 0;
+
+      AUDIT_DATA.forEach(item => {
+        const status = userStatusMap[item.id] || 'pending';
+        if (status === 'accepted') acceptedCount++;
+        if (status === 'discuss') discussCount++;
+
+        if (item.category === 'dialog') dialogCount++;
+        else if (item.category === 'ui') uiCount++;
+        else if (item.category === 'nook') nookCount++;
+
+        if (item.severity === 'high') highCount++;
+      });
+
+      document.getElementById('metricTotal').textContent = total;
+      document.getElementById('metricDialog').textContent = dialogCount;
+      document.getElementById('metricUi').textContent = uiCount;
+      document.getElementById('metricNook').textContent = nookCount;
+      document.getElementById('metricHigh').textContent = highCount;
+      document.getElementById('metricAccepted').textContent = acceptedCount;
+      document.getElementById('metricDiscuss').textContent = discussCount;
+
+      document.getElementById('countCatAll').textContent = total;
+      document.getElementById('countCatDialog').textContent = dialogCount;
+      document.getElementById('countCatUi').textContent = uiCount;
+      document.getElementById('countCatNook').textContent = nookCount;
+
+      const percent = total > 0 ? Math.round((acceptedCount / total) * 100) : 0;
+      document.getElementById('progressPercent').textContent = percent + '%';
+      document.getElementById('progressRatio').textContent = '已采纳 ' + acceptedCount + ' / 需讨论 ' + discussCount + ' / 待审阅 ' + (total - acceptedCount - discussCount);
+
+      const pAcc = (acceptedCount / total) * 100;
+      const pDisc = (discussCount / total) * 100;
+      const pPend = 100 - pAcc - pDisc;
+
+      document.getElementById('barAccepted').style.width = pAcc + '%';
+      document.getElementById('barDiscuss').style.width = pDisc + '%';
+      document.getElementById('barPending').style.width = pPend + '%';
+    }
+
+    // 渲染卡片
+    function renderCards() {
+      const container = document.getElementById('cardContainer');
+      container.innerHTML = '';
+
+      AUDIT_DATA.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'proof-card';
+        card.id = 'card-' + item.id;
+        card.dataset.id = item.id;
+        card.dataset.category = item.category;
+        card.dataset.severity = item.severity;
+
+        const status = userStatusMap[item.id] || 'pending';
+        card.classList.add('status-' + status);
+
+        const severityLabel = item.severity === 'high' ? '高优 High' : (item.severity === 'medium' ? '中优 Med' : '低优 Low');
+        const severityClass = 'severity-' + item.severity;
+
+        const categoryLabelMap = {
+          dialog: '弹窗与通知',
+          ui: '界面与设置',
+          nook: '犄角旮旯微文案'
+        };
+        const catName = categoryLabelMap[item.category] || item.category;
+
+        card.innerHTML = 
+          '<div class="card-header">' +
+            '<div class="card-meta-left">' +
+              '<span class="badge-id">' + escapeHtml(item.id) + '</span>' +
+              '<span class="badge-tag">📁 ' + escapeHtml(catName) + ' · ' + escapeHtml(item.subCategory) + '</span>' +
+              '<span class="badge-severity ' + severityClass + '">' + severityLabel + '</span>' +
+              '<span class="badge-issue">⚠️ ' + escapeHtml(item.issueType) + '</span>' +
+            '</div>' +
+            '<div class="card-actions-right">' +
+              '<button class="status-btn btn-accept ' + (status === 'accepted' ? 'active-accepted' : '') + '" onclick="setItemStatus(\'' + item.id + '\', \'accepted\')">' +
+                '✓ 采纳' +
+              '</button>' +
+              '<button class="status-btn btn-discuss ' + (status === 'discuss' ? 'active-discuss' : '') + '" onclick="setItemStatus(\'' + item.id + '\', \'discuss\')">' +
+                '? 需讨论' +
+              '</button>' +
+              '<button class="status-btn btn-reset" style="' + (status === 'pending' ? 'display:none;' : '') + '" onclick="setItemStatus(\'' + item.id + '\', \'pending\')">' +
+                '重置' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="card-body">' +
+            '<!-- 溯源信息 -->' +
+            '<div class="source-box">' +
+              '<div class="source-header" id="src-head-' + item.id + '">' +
+                '<span class="source-file">' +
+                  '📄 ' + escapeHtml(item.file) + ':' + escapeHtml(item.lines) +
+                '</span>' +
+                '<span class="source-why">' + escapeHtml(item.whyMatched) + '</span>' +
+                '<button class="toggle-code-btn" onclick="toggleSnippet(\'' + item.id + '\')">展开代码片段 ▾</button>' +
+              '</div>' +
+              '<pre class="source-snippet" id="snippet-' + item.id + '"><code>' + escapeHtml(item.snippet) + '</code></pre>' +
+            '</div>' +
+
+            '<!-- 对比区 -->' +
+            '<div class="diff-grid">' +
+              '<div class="diff-col diff-col-before">' +
+                '<div class="diff-col-header">' +
+                  '<span class="diff-col-title">✕ 现存原文案 (Before)</span>' +
+                '</div>' +
+                '<div class="diff-content">' + escapeHtml(item.before) + '</div>' +
+              '</div>' +
+              '<div class="diff-col diff-col-after">' +
+                '<div class="diff-col-header">' +
+                  '<span class="diff-col-title">✓ 建议优化文案 (After)</span>' +
+                  '<button class="copy-btn" id="copy-btn-' + item.id + '">📋 复制建议</button>' +
+                '</div>' +
+                '<div class="diff-content">' + escapeHtml(item.after) + '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<!-- 解析区 -->' +
+            '<div class="analysis-grid">' +
+              '<div class="analysis-col">' +
+                '<div class="analysis-title">现存问题诊断 (Problem)</div>' +
+                '<div class="analysis-text">' + escapeHtml(item.problem) + '</div>' +
+              '</div>' +
+              '<div class="analysis-col">' +
+                '<div class="analysis-title">优化设计考量 (Rationale)</div>' +
+                '<div class="analysis-text">' + escapeHtml(item.rationale) + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        container.appendChild(card);
+
+        // Bind copy button dynamically to prevent escaping issues
+        const copyBtn = card.querySelector('#copy-btn-' + item.id);
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => {
+            copyText(item.after);
+          });
+        }
+      });
+    }
+
+    function toggleSnippet(id) {
+      const snippet = document.getElementById('snippet-' + id);
+      const head = document.getElementById('src-head-' + id);
+      const btn = head.querySelector('.toggle-code-btn');
+      if (snippet.classList.contains('show')) {
+        snippet.classList.remove('show');
+        head.classList.remove('open');
+        btn.textContent = '展开代码片段 ▾';
+      } else {
+        snippet.classList.add('show');
+        head.classList.add('open');
+        btn.textContent = '收起代码片段 ▴';
+      }
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('已复制建议文案到剪贴板');
+        }).catch(() => {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('已复制建议文案到剪贴板');
+      } catch (e) {
+        showToast('复制失败，请手动选取复制');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // 过滤与搜索
+    let currentCategory = 'all';
+
+    function applyFilters() {
+      const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+      const severity = document.getElementById('severityFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      let visibleCount = 0;
+
+      AUDIT_DATA.forEach(item => {
+        const card = document.getElementById('card-' + item.id);
+        if (!card) return;
+
+        const itemStatus = userStatusMap[item.id] || 'pending';
+
+        const matchCategory = (currentCategory === 'all' || item.category === currentCategory);
+        const matchSeverity = (severity === 'all' || item.severity === severity);
+        const matchStatus = (statusFilter === 'all' || itemStatus === statusFilter);
+
+        let matchKeyword = true;
+        if (keyword) {
+          const haystack = [
+            item.id,
+            item.file,
+            item.lines,
+            item.subCategory,
+            item.issueType,
+            item.whyMatched,
+            item.before,
+            item.after,
+            item.problem,
+            item.rationale,
+            item.snippet
+          ].join(' ').toLowerCase();
+          matchKeyword = haystack.includes(keyword);
+        }
+
+        if (matchCategory && matchSeverity && matchStatus && matchKeyword) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      let emptyEl = document.getElementById('emptySearchState');
+      if (visibleCount === 0) {
+        if (!emptyEl) {
+          emptyEl = document.createElement('div');
+          emptyEl.id = 'emptySearchState';
+          emptyEl.className = 'empty-state';
+          emptyEl.innerHTML = '<div class="empty-icon">🔍</div><h3>未找到匹配的校对项</h3><p>请调整搜索关键字或筛选条件后重试</p>';
+          document.getElementById('cardContainer').appendChild(emptyEl);
+        }
+      } else if (emptyEl) {
+        emptyEl.remove();
+      }
+    }
+
+    // 绑定事件
+    document.getElementById('categoryTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.tab-btn');
+      if (!tab) return;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      currentCategory = tab.dataset.category;
+      applyFilters();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('severityFilter').addEventListener('change', applyFilters);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+
+    document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('severityFilter').value = 'all';
+      document.getElementById('statusFilter').value = 'all';
+      currentCategory = 'all';
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.category === 'all');
+      });
+      applyFilters();
+    });
+
+    document.getElementById('acceptAllBtn').addEventListener('click', () => {
+      if (!confirm('确定将全部 30 个校对项标记为「已采纳」？')) return;
+      AUDIT_DATA.forEach(item => {
+        userStatusMap[item.id] = 'accepted';
+      });
+      saveStatus();
+      AUDIT_DATA.forEach(item => renderCardStatus(item.id));
+      showToast('已全部标记为采纳');
+    });
+
+    // Markdown 导出
+    function generateMarkdownReport() {
+      let md = '# Goose Notes 文案校对评审报告\n\n';
+      md += '生成时间: ' + new Date().toLocaleString('zh-CN') + '\n\n';
+
+      const accepted = AUDIT_DATA.filter(i => userStatusMap[i.id] === 'accepted');
+      const discuss = AUDIT_DATA.filter(i => userStatusMap[i.id] === 'discuss');
+      const pending = AUDIT_DATA.filter(i => !userStatusMap[i.id] || userStatusMap[i.id] === 'pending');
+
+      md += '## 1. 评审进度概要\n\n';
+      md += '- 总校对条目：' + AUDIT_DATA.length + ' 项\n';
+      md += '- 已采纳项：' + accepted.length + ' 项\n';
+      md += '- 需进一步讨论：' + discuss.length + ' 项\n';
+      md += '- 待审阅：' + pending.length + ' 项\n\n';
+
+      md += '## 2. 条目详细清单\n\n';
+
+      AUDIT_DATA.forEach(item => {
+        const status = userStatusMap[item.id] || 'pending';
+        const statusText = status === 'accepted' ? '【已采纳】' : (status === 'discuss' ? '【需讨论】' : '【待审阅】');
+        
+        md += '### ' + item.id + ' · ' + item.subCategory + ' ' + statusText + '\n\n';
+        md += '- **分类**: ' + item.category + ' | **优先级**: ' + item.severity.toUpperCase() + ' | **缺陷类型**: ' + item.issueType + '\n';
+        md += '- **文件位置**: `' + item.file + ':' + item.lines + '` (' + item.whyMatched + ')\n\n';
+        md += '**原文案 (Before):**\n```\n' + item.before + '\n```\n\n';
+        md += '**建议优化文案 (After):**\n```\n' + item.after + '\n```\n\n';
+        md += '**现存问题诊断:** ' + item.problem.replace(/\n/g, ' ') + '\n\n';
+        md += '**设计考量理由:** ' + item.rationale.replace(/\n/g, ' ') + '\n\n';
+        md += '---\n\n';
+      });
+
+      return md;
+    }
+
+    document.getElementById('exportReportBtn').addEventListener('click', () => {
+      const md = generateMarkdownReport();
+      document.getElementById('markdownOutput').value = md;
+      document.getElementById('exportModal').classList.add('show');
+    });
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+      document.getElementById('exportModal').classList.remove('show');
+    });
+
+    document.getElementById('copyMarkdownBtn').addEventListener('click', () => {
+      const text = document.getElementById('markdownOutput').value;
+      copyText(text);
+    });
+
+    document.getElementById('downloadMarkdownBtn').addEventListener('click', () => {
+      const text = document.getElementById('markdownOutput').value;
+      const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'goose-copy-review-' + new Date().toISOString().slice(0, 10) + '.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // 初始化
+    initTheme();
+    renderCards();
+    updateDashboard();
+  </script>
+</body>
+</html>

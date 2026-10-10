@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import * as GooseIcons from "@/components/ui/icons";
 import {
   ContextMenu,
@@ -13,32 +13,10 @@ import {
   extractBlockNoteTitle,
   type BlockNoteContent,
 } from "@/components/editor/utils/blocknote-content";
-import { useEditorPlatform } from "@/components/editor/platform/context";
 import { isQuickNoteEditorPage } from "@/pages/workspace/components/editor-host/editorContentMode";
-import {
-  cachePasteTarget,
-  pasteClipboardHtmlAsBlocks,
-  pasteLinesAsBlocks,
-  shouldPasteHtmlAsBlocks,
-} from "@/components/editor/hooks/useEditorPaste";
-import {
-  GOOSE_BLOCKNOTE_BLOCK_COPY_MIME,
-  resolveCopyBlockSelection,
-} from "@/components/editor/extensions/copyCurrentBlockExtension";
-import {
-  getEditorSelectionPlainText,
-  looksLikeMarkdownFragment,
-  normalizeMarkdownPasteText,
-} from "@/components/editor/utils/clipboard";
-import {
-  inspectPasteContainer,
-  resolvePasteLines,
-} from "@/components/editor/utils/multilinePaste";
-import {
-  buildSoftWrapPasteInline,
-  insertSoftWrappedInline,
-  insertSoftWrappedLines,
-} from "@/components/editor/utils/softWrapPaste";
+import { resolveCopyBlockSelection } from "@/components/editor/extensions/copyCurrentBlockExtension";
+import { getEditorSelectionPlainText } from "@/components/editor/utils/clipboard";
+import { useEditorContextClipboard } from "./useEditorContextClipboard";
 import { getEditorSelectedBlocksForExport } from "@/components/editor/utils/selection";
 import { cn, formatShortcut } from "@/lib/utils";
 
@@ -104,13 +82,12 @@ export function EditorContextMenu({
   const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const selectedBlocksRef = useRef<BlockNoteContent>([]);
   const selectedTextRef = useRef("");
-  const platform = useEditorPlatform();
+  const { handleContextPaste, handleCopySelection, handleCutSelection } =
+    useEditorContextClipboard(editor, editable, selectedTextRef);
   // 速记小窗不展示「生成选中图片」：生产包靠 __GOOSE_LITE__ 裁掉；
   // 开发态 / Electron 小窗靠草稿页 id 运行时隐藏。
   const showSelectionImageExport =
     !__GOOSE_LITE__ && page?.id !== "__quicknote_draft__";
-
-
 
   const handleContextMenuOpen = () => {
     let text = "";
@@ -137,141 +114,6 @@ export function EditorContextMenu({
     }
   };
 
-  const handleContextPaste = useCallback(async () => {
-    if (!editable) return;
-    try {
-      let htmlText = "";
-      let blockNoteHtml = "";
-      let hasGooseMime = false;
-      try {
-        const items = await navigator.clipboard.read();
-        for (const item of items) {
-          if (!blockNoteHtml && item.types.includes("blocknote/html")) {
-            try {
-              blockNoteHtml = await (
-                await item.getType("blocknote/html")
-              ).text();
-            } catch {
-              // 有些浏览器不允许从异步 ClipboardItem 读取自定义类型，继续走兼容格式。
-            }
-          }
-          if (item.types.includes(GOOSE_BLOCKNOTE_BLOCK_COPY_MIME)) {
-            hasGooseMime = true;
-          }
-          if (!htmlText && item.types.includes("text/html")) {
-            htmlText = await (await item.getType("text/html")).text();
-          }
-        }
-      } catch {
-        // read() 不可用或权限不足时回退 readText
-      }
-
-      // 键盘复制写入的原生内部 HTML 优先于自定义 MIME / text/html。
-      // 右键粘贴没有原生 paste transaction，不能直接 pasteHTML(raw)，否则已有
-      // block ID 不会经过 UniqueID；解析后递归移除 ID 再插入，保留 props 和 children。
-      if (blockNoteHtml) {
-        const target = cachePasteTarget(editor);
-        if (target) {
-          const pasted = await pasteClipboardHtmlAsBlocks(
-            editor,
-            blockNoteHtml,
-            target,
-          );
-          if (pasted) return;
-        }
-      }
-
-      if (shouldPasteHtmlAsBlocks(htmlText, hasGooseMime)) {
-        const target = cachePasteTarget(editor);
-        if (target) {
-          const pasted = await pasteClipboardHtmlAsBlocks(
-            editor,
-            htmlText,
-            target,
-          );
-          if (pasted) return;
-        }
-      }
-
-      const text = normalizeMarkdownPasteText(
-        await navigator.clipboard.readText(),
-      );
-      if (!text) return;
-      const lines = resolvePasteLines(text, "");
-      try {
-        const container = inspectPasteContainer(
-          editor.prosemirrorState.selection.$from,
-        );
-        if (container.inSoftWrap && lines && lines.length >= 2) {
-          const inline = buildSoftWrapPasteInline({ plainText: text });
-          if (inline.length > 0) insertSoftWrappedInline(editor, inline);
-          else insertSoftWrappedLines(editor, lines.join("\n"));
-          return;
-        }
-      } catch {
-        /* 选区读不到时按普通多行粘贴 */
-      }
-      if (lines && lines.length >= 2) {
-        let blockType: string | null = null;
-        try {
-          blockType = editor.getTextCursorPosition().block.type ?? null;
-        } catch {
-          blockType = null;
-        }
-        pasteLinesAsBlocks(editor, lines, blockType);
-        return;
-      }
-      if (looksLikeMarkdownFragment(text)) {
-        editor.pasteMarkdown(text);
-      } else {
-        editor.insertInlineContent(text);
-      }
-    } catch (error) {
-      console.error("Failed to read clipboard contents: ", error);
-    }
-  }, [editable, editor]);
-
-  const handleCopySelection = useCallback(() => {
-    try {
-      editor.focus();
-    } catch {
-      /* ignore */
-    }
-    if (typeof document !== "undefined" && document.execCommand("copy")) {
-      return;
-    }
-    let text = selectedTextRef.current;
-    try {
-      text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
-    } catch {
-      /* ignore */
-    }
-    if (text) void platform.clipboard.copyText(text);
-  }, [editor, platform]);
-
-  const handleCutSelection = useCallback(() => {
-    if (!editable) return;
-    try {
-      editor.focus();
-    } catch {
-      /* ignore */
-    }
-    if (typeof document !== "undefined" && document.execCommand("cut")) {
-      return;
-    }
-    let text = selectedTextRef.current;
-    try {
-      text = getEditorSelectionPlainText(editor.prosemirrorState) || text;
-    } catch {
-      /* ignore */
-    }
-    if (text) void platform.clipboard.copyText(text);
-    editor.exec((state: any, dispatch: any) => {
-      dispatch?.(state.tr.deleteSelection());
-      return true;
-    });
-  }, [editable, editor, platform]);
-
   const handleSelectionThemeConfirm = (
     themeId: CardThemeId,
     watermarkConfig: WatermarkConfig,
@@ -293,9 +135,13 @@ export function EditorContextMenu({
           <div
             ref={editorContainerRef}
             onDragStartCapture={(event) => {
-              if (!(event.target as Element).closest(".bn-side-menu") &&
-                  !((event.target as Element).closest(".bn-inline-content") &&
-                    !window.getSelection()?.isCollapsed))
+              if (
+                !(event.target as Element).closest(".bn-side-menu") &&
+                !(
+                  (event.target as Element).closest(".bn-inline-content") &&
+                  !window.getSelection()?.isCollapsed
+                )
+              )
                 event.preventDefault();
             }}
             onMouseDown={handleEditorBlankMouseDown}
@@ -321,10 +167,7 @@ export function EditorContextMenu({
         </ContextMenuTrigger>
         <ContextMenuContent editorContext className="w-[180px]">
           {editable && (
-            <ContextMenuItem
-              disabled={!canCopy}
-              onSelect={handleCutSelection}
-            >
+            <ContextMenuItem disabled={!canCopy} onSelect={handleCutSelection}>
               <GooseIcons.Scissors className="mr-2 h-4 w-4" />
               剪切
               <span className="ml-auto text-xs tracking-widest text-muted-foreground">
@@ -332,12 +175,9 @@ export function EditorContextMenu({
               </span>
             </ContextMenuItem>
           )}
-          <ContextMenuItem
-            disabled={!canCopy}
-            onSelect={handleCopySelection}
-          >
+          <ContextMenuItem disabled={!canCopy} onSelect={handleCopySelection}>
             <GooseIcons.Copy className="mr-2 h-4 w-4" />
-            拷贝
+            复制
             <span className="ml-auto text-xs tracking-widest text-muted-foreground">
               {formatShortcut("Mod+C")}
             </span>
@@ -359,7 +199,7 @@ export function EditorContextMenu({
               }}
             >
               <GooseIcons.Image className="mr-2 h-4 w-4" />
-              生成选中图片
+              导出所选内容为图片
             </ContextMenuItem>
           )}
         </ContextMenuContent>

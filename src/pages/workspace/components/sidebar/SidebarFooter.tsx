@@ -51,15 +51,15 @@ export function SidebarFooter({
               <button
                 type="button"
                 className={cn(btnClass, activeClass)}
-                aria-label={`更新 ${readyVersion} 已下载，点击重启安装`}
-                title={`更新 ${readyVersion} 已下载，点击重启安装`}
+                aria-label={`新版本 v${readyVersion} 已就绪，点击重启并更新`}
+                title={`新版本 v${readyVersion} 已就绪，点击重启并更新`}
                 onClick={() => void getGooseDesktop()?.installReadyUpdate()}
               >
                 <GooseIcons.RotateCw className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              更新 {readyVersion} 已下载，点击重启安装
+              新版本 v{readyVersion} 已就绪，点击重启并更新
             </TooltipContent>
           </Tooltip>
         ) : availableVersion ? (
@@ -68,15 +68,15 @@ export function SidebarFooter({
               <button
                 type="button"
                 className={cn(btnClass, activeClass)}
-                aria-label={`发现新版本 ${availableVersion}，打开更新说明`}
-                title={`发现新版本 ${availableVersion}，打开更新说明`}
+                aria-label={`发现新版本 v${availableVersion}，查看更新说明`}
+                title={`发现新版本 v${availableVersion}，查看更新说明`}
                 onClick={() => openReleasePage()}
               >
                 <GooseIcons.Download className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              发现新版本 {availableVersion}，打开更新说明
+              发现新版本 v{availableVersion}，查看更新说明
             </TooltipContent>
           </Tooltip>
         ) : null}
