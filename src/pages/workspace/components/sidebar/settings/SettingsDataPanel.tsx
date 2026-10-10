@@ -12,8 +12,8 @@ export function SettingsDataPanel(props: SettingsDataPanelProps) {
   const data = useDataPanelState(props);
   const configuration = useWebdavConfiguration(data);
   const sync = useWebdavSyncActions(configuration);
-  const useWebdavRemoteActions = useWebdavRemoteActions(sync);
-  const context = useWebdavRemoteActions;
+  const webdavRemoteActionsContext = useWebdavRemoteActions(sync);
+  const context = webdavRemoteActionsContext;
   const {
     active,
     onRestartGuide,

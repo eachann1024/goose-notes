@@ -4,8 +4,8 @@ import { type SettingsShortcutsProps } from "./shortcut-settings/shared";
 import { useShortcutSettings } from "./shortcut-settings/useShortcutSettings";
 
 export function SettingsShortcuts(props: SettingsShortcutsProps) {
-  const useShortcutSettings = useShortcutSettings(props);
-  const context = useShortcutSettings;
+  const shortcutSettingsContext = useShortcutSettings(props);
+  const context = shortcutSettingsContext;
   const { confirmReset, setConfirmReset, handleReset } = context;
 
   return (

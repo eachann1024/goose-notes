@@ -13,8 +13,8 @@ import { renderReadingSettings } from "./appearance-settings/renderReadingSettin
 import { renderUIFontSizeSettings } from "./appearance-settings/renderUIFontSizeSettings";
 
 export function SettingsAppearance(props: SettingsAppearanceProps) {
-  const useAppearanceSettings = useAppearanceSettings(props);
-  const context = useAppearanceSettings;
+  const appearanceSettingsContext = useAppearanceSettings(props);
+  const context = appearanceSettingsContext;
   const {
     uiFontSize,
     editorFontSize,
