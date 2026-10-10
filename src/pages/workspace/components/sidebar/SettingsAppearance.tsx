@@ -3,6 +3,7 @@ import { useSettings } from "@/stores/useSettings";
 import {
   type CSSProperties,
   type KeyboardEvent,
+  type PointerEvent,
 } from "react";
 import type { UIFontSize } from "@/stores/settings/types";
 import type { AccentColor } from "@/stores/useSettings";
@@ -156,6 +157,42 @@ export function SettingsAppearance({
   section = "all",
   showPreview = true,
 }: SettingsAppearanceProps) {
+  const appearanceLayoutRef = useRef<HTMLDivElement>(null);
+  const scaleDragCleanupRef = useRef<(() => void) | null>(null);
+  const [scaleDragLayout, setScaleDragLayout] = useState<"preview" | "options" | null>(null);
+  const unlockScaleDragLayout = () => {
+    scaleDragCleanupRef.current?.();
+    scaleDragCleanupRef.current = null;
+    setScaleDragLayout(null);
+  };
+  useEffect(() => () => scaleDragCleanupRef.current?.(), []);
+  const lockScaleDragLayout = (event: PointerEvent<HTMLInputElement>) => {
+    const preview = appearanceLayoutRef.current?.querySelector<HTMLElement>('[aria-label="编辑器即时预览"]');
+    setScaleDragLayout(preview && getComputedStyle(preview).display !== "none" ? "preview" : "options");
+    const slider = event.currentTarget;
+    const scrollContainer = slider.closest<HTMLElement>(".settings-appearance-options");
+    const sliderTop = slider.getBoundingClientRect().top;
+    scaleDragCleanupRef.current?.();
+    let observer: MutationObserver | null = null;
+    if (scrollContainer) {
+      // 上方内容随字号重排时，让正在拖动的滑条保持在原来的屏幕位置。
+      observer = new MutationObserver(() => {
+        scrollContainer.scrollTop += slider.getBoundingClientRect().top - sliderTop;
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    }
+    // 原生 range 可能接管指针；在控件外松手或窗口失焦也要解除布局锁。
+    window.addEventListener("pointerup", unlockScaleDragLayout);
+    window.addEventListener("pointercancel", unlockScaleDragLayout);
+    window.addEventListener("blur", unlockScaleDragLayout);
+    scaleDragCleanupRef.current = () => {
+      observer?.disconnect();
+      window.removeEventListener("pointerup", unlockScaleDragLayout);
+      window.removeEventListener("pointercancel", unlockScaleDragLayout);
+      window.removeEventListener("blur", unlockScaleDragLayout);
+    };
+    slider.setPointerCapture(event.pointerId);
+  };
   const editorLineHeight = useSettings((s) => s.editorLineHeight);
   const setEditorLineHeight = useSettings((s) => s.setEditorLineHeight);
   const setEditorFontSize = useSettings((s) => s.setEditorFontSize);
@@ -311,6 +348,10 @@ export function SettingsAppearance({
         value={uiFontSize}
         aria-valuetext={`${uiFontSize}%`}
         className="block h-6 w-full cursor-pointer accent-primary"
+        onPointerDown={lockScaleDragLayout}
+        onPointerUp={unlockScaleDragLayout}
+        onPointerCancel={unlockScaleDragLayout}
+        onLostPointerCapture={unlockScaleDragLayout}
         onChange={(event) => setUIFontSize(Number(event.target.value))}
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -325,8 +366,10 @@ export function SettingsAppearance({
 
   return (
     <div
+      ref={appearanceLayoutRef}
       className="settings-appearance-layout"
       data-appearance-section={section}
+      data-scale-drag-layout={scaleDragLayout ?? undefined}
     >
       {showPreview && (
         <AppearanceEditorPreview
