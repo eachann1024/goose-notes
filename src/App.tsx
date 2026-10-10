@@ -89,13 +89,12 @@ function App() {
     // 待该文件夹加载后再由 loadLocalFolderPages 末尾的 reconcile 清理。
     tabsStore.reconcileTabs();
 
-    // 仅在没有标签时，用当前页面初始化第一个标签（E2E 测试自行控制标签状态）
+    // 仅在没有标签时，用当前页面初始化第一个标签
     const { activePageId, pages } = usePages.getState();
     if (
       activePageId &&
       useTabs.getState().openTabs.length === 0 &&
-      pages[activePageId] &&
-      !(typeof window !== "undefined" && (window as Window & { __GOOSE_E2E__?: boolean }).__GOOSE_E2E__)
+      pages[activePageId]
     ) {
       useTabs.getState().openTab(activePageId);
     }

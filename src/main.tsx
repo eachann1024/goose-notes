@@ -1,429 +1,24 @@
-// Polyfill for older Chromium (Electron built-in)
-if (typeof globalThis.structuredClone !== "function") {
-  Object.defineProperty(globalThis, "structuredClone", {
-    value: function structuredClonePolyfill<T>(value: T): T {
-      return JSON.parse(JSON.stringify(value)) as T;
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-if (
-  typeof globalThis.crypto !== "undefined" &&
-  typeof globalThis.crypto.randomUUID !== "function"
-) {
-  Object.defineProperty(globalThis.crypto, "randomUUID", {
-    value: function randomUUIDPolyfill() {
-      const bytes = new Uint8Array(16);
-      if (typeof globalThis.crypto.getRandomValues === "function") {
-        globalThis.crypto.getRandomValues(bytes);
-      } else {
-        for (let index = 0; index < bytes.length; index += 1) {
-          bytes[index] = Math.floor(Math.random() * 256);
-        }
-      }
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, "0"),
-      );
-      return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-if (!(Array.prototype as any).toReversed) {
-  Object.defineProperty(Array.prototype, "toReversed", {
-    value: function (this: unknown[]) {
-      return [...this].reverse();
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-// Iterator Helpers (ES2025) polyfill — Electron 旧内核 (< Chrome 122) 缺 Iterator.prototype.*。
-// 旧浏览器可能缺少 Map.prototype.values().filter()，缺失时会抛
-// `s.values(...).filter is not a function`，导致 AI 调用在错误处理路径二次崩溃。
-{
-  const IterProto = Object.getPrototypeOf(
-    Object.getPrototypeOf([][Symbol.iterator]()),
-  ) as Record<string, unknown> | null;
-  if (IterProto && typeof (IterProto as any).filter !== "function") {
-    const define = (name: string, value: (...args: any[]) => unknown) => {
-      Object.defineProperty(IterProto, name, {
-        value,
-        writable: true,
-        configurable: true,
-      });
-    };
-
-    define(
-      "filter",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => boolean,
-      ) {
-        // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const it = this;
-        let i = 0;
-        return (function* () {
-          for (let r = it.next(); !r.done; r = it.next()) {
-            if (fn(r.value, i++)) yield r.value;
-          }
-        })();
-      },
-    );
-    define(
-      "map",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => unknown,
-      ) {
-        // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const it = this;
-        let i = 0;
-        return (function* () {
-          for (let r = it.next(); !r.done; r = it.next())
-            yield fn(r.value, i++);
-        })();
-      },
-    );
-    define("take", function (this: Iterator<unknown>, limit: number) {
-      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const it = this;
-      return (function* () {
-        let n = 0;
-        if (n >= limit) return;
-        for (let r = it.next(); !r.done; r = it.next()) {
-          yield r.value;
-          if (++n >= limit) return;
-        }
-      })();
-    });
-    define("drop", function (this: Iterator<unknown>, limit: number) {
-      // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const it = this;
-      return (function* () {
-        let n = 0;
-        for (let r = it.next(); !r.done; r = it.next()) {
-          if (n++ < limit) continue;
-          yield r.value;
-        }
-      })();
-    });
-    define(
-      "flatMap",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => unknown,
-      ) {
-        // generator 内捕获 this（Iterator 实例），generator 函数不可用箭头函数替代
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const it = this;
-        let i = 0;
-        return (function* () {
-          for (let r = it.next(); !r.done; r = it.next()) {
-            const mapped = fn(r.value, i++) as any;
-            if (mapped && typeof mapped[Symbol.iterator] === "function") {
-              yield* mapped;
-            } else {
-              yield mapped;
-            }
-          }
-        })();
-      },
-    );
-    define("toArray", function (this: Iterator<unknown>) {
-      const out: unknown[] = [];
-      for (let r = this.next(); !r.done; r = this.next()) out.push(r.value);
-      return out;
-    });
-    define(
-      "forEach",
-      function (this: Iterator<unknown>, fn: (v: unknown, i: number) => void) {
-        let i = 0;
-        for (let r = this.next(); !r.done; r = this.next()) fn(r.value, i++);
-      },
-    );
-    define(
-      "reduce",
-      function (
-        this: Iterator<unknown>,
-        fn: (acc: unknown, v: unknown, i: number) => unknown,
-        init?: unknown,
-      ) {
-        let acc = init;
-        let i = 0;
-        let r = this.next();
-        if (arguments.length < 2) {
-          if (r.done)
-            throw new TypeError(
-              "Reduce of empty iterator with no initial value",
-            );
-          acc = r.value;
-          r = this.next();
-        }
-        for (; !r.done; r = this.next()) acc = fn(acc, r.value, i++);
-        return acc;
-      },
-    );
-    define(
-      "some",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => boolean,
-      ) {
-        let i = 0;
-        for (let r = this.next(); !r.done; r = this.next())
-          if (fn(r.value, i++)) return true;
-        return false;
-      },
-    );
-    define(
-      "every",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => boolean,
-      ) {
-        let i = 0;
-        for (let r = this.next(); !r.done; r = this.next())
-          if (!fn(r.value, i++)) return false;
-        return true;
-      },
-    );
-    define(
-      "find",
-      function (
-        this: Iterator<unknown>,
-        fn: (v: unknown, i: number) => boolean,
-      ) {
-        let i = 0;
-        for (let r = this.next(); !r.done; r = this.next())
-          if (fn(r.value, i++)) return r.value;
-        return undefined;
-      },
-    );
-  }
-}
-
+import { installRuntimePolyfills } from "./bootstrap/runtimePolyfills";
+import { installIteratorPolyfills } from "./bootstrap/iteratorPolyfills";
 import { applyRolldownPolyfills } from "@/lib/rolldown-polyfill";
-applyRolldownPolyfills();
-
 import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
-import { toast } from "@/components/ui/sonner";
-import { describeDiskWriteError } from "@/lib/diskWriteError";
 import "./index.css";
 import "./fonts.css";
-import { applyFontVariables } from "./lib/fontLoader";
-import {
-  applyAppearanceScaleVariables,
-  clearStartupSettling,
-  markStartupSettling,
-} from "./lib/appearance";
-import { migrateLegacyStorage } from "./lib/storage/migrateLegacyStorage";
-import { HostAdapter } from "./lib/host/adapter";
-import { useNotebooks } from "./stores/useNotebooks";
-import { usePages } from "./stores/usePages";
-import { useSettings } from "./stores/useSettings";
+import { clearStartupSettling, markStartupSettling } from "@/lib/appearance";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { BootstrapScreen } from "./bootstrap/BootstrapScreen";
+import { initializeApplicationState } from "./bootstrap/initializeApplicationState";
+import { scheduleBackgroundWarmup } from "./bootstrap/backgroundWarmup";
+
+installRuntimePolyfills();
+installIteratorPolyfills();
+applyRolldownPolyfills();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
-
-function BootstrapScreen({ lean, error }: { lean: boolean; error?: unknown }) {
-  const message =
-    error instanceof Error && error.message
-      ? error.message
-      : error
-        ? String(error)
-        : "";
-  return (
-    <main className="bootstrap-screen" role={error ? "alert" : "status"}>
-      <div className="bootstrap-screen__mark" aria-hidden="true">
-        🪿
-      </div>
-      {error ? (
-        <>
-          <h1>鹅的笔记暂时无法打开</h1>
-          <p>
-            {lean
-              ? "速记初始化没有完成，草稿数据仍保留在本地。"
-              : "初始化没有完成，本地数据不会因此被清除。"}
-          </p>
-          {message && <code>{message}</code>}
-          <button type="button" onClick={() => window.location.reload()}>
-            重新加载
-          </button>
-        </>
-      ) : (
-        <>
-          <h1>{lean ? "正在打开速记" : "正在打开鹅的笔记"}</h1>
-          <p>{lean ? "正在恢复草稿…" : "正在恢复本地笔记与设置…"}</p>
-          <span className="bootstrap-screen__progress" aria-hidden="true" />
-        </>
-      )}
-    </main>
-  );
-}
-
-let flushInFlight: Promise<void> | null = null;
-
-const flushAllPendingWrites = async () => {
-  window.dispatchEvent(
-    new CustomEvent("goose-note:flush-editor", {
-      detail: { immediate: true },
-    }),
-  );
-  await usePages.getState().flushPendingLocalSaves();
-};
-
-const runFlushOnce = () => {
-  if (flushInFlight) return flushInFlight;
-  flushInFlight = flushAllPendingWrites().finally(() => {
-    flushInFlight = null;
-  });
-  return flushInFlight;
-};
-
-const reportFlushFailure = (error: unknown) => {
-  console.error("[save-guard] pending writes flush failed", error);
-  toast.error("笔记未能保存到磁盘", {
-    id: "goose-pending-writes-failed",
-    description: describeDiskWriteError(error),
-    action: {
-      label: "重试",
-      onClick: () => retryPendingWrites(),
-    },
-  });
-};
-
-const retryPendingWrites = () => {
-  // 所有入口都复用 runFlushOnce：连续点击或生命周期事件只共享一个在途任务。
-  void runFlushOnce()
-    .then(() => {
-      toast.dismiss("goose-pending-writes-failed");
-    })
-    .catch(reportFlushFailure);
-};
-
-const flushFromLifecycle = () => {
-  void runFlushOnce().catch(reportFlushFailure);
-};
-
-const hasVisiblePagesInNotebook = (
-  notebookId: string | null,
-  pages: ReturnType<typeof usePages.getState>["pages"],
-) => {
-  if (!notebookId) return false;
-
-  return Object.values(pages).some(
-    (page) => page.workspaceId === notebookId && !page.trashedAt,
-  );
-};
-
-// 「打开后 5 秒时间窗写盘守卫」（setupMarkdownOpenWriteGuard / setupLocalContentUpdateGuard /
-// setupEditorMutationTracker + gooseFs monkey-patch）已整套移除：
-// 打开零写盘现在由链路本身保证——编辑器层用户意图门控（Editor.tsx / EditorComposer.tsx）、
-// updatePage silent 分流（stores/pages/index.ts）、写盘前 diff 兜底（write.ts + local-md-snapshot.ts）。
-// goose-raw fence 的 decode 职责随之收归 write.ts 的写盘路径。
-
-const setupSaveGuards = () => {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const hostWindow = window as Window & {
-    __gooseNoteSaveGuardInstalled?: boolean;
-  };
-  if (hostWindow.__gooseNoteSaveGuardInstalled) return;
-  hostWindow.__gooseNoteSaveGuardInstalled = true;
-
-  const handleManualSave = (event: KeyboardEvent) => {
-    if (event.defaultPrevented) return;
-    if (event.isComposing || event.keyCode === 229) return;
-    if (!event.metaKey && !event.ctrlKey) return;
-    if (event.altKey || event.shiftKey || event.repeat) return;
-    if (event.key.toLowerCase() !== "s") return;
-
-    const target = document.activeElement;
-    const isEditableInput =
-      target instanceof HTMLElement &&
-      ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-    if (isEditableInput) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    // 本地文件夹来源：显式调 saveDirtyLocalPage 写盘；其它来源沿用自动保存 flush。
-    const pagesState = usePages.getState();
-    const activePageId = pagesState.activePageId;
-    const activePage = activePageId ? pagesState.pages[activePageId] : null;
-    const isLocalFile =
-      Boolean(activePage?.localFilePath) &&
-      useNotebooks.getState().notebooks[activePage?.workspaceId ?? ""]
-        ?.source === "local-folder";
-
-    if (isLocalFile && activePageId) {
-      if (activePage?.localReadState === "error") {
-        toast.error("此文件无法解析，已禁用保存", { duration: 1800 });
-        return;
-      }
-      // 内容已自动保存；显式保存会再确保落盘并应用「标题→文件名」重命名。
-      void pagesState
-        .saveDirtyLocalPage(activePageId)
-        .then((ok) => {
-          if (!ok) {
-            reportFlushFailure(new Error(`manual save failed: ${activePageId}`));
-          }
-        })
-        .catch(reportFlushFailure);
-      return;
-    }
-
-    void runFlushOnce().catch(reportFlushFailure);
-  };
-
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === "hidden") {
-      flushFromLifecycle();
-    }
-  };
-
-  const handleWindowBlur = () => {
-    flushFromLifecycle();
-  };
-
-  const handlePageHide = () => {
-    flushFromLifecycle();
-  };
-
-  const handleBeforeUnload = () => {
-    flushFromLifecycle();
-  };
-
-  const handlePluginOut = () => {
-    flushFromLifecycle();
-  };
-
-  document.addEventListener("keydown", handleManualSave, { capture: true });
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("blur", handleWindowBlur);
-  window.addEventListener("pagehide", handlePageHide);
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  window.addEventListener("goose-note:plugin-out", handlePluginOut);
-};
-
-const initHostFs = async () => {
-  await HostAdapter.ensureGooseFs();
-};
 
 // 渲染目标由调用方传入：主窗口（index-entry.tsx）渲染 <App/>，速记小窗（quicknote.tsx）
 // 渲染 <QuickNoteApp/>，但两者复用同一套 host fs / 迁移 / hydration / guard 流程，
@@ -443,12 +38,21 @@ export const bootstrap = async (
   const { lean = false, beforeInit } = options;
   // Chromium also matches text inputs clicked by a pointer as :focus-visible.
   // Track pointer entry globally so both windows keep Tab focus without click rings.
-  document.addEventListener("pointerdown", () => {
-    document.documentElement.dataset.goosePointerFocus = "true";
-  }, true);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Tab") delete document.documentElement.dataset.goosePointerFocus;
-  }, true);
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      document.documentElement.dataset.goosePointerFocus = "true";
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Tab")
+        delete document.documentElement.dataset.goosePointerFocus;
+    },
+    true,
+  );
   const root = createRoot(rootElement);
   // 主工作区在恢复完成前保持 index.html 的空 root，不提交启动页或首页。
   // Electron 会先显示 BrowserWindow，任何提前 render 都会成为用户看见的错误首帧。
@@ -458,68 +62,7 @@ export const bootstrap = async (
   }
 
   try {
-    await beforeInit?.();
-    // DEV-only: install in-memory gooseFs mock before initHostFs（让 scanner /
-    // saveLocalPageContent 走与 Electron 相同的 gooseFs 接口）。
-    // Tree-shaken out of production builds via the DEV+dynamic-import pattern.
-    if (import.meta.env.DEV && location.search.includes("e2eLocalMock")) {
-      const { installE2ELocalMock } = await import("@/lib/dev/e2eLocalMock");
-      await installE2ELocalMock();
-    }
-
-    await initHostFs();
-    if (!lean) {
-      await migrateLegacyStorage();
-    }
-    await Promise.all([
-      useSettings.persist.rehydrate(),
-      useNotebooks.persist.rehydrate(),
-    ]);
-    if (!lean) {
-      // NotebookAiChats 持久化 store（skipHydration=true，需手动水合）。主应用 AI 聊天记录，小窗不需要。
-      const { useNotebookAiChats } =
-        await import("@/stores/useNotebookAiChats");
-      useNotebookAiChats.persist.rehydrate();
-      // 加载+修复全部笔记（随笔记数线性变慢）；小窗草稿是独立存储，不读 pages。
-      await usePages.getState().hydrateFromStorage();
-      // Electron 仅本地文件夹模式不会恢复旧内置记事本，因此这些页面不会进入
-      // 侧栏或成为活动页；但必须保留在 state 中，供备份链路和「设置 → 本地文件夹」
-      // 的显式 Markdown 导出读取。不得在启动时过滤或清除这批升级数据。
-      if (__HOST_TARGET__ === "electron") {
-        usePages.setState({ activePageId: null, onboardingCompleted: true });
-      }
-    }
-    if (import.meta.env.DEV) {
-      const { installTestBridge } = await import("@/testBridge");
-      installTestBridge();
-    }
-    if (!lean) {
-
-      const nextNotebooksStore = useNotebooks.getState();
-      if (
-        !nextNotebooksStore.notebooks[nextNotebooksStore.activeNotebookId || ""]
-      ) {
-        // Electron：无仓库时保持 null（空态），绝不回落 DEFAULT_NOTEBOOK
-        const firstNotebookId = Object.keys(nextNotebooksStore.notebooks)[0] ?? null;
-        useNotebooks.setState({ activeNotebookId: firstNotebookId });
-      }
-    }
-    if (!lean) {
-      const { installAssetMaintenanceSnapshotResponder } = await import("./lib/asset-maintenance-snapshot");
-      installAssetMaintenanceSnapshotResponder();
-      const { installGitSyncResponder } = await import("./lib/git-sync-responder");
-      installGitSyncResponder();
-    }
-    setupSaveGuards();
-    const settings = useSettings.getState();
-    applyFontVariables(settings.customFonts, settings);
-    // 首帧前同步落定界面字号与编辑器缩放：窗口一出现就处于上次状态，
-    // 不再先按 100% 布局、等 App effect 再跳回（用户看到的“突兀缩小”）。
-    applyAppearanceScaleVariables({
-      uiFontSize: settings.uiFontSize,
-      editorFontSize: settings.editorFontSize,
-      editorLineHeight: settings.editorLineHeight,
-    });
+    await initializeApplicationState(lean, beforeInit);
 
     const renderApplication = () => {
       // 首帧稳定前禁用过渡：内部组件不会从默认值播动画追赶到恢复值。
@@ -564,28 +107,7 @@ export const bootstrap = async (
     return;
   }
 
-  // 主窗启动后后台静默预热所有 local-folder 记事本页面，使「所有记事本」全局搜索覆盖全量。
-  // 不 await：不阻塞首屏；小窗（quicknote）不预热。idle 时机执行，避开首屏渲染高峰。
-  if (rootElement.dataset.entry !== "quicknote") {
-    const preloadAll = async () => {
-      try {
-        await usePages.getState().loadAllLocalFolderPages();
-      } catch (err) {
-        console.error("预加载本地文件夹页面失败", err);
-      }
-      try {
-        const { triggerAutoWebdavBackup } = await import("@/lib/webdavSync");
-        void triggerAutoWebdavBackup();
-      } catch (err) {
-        console.error("加载 webdavSync 模块失败", err);
-      }
-    };
-    if (typeof requestIdleCallback === "function") {
-      requestIdleCallback(preloadAll, { timeout: 4000 });
-    } else {
-      setTimeout(preloadAll, 1500);
-    }
-  }
+  scheduleBackgroundWarmup(rootElement);
 };
 
 // 入口区分（两个独立 HTML 入口各自显式启动，本模块不再自动启动）：
