@@ -42,9 +42,6 @@ function localWrapperStyle(metadata: PersistedBlockProps, textPalette = LOCAL_TE
   return styles.join("; ");
 }
 
-function localWrapperMarker(metadata: PersistedBlockProps): string {
-  return `<span data-goose-note-block-props="v1" style="${localWrapperStyle(metadata)}">`;
-}
 
 /**
  * 本地文件夹专用：让 Obsidian 等 Markdown 预览器真实应用块级样式。

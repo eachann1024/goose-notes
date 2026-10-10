@@ -21,43 +21,6 @@ import { EDITOR_UI_SCALE_CHANGE_EVENT } from "@/lib/appearance";
 import { saveBlobAndReveal } from "@/lib/export/fileSave";
 import { toast } from "@/components/ui/sonner";
 
-function VideoUrlInput({
-  block,
-  editor,
-}: {
-  block: any;
-  editor: BlockNoteEditor<any, any, any>;
-}) {
-  const [url, setUrl] = useState("");
-
-  const submit = () => {
-    const trimmed = url.trim();
-    if (!trimmed) return;
-    editor.updateBlock(block, { props: { url: trimmed } });
-  };
-
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-[var(--goose-block-subtle-border)] bg-[var(--goose-block-subtle-bg)] px-3 py-2">
-      <GooseIcons.Link className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <input
-        type="text"
-        data-goose-inline-input=""
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        onBlur={submit}
-        placeholder="粘贴视频链接…"
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-placeholder"
-        autoFocus
-      />
-    </div>
-  );
-}
 
 function ensureParagraphAfter(
   editor: BlockNoteEditor<any, any, any>,

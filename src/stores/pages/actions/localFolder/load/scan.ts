@@ -7,7 +7,7 @@ import { latestLocalFolderLoadRequest } from "./tasks";
 import type { Page } from "@/types";
 import { appendLocalFolderOrderEntries } from "@/stores/localFolderOrder";
 import { recoverScannedLocalPages } from "./recovery";
-import { useTabs } from "../../../../useTabs";
+import "../../../../useTabs";
 
 export const loadLocalFolderPagesOnce = async (
   set: StoreSet,

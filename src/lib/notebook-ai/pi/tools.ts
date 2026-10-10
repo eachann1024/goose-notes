@@ -1,11 +1,7 @@
 import { Type, type Static, type TSchema } from "@earendil-works/pi-ai";
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { notebookAiTools } from "../tools";
-import {
-  getSkillToolNames,
-  NOTEBOOK_SKILLS,
-  type NotebookSkillId,
-} from "../skills";
+import { getSkillToolNames, type NotebookSkillId } from "../skills";
 import { repairExecuteBatchPlanInput } from "../batch-plan/tool";
 import type { NotebookAiAgentContext } from "../types";
 import { isNotebookSkillId } from "../skillIds";

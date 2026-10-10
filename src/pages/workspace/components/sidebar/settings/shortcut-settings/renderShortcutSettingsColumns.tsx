@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { formatShortcut, getPlatformKind } from "@/lib/utils";
+import { getPlatformKind } from "@/lib/utils";
 import { DEFAULT_APP_SHORTCUTS } from "@/stores/useSettings";
 import { SettingsSectionCard } from "../SettingsSectionCard";
 import { ShortcutField } from "../ShortcutField";

@@ -34,7 +34,7 @@ import {
   resolveAiReferenceContexts,
 } from "@/components/editor/ai/composer/referenceLookup";
 import { editorPlatform } from "@/lib/editor-platform/resolve";
-import { HostAdapter } from "@/lib/host/adapter";
+import "@/lib/host/adapter";
 import { fileStorage } from "@/lib/fileStorage";
 import { openResourceExternally } from "@/components/editor/utils/openResourceExternally";
 import {

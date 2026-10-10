@@ -1,5 +1,5 @@
 import * as React from "react";
-import { FloatingFocusManager, FloatingList, FloatingPortal, shift, useMergeRefs } from "@floating-ui/react";
+import { FloatingFocusManager, FloatingList, FloatingPortal, useMergeRefs } from "@floating-ui/react";
 import { cn } from "@/lib/utils";
 import { floatingMenuMotionStyle } from "../floating-menu-motion";
 

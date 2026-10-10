@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Minus } from "@/components/ui/icons";
+import "@/components/ui/icons";
 import { clampPreviewZoomPercent, PREVIEW_ZOOM_STEP_PERCENT, toImageDataUrl, type PreviewContent } from "@/lib/preview/previewAction";
 
 function isZoomInKey(event: KeyboardEvent) {

@@ -15,9 +15,6 @@ import { useLocalFolderTargetPicker } from "@/stores/useLocalFolderTargetPicker"
 
 type WorkspaceDragIntent = "folder" | "text-file" | "file";
 
-function getFileExtension(name: string) {
-  return name.split(".").pop()?.toLowerCase() ?? "";
-}
 
 function getWorkspaceDragIntent(dataTransfer: DataTransfer): WorkspaceDragIntent {
   const items = Array.from(dataTransfer.items || []);

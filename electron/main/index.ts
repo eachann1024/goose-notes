@@ -15,15 +15,7 @@ import {
   CLOSE_WINDOW_ACCELERATOR,
 } from "./closeTabAccelerator";
 import { lockWebContentsPageZoom } from "./pageZoom";
-import {
-  createWorkspaceWindow,
-  getMainWindow,
-  markQuitting,
-  lookupWindowContext,
-  requestCloseActiveTab,
-  restoreWorkspaceWindows,
-  shouldSuppressWorkspaceActivate,
-} from "./windows";
+import { createWorkspaceWindow, getMainWindow, markQuitting, requestCloseActiveTab, restoreWorkspaceWindows, shouldSuppressWorkspaceActivate } from "./windows";
 
 const DEFAULT_WAKE = "CmdOrCtrl+Alt+N";
 const DEFAULT_QUICKNOTE = "Alt+N";

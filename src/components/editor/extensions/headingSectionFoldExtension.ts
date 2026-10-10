@@ -12,13 +12,6 @@ export const SECTION_HIDDEN_ATTR = "data-goose-section-hidden";
 export const HEADING_COLLAPSED_ATTR = "data-goose-heading-collapsed";
 const SECTION_HIDDEN_CLASS = "goose-section-hidden";
 
-function headingLevelFromContent(content: Node | null | undefined): number {
-  if (content?.type.name !== "heading") return 0;
-  const level = content.attrs.level;
-  if (typeof level === "number" && level > 0) return level;
-  const parsed = Number(level);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
 
 function isCollapsedHeadingContent(
   content: Node | null | undefined,

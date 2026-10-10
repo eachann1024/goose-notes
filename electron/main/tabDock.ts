@@ -6,11 +6,7 @@ import {
   type ScreenPoint,
   type TabDragResolution,
 } from "../../src/lib/electron/tabTearOff";
-import {
-  clampBoundsToWorkArea,
-  parseTabSnapshot,
-  type WindowTabSnapshot,
-} from "./windowLayout";
+import { clampBoundsToWorkArea, parseTabSnapshot } from "./windowLayout";
 import {
   createWorkspaceWindow,
   currentTitleBarHeight,

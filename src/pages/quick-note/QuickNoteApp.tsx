@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import { toast } from "@/components/ui/sonner";
+import "@/components/ui/sonner";
 import { EditorHostBridge } from "@/pages/workspace/components/editor-host/EditorHostBridge";
 import { Editor } from "@/components/editor/core/Editor";
 import { Toaster } from "@/components/ui/sonner";

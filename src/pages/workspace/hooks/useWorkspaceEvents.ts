@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { toast } from "@/components/ui/sonner";
-import { usePages } from "@/stores/usePages";
+import "@/components/ui/sonner";
+import "@/stores/usePages";
 import { useSettings } from "@/stores/useSettings";
 
 interface UseWorkspaceEventsOptions {

@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import path from "node:path";
+import "node:path";
 import {
   checkForAppUpdate,
   downloadAppUpdate,

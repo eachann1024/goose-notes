@@ -1,4 +1,4 @@
-import type { JSONContent, Page } from "@/types";
+import type { Page } from "@/types";
 
 export type BatchPlanOperationInput =
   | {

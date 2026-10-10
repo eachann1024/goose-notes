@@ -10,7 +10,7 @@ import { TEXT_COLORS } from "@/lib/textColors";
  *   - heading      —— 折叠标题加 ▾，子块由 renderer 缩进输出
  */
 
-import type { Text } from "@react-pdf/renderer";
+
 import type { ReactElement } from "react";
 import type { PdfBlockMapping } from "./renderer";
 import { resolveCalloutIcon } from "@/components/editor/blocks/callout/calloutIcons";

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+
 import type { Page } from "@/types";
 import { formatShortcut } from "@/lib/utils";
 import { formatLocalFolderOpenAppName } from "@/lib/local-folder-open-apps";
